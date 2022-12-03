@@ -167,6 +167,9 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="..\..\Dependencies\DDSTextureLoader\DDSTextureLoader12.cpp">
+      <Filter>Dependencies</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />

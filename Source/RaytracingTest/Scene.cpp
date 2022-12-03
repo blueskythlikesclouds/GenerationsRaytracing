@@ -10,6 +10,7 @@ struct SceneLoader
     Scene& scene;
 
     std::unordered_map<std::string, uint32_t> textureMap;
+    std::unordered_map<std::string, uint32_t> materialMap;
     std::unordered_map<std::string, uint32_t> modelMap;
 
     SceneLoader(Scene& scene)
@@ -25,6 +26,22 @@ struct SceneLoader
         texture.dataSize = dataSize;
 
         memcpy(texture.data.get(), data, dataSize);
+    }
+
+    void loadMaterial(void* data)
+    {
+        hl::hh::mirage::fix(data);
+
+        auto material = hl::hh::mirage::get_data<hl::hh::mirage::raw_material_v3>(data);
+        material->fix();
+
+        Material& newMaterial = scene.cpu.materials.emplace_back();
+
+        for (hl::u8 i = 0; i < material->textureEntryCount; i++)
+        {
+            const auto& texture = material->textureEntries[i];
+            newMaterial.textureIndices[i] = textureMap[texture->texName.get()];
+        }
     }
 
     void loadMesh(const hl::hh::mirage::raw_mesh* mesh, Mesh::Type type)
@@ -141,6 +158,7 @@ struct SceneLoader
         }
 
         newMesh.indexCount = (uint32_t)(scene.cpu.indices.size() - newMesh.indexOffset);
+        newMesh.materialIndex = materialMap[mesh->materialName.get()];
 
         if (newMesh.vertexCount > 0 && newMesh.indexCount > 0)
             scene.cpu.meshes.push_back(std::move(newMesh));
@@ -235,6 +253,18 @@ struct SceneLoader
             }
         }
 
+    	for (auto& file : resources)
+        {
+            if (hl::text::strstr(file.name(), HL_NTEXT(".material")))
+            {
+                auto name = fromNchar(file.name());
+                *strchr(name.data(), '.') = '\0';
+
+                materialMap.emplace(name.data(), (uint32_t)scene.cpu.materials.size());
+                loadMaterial(file.file_data());
+            }
+        }
+
         hl::archive stage = ArchiveDatabase::load(directoryPath + "/Stage.pfd");
 
         for (auto& file : stage)
@@ -253,6 +283,24 @@ void Scene::loadCpuResources(const std::string& directoryPath)
 
 void Scene::createGpuResources(const Device& device)
 {
+    std::vector<std::vector<D3D12_SUBRESOURCE_DATA>> subResourcesPerTexture;
+
+    for (const auto& texture : cpu.textures)
+    {
+        DirectX::LoadDDSTextureFromMemory(
+            device.nvrhi,
+            texture.data.get(),
+            texture.dataSize,
+            std::addressof(gpu.textures.emplace_back()),
+            subResourcesPerTexture.emplace_back());
+    }
+
+    gpu.materialBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+        .setByteSize(vectorByteSize(cpu.materials))
+        .setStructStride(vectorByteStride(cpu.materials))
+        .setInitialState(nvrhi::ResourceStates::ShaderResource)
+        .setKeepInitialState(true));
+
     std::vector<Mesh::GPU> meshBuffer;
 
     for (const auto& mesh : cpu.meshes)
@@ -359,6 +407,26 @@ void Scene::createGpuResources(const Device& device)
 
     commandList->open();
 
+    for (size_t i = 0; i < subResourcesPerTexture.size(); i++)
+    {
+        const auto& subResources = subResourcesPerTexture[i];
+        const auto& texture = gpu.textures[i];
+
+        for (size_t j = 0; j < subResources.size(); j++)
+        {
+            const auto& subResource = subResources[j];
+
+            commandList->writeTexture(
+                gpu.textures[i],
+                j / texture->getDesc().mipLevels,
+                j % texture->getDesc().mipLevels,
+                subResource.pData,
+                subResource.RowPitch,
+                subResource.SlicePitch);
+        }
+    }
+
+    commandList->writeBuffer(gpu.materialBuffer, cpu.materials.data(), vectorByteSize(cpu.materials));
     commandList->writeBuffer(gpu.meshBuffer, meshBuffer.data(), vectorByteSize(meshBuffer));
     commandList->writeBuffer(gpu.vertexBuffer, cpu.vertices.data(), vectorByteSize(cpu.vertices));
     commandList->writeBuffer(gpu.normalBuffer, cpu.normals.data(), vectorByteSize(cpu.normals));

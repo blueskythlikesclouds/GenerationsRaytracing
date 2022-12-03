@@ -19,17 +19,28 @@ struct cbGlobals
     float aspectRatio;
 };
 
-ConstantBuffer<cbGlobals> g_Globals : register(b0);
+ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);
 
-RaytracingAccelerationStructure g_BVH : register(t0);
-Buffer<uint3> g_MeshBuffer : register(t1);
-Buffer<float3> g_NormalBuffer : register(t2);
-Buffer<float4> g_TangentBuffer : register(t3);
-Buffer<float2> g_TexCoordBuffer : register(t4);
-Buffer<float4> g_ColorBuffer : register(t5);
-Buffer<uint> g_IndexBuffer : register(t6);
+struct Material
+{
+    float4 parameters[16];
+    uint textureIndices[16];
+};
 
-RWTexture2D<float4> g_Output : register(u0);
+RaytracingAccelerationStructure g_BVH : register(t0, space0);
+StructuredBuffer<Material> g_MaterialBuffer : register(t1, space0);
+Buffer<uint3> g_MeshBuffer : register(t2, space0);
+Buffer<float3> g_NormalBuffer : register(t3, space0);
+Buffer<float4> g_TangentBuffer : register(t4, space0);
+Buffer<float2> g_TexCoordBuffer : register(t5, space0);
+Buffer<float4> g_ColorBuffer : register(t6, space0);
+Buffer<uint> g_IndexBuffer : register(t7, space0);
+
+RWTexture2D<float4> g_Output : register(u0, space0);
+
+SamplerState g_Sampler : register(s0, space0);
+
+Texture2D<float4> g_BindlessTexture[] : register(t0, space1);
 
 [shader("raygeneration")]
 void RayGeneration()
@@ -89,6 +100,13 @@ void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : S
 
     normal = normalize(mul(ObjectToWorld3x4(), float4(normal, 0.0))).xyz;
 
-    payload.color.rgb = saturate(dot(normal, lightDirection)) * (shadowPayload.miss ? 1.0 : 0.0) + 0.25;
+    float2 texCoord =
+        g_TexCoordBuffer[indices.x] * uv.x +
+        g_TexCoordBuffer[indices.y] * uv.y +
+        g_TexCoordBuffer[indices.z] * uv.z;
+
+    float4 color = g_BindlessTexture[NonUniformResourceIndex(g_MaterialBuffer[mesh.z].textureIndices[0])].SampleLevel(g_Sampler, texCoord, 0);
+
+    payload.color.rgb = (saturate(dot(normal, lightDirection)) * (shadowPayload.miss ? 1.0 : 0.0) + 0.25) * color.rgb;
     payload.color.a = 1.0;
 }

@@ -5,6 +5,7 @@
 
 #include <wrl/client.h>
 
+#include <DDSTextureLoader/DDSTextureLoader12.h>
 #include <dxgi1_4.h>
 
 #include <fdi.h>

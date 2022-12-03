@@ -78,9 +78,12 @@ struct Scene
 
     struct GPU
     {
+        std::vector<nvrhi::TextureHandle> textures;
+
         std::vector<nvrhi::rt::AccelStructHandle> bottomLevelAccelStructs;
         nvrhi::rt::AccelStructHandle topLevelAccelStruct;
 
+        nvrhi::BufferHandle materialBuffer;
         nvrhi::BufferHandle meshBuffer;
         nvrhi::BufferHandle vertexBuffer;
         nvrhi::BufferHandle normalBuffer;
