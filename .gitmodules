@@ -1,0 +1,6 @@
+[submodule "Dependencies/nvrhi"]
+	path = Dependencies/nvrhi
+	url = https://github.com/NVIDIAGameWorks/nvrhi
+[submodule "Dependencies/HedgeLib"]
+	path = Dependencies/HedgeLib
+	url = https://github.com/Radfordhound/HedgeLib
