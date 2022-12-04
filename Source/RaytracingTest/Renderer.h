@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+struct ShaderLibrary;
 struct App;
 struct Window;
 struct Scene;
@@ -7,7 +8,8 @@ struct Device;
 
 struct Renderer
 {
-    nvrhi::ShaderLibraryHandle shaderLibrary;
+    nvrhi::ShaderLibraryHandle shaderLibrary0;
+    nvrhi::ShaderLibraryHandle shaderLibrary1;
 
     nvrhi::BufferHandle constantBuffer;
     nvrhi::TextureHandle texture;
@@ -26,7 +28,7 @@ struct Renderer
 
     int sampleCount = 0;
 
-    Renderer(const Device& device, const Window& window);
+    Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibrary);
 
     void update(const App& app, Scene& scene);
 };

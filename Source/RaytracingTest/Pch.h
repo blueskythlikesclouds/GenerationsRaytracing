@@ -5,8 +5,8 @@
 
 #include <wrl/client.h>
 
-#include <DDSTextureLoader/DDSTextureLoader12.h>
 #include <dxgi1_4.h>
+#include <DDSTextureLoader/DDSTextureLoader12.h>
 
 #include <fdi.h>
 
@@ -15,6 +15,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
 
 #include <Eigen/Eigen>
 
@@ -28,6 +29,7 @@
 
 #include <hedgelib/archives/hl_archive.h>
 #include <hedgelib/archives/hl_hh_archive.h>
+#include <hedgelib/hh/hl_hh_light.h>
 #include <hedgelib/io/hl_mem_stream.h>
 #include <hedgelib/io/hl_path.h>
 #include <hedgelib/materials/hl_hh_material.h>

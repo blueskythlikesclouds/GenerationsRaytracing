@@ -170,6 +170,8 @@
     <ClCompile Include="..\..\Dependencies\DDSTextureLoader\DDSTextureLoader12.cpp">
       <Filter>Dependencies</Filter>
     </ClCompile>
+    <ClCompile Include="ShaderMapping.cpp" />
+    <ClCompile Include="ShaderLibrary.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -184,6 +186,9 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="ShaderMapping.h" />
+    <ClInclude Include="File.h" />
+    <ClInclude Include="ShaderLibrary.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Dependencies">

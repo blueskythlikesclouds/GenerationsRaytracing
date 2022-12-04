@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+struct ShaderMapping;
 struct Device;
 
 struct Texture
@@ -10,13 +11,20 @@ struct Texture
 
 struct Material
 {
-    Eigen::Vector4f float4Parameters[16] {};
-    uint32_t textureIndices[16] {};
+    std::string shader;
+    std::vector<std::pair<std::string, Eigen::Vector4f>> parameters;
+    std::vector<std::pair<std::string, uint32_t>> textures;
+
+    struct GPU
+    {
+        Eigen::Vector4f parameters[16]{};
+        uint32_t textureIndices[16]{};
+    };
 };
 
 struct Mesh
 {
-    enum class Type
+    enum class Type : uint32_t
     {
         Opaque,
         Trans,
@@ -36,6 +44,7 @@ struct Mesh
         uint32_t vertexOffset;
         uint32_t indexOffset;
         uint32_t materialIndex;
+        Type type = Type::Opaque;
     };
 };
 
@@ -74,6 +83,9 @@ struct Scene
         std::vector<Eigen::Vector2f> texCoords;
         std::vector<Eigen::Vector4f> colors;
         std::vector<uint16_t> indices;
+
+        Eigen::Vector4f lightDirection;
+        Eigen::Vector4f lightColor;
     } cpu;
 
     struct GPU
@@ -94,5 +106,5 @@ struct Scene
     } gpu;
 
     void loadCpuResources(const std::string& directoryPath);
-    void createGpuResources(const Device& device);
+    void createGpuResources(const Device& device, const ShaderMapping& shaderMapping);
 };

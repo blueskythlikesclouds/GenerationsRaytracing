@@ -11,11 +11,16 @@ struct ConstantBuffer
     Eigen::Matrix4f rotation = Eigen::Matrix4f::Identity();
     float aspectRatio = 0.0f;
     uint32_t sampleCount = 0;
+    uint64_t padding0 = 0;
+    Eigen::Vector4f lightDirection;
+    Eigen::Vector4f lightColor;
 };
 
-Renderer::Renderer(const Device& device, const Window& window)
+Renderer::Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibrary)
 {
-    shaderLibrary = device.nvrhi->createShaderLibrary(SHADER_BYTECODE, sizeof(SHADER_BYTECODE));
+    shaderLibrary0 = device.nvrhi->createShaderLibrary(SHADER_BYTECODE, sizeof(SHADER_BYTECODE));
+    shaderLibrary1 = device.nvrhi->createShaderLibrary(shaderLibrary.byteCode.get(), shaderLibrary.byteSize);
+
     constantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(sizeof(ConstantBuffer))
         .setIsConstantBuffer(true)
@@ -45,34 +50,34 @@ Renderer::Renderer(const Device& device, const Window& window)
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(6))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(7))
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
-		.addItem(nvrhi::BindingLayoutItem::Sampler(0)));
+		.addItem(nvrhi::BindingLayoutItem::Sampler(0))
+		.addItem(nvrhi::BindingLayoutItem::Sampler(1)));
 
     bindlessLayout = device.nvrhi->createBindlessLayout(nvrhi::BindlessLayoutDesc()
         .setVisibility(nvrhi::ShaderType::All)
         .setMaxCapacity(2048)
-        .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(1)));
+        .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(1))
+        .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(2)));
 
-    pipeline = device.nvrhi->createRayTracingPipeline(nvrhi::rt::PipelineDesc()
+    auto pipelineDesc = nvrhi::rt::PipelineDesc()
         .addBindingLayout(bindingLayout)
         .addBindingLayout(bindlessLayout)
-        .addShader({ "", shaderLibrary->getShader("RayGeneration", nvrhi::ShaderType::RayGeneration), nullptr })
-        .addShader({ "", shaderLibrary->getShader("Miss", nvrhi::ShaderType::Miss), nullptr })
-        .addHitGroup({ "HitGroup", shaderLibrary->getShader("ClosestHit", nvrhi::ShaderType::ClosestHit), nullptr, nullptr, nullptr, false })
+        .addShader({ "", shaderLibrary0->getShader("RayGeneration", nvrhi::ShaderType::RayGeneration), nullptr })
+        .addShader({ "", shaderLibrary0->getShader("Miss", nvrhi::ShaderType::Miss), nullptr })
         .setMaxRecursionDepth(8)
-        .setMaxPayloadSize(32));
+        .setMaxPayloadSize(32);
 
-    shaderTable = pipeline->createShaderTable();
-    shaderTable->setRayGenerationShader("RayGeneration");
-    shaderTable->addMissShader("Miss");
-    shaderTable->addHitGroup("HitGroup");
+    for (auto& shaderPair : shaderLibrary.shaderMapping.map)
+        pipelineDesc.addHitGroup({ "HitGroup_" + shaderPair.second.name, shaderLibrary1->getShader(shaderPair.second.exportName.c_str(), nvrhi::ShaderType::ClosestHit), shaderLibrary0->getShader("AnyHit", nvrhi::ShaderType::AnyHit)});
 
+    pipeline = device.nvrhi->createRayTracingPipeline(pipelineDesc);
     commandList = device.nvrhi->createCommandList();
 }
 
 void Renderer::update(const App& app, Scene& scene)
 {
     if (!scene.gpu.topLevelAccelStruct)
-        scene.createGpuResources(app.device);
+        scene.createGpuResources(app.device, app.shaderLibrary.shaderMapping);
 
     assert(scene.gpu.topLevelAccelStruct);
 
@@ -89,7 +94,15 @@ void Renderer::update(const App& app, Scene& scene)
             .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(6, scene.gpu.colorBuffer))
             .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(7, scene.gpu.indexBuffer))
             .addItem(nvrhi::BindingSetItem::Texture_UAV(0, texture))
-            .addItem(nvrhi::BindingSetItem::Sampler(0, sampler)), bindingLayout);
+            .addItem(nvrhi::BindingSetItem::Sampler(0, sampler))
+            .addItem(nvrhi::BindingSetItem::Sampler(1, sampler)), bindingLayout);
+
+        shaderTable = pipeline->createShaderTable();
+        shaderTable->setRayGenerationShader("RayGeneration");
+        shaderTable->addMissShader("Miss");
+
+        for (auto& mesh : scene.cpu.meshes)
+            shaderTable->addHitGroup(("HitGroup_" + scene.cpu.materials[mesh.materialIndex].shader).c_str());
 
         descriptorTable = app.device.nvrhi->createDescriptorTable(bindlessLayout);
 
@@ -109,6 +122,8 @@ void Renderer::update(const App& app, Scene& scene)
     bufferData.rotation.block(0, 0, 3, 3) = app.camera.rotation.toRotationMatrix();
     bufferData.aspectRatio = (float)app.window.width / (float)app.window.height;
     bufferData.sampleCount = ++sampleCount;
+    bufferData.lightDirection = scene.cpu.lightDirection;
+    bufferData.lightColor = scene.cpu.lightColor;
 
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
 

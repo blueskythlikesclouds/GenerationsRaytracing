@@ -635,6 +635,8 @@
     </ClCompile>
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="ShaderLibrary.cpp" />
+    <ClCompile Include="ShaderMapping.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -642,12 +644,15 @@
     <ClInclude Include="ArchiveDatabase.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Device.h" />
+    <ClInclude Include="File.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="MessageCallback.h" />
     <ClInclude Include="Path.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="ShaderLibrary.h" />
+    <ClInclude Include="ShaderMapping.h" />
     <ClInclude Include="Utilities.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>

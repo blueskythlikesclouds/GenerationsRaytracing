@@ -3,6 +3,7 @@
 #include "ArchiveDatabase.h"
 #include "Device.h"
 #include "Path.h"
+#include "ShaderMapping.h"
 #include "Utilities.h"
 
 struct SceneLoader
@@ -36,11 +37,18 @@ struct SceneLoader
         material->fix();
 
         Material& newMaterial = scene.cpu.materials.emplace_back();
+        newMaterial.shader = material->shaderName.get();
+
+        for (hl::u8 i = 0; i < material->float4ParamCount; i++)
+        {
+            const auto& param = material->float4Params[i];
+            newMaterial.parameters.emplace_back(param->name.get(), Eigen::Vector4f(param->values[0].x, param->values[0].y, param->values[0].z, param->values[0].w));
+        }
 
         for (hl::u8 i = 0; i < material->textureEntryCount; i++)
         {
             const auto& texture = material->textureEntries[i];
-            newMaterial.textureIndices[i] = textureMap[texture->texName.get()];
+            newMaterial.textures.emplace_back(texture->type.get(), textureMap[texture->texName.get()]);
         }
     }
 
@@ -235,6 +243,20 @@ struct SceneLoader
         }
     }
 
+    void loadLight(void* data)
+    {
+        hl::hh::mirage::fix(data);
+
+        auto light = hl::hh::mirage::get_data<hl::hh::mirage::raw_light_v1>(data);
+        light->fix();
+
+        if (light->type == hl::hh::mirage::raw_light_type::directional)
+        {
+            memcpy(&scene.cpu.lightDirection, &light->directionalData.dir, sizeof(light->directionalData.dir));
+            memcpy(&scene.cpu.lightColor, &light->directionalData.color, sizeof(light->directionalData.color));
+        }
+    }
+
     void load(const std::string& directoryPath)
     {
         const std::string name = getFileName(directoryPath);
@@ -265,6 +287,12 @@ struct SceneLoader
             }
         }
 
+    	for (auto& file : resources)
+        {
+            if (hl::text::strstr(file.name(), HL_NTEXT(".light")) && !hl::text::strstr(file.name(), HL_NTEXT(".light-list")))
+	            loadLight(file.file_data());
+        }
+
         hl::archive stage = ArchiveDatabase::load(directoryPath + "/Stage.pfd");
 
         for (auto& file : stage)
@@ -281,7 +309,7 @@ void Scene::loadCpuResources(const std::string& directoryPath)
     loader.load(directoryPath);
 }
 
-void Scene::createGpuResources(const Device& device)
+void Scene::createGpuResources(const Device& device, const ShaderMapping& shaderMapping)
 {
     std::vector<std::vector<D3D12_SUBRESOURCE_DATA>> subResourcesPerTexture;
 
@@ -295,20 +323,66 @@ void Scene::createGpuResources(const Device& device)
             subResourcesPerTexture.emplace_back());
     }
 
+    std::vector<Material::GPU> materialBuffer;
+
+    for (auto& material : cpu.materials)
+    {
+        auto& gpuMaterial = materialBuffer.emplace_back();
+
+        const auto shaderPair = shaderMapping.map.find(material.shader);
+
+        if (shaderPair != shaderMapping.map.end())
+        {
+            for (auto& paramPair : material.parameters)
+            {
+                for (size_t i = 0; i < shaderPair->second.parameters.size(); i++)
+                {
+                    if (paramPair.first == shaderPair->second.parameters[i])
+                    {
+                        gpuMaterial.parameters[i] = paramPair.second;
+                        break;
+                    }
+                }
+            }
+
+            std::unordered_map<std::string, size_t> counts;
+
+            for (auto& texPair : material.textures)
+            {
+                const size_t target = counts[texPair.first];
+                size_t current = 0;
+
+                for (size_t i = 0; i < shaderPair->second.textures.size(); i++)
+                {
+                    if (texPair.first == shaderPair->second.textures[i] && (current++) == target)
+                    {
+                        gpuMaterial.textureIndices[i] = texPair.second;
+                        ++counts[texPair.first];
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            material.shader = "SysError";
+        }
+    }
+
     gpu.materialBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
-        .setByteSize(vectorByteSize(cpu.materials))
-        .setStructStride(vectorByteStride(cpu.materials))
+        .setByteSize(vectorByteSize(materialBuffer))
+        .setStructStride(vectorByteStride(materialBuffer))
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
     std::vector<Mesh::GPU> meshBuffer;
 
     for (const auto& mesh : cpu.meshes)
-        meshBuffer.push_back({ mesh.vertexOffset, mesh.indexOffset, mesh.materialIndex });
+        meshBuffer.push_back({ mesh.vertexOffset, mesh.indexOffset, mesh.materialIndex, mesh.type });
 
     gpu.meshBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(meshBuffer))
-        .setFormat(nvrhi::Format::RGB32_UINT)
+        .setFormat(nvrhi::Format::RGBA32_UINT)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
@@ -396,6 +470,7 @@ void Scene::createGpuResources(const Device& device)
 
         instanceDesc.instanceID = cpu.models[instance.modelIndex].meshOffset;
         instanceDesc.instanceMask = 1;
+        instanceDesc.instanceContributionToHitGroupIndex = instanceDesc.instanceID;
         instanceDesc.bottomLevelAS = gpu.bottomLevelAccelStructs[instance.modelIndex];
     }
 
@@ -426,7 +501,7 @@ void Scene::createGpuResources(const Device& device)
         }
     }
 
-    commandList->writeBuffer(gpu.materialBuffer, cpu.materials.data(), vectorByteSize(cpu.materials));
+    commandList->writeBuffer(gpu.materialBuffer, materialBuffer.data(), vectorByteSize(materialBuffer));
     commandList->writeBuffer(gpu.meshBuffer, meshBuffer.data(), vectorByteSize(meshBuffer));
     commandList->writeBuffer(gpu.vertexBuffer, cpu.vertices.data(), vectorByteSize(cpu.vertices));
     commandList->writeBuffer(gpu.normalBuffer, cpu.normals.data(), vectorByteSize(cpu.normals));

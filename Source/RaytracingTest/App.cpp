@@ -1,7 +1,7 @@
 ﻿#include "App.h"
 
-App::App(int width, int height)
-    : device(), window(device, width, height), renderer(device, window)
+App::App(const std::string& directoryPath, int width, int height)
+    : device(), window(device, width, height), shaderLibrary(directoryPath), renderer(device, window, shaderLibrary)
 {
 }
 

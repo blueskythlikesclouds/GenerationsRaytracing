@@ -4,3 +4,6 @@
 [submodule "Dependencies/HedgeLib"]
 	path = Dependencies/HedgeLib
 	url = https://github.com/Radfordhound/HedgeLib
+[submodule "Dependencies/Amicitia.IO"]
+	path = Dependencies/Amicitia.IO
+	url = https://github.com/tge-was-taken/Amicitia.IO

@@ -20,6 +20,8 @@ struct cbGlobals
     float4x4 rotation;
     float aspectRatio;
     uint sampleCount;
+    float3 lightDirection;
+    float3 lightColor;
 };
 
 ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);
@@ -32,7 +34,7 @@ struct Material
 
 RaytracingAccelerationStructure g_BVH : register(t0, space0);
 StructuredBuffer<Material> g_MaterialBuffer : register(t1, space0);
-Buffer<uint3> g_MeshBuffer : register(t2, space0);
+Buffer<uint4> g_MeshBuffer : register(t2, space0);
 Buffer<float3> g_NormalBuffer : register(t3, space0);
 Buffer<float4> g_TangentBuffer : register(t4, space0);
 Buffer<float2> g_TexCoordBuffer : register(t5, space0);
@@ -95,6 +97,42 @@ float3 getCosHemisphereSample(inout uint randSeed, float3 hitNorm)
     return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNorm.xyz * sqrt(max(0.0, 1.0f - randVal.x));
 }
 
+float4 TraceGlobalIllumination(inout Payload payload, float3 position, float3 normal)
+{
+    if (payload.depth >= 4)
+        return 0;
+
+    RayDesc ray;
+    ray.Origin = position;
+    ray.Direction = getCosHemisphereSample(payload.random, normal);
+    ray.TMin = 0.01f;
+    ray.TMax = FLT_MAX;
+
+    Payload payload1 = (Payload)0;
+    payload1.random = payload.random;
+    payload1.depth = payload.depth + 1;
+
+    TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
+
+    payload.random = payload1.random;
+
+    return payload1.color;
+}
+
+float TraceShadow(float3 position)
+{
+    RayDesc ray;
+    ray.Origin = position;
+    ray.Direction = -g_Globals.lightDirection;
+    ray.TMin = 0.01f;
+    ray.TMax = FLT_MAX;
+
+    Payload payload = (Payload)0;
+    TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 0, ray, payload);
+
+    return payload.miss ? 1.0 : 0.0;
+}
+
 [shader("raygeneration")]
 void RayGeneration()
 {
@@ -129,6 +167,39 @@ void Miss(inout Payload payload : SV_RayPayload)
     payload.miss = true;
 }
 
+[shader("anyhit")]
+void AnyHit(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)
+{
+    uint4 mesh = g_MeshBuffer[InstanceID() + GeometryIndex()];
+
+    if (mesh.w != 0)
+    {
+        uint3 indices;
+        indices.x = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 0];
+        indices.y = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 1];
+        indices.z = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 2];
+
+        float3 uv = float3(1.0 - attributes.uv.x - attributes.uv.y, attributes.uv.x, attributes.uv.y);
+
+        float2 texCoord =
+            g_TexCoordBuffer[indices.x] * uv.x +
+            g_TexCoordBuffer[indices.y] * uv.y +
+            g_TexCoordBuffer[indices.z] * uv.z;
+
+        float4 color = g_BindlessTexture[NonUniformResourceIndex(g_MaterialBuffer[mesh.z].textureIndices[0])].SampleLevel(g_Sampler, texCoord, 0);
+        if (mesh.w == 2)
+        {
+            if (color.a < 0.5)
+                IgnoreHit();
+        }
+        else
+        {
+            if (color.a < nextRand(payload.random))
+                IgnoreHit();
+        }
+    }
+}
+
 [shader("closesthit")]
 void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)
 {
@@ -146,7 +217,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : S
     Payload shadowPayload = (Payload)0;
     TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 0, shadowRay, shadowPayload);
 
-    uint3 mesh = g_MeshBuffer[InstanceID() + GeometryIndex()];
+    uint4 mesh = g_MeshBuffer[InstanceID() + GeometryIndex()];
 
     uint3 indices;
     indices.x = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 0];
@@ -195,7 +266,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : S
     payload.random = giPayload.random;
 
     float2 texCoord =
-        g_TexCoordBuffer[indices.x] * uv.x +
+    	g_TexCoordBuffer[indices.x] * uv.x +
         g_TexCoordBuffer[indices.y] * uv.y +
         g_TexCoordBuffer[indices.z] * uv.z;
 
