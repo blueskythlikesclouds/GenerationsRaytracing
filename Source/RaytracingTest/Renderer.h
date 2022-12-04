@@ -24,6 +24,8 @@ struct Renderer
 
     nvrhi::CommandListHandle commandList;
 
+    int sampleCount = 0;
+
     Renderer(const Device& device, const Window& window);
 
     void update(const App& app, Scene& scene);

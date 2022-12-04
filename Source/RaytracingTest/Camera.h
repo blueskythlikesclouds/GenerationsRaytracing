@@ -7,6 +7,7 @@ struct Camera
     Eigen::Vector3f position;
     Eigen::Quaternionf rotation;
     float fieldOfView = 90.0f;
+    bool dirty = false;
 
     Camera() :
         position(Eigen::Vector3f::Zero()),
@@ -15,5 +16,5 @@ struct Camera
         
     }
 
-    void update(const Input& input);
+    void update(const Input& input, float deltaTime);
 };

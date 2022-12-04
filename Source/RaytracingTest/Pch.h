@@ -11,6 +11,7 @@
 #include <fdi.h>
 
 #include <array>
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <mutex>

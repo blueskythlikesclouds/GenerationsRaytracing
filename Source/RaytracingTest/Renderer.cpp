@@ -10,6 +10,7 @@ struct ConstantBuffer
     float tanFovy = 0.0f;
     Eigen::Matrix4f rotation = Eigen::Matrix4f::Identity();
     float aspectRatio = 0.0f;
+    uint32_t sampleCount = 0;
 };
 
 Renderer::Renderer(const Device& device, const Window& window)
@@ -57,7 +58,7 @@ Renderer::Renderer(const Device& device, const Window& window)
         .addShader({ "", shaderLibrary->getShader("RayGeneration", nvrhi::ShaderType::RayGeneration), nullptr })
         .addShader({ "", shaderLibrary->getShader("Miss", nvrhi::ShaderType::Miss), nullptr })
         .addHitGroup({ "HitGroup", shaderLibrary->getShader("ClosestHit", nvrhi::ShaderType::ClosestHit), nullptr, nullptr, nullptr, false })
-        .setMaxRecursionDepth(2)
+        .setMaxRecursionDepth(8)
         .setMaxPayloadSize(32));
 
     shaderTable = pipeline->createShaderTable();
@@ -97,6 +98,9 @@ void Renderer::update(const App& app, Scene& scene)
             app.device.nvrhi->writeDescriptorTable(descriptorTable, nvrhi::BindingSetItem::Texture_SRV((uint32_t)i, scene.gpu.textures[i]));
     }
 
+    if (app.camera.dirty)
+        sampleCount = 0;
+
     commandList->open();
 
     ConstantBuffer bufferData;
@@ -104,6 +108,7 @@ void Renderer::update(const App& app, Scene& scene)
     bufferData.tanFovy = tan(app.camera.fieldOfView / 360.0f * 3.14159265359f);
     bufferData.rotation.block(0, 0, 3, 3) = app.camera.rotation.toRotationMatrix();
     bufferData.aspectRatio = (float)app.window.width / (float)app.window.height;
+    bufferData.sampleCount = ++sampleCount;
 
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
 
