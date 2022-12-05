@@ -90,6 +90,10 @@ public static class ShaderConverter
                         stringBuilder.Append("refraction");
                         break;
 
+                    case "mrgInShadowScale":
+                        stringBuilder.Append("float4(0.3, 0.3, 1, 1)");
+                        break;
+
                     default:
                         stringBuilder.Append("0");
                         break;
