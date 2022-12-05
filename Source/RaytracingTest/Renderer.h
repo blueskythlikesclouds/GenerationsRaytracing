@@ -8,8 +8,7 @@ struct Device;
 
 struct Renderer
 {
-    nvrhi::ShaderLibraryHandle shaderLibrary0;
-    nvrhi::ShaderLibraryHandle shaderLibrary1;
+	nvrhi::ShaderLibraryHandle shaderLibrary;
     nvrhi::ShaderHandle shaderCopyVS;
     nvrhi::ShaderHandle shaderCopyPS;
 
@@ -32,7 +31,7 @@ struct Renderer
 
     int sampleCount = 0;
 
-    Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibrary);
+    Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibraryHolder);
 
     void update(const App& app, Scene& scene);
 };

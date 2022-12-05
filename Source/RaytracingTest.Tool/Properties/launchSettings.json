@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "RaytracingTest.Tool": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sonic Generations\\disk\\bb3\" \"C:\\Repositories\\RaytracingTest\\Source\\RaytracingTest\""
+    }
+  }
+}

@@ -4,14 +4,19 @@ using RaytracingTest.Tool.Mirage;
 using RaytracingTest.Tool.Shaders;
 using RaytracingTest.Tool.Shaders.Constants;
 
+if (args.Length < 2)
+{
+    Console.WriteLine("Usage: RaytracingTest.Tool [bb3] [project]");
+    return;
+}
+
 var archiveDatabase = new ArchiveDatabase();
-archiveDatabase.Load(@"C:\Program Files (x86)\Steam\steamapps\common\Sonic Generations\disk\bb3\shader_r.ar.00");
-archiveDatabase.Load(@"C:\Program Files (x86)\Steam\steamapps\common\Sonic Generations\disk\bb3\shader_r_add.ar.00");
+archiveDatabase.Load(Path.Combine(args[0], "shader_r.ar.00"));
+archiveDatabase.Load(Path.Combine(args[0], "shader_r_add.ar.00"));
 
 var stringBuilder = ShaderConverter.BeginShaderConversion();
-var constants = new List<(string Name, int Register)>();
 
-using var shaderMappingWriter = new BinaryWriter(File.Create(@"C:\Repositories\RaytracingTest\Source\RaytracingTest\ShaderMapping.bin"));
+using var shaderMappingWriter = new BinaryWriter(File.Create(Path.Combine(args[1], "ShaderMapping.bin")));
 
 foreach (var (databaseData, shaderListData) in archiveDatabase.GetMany<ShaderListData>("shader-list"))
 {
@@ -113,15 +118,6 @@ foreach (var (databaseData, shaderListData) in archiveDatabase.GetMany<ShaderLis
 
     foreach (var (parameter, _) in shaderMapping.SamplerIndices.OrderBy(x => x.Value))
         shaderMappingWriter.Write(parameter.Name);
-
-    foreach (var constant in vertexShader.Constants.Concat(pixelShader.Constants).Where(x => x.Type != ConstantType.Sampler))
-    {
-        if (constants.All(x => x.Name != constant.Name))
-            constants.Add((constant.Name, constant.Register));
-    }
 }
 
-foreach (var constant in constants.OrderBy(x => x.Register))
-    Console.WriteLine(constant.Name);
-
-File.WriteAllText("ShaderLibrary.hlsl", stringBuilder.ToString());
+File.WriteAllText(Path.Combine(args[1], "ShaderLibrary.hlsl"), stringBuilder.ToString());

@@ -2,7 +2,6 @@
 
 #include "App.h"
 #include "Scene.h"
-#include "ShaderBytecode.h"
 #include "ShaderCopyVS.h"
 #include "ShaderCopyPS.h"
 
@@ -18,10 +17,9 @@ struct ConstantBuffer
     Eigen::Vector4f lightColor;
 };
 
-Renderer::Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibrary)
+Renderer::Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibraryHolder)
 {
-    shaderLibrary0 = device.nvrhi->createShaderLibrary(SHADER_BYTECODE, sizeof(SHADER_BYTECODE));
-    shaderLibrary1 = device.nvrhi->createShaderLibrary(shaderLibrary.byteCode.get(), shaderLibrary.byteSize);
+    shaderLibrary = device.nvrhi->createShaderLibrary(shaderLibraryHolder.byteCode.get(), shaderLibraryHolder.byteSize);
     shaderCopyVS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), SHADER_COPY_VS, sizeof(SHADER_COPY_VS));
     shaderCopyPS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), SHADER_COPY_PS, sizeof(SHADER_COPY_PS));
 
@@ -67,18 +65,18 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
     auto pipelineDesc = nvrhi::rt::PipelineDesc()
         .addBindingLayout(bindingLayout)
         .addBindingLayout(bindlessLayout)
-        .addShader({ "", shaderLibrary0->getShader("RayGeneration", nvrhi::ShaderType::RayGeneration), nullptr })
-        .addShader({ "", shaderLibrary0->getShader("Miss", nvrhi::ShaderType::Miss), nullptr })
+        .addShader({ "", shaderLibrary->getShader("RayGeneration", nvrhi::ShaderType::RayGeneration), nullptr })
+        .addShader({ "", shaderLibrary->getShader("Miss", nvrhi::ShaderType::Miss), nullptr })
         .setMaxRecursionDepth(8)
         .setMaxPayloadSize(32);
 
-    for (auto& shaderPair : shaderLibrary.shaderMapping.map)
+    for (auto& shaderPair : shaderLibraryHolder.shaderMapping.map)
     {
         pipelineDesc.addHitGroup(
 		{
             "HitGroup_" + shaderPair.second.name,
-			shaderLibrary1->getShader(shaderPair.second.closestHit.c_str(), nvrhi::ShaderType::ClosestHit),
-			shaderLibrary1->getShader(shaderPair.second.anyHit.c_str(), nvrhi::ShaderType::AnyHit)
+			shaderLibrary->getShader(shaderPair.second.closestHit.c_str(), nvrhi::ShaderType::ClosestHit),
+			shaderLibrary->getShader(shaderPair.second.anyHit.c_str(), nvrhi::ShaderType::AnyHit)
 		});
     }
 

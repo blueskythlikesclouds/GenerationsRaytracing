@@ -200,4 +200,7 @@
     <FxCompile Include="ShaderCopyPS.hlsl" />
     <FxCompile Include="ShaderCopyVS.hlsl" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ShaderLibrary.hlsli" />
+  </ItemGroup>
 </Project>

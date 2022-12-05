@@ -276,9 +276,6 @@ public static class ShaderConverter
 
         stringBuilder.AppendLine("\tuint4 mesh = g_MeshBuffer[InstanceID() + GeometryIndex()];");
 
-        if (shaderType == "anyhit")
-            stringBuilder.AppendLine("\tif (mesh.w == 1 || mesh.w == 2)\n\t{");
-
         stringBuilder.Append(""" 
                 uint3 indices;
                 indices.x = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 0];
@@ -419,7 +416,6 @@ public static class ShaderConverter
                     if (omParams.oC0.w < nextRand(payload.random))
                         IgnoreHit();
                 }
-                } 
             }
 
 
@@ -446,158 +442,7 @@ public static class ShaderConverter
             #define _rep(x, y) for (int i##y = 0; i##y < x; ++i##y)
             #define rep(x) _rep(x, __LINE__)
 
-            #define FLT_MAX asfloat(0x7f7fffff)
-
-            struct Payload
-            {
-            	float4 color;
-                uint random;
-                uint depth;
-                bool miss;
-            };
-
-            struct Attributes
-            {
-            	float2 uv;
-            };
- 
-            struct cbGlobals
-            {
-                float3 position;
-                float tanFovy;
-                float4x4 rotation;
-                float aspectRatio;
-                uint sampleCount;
-                float3 lightDirection;
-                float3 lightColor;
-            };
-
-            ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);
-
-            struct Material
-            {
-                float4 float4Parameters[16];
-                uint textureIndices[16];
-            };
-
-            RaytracingAccelerationStructure g_BVH : register(t0, space0);
-
-            StructuredBuffer<Material> g_MaterialBuffer : register(t1, space0);
-            Buffer<uint4> g_MeshBuffer : register(t2, space0);
-
-            Buffer<float3> g_NormalBuffer : register(t3, space0);
-            Buffer<float4> g_TangentBuffer : register(t4, space0);
-            Buffer<float2> g_TexCoordBuffer : register(t5, space0);
-            Buffer<float4> g_ColorBuffer : register(t6, space0);
-
-            Buffer<uint> g_IndexBuffer : register(t7, space0);
-
-            SamplerState g_DefaultSampler : register(s0, space0);
-            SamplerComparisonState g_ComparisonSampler : register(s1, space0);
-
-            Texture2D<float4> g_BindlessTexture2D[] : register(t0, space1);
-            TextureCube<float4> g_BindlessTextureCube[] : register(t0, space2);
- 
-            // http://intro-to-dxr.cwyman.org/
-
-            // Generates a seed for a random number generator from 2 inputs plus a backoff
-            uint initRand(uint val0, uint val1, uint backoff = 16)
-            {
-                uint v0 = val0, v1 = val1, s0 = 0;
-                [unroll]
-                for (uint n = 0; n < backoff; n++)
-                {
-                    s0 += 0x9e3779b9;
-                    v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
-                    v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + s0) ^ ((v0 >> 5) + 0x7e95761e);
-                }
-                return v0;
-            }
-            void nextRandUint(inout uint s)
-            {
-                s = (1664525u * s + 1013904223u);
-            }
-            // Takes our seed, updates it, and returns a pseudorandom float in [0..1]
-            float nextRand(inout uint s)
-            {
-                nextRandUint(s);
-                return float(s & 0x00FFFFFF) / float(0x01000000);
-            }
-            // Utility function to get a vector perpendicular to an input vector 
-            //    (from "Efficient Construction of Perpendicular Vectors Without Branching")
-            float3 getPerpendicularVector(float3 u)
-            {
-                float3 a = abs(u);
-                uint xm = ((a.x - a.y) < 0 && (a.x - a.z) < 0) ? 1 : 0;
-                uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;
-                uint zm = 1 ^ (xm | ym);
-                return cross(u, float3(xm, ym, zm));
-            }
-
-            // Get a cosine-weighted random vector centered around a specified normal direction.
-            float3 getCosHemisphereSample(inout uint randSeed, float3 hitNorm)
-            {
-                // Get 2 random numbers to select our sample with
-                float2 randVal = float2(nextRand(randSeed), nextRand(randSeed));
-                // Cosine weighted hemisphere sample from RNG
-                float3 bitangent = getPerpendicularVector(hitNorm);
-                float3 tangent = cross(bitangent, hitNorm);
-                float r = sqrt(randVal.x);
-                float phi = 2.0f * 3.14159265f * randVal.y;
-                // Get our cosine-weighted hemisphere lobe sample direction
-                return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNorm.xyz * sqrt(max(0.0, 1.0f - randVal.x));
-            }
- 
-            float4 TraceGlobalIllumination(inout Payload payload, float3 position, float3 normal)
-            {
-                if (payload.depth >= 4)
-                    return 0;
-
-                RayDesc ray;
-                ray.Origin = position;
-                ray.Direction = getCosHemisphereSample(payload.random, normal);
-                ray.TMin = 0.01f;
-                ray.TMax = FLT_MAX;
-
-                Payload payload1 = (Payload)0;
-                payload1.random = payload.random;
-                payload1.depth = payload.depth + 1;
-
-                TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
-
-                payload.random = payload1.random;
-                return payload1.color;
-            }
-
-            float TraceShadow(float3 position, inout uint random)
-            {
-                float3 normal = -g_Globals.lightDirection;
-                float3 binormal = getPerpendicularVector(normal);
-                float3 tangent = cross(binormal, normal);
-
-                float x = nextRand(random);
-                float y = nextRand(random);
-
-                float angle = x * 6.28318530718;
-                float radius = sqrt(y) * 0.01;
-
-                float3 direction;
-                direction.x = cos(angle) * radius;
-                direction.y = sin(angle) * radius;
-                direction.z = sqrt(1.0 - saturate(dot(direction.xy, direction.xy)));
-
-                RayDesc ray;
-                ray.Origin = position;
-                ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
-                ray.TMin = 0.01f;
-                ray.TMax = FLT_MAX;
-
-                Payload payload = (Payload)0;
-                payload.depth = 0xFF;
-                TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 0, ray, payload);
-
-                return payload.miss ? 1.0 : 0.0;
-            }
+            #include "ShaderLibrary.hlsli"
 
 
             """);

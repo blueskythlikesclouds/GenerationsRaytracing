@@ -496,6 +496,10 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
             const Mesh& mesh = cpu.meshes[model.meshOffset + i];
 
             auto& meshDesc = blasDesc.bottomLevelGeometries.emplace_back();
+
+            if (mesh.type != Mesh::Type::Punch && mesh.type != Mesh::Type::Trans)
+                meshDesc.flags = nvrhi::rt::GeometryFlags::Opaque;
+
             auto& triangles = meshDesc.geometryData.triangles;
 
             triangles.indexBuffer = gpu.indexBuffer;
@@ -530,7 +534,8 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
 
     gpu.topLevelAccelStruct = device.nvrhi->createAccelStruct(nvrhi::rt::AccelStructDesc()
         .setIsTopLevel(true)
-        .setTopLevelMaxInstances(instanceDescs.size()));
+        .setTopLevelMaxInstances(instanceDescs.size())
+		.setBuildFlags(nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
 
     auto commandList = device.nvrhi->createCommandList();
 
