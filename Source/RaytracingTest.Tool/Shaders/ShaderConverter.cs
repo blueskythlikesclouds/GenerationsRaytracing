@@ -348,7 +348,7 @@ public static class ShaderConverter
                 "\tfloat3 globalIllumination = TraceGlobalIllumination(payload, WorldRayOrigin() + WorldRayDirection() * RayTCurrent(), normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz);\n");
 
             stringBuilder.AppendFormat(
-                "\tfloat shadow = TraceShadow(WorldRayOrigin() + WorldRayDirection() * RayTCurrent());");
+                "\tfloat shadow = TraceShadow(WorldRayOrigin() + WorldRayDirection() * RayTCurrent(), payload.random);");
         }
         else
         {
@@ -569,11 +569,16 @@ public static class ShaderConverter
                 return payload1.color;
             }
 
-            float TraceShadow(float3 position)
+            float TraceShadow(float3 position, inout uint random)
             {
+                float3 normal = -g_Globals.lightDirection;
+                float3 binormal = getPerpendicularVector(normal);
+                float3 tangent = cross(binormal, normal);
+            	float3 direction = normalize(float3((nextRand(random) * 2 - 1) * 0.01, (nextRand(random) * 2 - 1) * 0.01, 1.0));
+
                 RayDesc ray;
                 ray.Origin = position;
-                ray.Direction = -g_Globals.lightDirection;
+                ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
                 ray.TMin = 0.01f;
                 ray.TMax = FLT_MAX;
 
