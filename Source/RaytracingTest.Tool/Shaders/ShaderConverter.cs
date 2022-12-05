@@ -29,12 +29,6 @@ public static class ShaderConverter
         }
         else if (constant.Name == "g_aLightField")
         {
-            stringBuilder.AppendFormat(
-                "\tfloat3 globalIllumination = TraceGlobalIllumination(payload, WorldRayOrigin() + WorldRayDirection() * RayTCurrent(), normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz);\n");
-
-            stringBuilder.AppendFormat(
-                "\tfloat shadow = TraceShadow(WorldRayOrigin() + WorldRayDirection() * RayTCurrent());");
-
             for (int i = 0; i < constant.Size; i++)
                 stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination, shadow);\n", outName, constant.Name, i);
         }
@@ -56,6 +50,7 @@ public static class ShaderConverter
 
                     case "g_GI0Scale":
                     case "g_ForceAlphaColor":
+                    case "g_BackGroundScale":
                         stringBuilder.Append("1");
                         break;
 
@@ -103,7 +98,7 @@ public static class ShaderConverter
         }
     }
 
-    private static void WriteShaderFunction(StringBuilder stringBuilder, string shaderName, Shader shader, ShaderMapping shaderMapping)
+    private static void WriteShaderFunction(StringBuilder stringBuilder, string functionName, Shader shader, ShaderMapping shaderMapping)
     {
         string inName = shader.Type == ShaderType.Pixel ? "ps" : "ia";
         string outName = shader.Type == ShaderType.Pixel ? "om" : "vs";
@@ -113,7 +108,7 @@ public static class ShaderConverter
 
         var variableMap = new Dictionary<string, string>();
 
-        stringBuilder.AppendFormat("struct {1}_{0}Params\n{{\n", inNameUpperCase, shaderName);
+        stringBuilder.AppendFormat("struct {1}_{0}Params\n{{\n", inNameUpperCase, functionName);
 
         foreach (var (semantic, name) in shader.InSemantics)
         {
@@ -172,7 +167,7 @@ public static class ShaderConverter
 
         stringBuilder.AppendLine("};\n");     
         
-        stringBuilder.AppendFormat("struct {1}_{0}Params\n{{\n", outNameUpperCase, shaderName);
+        stringBuilder.AppendFormat("struct {1}_{0}Params\n{{\n", outNameUpperCase, functionName);
 
         if (shader.Type == ShaderType.Pixel)
         {
@@ -201,7 +196,7 @@ public static class ShaderConverter
 
         stringBuilder.AppendFormat("void {1}_{0}(inout {1}_{2}Params {3}Params, inout {1}_{4}Params {5}Params)\n{{\n",
             shader.Type == ShaderType.Pixel ? "PS" : "VS",
-            shaderName,
+            functionName,
             inNameUpperCase,
             inName,
             outNameUpperCase,
@@ -274,19 +269,17 @@ public static class ShaderConverter
         stringBuilder.AppendLine("}\n");
     }
 
-    public static void ConvertToClosestHitShader(StringBuilder stringBuilder, string shaderName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    private static void WriteRaytracingFunction(StringBuilder stringBuilder, string functionName, string shaderType, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
-        stringBuilder.AppendFormat("//\n// {0}\n//\n\n", shaderName);
+        stringBuilder.AppendFormat("[shader(\"{0}\")]\n", shaderType);
+        stringBuilder.AppendFormat("void {0}_{1}(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", functionName, shaderType);
 
-        WriteShaderFunction(stringBuilder, shaderName, vertexShader, shaderMapping);
-        WriteShaderFunction(stringBuilder, shaderName, pixelShader, shaderMapping);
+        stringBuilder.AppendLine("\tuint4 mesh = g_MeshBuffer[InstanceID() + GeometryIndex()];");
 
-        stringBuilder.AppendLine("[shader(\"closesthit\")]");
-        stringBuilder.AppendFormat("void {0}(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", shaderName);
+        if (shaderType == "anyhit")
+            stringBuilder.AppendLine("\tif (mesh.w == 1 || mesh.w == 2)\n\t{");
 
-        stringBuilder.Append("""
-                uint4 mesh = g_MeshBuffer[InstanceID() + GeometryIndex()];
-
+        stringBuilder.Append(""" 
                 uint3 indices;
                 indices.x = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 0];
                 indices.y = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 1];
@@ -299,7 +292,7 @@ public static class ShaderConverter
 
             """);
 
-        stringBuilder.AppendFormat("\t{0}_IAParams iaParams = ({0}_IAParams)0;\n", shaderName);
+        stringBuilder.AppendFormat("\t{0}_IAParams iaParams = ({0}_IAParams)0;\n", functionName);
 
         foreach (var (semantic, name) in vertexShader.InSemantics)
         {
@@ -313,8 +306,8 @@ public static class ShaderConverter
                     stringBuilder.AppendFormat("\tiaParams.{0}.xyz = mul(ObjectToWorld3x4(), float4(", name);
                     WriteBarycentricLerp(stringBuilder, "g_NormalBuffer");
                     stringBuilder.AppendLine(", 0));");
-                    break;    
-                
+                    break;
+
                 case "TANGENT":
                     stringBuilder.AppendFormat("\tiaParams.{0}.xyz = mul(ObjectToWorld3x4(), float4((", name);
                     WriteBarycentricLerp(stringBuilder, "g_TangentBuffer");
@@ -333,11 +326,14 @@ public static class ShaderConverter
 
                 case "TEXCOORD":
                 case "TEXCOORD0":
+                case "TEXCOORD1":
+                case "TEXCOORD2":
+                case "TEXCOORD3":
                     stringBuilder.AppendFormat("\tiaParams.{0}.xy = ", name);
                     WriteBarycentricLerp(stringBuilder, "g_TexCoordBuffer");
                     stringBuilder.AppendLine(";");
-                    break;    
-                
+                    break;
+
                 case "COLOR":
                     stringBuilder.AppendFormat("\tiaParams.{0} = ", name);
                     WriteBarycentricLerp(stringBuilder, "g_ColorBuffer");
@@ -346,13 +342,27 @@ public static class ShaderConverter
             }
         }
 
+        if (shaderType == "closesthit")
+        {
+            stringBuilder.AppendFormat(
+                "\tfloat3 globalIllumination = TraceGlobalIllumination(payload, WorldRayOrigin() + WorldRayDirection() * RayTCurrent(), normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz);\n");
+
+            stringBuilder.AppendFormat(
+                "\tfloat shadow = TraceShadow(WorldRayOrigin() + WorldRayDirection() * RayTCurrent());");
+        }
+        else
+        {
+            stringBuilder.AppendLine("\tfloat3 globalIllumination = 0;");
+            stringBuilder.AppendLine("\tfloat shadow = 0;");
+        }
+
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
 
-        stringBuilder.AppendFormat("\n\t{0}_VSParams vsParams = ({0}_VSParams)0;\n", shaderName);
+        stringBuilder.AppendFormat("\n\t{0}_VSParams vsParams = ({0}_VSParams)0;\n", functionName);
 
-        stringBuilder.AppendFormat("\t{0}_VS(iaParams, vsParams);\n\n", shaderName);  
-        
-        stringBuilder.AppendFormat("\t{0}_PSParams psParams = ({0}_PSParams)0;\n", shaderName);
+        stringBuilder.AppendFormat("\t{0}_VS(iaParams, vsParams);\n\n", functionName);
+
+        stringBuilder.AppendFormat("\t{0}_PSParams psParams = ({0}_PSParams)0;\n", functionName);
 
         foreach (var (semantic, name) in pixelShader.InSemantics)
         {
@@ -376,20 +386,56 @@ public static class ShaderConverter
                 if (i > 0)
                     name += $"{i}";
 
-                stringBuilder.AppendFormat("\tpsParams.{0} = g_BindlessTexture{1}[NonUniformResourceIndex(material.textureIndices[{2}])];\n", 
-                    name, 
-                    pixelShader.Samplers[token], 
+                stringBuilder.AppendFormat("\tpsParams.{0} = g_BindlessTexture{1}[NonUniformResourceIndex(material.textureIndices[{2}])];\n",
+                    name,
+                    pixelShader.Samplers[token],
                     shaderMapping.CanMapSampler(register) ? shaderMapping.MapSampler(register) : 0);
             }
         }
 
-        stringBuilder.AppendFormat("\n\t{0}_OMParams omParams = ({0}_OMParams)0;\n", shaderName);
+        stringBuilder.AppendFormat("\n\t{0}_OMParams omParams = ({0}_OMParams)0;\n", functionName);
 
-        stringBuilder.AppendFormat("\t{0}_PS(psParams, omParams);\n\n", shaderName);
+        stringBuilder.AppendFormat("\t{0}_PS(psParams, omParams);\n\n", functionName);
 
-        stringBuilder.AppendFormat("\tpayload.color = omParams.oC0;\n");
+        if (shaderType == "closesthit")
+        {
+            stringBuilder.Append("""
+                payload.color = omParams.oC0; 
+            }
 
-        stringBuilder.AppendLine("}\n");
+
+            """);
+        }
+        else if (shaderType == "anyhit")
+        {
+            stringBuilder.Append(""" 
+                if (mesh.w == 2)
+                {
+                    if (omParams.oC0.w < 0.5)
+                        IgnoreHit();
+                }
+                else 
+                {
+                    if (omParams.oC0.w < nextRand(payload.random))
+                        IgnoreHit();
+                }
+                } 
+            }
+
+
+            """);
+        }
+    }
+
+    public static void WriteAllFunctions(StringBuilder stringBuilder, string functionName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    {
+        stringBuilder.AppendFormat("//\n// {0}\n//\n\n", functionName);
+
+        WriteShaderFunction(stringBuilder, functionName, vertexShader, shaderMapping);
+        WriteShaderFunction(stringBuilder, functionName, pixelShader, shaderMapping);
+
+        WriteRaytracingFunction(stringBuilder, functionName, "closesthit", vertexShader, pixelShader, shaderMapping);
+        WriteRaytracingFunction(stringBuilder, functionName, "anyhit", vertexShader, pixelShader, shaderMapping);
     }
 
     public static StringBuilder BeginShaderConversion()
@@ -532,6 +578,7 @@ public static class ShaderConverter
                 ray.TMax = FLT_MAX;
 
                 Payload payload = (Payload)0;
+                payload.depth = 0xFF;
                 TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 0, ray, payload);
 
                 return payload.miss ? 1.0 : 0.0;

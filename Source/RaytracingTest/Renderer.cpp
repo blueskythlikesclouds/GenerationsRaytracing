@@ -68,7 +68,14 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
         .setMaxPayloadSize(32);
 
     for (auto& shaderPair : shaderLibrary.shaderMapping.map)
-        pipelineDesc.addHitGroup({ "HitGroup_" + shaderPair.second.name, shaderLibrary1->getShader(shaderPair.second.exportName.c_str(), nvrhi::ShaderType::ClosestHit), shaderLibrary0->getShader("AnyHit", nvrhi::ShaderType::AnyHit)});
+    {
+        pipelineDesc.addHitGroup(
+		{
+            "HitGroup_" + shaderPair.second.name,
+			shaderLibrary1->getShader(shaderPair.second.closestHit.c_str(), nvrhi::ShaderType::ClosestHit),
+			shaderLibrary1->getShader(shaderPair.second.anyHit.c_str(), nvrhi::ShaderType::AnyHit)
+		});
+    }
 
     pipeline = device.nvrhi->createRayTracingPipeline(pipelineDesc);
     commandList = device.nvrhi->createCommandList();

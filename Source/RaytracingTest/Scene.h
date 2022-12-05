@@ -52,6 +52,7 @@ struct Model
 {
     uint32_t meshOffset = 0;
     uint32_t meshCount = 0;
+    uint32_t instanceMask = 1;
 };
 
 struct Instance

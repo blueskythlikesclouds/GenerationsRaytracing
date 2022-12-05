@@ -36,7 +36,8 @@ void ShaderMapping::load(const std::string& filePath)
 		Shader& shader = map[name];
 
 		shader.name = std::move(name);
-		shader.exportName = readString(file);
+		shader.closestHit = readString(file);
+		shader.anyHit = readString(file);
 
 		const uint32_t parameterCount = readUint32(file);
 

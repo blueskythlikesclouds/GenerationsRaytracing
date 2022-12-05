@@ -5,7 +5,8 @@ struct ShaderMapping
 	struct Shader
 	{
 		std::string name;
-		std::string exportName;
+		std::string closestHit;
+		std::string anyHit;
 		std::vector<std::string> parameters;
 		std::vector<std::string> textures;
 	};

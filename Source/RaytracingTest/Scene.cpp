@@ -42,7 +42,11 @@ struct SceneLoader
         for (hl::u8 i = 0; i < material->float4ParamCount; i++)
         {
             const auto& param = material->float4Params[i];
-            newMaterial.parameters.emplace_back(param->name.get(), Eigen::Vector4f(param->values[0].x, param->values[0].y, param->values[0].z, param->values[0].w));
+            newMaterial.parameters.emplace_back(param->name.get(), Eigen::Vector4f(
+                param->values[0].x,
+                param->values[0].y, 
+                param->values[0].z, 
+                strcmp(param->name.get(), "diffuse") == 0 ? 1.0f : param->values[0].w));
         }
 
         for (hl::u8 i = 0; i < material->textureEntryCount; i++)
@@ -185,7 +189,7 @@ struct SceneLoader
         }
     }
 
-    void loadModel(void* data)
+    void loadTerrainModel(void* data)
     {
         hl::hh::mirage::fix(data);
 
@@ -204,6 +208,40 @@ struct SceneLoader
         {
             modelMap.emplace(model->name.get(), (uint32_t)scene.cpu.models.size());
             scene.cpu.models.push_back(std::move(newModel));
+        }
+    }
+
+    void loadModel(void* data)
+    {
+        hl::hh::mirage::fix(data);
+
+        auto model = hl::hh::mirage::get_data<hl::hh::mirage::raw_skeletal_model_v5>(data);
+        model->fix();
+
+        Model newModel;
+        newModel.meshOffset = (uint32_t)scene.cpu.meshes.size();
+
+        for (const auto& group : model->meshGroups)
+            loadMeshGroup(group.get());
+
+        newModel.meshCount = (uint32_t)(scene.cpu.meshes.size() - newModel.meshOffset);
+
+        if (newModel.meshCount > 0)
+        {
+            for (size_t i = 0; i < newModel.meshCount; i++)
+            {
+	            if (scene.cpu.materials[scene.cpu.meshes[newModel.meshOffset + i].materialIndex].shader.find("Sky") != std::string::npos)
+	            {
+                    newModel.instanceMask = 2;
+                    break;
+	            }
+            }
+
+            if (newModel.instanceMask == 2)
+            {
+                scene.cpu.instances.emplace_back().modelIndex = (uint32_t)scene.cpu.models.size();
+                scene.cpu.models.push_back(std::move(newModel));
+            }
         }
     }
 
@@ -230,7 +268,7 @@ struct SceneLoader
         {
             if (hl::text::strstr(file.name(), HL_NTEXT(".terrain-model")))
             {
-                loadModel(file.file_data());
+                loadTerrainModel(file.file_data());
             }
         }
 
@@ -289,6 +327,19 @@ struct SceneLoader
 
     	for (auto& file : resources)
         {
+            if (hl::text::strstr(file.name(), HL_NTEXT(".model")))
+            {
+                const size_t prevModels = scene.cpu.models.size();
+
+                loadModel(file.file_data());
+
+                if (prevModels != scene.cpu.models.size())
+                    break;
+            }
+        }
+
+    	for (auto& file : resources)
+        {
             if (hl::text::strstr(file.name(), HL_NTEXT(".light")) && !hl::text::strstr(file.name(), HL_NTEXT(".light-list")))
 	            loadLight(file.file_data());
         }
@@ -321,6 +372,9 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
             texture.dataSize,
             std::addressof(gpu.textures.emplace_back()),
             subResourcesPerTexture.emplace_back());
+
+        if (!gpu.textures.back())
+            gpu.textures.back() = gpu.textures.front();
     }
 
     std::vector<Material::GPU> materialBuffer;
@@ -469,7 +523,7 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         }
 
         instanceDesc.instanceID = cpu.models[instance.modelIndex].meshOffset;
-        instanceDesc.instanceMask = 1;
+        instanceDesc.instanceMask = cpu.models[instance.modelIndex].instanceMask;
         instanceDesc.instanceContributionToHitGroupIndex = instanceDesc.instanceID;
         instanceDesc.bottomLevelAS = gpu.bottomLevelAccelStructs[instance.modelIndex];
     }

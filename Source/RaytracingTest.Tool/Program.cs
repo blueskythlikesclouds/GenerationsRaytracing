@@ -88,8 +88,8 @@ foreach (var (databaseData, shaderListData) in archiveDatabase.GetMany<ShaderLis
     var pixelShader = ShaderParser.Parse(pixelShaderCodeData.Data);
 
     string shaderName = Path.GetFileNameWithoutExtension(databaseData.Name);
-    string closestHitShaderName = shaderName.Replace('[', '_').Replace(']', '_');
-    ShaderConverter.ConvertToClosestHitShader(stringBuilder, closestHitShaderName, vertexShader, pixelShader, shaderMapping);
+    string raytracingFunctionName = shaderName.Replace('[', '_').Replace(']', '_');
+    ShaderConverter.WriteAllFunctions(stringBuilder, raytracingFunctionName, vertexShader, pixelShader, shaderMapping);
 
     foreach (var (name, index) in shaderMapping.Float4Indices.OrderBy(x => x.Value)) 
         stringBuilder.AppendFormat("// {0}: {1}\n", name, index);
@@ -102,7 +102,8 @@ foreach (var (databaseData, shaderListData) in archiveDatabase.GetMany<ShaderLis
     stringBuilder.AppendLine();
 
     shaderMappingWriter.Write(shaderName);
-    shaderMappingWriter.Write(closestHitShaderName);
+    shaderMappingWriter.Write(raytracingFunctionName + "_closesthit");
+    shaderMappingWriter.Write(raytracingFunctionName + "_anyhit");
     shaderMappingWriter.Write(shaderMapping.Float4Indices.Count);
 
     foreach (var (name, _) in shaderMapping.Float4Indices.OrderBy(x => x.Value)) 

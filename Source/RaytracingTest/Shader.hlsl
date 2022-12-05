@@ -128,6 +128,7 @@ float TraceShadow(float3 position)
     ray.TMax = FLT_MAX;
 
     Payload payload = (Payload)0;
+    payload.depth = 0xFF;
     TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 0, ray, payload);
 
     return payload.miss ? 1.0 : 0.0;
@@ -163,7 +164,22 @@ void RayGeneration()
 [shader("miss")]
 void Miss(inout Payload payload : SV_RayPayload)
 {
-    payload.color = float4(135, 206, 235, 255) / 255.0;
+    if (payload.depth != 0xFF)
+    {
+        RayDesc ray;
+        ray.Origin = 0.0;
+        ray.Direction = WorldRayDirection();
+        ray.TMin = 0.01f;
+        ray.TMax = FLT_MAX;
+
+        payload.depth = 0xFF;
+        TraceRay(g_BVH, 0, 2, 0, 1, 0, ray, payload);
+    }
+    else
+    {
+        payload.color = 0.0;
+    }
+
     payload.miss = true;
 }
 
@@ -186,7 +202,12 @@ void AnyHit(inout Payload payload : SV_RayPayload, Attributes attributes : SV_In
             g_TexCoordBuffer[indices.y] * uv.y +
             g_TexCoordBuffer[indices.z] * uv.z;
 
-        float4 color = g_BindlessTexture[NonUniformResourceIndex(g_MaterialBuffer[mesh.z].textureIndices[0])].SampleLevel(g_Sampler, texCoord, 0);
+    	float4 vertexColor =
+            g_ColorBuffer[indices.x] * uv.x +
+            g_ColorBuffer[indices.y] * uv.y +
+            g_ColorBuffer[indices.z] * uv.z;
+
+        float4 color = g_BindlessTexture[NonUniformResourceIndex(g_MaterialBuffer[mesh.z].textureIndices[0])].SampleLevel(g_Sampler, texCoord, 0) * vertexColor;
         if (mesh.w == 2)
         {
             if (color.a < 0.5)
