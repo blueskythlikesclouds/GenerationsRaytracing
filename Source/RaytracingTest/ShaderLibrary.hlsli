@@ -122,7 +122,7 @@ float4 TraceGlobalIllumination(inout Payload payload, float3 normal)
 
 float4 TraceReflection(inout Payload payload, float3 normal)
 {
-    if (payload.depth >= 1)
+    if (payload.depth >= 2)
         return 0;
 
     RayDesc ray;
@@ -143,7 +143,7 @@ float4 TraceReflection(inout Payload payload, float3 normal)
 
 float4 TraceRefraction(inout Payload payload)
 {
-    if (payload.depth >= 1)
+    if (payload.depth >= 2)
         return 0;
 
     RayDesc ray;

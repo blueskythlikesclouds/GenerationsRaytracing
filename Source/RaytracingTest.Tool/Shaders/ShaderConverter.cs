@@ -366,21 +366,19 @@ public static class ShaderConverter
             }
         }
 
-        if (shaderType == "closesthit")
-        {
-            stringBuilder.AppendFormat("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;\n");
-            stringBuilder.AppendFormat("\tfloat4 globalIllumination = TraceGlobalIllumination(payload, normal);\n");
-            stringBuilder.AppendFormat("\tfloat4 reflection = TraceReflection(payload, normal);\n");
-            stringBuilder.AppendFormat("\tfloat4 refraction = TraceRefraction(payload);\n");
-            stringBuilder.AppendFormat("\tfloat shadow = TraceShadow(payload.random);");
-        }
-        else
-        {
-            stringBuilder.AppendLine("\tfloat4 globalIllumination = 0;");
-            stringBuilder.AppendLine("\tfloat4 reflection = 0;");
-            stringBuilder.AppendLine("\tfloat4 refraction = 0;");
-            stringBuilder.AppendLine("\tfloat shadow = 0;");
-        }
+        bool isClosestHit = shaderType == "closesthit";
+        bool hasGlobalIllumination = isClosestHit && (vertexShader.Constants.Any(x => x.Name == "g_aLightField") || pixelShader.Constants.Any(x => x.Name == "g_aLightField"));
+        bool hasReflection = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_ReflectionMapSampler" || x.Name == "g_ReflectionMapSampler2");
+        bool hasRefraction = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler");
+        bool hasShadow = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_ShadowMapSampler" || x.Name == "g_VerticalShadowMapSampler");
+
+        if (hasGlobalIllumination || hasReflection)
+            stringBuilder.Append("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;\n");
+
+        stringBuilder.AppendFormat("\tfloat4 globalIllumination = {0};\n", hasGlobalIllumination ? "TraceGlobalIllumination(payload, normal)" : "0");
+        stringBuilder.AppendFormat("\tfloat4 reflection = {0};\n", hasReflection ? "TraceReflection(payload, normal)" : "0");
+        stringBuilder.AppendFormat("\tfloat4 refraction = {0};\n", hasRefraction ? "TraceRefraction(payload)" : "0");
+        stringBuilder.AppendFormat("\tfloat shadow = {0};\n", hasShadow ? "TraceShadow(payload.random)" : "1");
 
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
 
