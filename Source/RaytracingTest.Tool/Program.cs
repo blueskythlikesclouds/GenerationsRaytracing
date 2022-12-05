@@ -50,6 +50,7 @@ foreach (var (databaseData, shaderListData) in archiveDatabase.GetMany<ShaderLis
                     case "opacity_reflection_refraction_spectype":
                     case "power_gloss_level":
                     case "mrgLuminanceRange":
+                    case "mrgFresnelParam":
                         shaderMapping.Float4VertexShaderParameters.Add(parameter);
                         break;
                 }
@@ -77,6 +78,7 @@ foreach (var (databaseData, shaderListData) in archiveDatabase.GetMany<ShaderLis
                     case "opacity_reflection_refraction_spectype":
                     case "power_gloss_level":
                     case "mrgLuminanceRange":
+                    case "mrgFresnelParam":
                         shaderMapping.Float4PixelShaderParameters.Add(parameter);
                         break;
                 }

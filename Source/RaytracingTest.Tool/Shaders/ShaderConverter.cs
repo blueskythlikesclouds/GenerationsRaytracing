@@ -30,7 +30,7 @@ public static class ShaderConverter
         else if (constant.Name == "g_aLightField")
         {
             for (int i = 0; i < constant.Size; i++)
-                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination, shadow);\n", outName, constant.Name, i);
+                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination.rgb, shadow);\n", outName, constant.Name, i);
         }
         else if (constant.Size <= 1)
         {
@@ -51,6 +51,8 @@ public static class ShaderConverter
                     case "g_GI0Scale":
                     case "g_ForceAlphaColor":
                     case "g_BackGroundScale":
+                    case "g_ShadowMapSampler":
+                    case "g_VerticalShadowMapSampler":
                         stringBuilder.Append("1");
                         break;
 
@@ -77,6 +79,15 @@ public static class ShaderConverter
 
                     case "mrgPlayableParam":
                         stringBuilder.Append("float4(-10000, 64, 0, 0)");
+                        break;
+
+                    case "g_ReflectionMapSampler":
+                    case "g_ReflectionMapSampler2":
+                        stringBuilder.Append("reflection");
+                        break;
+
+                    case "g_FramebufferSampler":
+                        stringBuilder.Append("refraction");
                         break;
 
                     default:
@@ -118,6 +129,14 @@ public static class ShaderConverter
 
         foreach (var constant in shader.Constants)
         {
+            char token = 'c';
+
+            if (constant.Type == ConstantType.Sampler && constant.Name.StartsWith("g_"))
+            {
+                constant.Type = ConstantType.Float4;
+                token = 's';
+            }
+
             switch (constant.Type)
             {
                 case ConstantType.Float4:
@@ -128,11 +147,11 @@ public static class ShaderConverter
                         stringBuilder.AppendFormat("[{0}]", constant.Size);
 
                         for (int j = 0; j < constant.Size; j++)
-                            variableMap.Add($"c{(constant.Register + j)}", $"{inName}Params.{constant.Name}[{j}]");
+                            variableMap.Add($"{token}{(constant.Register + j)}", $"{inName}Params.{constant.Name}[{j}]");
                     }
 
                     else
-                        variableMap.Add($"c{constant.Register}", $"{inName}Params.{constant.Name}");
+                        variableMap.Add($"{token}{constant.Register}", $"{inName}Params.{constant.Name}");
 
                     stringBuilder.AppendFormat(";\n");
                     break;
@@ -250,6 +269,14 @@ public static class ShaderConverter
                     else if (argument.Token[0] == 'c')
                         argument.Token = $"C[{argument.Token.Substring(1)}]";
                 }
+
+                if (instruction.Arguments.Length == 3 &&
+                    instruction.Arguments[2].Token.Contains(".g_") &&
+                    instruction.Arguments[2].Token.Contains("Sampler"))
+                {
+                    instruction.OpCode = "mov";
+                    instruction.Arguments[1]  = instruction.Arguments[2];
+                }
             }
 
             string instrLine = instruction.ToString();
@@ -341,15 +368,17 @@ public static class ShaderConverter
 
         if (shaderType == "closesthit")
         {
-            stringBuilder.AppendFormat(
-                "\tfloat3 globalIllumination = TraceGlobalIllumination(payload, WorldRayOrigin() + WorldRayDirection() * RayTCurrent(), normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz);\n");
-
-            stringBuilder.AppendFormat(
-                "\tfloat shadow = TraceShadow(WorldRayOrigin() + WorldRayDirection() * RayTCurrent(), payload.random);");
+            stringBuilder.AppendFormat("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;\n");
+            stringBuilder.AppendFormat("\tfloat4 globalIllumination = TraceGlobalIllumination(payload, normal);\n");
+            stringBuilder.AppendFormat("\tfloat4 reflection = TraceReflection(payload, normal);\n");
+            stringBuilder.AppendFormat("\tfloat4 refraction = TraceRefraction(payload);\n");
+            stringBuilder.AppendFormat("\tfloat shadow = TraceShadow(payload.random);");
         }
         else
         {
-            stringBuilder.AppendLine("\tfloat3 globalIllumination = 0;");
+            stringBuilder.AppendLine("\tfloat4 globalIllumination = 0;");
+            stringBuilder.AppendLine("\tfloat4 reflection = 0;");
+            stringBuilder.AppendLine("\tfloat4 refraction = 0;");
             stringBuilder.AppendLine("\tfloat shadow = 0;");
         }
 
@@ -413,7 +442,7 @@ public static class ShaderConverter
                 }
                 else 
                 {
-                    if (omParams.oC0.w < nextRand(payload.random))
+                    if (omParams.oC0.w < NextRandom(payload.random))
                         IgnoreHit();
                 }
             }
