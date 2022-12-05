@@ -124,7 +124,17 @@ float TraceShadow(float3 position, inout uint random)
     float3 normal = -g_Globals.lightDirection;
     float3 binormal = getPerpendicularVector(normal);
     float3 tangent = cross(binormal, normal);
-    float3 direction = normalize(float3((nextRand(random) * 2 - 1) * 0.01, (nextRand(random) * 2 - 1) * 0.01, 1.0));
+
+    float x = nextRand(random);
+    float y = nextRand(random);
+
+    float angle = x * 6.28318530718;
+    float radius = sqrt(y) * 0.01;
+
+    float3 direction;
+    direction.x = cos(angle) * radius;
+    direction.y = sin(angle) * radius;
+    direction.z = sqrt(1.0 - saturate(dot(direction.xy, direction.xy)));
 
     RayDesc ray;
     ray.Origin = position;
@@ -163,7 +173,7 @@ void RayGeneration()
 
     TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload);
 
-    g_Output[index] = (g_Output[index] * (g_Globals.sampleCount - 1) + payload.color) / g_Globals.sampleCount;
+    g_Output[index] = lerp(g_Output[index], payload.color, 1.0 / g_Globals.sampleCount);
 }
 
 [shader("miss")]

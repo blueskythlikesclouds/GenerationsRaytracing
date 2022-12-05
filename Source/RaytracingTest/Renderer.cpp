@@ -3,6 +3,8 @@
 #include "App.h"
 #include "Scene.h"
 #include "ShaderBytecode.h"
+#include "ShaderCopyVS.h"
+#include "ShaderCopyPS.h"
 
 struct ConstantBuffer
 {
@@ -20,6 +22,8 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
 {
     shaderLibrary0 = device.nvrhi->createShaderLibrary(SHADER_BYTECODE, sizeof(SHADER_BYTECODE));
     shaderLibrary1 = device.nvrhi->createShaderLibrary(shaderLibrary.byteCode.get(), shaderLibrary.byteSize);
+    shaderCopyVS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), SHADER_COPY_VS, sizeof(SHADER_COPY_VS));
+    shaderCopyPS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), SHADER_COPY_PS, sizeof(SHADER_COPY_PS));
 
     constantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(sizeof(ConstantBuffer))
@@ -29,6 +33,7 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
 
     auto textureDesc = window.getCurrentSwapChainTexture()->getDesc();
     texture = device.nvrhi->createTexture(textureDesc
+        .setFormat(nvrhi::Format::RGBA32_FLOAT)
         .setIsUAV(true)
         .setIsRenderTarget(false)
         .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
@@ -78,6 +83,23 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
     }
 
     pipeline = device.nvrhi->createRayTracingPipeline(pipelineDesc);
+
+    for (auto& framebuffer : window.nvrhi.swapChainFramebuffers)
+    {
+        graphicsPipelines.push_back(device.nvrhi->createGraphicsPipeline(nvrhi::GraphicsPipelineDesc()
+            .setVertexShader(shaderCopyVS)
+            .setPixelShader(shaderCopyPS)
+            .setPrimType(nvrhi::PrimitiveType::TriangleList)
+            .setRenderState(nvrhi::RenderState()
+				.setDepthStencilState(nvrhi::DepthStencilState()
+                    .disableDepthTest()
+					.disableDepthWrite()
+					.disableStencil())
+				.setRasterState(nvrhi::RasterState()
+					.setCullNone()))
+            .addBindingLayout(bindingLayout), framebuffer));
+    }
+
     commandList = device.nvrhi->createCommandList();
 }
 
@@ -143,11 +165,15 @@ void Renderer::update(const App& app, Scene& scene)
         .setWidth(app.window.width)
         .setHeight(app.window.height));
 
-    commandList->copyTexture(
-        app.window.getCurrentSwapChainTexture(),
-        nvrhi::TextureSlice(),
-        texture,
-        nvrhi::TextureSlice());
+    commandList->setGraphicsState(nvrhi::GraphicsState()
+        .setPipeline(graphicsPipelines[app.window.dxgi.swapChain->GetCurrentBackBufferIndex()])
+		.addBindingSet(bindingSet)
+		.setFramebuffer(app.window.getCurrentSwapChainFramebuffer())
+		.setViewport(nvrhi::ViewportState()
+			.addViewportAndScissorRect(nvrhi::Viewport((float)app.window.width, (float)app.window.height))));
+
+    commandList->draw(nvrhi::DrawArguments()
+        .setVertexCount(6));
 
     commandList->close();
 

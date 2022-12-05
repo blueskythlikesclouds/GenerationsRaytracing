@@ -10,6 +10,8 @@ struct Renderer
 {
     nvrhi::ShaderLibraryHandle shaderLibrary0;
     nvrhi::ShaderLibraryHandle shaderLibrary1;
+    nvrhi::ShaderHandle shaderCopyVS;
+    nvrhi::ShaderHandle shaderCopyPS;
 
     nvrhi::BufferHandle constantBuffer;
     nvrhi::TextureHandle texture;
@@ -23,6 +25,8 @@ struct Renderer
 
     nvrhi::BindingSetHandle bindingSet;
     nvrhi::DescriptorTableHandle descriptorTable;
+
+    std::vector<nvrhi::GraphicsPipelineHandle> graphicsPipelines;
 
     nvrhi::CommandListHandle commandList;
 

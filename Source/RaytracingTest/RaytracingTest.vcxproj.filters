@@ -196,6 +196,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shader.hlsl" />
+    <FxCompile Include="ShaderLibrary.hlsl" />
+    <FxCompile Include="ShaderCopyPS.hlsl" />
+    <FxCompile Include="ShaderCopyVS.hlsl" />
   </ItemGroup>
 </Project>
