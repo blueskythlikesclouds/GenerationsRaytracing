@@ -47,4 +47,10 @@ void Camera::update(const Input& input, const float deltaTime)
         position += Eigen::Vector3f::UnitY() * (input.key[VK_CONTROL] ? -speed : speed) * deltaTime;
         dirty = true;
     }
+
+    if (input.key[VK_ADD] ^ input.key[VK_SUBTRACT])
+    {
+        fieldOfView = fmodf(fieldOfView + (input.key[VK_ADD] ? 1.0f : -1.0f), 180.0f);
+        dirty = true;
+    }
 }
