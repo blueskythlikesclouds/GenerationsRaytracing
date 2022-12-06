@@ -30,7 +30,7 @@ public static class ShaderConverter
         else if (constant.Name == "g_aLightField")
         {
             for (int i = 0; i < constant.Size; i++)
-                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination.rgb, shadow);\n", outName, constant.Name, i);
+                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination.rgb, 1.0);\n", outName, constant.Name, i);
         }
         else if (constant.Size <= 1)
         {
@@ -58,7 +58,7 @@ public static class ShaderConverter
 
                     case "mrgGlobalLight_Diffuse":
                     case "mrgGlobalLight_Specular":
-                        stringBuilder.Append("float4(g_Globals.lightColor, 0)");
+                        stringBuilder.Append("float4(g_Globals.lightColor * shadow, 0)");
                         break;
 
                     case "g_EyePosition":
@@ -92,6 +92,10 @@ public static class ShaderConverter
 
                     case "mrgInShadowScale":
                         stringBuilder.Append("float4(0.3, 0.3, 1, 1)");
+                        break;
+
+                    case "g_ViewportSize":
+                        stringBuilder.Append("float4(DispatchRaysDimensions().xy, 1.0 / (float2)DispatchRaysDimensions().xy)");
                         break;
 
                     default:
@@ -374,7 +378,7 @@ public static class ShaderConverter
         bool hasGlobalIllumination = isClosestHit && (vertexShader.Constants.Any(x => x.Name == "g_aLightField") || pixelShader.Constants.Any(x => x.Name == "g_aLightField"));
         bool hasReflection = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_ReflectionMapSampler" || x.Name == "g_ReflectionMapSampler2");
         bool hasRefraction = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler");
-        bool hasShadow = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_ShadowMapSampler" || x.Name == "g_VerticalShadowMapSampler");
+        bool hasShadow = isClosestHit && pixelShader.Constants.Any(x => x.Name == "mrgGlobalLight_Diffuse" || x.Name == "mrgGlobalLight_Specular");
 
         if (hasGlobalIllumination || hasReflection)
             stringBuilder.Append("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;\n");
