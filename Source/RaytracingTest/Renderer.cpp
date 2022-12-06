@@ -74,7 +74,7 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
     {
         pipelineDesc.addHitGroup(
 		{
-            "HitGroup_" + shaderPair.second.name,
+            shaderPair.second.name,
 			shaderLibrary->getShader(shaderPair.second.closestHit.c_str(), nvrhi::ShaderType::ClosestHit),
 			shaderLibrary->getShader(shaderPair.second.anyHit.c_str(), nvrhi::ShaderType::AnyHit)
 		});
@@ -129,7 +129,7 @@ void Renderer::update(const App& app, Scene& scene)
         shaderTable->addMissShader("Miss");
 
         for (auto& mesh : scene.cpu.meshes)
-            shaderTable->addHitGroup(("HitGroup_" + scene.cpu.materials[mesh.materialIndex].shader).c_str());
+            shaderTable->addHitGroup(scene.cpu.materials[mesh.materialIndex].shader.c_str());
 
         descriptorTable = app.device.nvrhi->createDescriptorTable(bindlessLayout);
 
