@@ -1265,11 +1265,11 @@ namespace
         }
         else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE1D)
         {
-            desc.dimension = arraySize > 6 ? nvrhi::TextureDimension::Texture1DArray : nvrhi::TextureDimension::Texture1D;
+            desc.dimension = arraySize > 1 ? nvrhi::TextureDimension::Texture1DArray : nvrhi::TextureDimension::Texture1D;
         }
     	else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
         {
-            desc.dimension = arraySize > 6 ? nvrhi::TextureDimension::Texture2DArray : nvrhi::TextureDimension::Texture2D;
+            desc.dimension = arraySize > 1 ? nvrhi::TextureDimension::Texture2DArray : nvrhi::TextureDimension::Texture2D;
         }
     	else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
         {
