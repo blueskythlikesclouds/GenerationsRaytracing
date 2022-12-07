@@ -1,10 +1,11 @@
 #include "ShaderDefinitions.h"
 
 #define FLT_MAX asfloat(0x7f7fffff)
+#define Z_MAX 10000.0
 
 struct Payload
 {
-    float4 color;
+    float3 color;
     uint random;
     uint depth;
     bool miss;
@@ -20,8 +21,8 @@ struct cbGlobals
     float3 position;
     float tanFovy;
     float4x4 rotation;
-    float aspectRatio;
 
+    float aspectRatio;
     uint sampleCount;
     float skyIntensityScale;
 
@@ -102,19 +103,19 @@ float3 GetPerpendicularVector(float3 u)
     return cross(u, float3(xm, ym, zm));
 }
 
-float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNorm)
+float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNormal)
 {
-    float2 randVal = float2(NextRandom(randSeed), NextRandom(randSeed));
+    float2 randomValue = float2(NextRandom(randSeed), NextRandom(randSeed));
 
-	float3 bitangent = GetPerpendicularVector(hitNorm);
-    float3 tangent = cross(bitangent, hitNorm);
-    float r = sqrt(randVal.x);
-    float phi = 2.0f * 3.14159265f * randVal.y;
+	float3 bitangent = GetPerpendicularVector(hitNormal);
+    float3 tangent = cross(bitangent, hitNormal);
+    float r = sqrt(randomValue.x);
+    float phi = 2.0f * 3.14159265f * randomValue.y;
 
-	return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNorm.xyz * sqrt(max(0.0, 1.0f - randVal.x));
+	return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
 }
 
-float4 TraceGlobalIllumination(inout Payload payload, float3 normal)
+float3 TraceGlobalIllumination(inout Payload payload, float3 normal)
 {
     if (payload.depth >= 4)
         return 0;
@@ -122,7 +123,7 @@ float4 TraceGlobalIllumination(inout Payload payload, float3 normal)
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     ray.Direction = GetCosHemisphereSample(payload.random, normal);
-    ray.TMin = 0.01f;
+    ray.TMin = 0.001f;
     ray.TMax = FLT_MAX;
 
     Payload payload1 = (Payload)0;
@@ -135,15 +136,15 @@ float4 TraceGlobalIllumination(inout Payload payload, float3 normal)
     return payload1.color;
 }
 
-float4 TraceReflection(inout Payload payload, float3 normal)
+float3 TraceReflection(inout Payload payload, float3 normal)
 {
     if (payload.depth >= 2)
         return 0;
 
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    ray.Direction = normalize(reflect(normalize(ray.Origin - WorldRayOrigin()), normal));
-    ray.TMin = 0.01f;
+    ray.Direction = normalize(reflect(WorldRayDirection(), normal));
+    ray.TMin = 0.001f;
     ray.TMax = FLT_MAX;
 
     Payload payload1 = (Payload)0;
@@ -156,15 +157,15 @@ float4 TraceReflection(inout Payload payload, float3 normal)
     return payload1.color;
 }
 
-float4 TraceRefraction(inout Payload payload)
+float3 TraceRefraction(inout Payload payload, float3 normal)
 {
     if (payload.depth >= 2)
         return 0;
 
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    ray.Direction = WorldRayDirection();
-    ray.TMin = 0.01f;
+    ray.Direction = normalize(refract(WorldRayDirection(), normal, 1.0 / 1.333));
+    ray.TMin = 0.001f;
     ray.TMax = FLT_MAX;
 
     Payload payload1 = (Payload)0;
@@ -231,7 +232,7 @@ void RayGeneration()
 
     TraceRay(g_BVH, 0, INSTANCE_MASK_OPAQUE_OR_PUNCH | INSTANCE_MASK_TRANS_OR_SPECIAL, 0, 1, 0, ray, payload);
 
-    g_Output[index] = lerp(g_Output[index], payload.color, 1.0 / g_Globals.sampleCount);
+    g_Output[index] = lerp(g_Output[index], float4(payload.color, 1.0), 1.0 / g_Globals.sampleCount);
 }
 
 [shader("miss")]
@@ -247,10 +248,6 @@ void Miss(inout Payload payload : SV_RayPayload)
 
         payload.depth = 0xFF;
         TraceRay(g_BVH, 0, INSTANCE_MASK_SKY, 0, 1, 0, ray, payload);
-    }
-    else
-    {
-        payload.color = 0.0;
     }
 
     payload.miss = true;

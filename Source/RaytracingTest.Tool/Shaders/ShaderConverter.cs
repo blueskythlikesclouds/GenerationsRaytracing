@@ -14,7 +14,28 @@ public static class ShaderConverter
 
     private static void WriteConstant(StringBuilder stringBuilder, string outName, Constant constant, ShaderType shaderType, ShaderMapping shaderMapping)
     {
-        if (constant.Size == 4)
+        if (constant.Name == "g_MtxProjection")
+        {
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[0] = float4(1, 0, 0, 0);\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[1] = float4(0, 1, 0, 0);\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[2] = float4(0, 0, 0, 0);\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[3] = float4(0, 0, 0, 1);\n", outName);
+        }      
+        else if (constant.Name == "g_MtxInvProjection")
+        {
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[0] = float4(1, 0, 0, 0);\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[1] = float4(0, 1, 0, 0);\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[2] = float4(0, 0, 0, 0);\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[3] = float4(0, 0, -Z_MAX, 1);\n", outName);
+        }
+        else if (constant.Name == "g_MtxView")
+        {
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxView[0] = float4(1, 0, 0, 0);\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxView[1] = float4(0, 1, 0, 0);\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxView[2] = float4(0, 0, 0, 0);\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxView[3] = float4(0, 0, -RayTCurrent(), 1);\n", outName);
+        }
+        else if (constant.Size == 4)
         {
             stringBuilder.AppendFormat("\t{0}.{1}[0] = float4(1, 0, 0, 0);\n", outName, constant.Name);
             stringBuilder.AppendFormat("\t{0}.{1}[1] = float4(0, 1, 0, 0);\n", outName, constant.Name);
@@ -30,7 +51,7 @@ public static class ShaderConverter
         else if (constant.Name == "g_aLightField")
         {
             for (int i = 0; i < constant.Size; i++)
-                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination.rgb, shadow);\n", outName, constant.Name, i);
+                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination, shadow);\n", outName, constant.Name, i);
         }
         else if (constant.Size <= 1)
         {
@@ -73,7 +94,7 @@ public static class ShaderConverter
                         break;
 
                     case "mrgGIAtlasParam":
-                        stringBuilder.Append("float4(0, 0, 1, 1)");
+                        stringBuilder.Append("float4(1, 1, 0, 0)");
                         break;
 
                     case "g_VerticalLightDirection":
@@ -86,11 +107,15 @@ public static class ShaderConverter
 
                     case "g_ReflectionMapSampler":
                     case "g_ReflectionMapSampler2":
-                        stringBuilder.Append("reflection");
+                        stringBuilder.Append("float4(reflection, 1.0)");
                         break;
 
                     case "g_FramebufferSampler":
-                        stringBuilder.Append("refraction");
+                        stringBuilder.Append("float4(refraction, 1.0)");
+                        break;
+
+                    case "g_DepthSampler":
+                        stringBuilder.Append("1");
                         break;
 
                     case "mrgInShadowScale":
@@ -366,13 +391,14 @@ public static class ShaderConverter
             switch (semantic)
             {
                 case "POSITION":
-                    stringBuilder.AppendFormat("\tiaParams.{0}.xyz = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();\n", name);
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(WorldRayOrigin() + WorldRayDirection() * RayTCurrent(), 1.0);\n", name);
                     break;
 
                 case "NORMAL":
                     stringBuilder.AppendFormat("\tiaParams.{0}.xyz = mul(ObjectToWorld3x4(), float4(", name);
                     WriteBarycentricLerp(stringBuilder, "g_NormalBuffer");
                     stringBuilder.AppendLine(", 0));");
+                    stringBuilder.AppendFormat("\tif (dot(WorldRayDirection(), iaParams.{0}.xyz) > 0) iaParams.{0}.xyz *= -1;\n", name);
                     break;
 
                 case "TANGENT":
@@ -412,14 +438,17 @@ public static class ShaderConverter
         bool isClosestHit = shaderType == "closesthit";
         bool hasGlobalIllumination = isClosestHit && (vertexShader.Constants.Any(x => x.Name == "g_aLightField") || pixelShader.Constants.Any(x => x.Name == "g_aLightField"));
         bool hasReflection = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_ReflectionMapSampler" || x.Name == "g_ReflectionMapSampler2");
-        bool hasRefraction = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler");
+        bool hasRefraction = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler" || x.Name == "g_DepthSampler");
 
-        if (hasGlobalIllumination || hasReflection)
-            stringBuilder.Append("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;\n");
+        if (hasGlobalIllumination || hasReflection || hasRefraction)
+        {
+            stringBuilder.AppendLine("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;");
+            stringBuilder.AppendLine("\tif (dot(WorldRayDirection(), normal) > 0) normal *= -1;");
+        }
 
-        stringBuilder.AppendFormat("\tfloat4 globalIllumination = {0};\n", hasGlobalIllumination ? "TraceGlobalIllumination(payload, normal)" : "0");
-        stringBuilder.AppendFormat("\tfloat4 reflection = {0};\n", hasReflection ? "TraceReflection(payload, normal)" : "0");
-        stringBuilder.AppendFormat("\tfloat4 refraction = {0};\n", hasRefraction ? "TraceRefraction(payload)" : "0");
+        stringBuilder.AppendFormat("\tfloat3 globalIllumination = {0};\n", hasGlobalIllumination ? "TraceGlobalIllumination(payload, normal)" : "0");
+        stringBuilder.AppendFormat("\tfloat3 reflection = {0};\n", hasReflection ? "TraceReflection(payload, normal)" : "0");
+        stringBuilder.AppendFormat("\tfloat3 refraction = {0};\n", hasRefraction ? "TraceRefraction(payload, normal)" : "0");
         stringBuilder.AppendFormat("\tfloat shadow = {0};\n", hasGlobalIllumination ? "TraceShadow(payload.random)" : "1");
 
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
@@ -432,7 +461,10 @@ public static class ShaderConverter
 
         foreach (var (semantic, name) in pixelShader.InSemantics)
         {
-            if (vertexShader.OutSemantics.TryGetValue(semantic, out string targetName))
+            if (name == "vPos")
+                stringBuilder.AppendFormat("\tpsParams.{0}.xy = (float2)DispatchRaysDimensions().xy;\n", name);
+
+            else if (vertexShader.OutSemantics.TryGetValue(semantic, out string targetName))
                 stringBuilder.AppendFormat("\tpsParams.{0} = vsParams.{1};\n", name, targetName);
         }
 
@@ -466,7 +498,7 @@ public static class ShaderConverter
         if (shaderType == "closesthit")
         {
             stringBuilder.Append("""
-                payload.color = omParams.oC0; 
+                payload.color = omParams.oC0.rgb;
             }
 
 

@@ -550,7 +550,7 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
 
             auto& meshDesc = blasDesc.bottomLevelGeometries.emplace_back();
 
-            if ((mesh.type & (MESH_TYPE_PUNCH | MESH_TYPE_TRANS)) == 0)
+            if ((mesh.type & (MESH_TYPE_TRANS | MESH_TYPE_PUNCH)) == 0)
                 meshDesc.flags = nvrhi::rt::GeometryFlags::Opaque;
 
             auto& triangles = meshDesc.geometryData.triangles;

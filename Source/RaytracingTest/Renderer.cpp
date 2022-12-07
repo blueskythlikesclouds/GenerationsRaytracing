@@ -10,8 +10,8 @@ struct ConstantBuffer
     Eigen::Vector3f position;
     float tanFovy;
     Eigen::Matrix4f rotation;
-    float aspectRatio;
 
+    float aspectRatio;
     uint32_t sampleCount;
     float skyIntensityScale;
     uint32_t padding0;
@@ -158,11 +158,14 @@ void Renderer::update(const App& app, Scene& scene)
 
     ConstantBuffer bufferData;
 
-    bufferData.position = app.camera.position;
-    bufferData.tanFovy = tan(app.camera.fieldOfView / 360.0f * 3.14159265359f);
-    bufferData.rotation.block(0, 0, 3, 3) = app.camera.rotation.toRotationMatrix();
-    bufferData.aspectRatio = (float)app.window.width / (float)app.window.height;
+    const float fieldOfView = app.camera.fieldOfView / 180.0f * (float)M_PI;
+    const float aspectRatio = (float)app.window.width / (float)app.window.height;
 
+    bufferData.position = app.camera.position;
+    bufferData.tanFovy = tan(fieldOfView / 2.0f);
+    bufferData.rotation.block(0, 0, 3, 3) = app.camera.rotation.toRotationMatrix();
+
+    bufferData.aspectRatio = aspectRatio;
     bufferData.sampleCount = ++sampleCount;
     bufferData.skyIntensityScale = scene.cpu.effect.defaults.skyIntensityScale;
 
