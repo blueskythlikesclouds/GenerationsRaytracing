@@ -7,14 +7,22 @@
 
 struct ConstantBuffer
 {
-    Eigen::Vector3f position = Eigen::Vector3f::Zero();
-    float tanFovy = 0.0f;
-    Eigen::Matrix4f rotation = Eigen::Matrix4f::Identity();
-    float aspectRatio = 0.0f;
-    uint32_t sampleCount = 0;
-    uint64_t padding0 = 0;
+    Eigen::Vector3f position;
+    float tanFovy;
+    Eigen::Matrix4f rotation;
+    float aspectRatio;
+
+    uint32_t sampleCount;
+    float skyIntensityScale;
+    uint32_t padding0;
+
     Eigen::Vector4f lightDirection;
     Eigen::Vector4f lightColor;
+
+    Eigen::Vector4f lightScatteringColor;
+    Eigen::Vector4f rayMieRay2Mie2;
+    Eigen::Vector4f gAndFogDensity;
+    Eigen::Vector4f farNearScale;
 };
 
 Renderer::Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibraryHolder)
@@ -144,13 +152,22 @@ void Renderer::update(const App& app, Scene& scene)
     commandList->open();
 
     ConstantBuffer bufferData;
+
     bufferData.position = app.camera.position;
     bufferData.tanFovy = tan(app.camera.fieldOfView / 360.0f * 3.14159265359f);
     bufferData.rotation.block(0, 0, 3, 3) = app.camera.rotation.toRotationMatrix();
     bufferData.aspectRatio = (float)app.window.width / (float)app.window.height;
+
     bufferData.sampleCount = ++sampleCount;
+    bufferData.skyIntensityScale = scene.cpu.effect.defaults.skyIntensityScale;
+
     bufferData.lightDirection = scene.cpu.lightDirection;
     bufferData.lightColor = scene.cpu.lightColor;
+
+    bufferData.lightScatteringColor = scene.cpu.effect.lightScattering.color;
+    bufferData.rayMieRay2Mie2 = scene.cpu.effect.lightScattering.gpu.rayMieRay2Mie2;
+    bufferData.gAndFogDensity = scene.cpu.effect.lightScattering.gpu.gAndFogDensity;
+    bufferData.farNearScale = scene.cpu.effect.lightScattering.gpu.farNearScale;
 
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
 

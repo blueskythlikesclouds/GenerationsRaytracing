@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "SceneEffect.h"
 
 struct ShaderMapping;
 struct Device;
@@ -87,6 +88,8 @@ struct Scene
 
         Eigen::Vector4f lightDirection;
         Eigen::Vector4f lightColor;
+
+        SceneEffect effect;
     } cpu;
 
     struct GPU

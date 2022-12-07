@@ -295,9 +295,30 @@ struct SceneLoader
         }
     }
 
+    void loadSceneEffect(const void* data, size_t dataSize)
+    {
+        tinyxml2::XMLDocument document;
+
+        if (document.Parse((const char*)data, dataSize) == tinyxml2::XML_SUCCESS)
+            scene.cpu.effect.load(document);
+    }
+
     void load(const std::string& directoryPath)
     {
         const std::string name = getFileName(directoryPath);
+
+	    {
+            hl::archive stage = ArchiveDatabase::load(directoryPath + "/../../#" + name + ".ar.00");
+
+            for (const auto& file : stage)
+            {
+	            if (hl::text::equal(file.name(), HL_NTEXT("SceneEffect.prm.xml")))
+	            {
+                    loadSceneEffect(file.file_data(), file.size());
+                    break;
+	            }
+            }
+        }
 
         hl::archive resources = ArchiveDatabase::load(directoryPath + "/" + name + ".ar.00");
 

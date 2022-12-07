@@ -50,10 +50,13 @@ public static class ShaderConverter
 
                     case "g_GI0Scale":
                     case "g_ForceAlphaColor":
-                    case "g_BackGroundScale":
                     case "g_ShadowMapSampler":
                     case "g_VerticalShadowMapSampler":
                         stringBuilder.Append("1");
+                        break;
+
+                    case "g_BackGroundScale":
+                        stringBuilder.Append("g_Globals.skyIntensityScale");
                         break;
 
                     case "mrgGlobalLight_Diffuse":
@@ -96,6 +99,22 @@ public static class ShaderConverter
 
                     case "g_ViewportSize":
                         stringBuilder.Append("float4(DispatchRaysDimensions().xy, 1.0 / (float2)DispatchRaysDimensions().xy)");
+                        break;
+
+                    case "g_LightScatteringColor":
+                        stringBuilder.Append("g_Globals.lightScatteringColor");
+                        break;
+
+                    case "g_LightScattering_Ray_Mie_Ray2_Mie2":
+                        stringBuilder.Append("g_Globals.rayMieRay2Mie2");
+                        break;           
+                    
+                    case "g_LightScattering_ConstG_FogDensity":
+                        stringBuilder.Append("g_Globals.gAndFogDensity");
+                        break;            
+                    
+                    case "g_LightScatteringFarNearScale":
+                        stringBuilder.Append("g_Globals.farNearScale");
                         break;
 
                     default:

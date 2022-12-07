@@ -7,3 +7,6 @@
 [submodule "Dependencies/Amicitia.IO"]
 	path = Dependencies/Amicitia.IO
 	url = https://github.com/tge-was-taken/Amicitia.IO
+[submodule "Dependencies/tinyxml2"]
+	path = Dependencies/tinyxml2
+	url = https://github.com/leethomason/tinyxml2.git

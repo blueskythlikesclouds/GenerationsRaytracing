@@ -629,6 +629,14 @@
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">TurnOffAllWarnings</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">TurnOffAllWarnings</WarningLevel>
     </ClCompile>
+    <ClCompile Include="..\..\Dependencies\tinyxml2\tinyxml2.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ForcedIncludeFiles>
+    </ClCompile>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="ArchiveDatabase.cpp" />
     <ClCompile Include="Camera.cpp" />
@@ -641,6 +649,7 @@
     </ClCompile>
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="SceneEffect.cpp" />
     <ClCompile Include="ShaderLibrary.cpp" />
     <ClCompile Include="ShaderMapping.cpp" />
     <ClCompile Include="Window.cpp" />
@@ -657,6 +666,7 @@
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="SceneEffect.h" />
     <ClInclude Include="ShaderLibrary.h" />
     <ClInclude Include="ShaderMapping.h" />
     <ClInclude Include="Utilities.h" />

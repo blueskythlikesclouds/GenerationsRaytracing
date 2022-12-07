@@ -1,5 +1,8 @@
 ﻿#pragma once
 
+#define _USE_MATH_DEFINES
+#include <corecrt_math.h>
+
 #include <Windows.h>
 #include <Windowsx.h>
 
@@ -19,8 +22,6 @@
 
 #include <Eigen/Eigen>
 
-#include <corecrt_math.h>
-
 #include <nvrhi/d3d12.h>
 #include <nvrhi/utils.h>
 #include <nvrhi/validation.h>
@@ -37,5 +38,7 @@
 #include <hedgelib/terrain/hl_hh_terrain.h>
 
 #pragma warning(pop)
+
+#include <tinyxml2/tinyxml2.h>
 
 using Microsoft::WRL::ComPtr;

@@ -19,9 +19,17 @@ struct cbGlobals
     float tanFovy;
     float4x4 rotation;
     float aspectRatio;
+
     uint sampleCount;
+    float skyIntensityScale;
+
     float3 lightDirection;
     float3 lightColor;
+
+    float4 lightScatteringColor;
+    float4 rayMieRay2Mie2;
+    float4 gAndFogDensity;
+    float4 farNearScale;
 };
 
 ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);

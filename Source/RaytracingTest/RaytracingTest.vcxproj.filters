@@ -172,6 +172,10 @@
     </ClCompile>
     <ClCompile Include="ShaderMapping.cpp" />
     <ClCompile Include="ShaderLibrary.cpp" />
+    <ClCompile Include="..\..\Dependencies\tinyxml2\tinyxml2.cpp">
+      <Filter>Dependencies</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneEffect.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -189,6 +193,7 @@
     <ClInclude Include="ShaderMapping.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="ShaderLibrary.h" />
+    <ClInclude Include="SceneEffect.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Dependencies">
