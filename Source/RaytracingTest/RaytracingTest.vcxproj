@@ -667,6 +667,7 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneEffect.h" />
+    <ClInclude Include="ShaderDefinitions.h" />
     <ClInclude Include="ShaderLibrary.h" />
     <ClInclude Include="ShaderMapping.h" />
     <ClInclude Include="Utilities.h" />

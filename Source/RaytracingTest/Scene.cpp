@@ -3,6 +3,7 @@
 #include "ArchiveDatabase.h"
 #include "Device.h"
 #include "Path.h"
+#include "ShaderDefinitions.h"
 #include "ShaderMapping.h"
 #include "Utilities.h"
 
@@ -12,7 +13,7 @@ struct SceneLoader
 
     std::unordered_map<std::string, uint32_t> textureMap;
     std::unordered_map<std::string, uint32_t> materialMap;
-    std::unordered_map<std::string, uint32_t> modelMap;
+    std::unordered_map<std::string, std::vector<uint32_t>> modelMap;
 
     SceneLoader(Scene& scene)
         : scene(scene)
@@ -56,7 +57,7 @@ struct SceneLoader
         }
     }
 
-    void loadMesh(const hl::hh::mirage::raw_mesh* mesh, Mesh::Type type)
+    void loadMesh(const hl::hh::mirage::raw_mesh* mesh, uint32_t type)
     {
         Mesh newMesh;
 
@@ -176,16 +177,33 @@ struct SceneLoader
             scene.cpu.meshes.push_back(std::move(newMesh));
     }
 
-    void loadMeshGroup(const hl::hh::mirage::raw_mesh_group* group)
+    void loadMeshGroup(const hl::hh::mirage::raw_mesh_group* group, uint32_t types)
     {
-        for (const auto& mesh : group->opaq) loadMesh(mesh.get(), Mesh::Type::Opaque);
-        for (const auto& mesh : group->trans) loadMesh(mesh.get(), Mesh::Type::Trans);
-        for (const auto& mesh : group->punch) loadMesh(mesh.get(), Mesh::Type::Punch);
-
-        for (const auto& special : group->special)
+        if (types & MESH_TYPE_OPAQUE)
         {
-            for (const auto& mesh : special)
-                loadMesh(mesh.get(), Mesh::Type::Special);
+            for (const auto& mesh : group->opaq) 
+                loadMesh(mesh.get(), MESH_TYPE_OPAQUE);
+        }
+
+        if (types & MESH_TYPE_TRANS)
+        {
+            for (const auto& mesh : group->trans) 
+                loadMesh(mesh.get(), MESH_TYPE_TRANS);
+        }
+
+        if (types & MESH_TYPE_PUNCH)
+        {
+            for (const auto& mesh : group->punch)
+                loadMesh(mesh.get(), MESH_TYPE_PUNCH);
+        }
+
+        if (types & MESH_TYPE_SPECIAL)
+        {
+            for (const auto& special : group->special)
+            {
+                for (const auto& mesh : special)
+                    loadMesh(mesh.get(), MESH_TYPE_SPECIAL);
+            }
         }
     }
 
@@ -196,18 +214,27 @@ struct SceneLoader
         auto model = hl::hh::mirage::get_data<hl::hh::mirage::raw_terrain_model_v5>(data);
         model->fix();
 
-        Model newModel;
-        newModel.meshOffset = (uint32_t)scene.cpu.meshes.size();
-
-        for (const auto& group : model->meshGroups)
-            loadMeshGroup(group.get());
-
-        newModel.meshCount = (uint32_t)(scene.cpu.meshes.size() - newModel.meshOffset);
-
-        if (newModel.meshCount > 0)
+        for (auto& types : { MESH_TYPE_OPAQUE | MESH_TYPE_PUNCH, MESH_TYPE_TRANS | MESH_TYPE_SPECIAL })
         {
-            modelMap.emplace(model->name.get(), (uint32_t)scene.cpu.models.size());
-            scene.cpu.models.push_back(std::move(newModel));
+            Model newModel;
+            newModel.meshOffset = (uint32_t)scene.cpu.meshes.size();
+
+            for (const auto& group : model->meshGroups)
+                loadMeshGroup(group.get(), types);
+
+            newModel.meshCount = (uint32_t)(scene.cpu.meshes.size() - newModel.meshOffset);
+
+            if (newModel.meshCount > 0)
+            {
+                if (types & (MESH_TYPE_OPAQUE | MESH_TYPE_PUNCH))
+                    newModel.instanceMask = INSTANCE_MASK_OPAQUE_OR_PUNCH;
+
+                else if (types & (MESH_TYPE_TRANS | MESH_TYPE_SPECIAL))
+                    newModel.instanceMask = INSTANCE_MASK_TRANS_OR_SPECIAL;
+
+                modelMap[model->name.get()].push_back((uint32_t)scene.cpu.models.size());
+                scene.cpu.models.push_back(std::move(newModel));
+            }
         }
     }
 
@@ -222,7 +249,7 @@ struct SceneLoader
         newModel.meshOffset = (uint32_t)scene.cpu.meshes.size();
 
         for (const auto& group : model->meshGroups)
-            loadMeshGroup(group.get());
+            loadMeshGroup(group.get(), ~0);
 
         newModel.meshCount = (uint32_t)(scene.cpu.meshes.size() - newModel.meshOffset);
 
@@ -232,12 +259,12 @@ struct SceneLoader
             {
 	            if (scene.cpu.materials[scene.cpu.meshes[newModel.meshOffset + i].materialIndex].shader.find("Sky") != std::string::npos)
 	            {
-                    newModel.instanceMask = 2;
+                    newModel.instanceMask = INSTANCE_MASK_SKY;
                     break;
 	            }
             }
 
-            if (newModel.instanceMask == 2)
+            if (newModel.instanceMask == INSTANCE_MASK_SKY)
             {
                 scene.cpu.instances.emplace_back().modelIndex = (uint32_t)scene.cpu.models.size();
                 scene.cpu.models.push_back(std::move(newModel));
@@ -252,12 +279,17 @@ struct SceneLoader
         auto instance = hl::hh::mirage::get_data<hl::hh::mirage::raw_terrain_instance_info_v0>(data);
         instance->fix();
 
-        Instance& newInstance = scene.cpu.instances.emplace_back();
+        auto& modelIndices = modelMap[instance->modelName.get()];
 
-        assert(sizeof(Eigen::Matrix4f) == sizeof(hl::matrix4x4));
-        memcpy(&newInstance.transform, instance->matrix.get(), sizeof(Eigen::Matrix4f));
+        for (const auto modelIndex : modelIndices)
+        {
+            Instance& newInstance = scene.cpu.instances.emplace_back();
 
-        newInstance.modelIndex = modelMap[instance->modelName.get()];
+            assert(sizeof(Eigen::Matrix4f) == sizeof(hl::matrix4x4));
+            memcpy(&newInstance.transform, instance->matrix.get(), sizeof(Eigen::Matrix4f));
+
+            newInstance.modelIndex = modelIndex;
+        }
     }
 
     void loadTerrainGroup(void* data, size_t dataSize)
@@ -518,7 +550,7 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
 
             auto& meshDesc = blasDesc.bottomLevelGeometries.emplace_back();
 
-            if (mesh.type != Mesh::Type::Punch && mesh.type != Mesh::Type::Trans)
+            if ((mesh.type & (MESH_TYPE_PUNCH | MESH_TYPE_TRANS)) == 0)
                 meshDesc.flags = nvrhi::rt::GeometryFlags::Opaque;
 
             auto& triangles = meshDesc.geometryData.triangles;

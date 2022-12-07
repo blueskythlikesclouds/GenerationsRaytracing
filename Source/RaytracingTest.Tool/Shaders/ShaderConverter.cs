@@ -459,7 +459,7 @@ public static class ShaderConverter
         else if (shaderType == "anyhit")
         {
             stringBuilder.Append(""" 
-                if (mesh.w == 2)
+                if (mesh.w == MESH_TYPE_PUNCH)
                 {
                     if (omParams.oC0.w < 0.5)
                         IgnoreHit();

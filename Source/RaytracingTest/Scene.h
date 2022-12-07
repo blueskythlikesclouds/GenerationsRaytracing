@@ -25,15 +25,7 @@ struct Material
 
 struct Mesh
 {
-    enum class Type : uint32_t
-    {
-        Opaque,
-        Trans,
-        Punch,
-        Special
-    };
-
-    Type type = Type::Opaque;
+    uint32_t type = 0;
     uint32_t vertexOffset = 0;
     uint32_t vertexCount = 0;
     uint32_t indexOffset = 0;
@@ -45,7 +37,7 @@ struct Mesh
         uint32_t vertexOffset;
         uint32_t indexOffset;
         uint32_t materialIndex;
-        Type type = Type::Opaque;
+        uint32_t type;
     };
 };
 
@@ -53,7 +45,7 @@ struct Model
 {
     uint32_t meshOffset = 0;
     uint32_t meshCount = 0;
-    uint32_t instanceMask = 1;
+    uint32_t instanceMask = 0;
 };
 
 struct Instance

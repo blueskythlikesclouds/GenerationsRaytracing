@@ -1,3 +1,5 @@
+#include "ShaderDefinitions.h"
+
 #define FLT_MAX asfloat(0x7f7fffff)
 
 struct Payload
@@ -122,7 +124,7 @@ float4 TraceGlobalIllumination(inout Payload payload, float3 normal)
     payload1.random = payload.random;
     payload1.depth = payload.depth + 1;
 
-    TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
+    TraceRay(g_BVH, 0, INSTANCE_MASK_OPAQUE_OR_PUNCH | INSTANCE_MASK_TRANS_OR_SPECIAL, 0, 1, 0, ray, payload1);
 
     payload.random = payload1.random;
     return payload1.color;
@@ -143,7 +145,7 @@ float4 TraceReflection(inout Payload payload, float3 normal)
     payload1.random = payload.random;
     payload1.depth = payload.depth + 1;
 
-    TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
+    TraceRay(g_BVH, 0, INSTANCE_MASK_OPAQUE_OR_PUNCH | INSTANCE_MASK_TRANS_OR_SPECIAL, 0, 1, 0, ray, payload1);
 
     payload.random = payload1.random;
     return payload1.color;
@@ -164,7 +166,7 @@ float4 TraceRefraction(inout Payload payload)
     payload1.random = payload.random;
     payload1.depth = payload.depth + 1;
 
-    TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
+    TraceRay(g_BVH, 0, INSTANCE_MASK_OPAQUE_OR_PUNCH | INSTANCE_MASK_TRANS_OR_SPECIAL, 0, 1, 0, ray, payload1);
 
     payload.random = payload1.random;
     return payload1.color;
@@ -195,7 +197,7 @@ float TraceShadow(inout uint random)
 
     Payload payload = (Payload)0;
     payload.depth = 0xFF;
-    TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 0, ray, payload);
+    TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, INSTANCE_MASK_OPAQUE_OR_PUNCH, 0, 1, 0, ray, payload);
 
     return payload.miss ? 1.0 : 0.0;
 }
@@ -222,7 +224,7 @@ void RayGeneration()
     ray.TMin = 0.001f;
     ray.TMax = FLT_MAX;
 
-    TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload);
+    TraceRay(g_BVH, 0, INSTANCE_MASK_OPAQUE_OR_PUNCH | INSTANCE_MASK_TRANS_OR_SPECIAL, 0, 1, 0, ray, payload);
 
     g_Output[index] = lerp(g_Output[index], payload.color, 1.0 / g_Globals.sampleCount);
 }
@@ -239,7 +241,7 @@ void Miss(inout Payload payload : SV_RayPayload)
         ray.TMax = FLT_MAX;
 
         payload.depth = 0xFF;
-        TraceRay(g_BVH, 0, 2, 0, 1, 0, ray, payload);
+        TraceRay(g_BVH, 0, INSTANCE_MASK_SKY, 0, 1, 0, ray, payload);
     }
     else
     {

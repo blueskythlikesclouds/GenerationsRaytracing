@@ -194,6 +194,7 @@
     <ClInclude Include="File.h" />
     <ClInclude Include="ShaderLibrary.h" />
     <ClInclude Include="SceneEffect.h" />
+    <ClInclude Include="ShaderDefinitions.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Dependencies">
