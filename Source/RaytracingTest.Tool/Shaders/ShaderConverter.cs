@@ -30,7 +30,7 @@ public static class ShaderConverter
         else if (constant.Name == "g_aLightField")
         {
             for (int i = 0; i < constant.Size; i++)
-                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination.rgb, 1.0);\n", outName, constant.Name, i);
+                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination.rgb, shadow);\n", outName, constant.Name, i);
         }
         else if (constant.Size <= 1)
         {
@@ -58,7 +58,7 @@ public static class ShaderConverter
 
                     case "mrgGlobalLight_Diffuse":
                     case "mrgGlobalLight_Specular":
-                        stringBuilder.Append("float4(g_Globals.lightColor * shadow, 0)");
+                        stringBuilder.Append("float4(g_Globals.lightColor, 0)");
                         break;
 
                     case "g_EyePosition":
@@ -378,7 +378,6 @@ public static class ShaderConverter
         bool hasGlobalIllumination = isClosestHit && (vertexShader.Constants.Any(x => x.Name == "g_aLightField") || pixelShader.Constants.Any(x => x.Name == "g_aLightField"));
         bool hasReflection = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_ReflectionMapSampler" || x.Name == "g_ReflectionMapSampler2");
         bool hasRefraction = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler");
-        bool hasShadow = isClosestHit && pixelShader.Constants.Any(x => x.Name == "mrgGlobalLight_Diffuse" || x.Name == "mrgGlobalLight_Specular");
 
         if (hasGlobalIllumination || hasReflection)
             stringBuilder.Append("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;\n");
@@ -386,7 +385,7 @@ public static class ShaderConverter
         stringBuilder.AppendFormat("\tfloat4 globalIllumination = {0};\n", hasGlobalIllumination ? "TraceGlobalIllumination(payload, normal)" : "0");
         stringBuilder.AppendFormat("\tfloat4 reflection = {0};\n", hasReflection ? "TraceReflection(payload, normal)" : "0");
         stringBuilder.AppendFormat("\tfloat4 refraction = {0};\n", hasRefraction ? "TraceRefraction(payload)" : "0");
-        stringBuilder.AppendFormat("\tfloat shadow = {0};\n", hasShadow ? "TraceShadow(payload.random)" : "1");
+        stringBuilder.AppendFormat("\tfloat shadow = {0};\n", hasGlobalIllumination ? "TraceShadow(payload.random)" : "1");
 
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
 
