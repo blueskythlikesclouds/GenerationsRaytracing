@@ -38,5 +38,25 @@ struct SceneEffect
 
     } lightScattering;
 
+    struct EyeLight
+    {
+        Eigen::Vector4f diffuse = { 0.1f, 0.1f, 0.1f, 1.0f };  // EyeLightDiffuse
+        Eigen::Vector4f specular = { 0.1f, 0.1f, 0.1f, 1.0f }; // EyeLightSpecular
+        uint32_t mode = 1;                                     // EyeLightMode
+        float farRangeStart = 0.0f;                            // EyeLightRange.z
+        float farRangeEnd = 57.0f;                             // EyeLightRange.w
+        float innerDiameter = 90.0f;                           // EyeLightInnterDiameter
+        float outerDiameter = 90.0f;                           // EyeLightOuterDiameter
+        float falloff = 2.0f;                                  // EyeLightAttribute.w
+
+        struct GPU
+        {
+            Eigen::Vector4f range = Eigen::Vector4f::Zero();
+            Eigen::Vector4f attribute = Eigen::Vector4f::Zero();
+        } gpu;
+
+        void computeGpuValues();
+    } eyeLight;
+
     void load(const tinyxml2::XMLDocument& doc);
 };

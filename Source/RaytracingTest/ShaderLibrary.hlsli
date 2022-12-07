@@ -32,6 +32,11 @@ struct cbGlobals
     float4 rayMieRay2Mie2;
     float4 gAndFogDensity;
     float4 farNearScale;
+
+    float4 eyeLightDiffuse;
+    float4 eyeLightSpecular;
+    float4 eyeLightRange;
+    float4 eyeLightAttribute;
 };
 
 ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);

@@ -19,6 +19,14 @@ static bool getElementValue(const tinyxml2::XMLElement* element, float& value)
     return true;
 }
 
+static bool getElementValue(const tinyxml2::XMLElement* element, uint32_t& value)
+{
+    if (!element) return false;
+
+    value = element->UnsignedText(value);
+    return true;
+}
+
 void SceneEffect::LightScattering::computeGpuValues()
 {
     gpu.rayMieRay2Mie2.x() = rayleigh;
@@ -32,6 +40,17 @@ void SceneEffect::LightScattering::computeGpuValues()
     gpu.farNearScale.y() = zNear;
     gpu.farNearScale.z() = depthScale;
     gpu.farNearScale.w() = inScatteringScale;
+}
+
+void SceneEffect::EyeLight::computeGpuValues()
+{
+    gpu.range.z() = farRangeStart;
+    gpu.range.w() = farRangeEnd;
+
+	gpu.attribute.x() = (float)mode;
+    gpu.attribute.y() = cos(innerDiameter / 180.0f * (float)M_PI);
+    gpu.attribute.z() = cos(outerDiameter / 180.0f * (float)M_PI);
+    gpu.attribute.w() = falloff;
 }
 
 void SceneEffect::load(const tinyxml2::XMLDocument& doc)
@@ -77,5 +96,25 @@ void SceneEffect::load(const tinyxml2::XMLDocument& doc)
         }
 
         lightScattering.computeGpuValues();
+    }
+
+    if (const auto eyeLightElement = getElement(element, { "Light_Manager", "Category", "Basic", "Param" }))
+    {
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightDiffuse.x"), eyeLight.diffuse.x());
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightDiffuse.y"), eyeLight.diffuse.y());
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightDiffuse.z"), eyeLight.diffuse.z());
+
+    	getElementValue(eyeLightElement->FirstChildElement("EyeLightSpecular.x"), eyeLight.specular.x());
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightSpecular.y"), eyeLight.specular.y());
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightSpecular.z"), eyeLight.specular.z());
+
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightMode"), eyeLight.mode);
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightRange.z"), eyeLight.farRangeStart);
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightRange.w"), eyeLight.farRangeEnd);
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightInnterDiameter"), eyeLight.innerDiameter);
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightOuterDiameter"), eyeLight.outerDiameter);
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightAttribute.w"), eyeLight.falloff);
+
+        eyeLight.computeGpuValues();
     }
 }

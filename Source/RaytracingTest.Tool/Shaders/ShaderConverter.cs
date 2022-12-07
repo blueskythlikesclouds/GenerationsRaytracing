@@ -117,6 +117,22 @@ public static class ShaderConverter
                         stringBuilder.Append("g_Globals.farNearScale");
                         break;
 
+                    case "mrgEyeLight_Diffuse":
+                        stringBuilder.Append("g_Globals.eyeLightDiffuse");
+                        break;
+
+                    case "mrgEyeLight_Specular":
+                        stringBuilder.Append("g_Globals.eyeLightSpecular");
+                        break;
+
+                    case "mrgEyeLight_Range":
+                        stringBuilder.Append("g_Globals.eyeLightRange");
+                        break;
+
+                    case "mrgEyeLight_Attribute":
+                        stringBuilder.Append("g_Globals.eyeLightAttribute");
+                        break;
+
                     default:
                         stringBuilder.Append("0");
                         break;

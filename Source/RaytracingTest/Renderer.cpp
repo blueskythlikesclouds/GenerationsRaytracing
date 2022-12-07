@@ -23,6 +23,11 @@ struct ConstantBuffer
     Eigen::Vector4f rayMieRay2Mie2;
     Eigen::Vector4f gAndFogDensity;
     Eigen::Vector4f farNearScale;
+
+    Eigen::Vector4f eyeLightDiffuse;
+    Eigen::Vector4f eyeLightSpecular;
+    Eigen::Vector4f eyeLightRange;
+    Eigen::Vector4f eyeLightAttribute;
 };
 
 Renderer::Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibraryHolder)
@@ -168,6 +173,11 @@ void Renderer::update(const App& app, Scene& scene)
     bufferData.rayMieRay2Mie2 = scene.cpu.effect.lightScattering.gpu.rayMieRay2Mie2;
     bufferData.gAndFogDensity = scene.cpu.effect.lightScattering.gpu.gAndFogDensity;
     bufferData.farNearScale = scene.cpu.effect.lightScattering.gpu.farNearScale;
+
+    bufferData.eyeLightDiffuse = scene.cpu.effect.eyeLight.diffuse;
+    bufferData.eyeLightSpecular = scene.cpu.effect.eyeLight.specular;
+    bufferData.eyeLightRange = scene.cpu.effect.eyeLight.gpu.range;
+    bufferData.eyeLightAttribute = scene.cpu.effect.eyeLight.gpu.attribute;
 
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
 
