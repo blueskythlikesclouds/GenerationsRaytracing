@@ -1,7 +1,4 @@
-#include "ShaderDefinitions.h"
-
-#define FLT_MAX asfloat(0x7f7fffff)
-#define Z_MAX 10000.0
+#include "ShaderDefinitions.hlsli"
 
 struct Payload
 {
@@ -16,32 +13,6 @@ struct Attributes
     float2 uv;
 };
 
-struct cbGlobals
-{
-    float3 position;
-    float tanFovy;
-    float4x4 rotation;
-
-    float aspectRatio;
-    uint sampleCount;
-    float skyIntensityScale;
-
-    float3 lightDirection;
-    float3 lightColor;
-
-    float4 lightScatteringColor;
-    float4 rayMieRay2Mie2;
-    float4 gAndFogDensity;
-    float4 farNearScale;
-
-    float4 eyeLightDiffuse;
-    float4 eyeLightSpecular;
-    float4 eyeLightRange;
-    float4 eyeLightAttribute;
-};
-
-ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);
-
 struct Material
 {
     float4 float4Parameters[16];
@@ -49,19 +20,20 @@ struct Material
 };
 
 RaytracingAccelerationStructure g_BVH : register(t0, space0);
+RaytracingAccelerationStructure g_ShadowBVH : register(t1, space0);
+RaytracingAccelerationStructure g_SkyBVH : register(t2, space0);
 
-StructuredBuffer<Material> g_MaterialBuffer : register(t1, space0);
-Buffer<uint4> g_MeshBuffer : register(t2, space0);
+StructuredBuffer<Material> g_MaterialBuffer : register(t3, space0);
+Buffer<uint4> g_MeshBuffer : register(t4, space0);
 
-Buffer<float3> g_NormalBuffer : register(t3, space0);
-Buffer<float4> g_TangentBuffer : register(t4, space0);
-Buffer<float2> g_TexCoordBuffer : register(t5, space0);
-Buffer<float4> g_ColorBuffer : register(t6, space0);
+Buffer<float3> g_NormalBuffer : register(t5, space0);
+Buffer<float4> g_TangentBuffer : register(t6, space0);
+Buffer<float2> g_TexCoordBuffer : register(t7, space0);
+Buffer<float4> g_ColorBuffer : register(t8, space0);
 
-Buffer<uint> g_IndexBuffer : register(t7, space0);
+Buffer<uint> g_IndexBuffer : register(t9, space0);
 
-SamplerState g_DefaultSampler : register(s0, space0);
-SamplerComparisonState g_ComparisonSampler : register(s1, space0);
+SamplerState g_LinearRepeatSampler : register(s0, space0);
 
 RWTexture2D<float4> g_Output : register(u0, space0);
 
@@ -203,7 +175,7 @@ float TraceShadow(inout uint random)
 
     Payload payload = (Payload)0;
     payload.depth = 0xFF;
-    TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, INSTANCE_MASK_OPAQUE_OR_PUNCH, 0, 1, 0, ray, payload);
+    TraceRay(g_ShadowBVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, INSTANCE_MASK_OPAQUE_OR_PUNCH, 0, 1, 0, ray, payload);
 
     return payload.miss ? 1.0 : 0.0;
 }
@@ -247,7 +219,7 @@ void Miss(inout Payload payload : SV_RayPayload)
         ray.TMax = FLT_MAX;
 
         payload.depth = 0xFF;
-        TraceRay(g_BVH, 0, INSTANCE_MASK_SKY, 0, 1, 0, ray, payload);
+        TraceRay(g_SkyBVH, 0, INSTANCE_MASK_SKY, 0, 1, 0, ray, payload);
     }
 
     payload.miss = true;

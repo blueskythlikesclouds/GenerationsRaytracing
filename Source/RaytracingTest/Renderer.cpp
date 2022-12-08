@@ -1,9 +1,13 @@
 ﻿#include "Renderer.h"
 
 #include "App.h"
+#include "Math.h"
 #include "Scene.h"
-#include "ShaderCopyVS.h"
+#include "ShaderCopyLuminancePS.h"
 #include "ShaderCopyPS.h"
+#include "ShaderCopyVS.h"
+#include "ShaderLerpLuminancePS.h"
+#include "ShaderToneMapPS.h"
 
 struct ConstantBuffer
 {
@@ -14,7 +18,7 @@ struct ConstantBuffer
     float aspectRatio;
     uint32_t sampleCount;
     float skyIntensityScale;
-    uint32_t padding0;
+    float deltaTime;
 
     Eigen::Vector4f lightDirection;
     Eigen::Vector4f lightColor;
@@ -28,13 +32,22 @@ struct ConstantBuffer
     Eigen::Vector4f eyeLightSpecular;
     Eigen::Vector4f eyeLightRange;
     Eigen::Vector4f eyeLightAttribute;
+
+    float middleGray;
+    float lumMin;
+    float lumMax;
+    uint32_t padding1;
 };
 
 Renderer::Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibraryHolder)
 {
     shaderLibrary = device.nvrhi->createShaderLibrary(shaderLibraryHolder.byteCode.get(), shaderLibraryHolder.byteSize);
+
     shaderCopyVS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), SHADER_COPY_VS, sizeof(SHADER_COPY_VS));
     shaderCopyPS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), SHADER_COPY_PS, sizeof(SHADER_COPY_PS));
+    shaderLerpLuminancePS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), SHADER_LERP_LUMINANCE_PS, sizeof(SHADER_LERP_LUMINANCE_PS));
+    shaderCopyLuminancePS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), SHADER_COPY_LUMINANCE_PS, sizeof(SHADER_COPY_LUMINANCE_PS));
+    shaderToneMapPS = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), SHADER_TONE_MAP_PS, sizeof(SHADER_TONE_MAP_PS));
 
     constantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(sizeof(ConstantBuffer))
@@ -50,24 +63,29 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
         .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
         .setKeepInitialState(true));
 
-    sampler = device.nvrhi->createSampler(nvrhi::SamplerDesc()
+    linearRepeatSampler = device.nvrhi->createSampler(nvrhi::SamplerDesc()
         .setAllFilters(true)
         .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat));
+
+	linearClampSampler = device.nvrhi->createSampler(nvrhi::SamplerDesc()
+        .setAllFilters(true)
+        .setAllAddressModes(nvrhi::SamplerAddressMode::Clamp));
 
     bindingLayout = device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
         .setVisibility(nvrhi::ShaderType::All)
         .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
         .addItem(nvrhi::BindingLayoutItem::RayTracingAccelStruct(0))
-        .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(1))
-        .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(2))
-        .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(3))
+        .addItem(nvrhi::BindingLayoutItem::RayTracingAccelStruct(1))
+        .addItem(nvrhi::BindingLayoutItem::RayTracingAccelStruct(2))
+        .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(3))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(4))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(5))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(6))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(7))
+        .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(8))
+        .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(9))
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
-		.addItem(nvrhi::BindingLayoutItem::Sampler(0))
-		.addItem(nvrhi::BindingLayoutItem::Sampler(1)));
+		.addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
     bindlessLayout = device.nvrhi->createBindlessLayout(nvrhi::BindlessLayoutDesc()
         .setVisibility(nvrhi::ShaderType::All)
@@ -95,28 +113,132 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
 
     pipeline = device.nvrhi->createRayTracingPipeline(pipelineDesc);
 
-    for (auto& framebuffer : window.nvrhi.swapChainFramebuffers)
+    luminanceBindingLayout = device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
+        .setVisibility(nvrhi::ShaderType::Pixel)
+        .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
+        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0))
+        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(1))
+        .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
+
+    auto lumPipelineDesc = nvrhi::GraphicsPipelineDesc()
+        .setVertexShader(shaderCopyVS)
+        .setPrimType(nvrhi::PrimitiveType::TriangleList)
+        .setRenderState(nvrhi::RenderState()
+            .setDepthStencilState(nvrhi::DepthStencilState()
+                .disableDepthTest()
+                .disableDepthWrite()
+                .disableStencil())
+            .setRasterState(nvrhi::RasterState()
+                .setCullNone()))
+        .addBindingLayout(luminanceBindingLayout);
+
+    int luminanceWidth = nextPowerOfTwo(window.width);
+    int luminanceHeight = nextPowerOfTwo(window.height);
+
+    while (luminanceWidth >= window.width) luminanceWidth >>= 1;
+    while (luminanceHeight >= window.height) luminanceHeight >>= 1;
+
+    auto previousTexture = texture;
+
+    while (true)
     {
-        graphicsPipelines.push_back(device.nvrhi->createGraphicsPipeline(nvrhi::GraphicsPipelineDesc()
-            .setVertexShader(shaderCopyVS)
-            .setPixelShader(shaderCopyPS)
-            .setPrimType(nvrhi::PrimitiveType::TriangleList)
-            .setRenderState(nvrhi::RenderState()
-				.setDepthStencilState(nvrhi::DepthStencilState()
-                    .disableDepthTest()
-					.disableDepthWrite()
-					.disableStencil())
-				.setRasterState(nvrhi::RasterState()
-					.setCullNone()))
-            .addBindingLayout(bindingLayout), framebuffer));
+        if (luminanceWidth == 0) luminanceWidth = 1;
+        if (luminanceHeight == 0) luminanceHeight = 1;
+
+        auto& pass = luminancePasses.emplace_back();
+
+        pass.texture = device.nvrhi->createTexture(nvrhi::TextureDesc()
+            .setWidth(luminanceWidth)
+            .setHeight(luminanceHeight)
+            .setFormat(nvrhi::Format::R16_FLOAT)
+            .setIsRenderTarget(true));
+
+        pass.framebuffer = device.nvrhi->createFramebuffer(nvrhi::FramebufferDesc()
+            .addColorAttachment(pass.texture));
+
+        pass.pipeline = device.nvrhi->createGraphicsPipeline(lumPipelineDesc
+            .setPixelShader(previousTexture == texture ? shaderCopyLuminancePS : shaderCopyPS), pass.framebuffer);
+
+        pass.bindingSet = device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+            .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, constantBuffer))
+            .addItem(nvrhi::BindingSetItem::Texture_SRV(0, previousTexture))
+            .addItem(nvrhi::BindingSetItem::Texture_SRV(1, previousTexture))
+            .addItem(nvrhi::BindingSetItem::Sampler(0, linearClampSampler)), luminanceBindingLayout);
+
+        pass.graphicsState
+            .setPipeline(pass.pipeline)
+            .addBindingSet(pass.bindingSet)
+            .setFramebuffer(pass.framebuffer)
+            .setViewport(nvrhi::ViewportState()
+                .addViewportAndScissorRect(nvrhi::Viewport((float)luminanceWidth, (float)luminanceHeight)));
+
+        previousTexture = pass.texture;
+
+        if (luminanceWidth == 1 && luminanceHeight == 1)
+            break;
+
+        luminanceWidth >>= 1;
+        luminanceHeight >>= 1;
+    }
+
+    auto luminanceLerpedTextureDesc = nvrhi::TextureDesc()
+        .setWidth(1)
+        .setHeight(1)
+        .setFormat(nvrhi::Format::R16_FLOAT);
+
+    luminanceLerpedTexture = device.nvrhi->createTexture(luminanceLerpedTextureDesc);
+
+    luminanceLerpPass.texture = device.nvrhi->createTexture(luminanceLerpedTextureDesc
+		.setIsRenderTarget(true));
+
+    luminanceLerpPass.framebuffer = device.nvrhi->createFramebuffer(nvrhi::FramebufferDesc()
+        .addColorAttachment(luminanceLerpPass.texture));
+
+    luminanceLerpPass.pipeline = device.nvrhi->createGraphicsPipeline(lumPipelineDesc
+        .setPixelShader(shaderLerpLuminancePS), luminanceLerpPass.framebuffer);
+
+    luminanceLerpPass.bindingSet = device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+        .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, constantBuffer))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, luminanceLerpedTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(1, previousTexture))
+        .addItem(nvrhi::BindingSetItem::Sampler(0, linearClampSampler)), luminanceBindingLayout);
+
+    luminanceLerpPass.graphicsState
+        .setPipeline(luminanceLerpPass.pipeline)
+        .addBindingSet(luminanceLerpPass.bindingSet)
+        .setFramebuffer(luminanceLerpPass.framebuffer)
+        .setViewport(nvrhi::ViewportState()
+            .addViewportAndScissorRect(nvrhi::Viewport(1.0f, 1.0f)));
+
+    auto swapChainBindingSet = device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+        .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, constantBuffer))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, texture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(1, luminanceLerpPass.texture))
+        .addItem(nvrhi::BindingSetItem::Sampler(0, linearClampSampler)), luminanceBindingLayout);
+
+    for (auto& swapChainFramebuffer : window.nvrhi.swapChainFramebuffers)
+    {
+        auto& pass = swapChainPasses.emplace_back();
+
+        pass.bindingSet = swapChainBindingSet;
+
+        pass.pipeline = device.nvrhi->createGraphicsPipeline(lumPipelineDesc
+            .setPixelShader(shaderToneMapPS), swapChainFramebuffer);
+
+        pass.graphicsState
+            .setPipeline(pass.pipeline)
+            .addBindingSet(swapChainBindingSet)
+            .setFramebuffer(swapChainFramebuffer)
+            .setViewport(nvrhi::ViewportState()
+                .addViewportAndScissorRect(nvrhi::Viewport((float)window.width, (float)window.height)));
     }
 
     commandList = device.nvrhi->createCommandList();
 }
 
-void Renderer::update(const App& app, Scene& scene)
+void Renderer::update(const App& app, float deltaTime, Scene& scene)
 {
-    if (!scene.gpu.topLevelAccelStruct)
+    if (!scene.gpu.bvh)
         scene.createGpuResources(app.device, app.shaderLibrary.shaderMapping);
 
     assert(scene.gpu.topLevelAccelStruct);
@@ -125,17 +247,18 @@ void Renderer::update(const App& app, Scene& scene)
     {
         bindingSet = app.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
             .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, constantBuffer))
-            .addItem(nvrhi::BindingSetItem::RayTracingAccelStruct(0, scene.gpu.topLevelAccelStruct))
-            .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, scene.gpu.materialBuffer))
-            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(2, scene.gpu.meshBuffer))
-            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(3, scene.gpu.normalBuffer))
-            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(4, scene.gpu.tangentBuffer))
-            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(5, scene.gpu.texCoordBuffer))
-            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(6, scene.gpu.colorBuffer))
-            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(7, scene.gpu.indexBuffer))
+            .addItem(nvrhi::BindingSetItem::RayTracingAccelStruct(0, scene.gpu.bvh))
+            .addItem(nvrhi::BindingSetItem::RayTracingAccelStruct(1, scene.gpu.shadowBVH))
+            .addItem(nvrhi::BindingSetItem::RayTracingAccelStruct(2, scene.gpu.skyBVH))
+            .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(3, scene.gpu.materialBuffer))
+            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(4, scene.gpu.meshBuffer))
+            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(5, scene.gpu.normalBuffer))
+            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(6, scene.gpu.tangentBuffer))
+            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(7, scene.gpu.texCoordBuffer))
+            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(8, scene.gpu.colorBuffer))
+            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(9, scene.gpu.indexBuffer))
             .addItem(nvrhi::BindingSetItem::Texture_UAV(0, texture))
-            .addItem(nvrhi::BindingSetItem::Sampler(0, sampler))
-            .addItem(nvrhi::BindingSetItem::Sampler(1, sampler)), bindingLayout);
+            .addItem(nvrhi::BindingSetItem::Sampler(0, linearRepeatSampler)), bindingLayout);
 
         shaderTable = pipeline->createShaderTable();
         shaderTable->setRayGenerationShader("RayGeneration");
@@ -168,6 +291,7 @@ void Renderer::update(const App& app, Scene& scene)
     bufferData.aspectRatio = aspectRatio;
     bufferData.sampleCount = ++sampleCount;
     bufferData.skyIntensityScale = scene.cpu.effect.defaults.skyIntensityScale;
+    bufferData.deltaTime = deltaTime;
 
     bufferData.lightDirection = scene.cpu.lightDirection;
     bufferData.lightColor = scene.cpu.lightColor;
@@ -182,6 +306,10 @@ void Renderer::update(const App& app, Scene& scene)
     bufferData.eyeLightRange = scene.cpu.effect.eyeLight.gpu.range;
     bufferData.eyeLightAttribute = scene.cpu.effect.eyeLight.gpu.attribute;
 
+    bufferData.middleGray = scene.cpu.effect.hdr.middleGray;
+    bufferData.lumMin = scene.cpu.effect.hdr.lumMin;
+    bufferData.lumMax = scene.cpu.effect.hdr.lumMax;
+
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
 
     commandList->setRayTracingState(nvrhi::rt::State()
@@ -193,15 +321,21 @@ void Renderer::update(const App& app, Scene& scene)
         .setWidth(app.window.width)
         .setHeight(app.window.height));
 
-    commandList->setGraphicsState(nvrhi::GraphicsState()
-        .setPipeline(graphicsPipelines[app.window.dxgi.swapChain->GetCurrentBackBufferIndex()])
-		.addBindingSet(bindingSet)
-		.setFramebuffer(app.window.getCurrentSwapChainFramebuffer())
-		.setViewport(nvrhi::ViewportState()
-			.addViewportAndScissorRect(nvrhi::Viewport((float)app.window.width, (float)app.window.height))));
+    auto drawArgs = nvrhi::DrawArguments()
+        .setVertexCount(6);
 
-    commandList->draw(nvrhi::DrawArguments()
-        .setVertexCount(6));
+    for (auto& luminancePass : luminancePasses)
+    {
+        commandList->setGraphicsState(luminancePass.graphicsState);
+        commandList->draw(drawArgs);
+    }
+
+    commandList->copyTexture(luminanceLerpedTexture, nvrhi::TextureSlice(), luminanceLerpPass.texture, nvrhi::TextureSlice());
+    commandList->setGraphicsState(luminanceLerpPass.graphicsState);
+    commandList->draw(drawArgs);
+
+    commandList->setGraphicsState(swapChainPasses[app.window.dxgi.swapChain->GetCurrentBackBufferIndex()].graphicsState);
+    commandList->draw(drawArgs);
 
     commandList->close();
 

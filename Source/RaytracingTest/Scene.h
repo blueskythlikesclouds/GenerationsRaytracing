@@ -88,8 +88,10 @@ struct Scene
     {
         std::vector<nvrhi::TextureHandle> textures;
 
-        std::vector<nvrhi::rt::AccelStructHandle> bottomLevelAccelStructs;
-        nvrhi::rt::AccelStructHandle topLevelAccelStruct;
+        std::vector<nvrhi::rt::AccelStructHandle> modelBVHs;
+        nvrhi::rt::AccelStructHandle bvh;
+        nvrhi::rt::AccelStructHandle shadowBVH;
+        nvrhi::rt::AccelStructHandle skyBVH;
 
         nvrhi::BufferHandle materialBuffer;
         nvrhi::BufferHandle meshBuffer;

@@ -16,7 +16,7 @@ void App::run(Scene& scene)
 
         window.processMessages();
         camera.update(window.input, deltaTime);
-        renderer.update(*this, scene);
+        renderer.update(*this, deltaTime, scene);
         device.nvrhi->waitForIdle();
         window.present();
 

@@ -194,19 +194,54 @@
     <ClInclude Include="File.h" />
     <ClInclude Include="ShaderLibrary.h" />
     <ClInclude Include="SceneEffect.h" />
-    <ClInclude Include="ShaderDefinitions.h" />
+    <ClInclude Include="Math.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Dependencies">
       <UniqueIdentifier>{2af4b336-29bc-48f3-bc42-bfbb6cb0cf9d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{c8c31556-7aa0-49f4-b2d9-fc4a51c79e65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\RT">
+      <UniqueIdentifier>{0d2eece2-2c87-4b02-aabc-b41c7e3af1c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Filter">
+      <UniqueIdentifier>{dba05a16-4f0d-48ce-88a8-1ae5f91ff099}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Filter\ToneMap">
+      <UniqueIdentifier>{d5fcc791-fa86-4fd7-b048-75d40102bc2f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="ShaderLibrary.hlsl" />
-    <FxCompile Include="ShaderCopyPS.hlsl" />
-    <FxCompile Include="ShaderCopyVS.hlsl" />
+    <FxCompile Include="ShaderLibrary.hlsl">
+      <Filter>Shaders\RT</Filter>
+    </FxCompile>
+    <FxCompile Include="ShaderCopyPS.hlsl">
+      <Filter>Shaders\Filter</Filter>
+    </FxCompile>
+    <FxCompile Include="ShaderCopyVS.hlsl">
+      <Filter>Shaders\Filter</Filter>
+    </FxCompile>
+    <FxCompile Include="ShaderCopyLuminancePS.hlsl">
+      <Filter>Shaders\Filter\ToneMap</Filter>
+    </FxCompile>
+    <FxCompile Include="ShaderToneMapPS.hlsl">
+      <Filter>Shaders\Filter\ToneMap</Filter>
+    </FxCompile>
+    <FxCompile Include="ShaderLerpLuminancePS.hlsl">
+      <Filter>Shaders\Filter\ToneMap</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ShaderLibrary.hlsli" />
+    <None Include="ShaderLibrary.hlsli">
+      <Filter>Shaders\RT</Filter>
+    </None>
+    <None Include="ShaderToneMap.hlsli">
+      <Filter>Shaders\Filter\ToneMap</Filter>
+    </None>
+    <None Include="ShaderDefinitions.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

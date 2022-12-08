@@ -194,13 +194,13 @@ public class Instruction
                 break;
 
             case "texld":
-                stringBuilder.AppendFormat("{0} = {1}.SampleLevel(g_DefaultSampler, {2}, 0);", Arguments[0], Arguments[2], Arguments[1]);
+                stringBuilder.AppendFormat("{0} = {1}.SampleLevel(g_LinearRepeatSampler, {2}, 0);", Arguments[0], Arguments[2], Arguments[1]);
                 break;
 
             case "texldb":
                 Arguments[1].Swizzle.Resize(4);
 
-                stringBuilder.AppendFormat("{0} = {1}.SampleBias(g_DefaultSampler, {2}, ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+                stringBuilder.AppendFormat("{0} = {1}.SampleBias(g_LinearRepeatSampler, {2}, ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
                 break;
 
             case "texldd":
@@ -208,19 +208,19 @@ public class Instruction
                 Arguments[3].Swizzle.Resize(4);
                 Arguments[4].Swizzle.Resize(4);
 
-                stringBuilder.AppendFormat("{0} = {1}.SampleGrad(g_DefaultSampler, {2}, {3}, {4});", Arguments[0], Arguments[2], Arguments[1], Arguments[3], Arguments[4]);
+                stringBuilder.AppendFormat("{0} = {1}.SampleGrad(g_LinearRepeatSampler, {2}, {3}, {4});", Arguments[0], Arguments[2], Arguments[1], Arguments[3], Arguments[4]);
                 break;
 
             case "texldl":
                 Arguments[1].Swizzle.Resize(4);
 
-                stringBuilder.AppendFormat("{0} = {1}.SampleLevel(g_DefaultSampler, {2}, ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+                stringBuilder.AppendFormat("{0} = {1}.SampleLevel(g_LinearRepeatSampler, {2}, ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
                 break;
 
             case "texldp":
                 Arguments[1].Swizzle.Resize(4);
 
-                stringBuilder.AppendFormat("{0} = {1}.SampleCmpLevelZero(g_ComparisonSampler, ({2}).xy / ({2}).w, ({2}).z / ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+                //stringBuilder.AppendFormat("{0} = {1}.SampleCmpLevelZero(g_ComparisonSampler, ({2}).xy / ({2}).w, ({2}).z / ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
                 break;
 
             case "if":

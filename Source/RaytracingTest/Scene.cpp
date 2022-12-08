@@ -3,7 +3,7 @@
 #include "ArchiveDatabase.h"
 #include "Device.h"
 #include "Path.h"
-#include "ShaderDefinitions.h"
+#include "ShaderDefinitions.hlsli"
 #include "ShaderMapping.h"
 #include "Utilities.h"
 
@@ -538,7 +538,6 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         .setIsAccelStructBuildInput(true));
 
     std::vector<nvrhi::rt::AccelStructDesc> blasDescs;
-    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
 
     for (const auto& model : cpu.models)
     {
@@ -566,12 +565,16 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
             triangles.vertexStride = (uint32_t)vectorByteStride(cpu.vertices);
         }
 
-        gpu.bottomLevelAccelStructs.push_back(device.nvrhi->createAccelStruct(blasDesc));
+        gpu.modelBVHs.push_back(device.nvrhi->createAccelStruct(blasDesc));
     }
+
+    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
+    std::vector<nvrhi::rt::InstanceDesc> shadowInstanceDescs;
+    std::vector<nvrhi::rt::InstanceDesc> skyInstanceDescs;
 
     for (const auto& instance : cpu.instances)
     {
-        auto& instanceDesc = instanceDescs.emplace_back();
+        nvrhi::rt::InstanceDesc instanceDesc;
 
         for (size_t i = 0; i < 3; i++)
         {
@@ -582,13 +585,32 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         instanceDesc.instanceID = cpu.models[instance.modelIndex].meshOffset;
         instanceDesc.instanceMask = cpu.models[instance.modelIndex].instanceMask;
         instanceDesc.instanceContributionToHitGroupIndex = instanceDesc.instanceID;
-        instanceDesc.bottomLevelAS = gpu.bottomLevelAccelStructs[instance.modelIndex];
+        instanceDesc.bottomLevelAS = gpu.modelBVHs[instance.modelIndex];
+
+        if (instanceDesc.instanceMask == INSTANCE_MASK_SKY)
+            skyInstanceDescs.push_back(instanceDesc);
+
+        else
+        {
+            instanceDescs.push_back(instanceDesc);
+
+            if (instanceDesc.instanceMask == INSTANCE_MASK_OPAQUE_OR_PUNCH)
+                shadowInstanceDescs.push_back(instanceDesc);
+        }
     }
 
-    gpu.topLevelAccelStruct = device.nvrhi->createAccelStruct(nvrhi::rt::AccelStructDesc()
+    auto bvhDesc = nvrhi::rt::AccelStructDesc()
         .setIsTopLevel(true)
-        .setTopLevelMaxInstances(instanceDescs.size())
-		.setBuildFlags(nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
+        .setBuildFlags(nvrhi::rt::AccelStructBuildFlags::PreferFastTrace);
+
+    gpu.bvh = device.nvrhi->createAccelStruct(bvhDesc
+        .setTopLevelMaxInstances(instanceDescs.size()));
+
+	gpu.shadowBVH = device.nvrhi->createAccelStruct(bvhDesc
+        .setTopLevelMaxInstances(shadowInstanceDescs.size()));
+
+	gpu.skyBVH = device.nvrhi->createAccelStruct(bvhDesc
+        .setTopLevelMaxInstances(skyInstanceDescs.size()));
 
     auto commandList = device.nvrhi->createCommandList();
 
@@ -623,9 +645,12 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
     commandList->writeBuffer(gpu.indexBuffer, cpu.indices.data(), vectorByteSize(cpu.indices));
 
     for (size_t i = 0; i < blasDescs.size(); i++)
-        nvrhi::utils::BuildBottomLevelAccelStruct(commandList, gpu.bottomLevelAccelStructs[i], blasDescs[i]);
+        nvrhi::utils::BuildBottomLevelAccelStruct(commandList, gpu.modelBVHs[i], blasDescs[i]);
 
-    commandList->buildTopLevelAccelStruct(gpu.topLevelAccelStruct, instanceDescs.data(), instanceDescs.size());
+    commandList->buildTopLevelAccelStruct(gpu.bvh, instanceDescs.data(), instanceDescs.size());
+    commandList->buildTopLevelAccelStruct(gpu.shadowBVH, shadowInstanceDescs.data(), shadowInstanceDescs.size());
+    commandList->buildTopLevelAccelStruct(gpu.skyBVH, skyInstanceDescs.data(), skyInstanceDescs.size());
+
     commandList->close();
 
     device.nvrhi->executeCommandList(commandList);

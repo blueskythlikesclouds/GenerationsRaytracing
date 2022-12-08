@@ -1,6 +1,6 @@
-RWTexture2D<float4> g_Input : register(u0, space0);
+#include "ShaderToneMap.hlsli"
 
-float4 main(in float4 position : SV_Position) : SV_Target0
+float4 main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD) : SV_Target0
 {
-    return g_Input[(int2)position.xy];
+	return g_Texture0.Sample(g_LinearClampSampler, texCoord);
 }
