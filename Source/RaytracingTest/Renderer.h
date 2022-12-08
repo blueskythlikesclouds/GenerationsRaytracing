@@ -8,7 +8,7 @@ struct Device;
 
 struct Renderer
 {
-	nvrhi::ShaderLibraryHandle shaderLibrary;
+    nvrhi::ShaderLibraryHandle shaderLibrary;
 
     nvrhi::ShaderHandle shaderCopyVS;
     nvrhi::ShaderHandle shaderCopyPS;

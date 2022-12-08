@@ -67,7 +67,7 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
         .setAllFilters(true)
         .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat));
 
-	linearClampSampler = device.nvrhi->createSampler(nvrhi::SamplerDesc()
+    linearClampSampler = device.nvrhi->createSampler(nvrhi::SamplerDesc()
         .setAllFilters(true)
         .setAllAddressModes(nvrhi::SamplerAddressMode::Clamp));
 
@@ -85,7 +85,7 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(8))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(9))
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
-		.addItem(nvrhi::BindingLayoutItem::Sampler(0)));
+        .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
     bindlessLayout = device.nvrhi->createBindlessLayout(nvrhi::BindlessLayoutDesc()
         .setVisibility(nvrhi::ShaderType::All)
@@ -104,11 +104,11 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
     for (auto& shaderPair : shaderLibraryHolder.shaderMapping.map)
     {
         pipelineDesc.addHitGroup(
-		{
+        {
             shaderPair.second.name,
-			shaderLibrary->getShader(shaderPair.second.closestHit.c_str(), nvrhi::ShaderType::ClosestHit),
-			shaderLibrary->getShader(shaderPair.second.anyHit.c_str(), nvrhi::ShaderType::AnyHit)
-		});
+            shaderLibrary->getShader(shaderPair.second.closestHit.c_str(), nvrhi::ShaderType::ClosestHit),
+            shaderLibrary->getShader(shaderPair.second.anyHit.c_str(), nvrhi::ShaderType::AnyHit)
+        });
     }
 
     pipeline = device.nvrhi->createRayTracingPipeline(pipelineDesc);
@@ -189,7 +189,7 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
     luminanceLerpedTexture = device.nvrhi->createTexture(luminanceLerpedTextureDesc);
 
     luminanceLerpPass.texture = device.nvrhi->createTexture(luminanceLerpedTextureDesc
-		.setIsRenderTarget(true));
+        .setIsRenderTarget(true));
 
     luminanceLerpPass.framebuffer = device.nvrhi->createFramebuffer(nvrhi::FramebufferDesc()
         .addColorAttachment(luminanceLerpPass.texture));
@@ -315,7 +315,7 @@ void Renderer::update(const App& app, float deltaTime, Scene& scene)
     commandList->setRayTracingState(nvrhi::rt::State()
         .setShaderTable(shaderTable)
         .addBindingSet(bindingSet)
-		.addBindingSet(descriptorTable));
+        .addBindingSet(descriptorTable));
 
     commandList->dispatchRays(nvrhi::rt::DispatchRaysArguments()
         .setWidth(app.window.width)

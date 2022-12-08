@@ -47,7 +47,7 @@ void SceneEffect::EyeLight::computeGpuValues()
     gpu.range.z() = farRangeStart;
     gpu.range.w() = farRangeEnd;
 
-	gpu.attribute.x() = (float)mode;
+    gpu.attribute.x() = (float)mode;
     gpu.attribute.y() = cos(innerDiameter / 180.0f * (float)M_PI);
     gpu.attribute.z() = cos(outerDiameter / 180.0f * (float)M_PI);
     gpu.attribute.w() = falloff;
@@ -104,7 +104,7 @@ void SceneEffect::load(const tinyxml2::XMLDocument& doc)
         getElementValue(eyeLightElement->FirstChildElement("EyeLightDiffuse.y"), eyeLight.diffuse.y());
         getElementValue(eyeLightElement->FirstChildElement("EyeLightDiffuse.z"), eyeLight.diffuse.z());
 
-    	getElementValue(eyeLightElement->FirstChildElement("EyeLightSpecular.x"), eyeLight.specular.x());
+        getElementValue(eyeLightElement->FirstChildElement("EyeLightSpecular.x"), eyeLight.specular.x());
         getElementValue(eyeLightElement->FirstChildElement("EyeLightSpecular.y"), eyeLight.specular.y());
         getElementValue(eyeLightElement->FirstChildElement("EyeLightSpecular.z"), eyeLight.specular.z());
 

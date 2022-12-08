@@ -257,11 +257,11 @@ struct SceneLoader
         {
             for (size_t i = 0; i < newModel.meshCount; i++)
             {
-	            if (scene.cpu.materials[scene.cpu.meshes[newModel.meshOffset + i].materialIndex].shader.find("Sky") != std::string::npos)
-	            {
+                if (scene.cpu.materials[scene.cpu.meshes[newModel.meshOffset + i].materialIndex].shader.find("Sky") != std::string::npos)
+                {
                     newModel.instanceMask = INSTANCE_MASK_SKY;
                     break;
-	            }
+                }
             }
 
             if (newModel.instanceMask == INSTANCE_MASK_SKY)
@@ -339,16 +339,16 @@ struct SceneLoader
     {
         const std::string name = getFileName(directoryPath);
 
-	    {
+        {
             hl::archive stage = ArchiveDatabase::load(directoryPath + "/../../#" + name + ".ar.00");
 
             for (const auto& file : stage)
             {
-	            if (hl::text::equal(file.name(), HL_NTEXT("SceneEffect.prm.xml")))
-	            {
+                if (hl::text::equal(file.name(), HL_NTEXT("SceneEffect.prm.xml")))
+                {
                     loadSceneEffect(file.file_data(), file.size());
                     break;
-	            }
+                }
             }
         }
 
@@ -366,7 +366,7 @@ struct SceneLoader
             }
         }
 
-    	for (auto& file : resources)
+        for (auto& file : resources)
         {
             if (hl::text::strstr(file.name(), HL_NTEXT(".material")))
             {
@@ -378,7 +378,7 @@ struct SceneLoader
             }
         }
 
-    	for (auto& file : resources)
+        for (auto& file : resources)
         {
             if (hl::text::strstr(file.name(), HL_NTEXT(".model")))
             {
@@ -391,10 +391,10 @@ struct SceneLoader
             }
         }
 
-    	for (auto& file : resources)
+        for (auto& file : resources)
         {
             if (hl::text::strstr(file.name(), HL_NTEXT(".light")) && !hl::text::strstr(file.name(), HL_NTEXT(".light-list")))
-	            loadLight(file.file_data());
+                loadLight(file.file_data());
         }
 
         hl::archive stage = ArchiveDatabase::load(directoryPath + "/Stage.pfd");
@@ -606,10 +606,10 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
     gpu.bvh = device.nvrhi->createAccelStruct(bvhDesc
         .setTopLevelMaxInstances(instanceDescs.size()));
 
-	gpu.shadowBVH = device.nvrhi->createAccelStruct(bvhDesc
+    gpu.shadowBVH = device.nvrhi->createAccelStruct(bvhDesc
         .setTopLevelMaxInstances(shadowInstanceDescs.size()));
 
-	gpu.skyBVH = device.nvrhi->createAccelStruct(bvhDesc
+    gpu.skyBVH = device.nvrhi->createAccelStruct(bvhDesc
         .setTopLevelMaxInstances(skyInstanceDescs.size()));
 
     auto commandList = device.nvrhi->createCommandList();

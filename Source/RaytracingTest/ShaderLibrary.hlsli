@@ -80,12 +80,12 @@ float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNormal)
 {
     float2 randomValue = float2(NextRandom(randSeed), NextRandom(randSeed));
 
-	float3 bitangent = GetPerpendicularVector(hitNormal);
+    float3 bitangent = GetPerpendicularVector(hitNormal);
     float3 tangent = cross(bitangent, hitNormal);
     float r = sqrt(randomValue.x);
     float phi = 2.0f * 3.14159265f * randomValue.y;
 
-	return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
+    return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
 }
 
 float3 TraceGlobalIllumination(inout Payload payload, float3 normal)

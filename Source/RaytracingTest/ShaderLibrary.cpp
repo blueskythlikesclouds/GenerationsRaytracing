@@ -4,6 +4,6 @@
 
 ShaderLibrary::ShaderLibrary(const std::string& directoryPath)
 {
-	byteCode = readAllBytes(directoryPath + "/ShaderLibrary.cso", byteSize);
-	shaderMapping.load(directoryPath + "/ShaderMapping.bin");
+    byteCode = readAllBytes(directoryPath + "/ShaderLibrary.cso", byteSize);
+    shaderMapping.load(directoryPath + "/ShaderMapping.bin");
 }
