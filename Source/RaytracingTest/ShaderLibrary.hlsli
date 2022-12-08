@@ -1,4 +1,5 @@
 #include "ShaderDefinitions.hlsli"
+#include "HSV.hlsli"
 
 struct Payload
 {

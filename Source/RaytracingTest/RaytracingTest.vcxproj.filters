@@ -243,5 +243,8 @@
     <None Include="ShaderDefinitions.hlsli">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="HSV.hlsli">
+      <Filter>Shaders\RT</Filter>
+    </None>
   </ItemGroup>
 </Project>

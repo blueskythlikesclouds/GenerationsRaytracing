@@ -668,6 +668,7 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneEffect.h" />
+    <None Include="HSV.hlsli" />
     <None Include="ShaderDefinitions.hlsli">
       <FileType>Document</FileType>
     </None>
