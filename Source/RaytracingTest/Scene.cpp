@@ -2,6 +2,7 @@
 
 #include "ArchiveDatabase.h"
 #include "Device.h"
+#include "Math.h"
 #include "Path.h"
 #include "ShaderDefinitions.hlsli"
 #include "ShaderMapping.h"
@@ -67,11 +68,11 @@ struct SceneLoader
 
         for (hl::u32 i = 0; i < mesh->vertexCount; i++)
         {
-            auto& position = scene.cpu.vertices.emplace_back(0.0f, 0.0f, 0.0f);
-            auto& normal = scene.cpu.normals.emplace_back(0.0f, 1.0f, 0.0f);
-            auto& tangent = scene.cpu.tangents.emplace_back(1.0f, 0.0f, 0.0f, 1.0f);
-            auto& texCoord = scene.cpu.texCoords.emplace_back(0.0f, 0.0f);
-            auto& color = scene.cpu.colors.emplace_back(1.0f, 1.0f, 1.0f, 1.0f);
+            Eigen::Vector3f position = { 0.0f, 0.0f, 0.0f };
+            Eigen::Vector3f normal = { 0.0f, 1.0f, 0.0f };
+            Eigen::Vector4f tangent = { 1.0f, 0.0f, 0.0f, 1.0f };
+            Eigen::Vector2f texCoord = { 0.0f, 0.0f };
+            Eigen::Vector4f color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
             for (hl::u32 j = 0; ; j++)
             {
@@ -126,6 +127,33 @@ struct SceneLoader
                     break;
                 }
             }
+
+            scene.cpu.vertices.push_back(position);
+
+            scene.cpu.normals.push_back(
+                (quantizeSint8(normal.x()) << 0) |
+                (quantizeSint8(normal.y()) << 8) |
+                (quantizeSint8(normal.z()) << 16)
+            );
+
+            scene.cpu.tangents.push_back(
+                (quantizeSint8(tangent.x()) << 0) |
+                (quantizeSint8(tangent.y()) << 8) |
+                (quantizeSint8(tangent.z()) << 16) |
+                (quantizeSint8(tangent.w()) << 24)
+            );
+
+            scene.cpu.texCoords.push_back(
+                (quantizeHalf(texCoord.x()) << 0) |
+                (quantizeHalf(texCoord.y()) << 16) 
+            );
+
+            scene.cpu.colors.push_back(
+                (quantizeUint8(color.x()) << 0) |
+                (quantizeUint8(color.y()) << 8) |
+                (quantizeUint8(color.z()) << 16) |
+                (quantizeUint8(color.w()) << 24) 
+            );
         }
 
         newMesh.indexOffset = (uint32_t)scene.cpu.indices.size();
@@ -503,28 +531,28 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
 
     gpu.normalBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.normals))
-        .setFormat(nvrhi::Format::RGB32_FLOAT)
+        .setFormat(nvrhi::Format::RGBA8_SNORM)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
     gpu.tangentBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.tangents))
-        .setFormat(nvrhi::Format::RGBA32_FLOAT)
+        .setFormat(nvrhi::Format::RGBA8_SNORM)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
     gpu.texCoordBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.texCoords))
-        .setFormat(nvrhi::Format::RG32_FLOAT)
+        .setFormat(nvrhi::Format::RG16_FLOAT)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
     gpu.colorBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.colors))
-        .setFormat(nvrhi::Format::RGBA32_FLOAT)
+        .setFormat(nvrhi::Format::RGBA8_UNORM)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));

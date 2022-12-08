@@ -151,6 +151,8 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
             .setWidth(luminanceWidth)
             .setHeight(luminanceHeight)
             .setFormat(nvrhi::Format::R16_FLOAT)
+            .setInitialState(nvrhi::ResourceStates::RenderTarget)
+            .setKeepInitialState(true)
             .setIsRenderTarget(true));
 
         pass.framebuffer = device.nvrhi->createFramebuffer(nvrhi::FramebufferDesc()
@@ -184,6 +186,8 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
     auto luminanceLerpedTextureDesc = nvrhi::TextureDesc()
         .setWidth(1)
         .setHeight(1)
+        .setInitialState(nvrhi::ResourceStates::ShaderResource)
+        .setKeepInitialState(true)
         .setFormat(nvrhi::Format::R16_FLOAT);
 
     luminanceLerpedTexture = device.nvrhi->createTexture(luminanceLerpedTextureDesc);
@@ -241,7 +245,7 @@ void Renderer::update(const App& app, float deltaTime, Scene& scene)
     if (!scene.gpu.bvh)
         scene.createGpuResources(app.device, app.shaderLibrary.shaderMapping);
 
-    assert(scene.gpu.topLevelAccelStruct);
+    assert(scene.gpu.bvh);
 
     if (!bindingSet)
     {

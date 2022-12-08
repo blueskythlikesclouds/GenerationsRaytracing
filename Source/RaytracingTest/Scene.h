@@ -72,10 +72,10 @@ struct Scene
         std::vector<Instance> instances;
 
         std::vector<Eigen::Vector3f> vertices;
-        std::vector<Eigen::Vector3f> normals;
-        std::vector<Eigen::Vector4f> tangents;
-        std::vector<Eigen::Vector2f> texCoords;
-        std::vector<Eigen::Vector4f> colors;
+        std::vector<uint32_t> normals;
+        std::vector<uint32_t> tangents;
+        std::vector<uint32_t> texCoords;
+        std::vector<uint32_t> colors;
         std::vector<uint16_t> indices;
 
         Eigen::Vector4f lightDirection;
