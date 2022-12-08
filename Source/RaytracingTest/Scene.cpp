@@ -107,13 +107,6 @@ struct SceneLoader
                     tangent.z() = value.z;
                     break;
 
-                case hl::hh::mirage::raw_vertex_type::binormal:
-                {
-                    const Eigen::Vector3f binormal(value.x, value.y, value.z);
-                    tangent.w() = normal.cross(tangent.head<3>()).dot(binormal) > 0.0f ? 1.0f : -1.0f;
-                    break;
-                }
-
                 case hl::hh::mirage::raw_vertex_type::texcoord:
                     texCoord.x() = value.x;
                     texCoord.y() = value.y;
@@ -127,6 +120,35 @@ struct SceneLoader
                     break;
                 }
             }
+
+            for (hl::u32 j = 0; ; j++)
+            {
+                const hl::hh::mirage::raw_vertex_element& element = mesh->vertexElements[j];
+
+                if (element.stream == 0xFF)
+                    break;
+
+                if (element.index > 0)
+                    continue;
+
+                hl::vec4 value;
+                element.convert_to_vec4((char*)mesh->vertices.get() + i * mesh->vertexSize + element.offset, value);
+
+                switch (element.type)
+                {
+
+                case hl::hh::mirage::raw_vertex_type::binormal:
+                {
+                    const Eigen::Vector3f binormal(value.x, value.y, value.z);
+                    tangent.w() = normal.cross(tangent.head<3>()).dot(binormal) > 0.0f ? 1.0f : -1.0f;
+                    break;
+                }
+
+                }
+            }
+
+            normal.normalize();
+            tangent.head<3>().normalize();
 
             scene.cpu.vertices.push_back(position);
 
