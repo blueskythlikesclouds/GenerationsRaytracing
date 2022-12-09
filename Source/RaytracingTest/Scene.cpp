@@ -467,6 +467,9 @@ struct SceneLoader
                 loadLight(file.file_data());
         }
 
+        if (scene.cpu.localLights.empty())
+            scene.cpu.localLights.emplace_back();
+
         hl::archive stage = ArchiveDatabase::load(directoryPath + "/Stage.pfd");
 
         for (auto& file : stage)
