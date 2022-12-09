@@ -429,7 +429,7 @@ struct SceneLoader
             if (hl::text::strstr(file.name(), HL_NTEXT(".dds")) || hl::text::strstr(file.name(), HL_NTEXT(".DDS")))
             {
                 auto name = fromNchar(file.name());
-                *strchr(name.data(), '.') = '\0';
+                *strrchr(name.data(), '.') = '\0';
 
                 textureMap.emplace(name.data(), (uint32_t)scene.cpu.textures.size());
                 loadTexture(file.file_data(), file.size());
@@ -441,7 +441,7 @@ struct SceneLoader
             if (hl::text::strstr(file.name(), HL_NTEXT(".material")))
             {
                 auto name = fromNchar(file.name());
-                *strchr(name.data(), '.') = '\0';
+                *strrchr(name.data(), '.') = '\0';
 
                 materialMap.emplace(name.data(), (uint32_t)scene.cpu.materials.size());
                 loadMaterial(file.file_data());
