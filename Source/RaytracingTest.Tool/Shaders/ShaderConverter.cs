@@ -189,6 +189,28 @@ public static class ShaderConverter
         }
     }
 
+    private static bool IsOutputColorClamp(Shader shader, Argument argument)
+    {
+        int register = int.Parse(argument.Token.AsSpan()[1..]);
+
+        if (!shader.Definitions.TryGetValue(register, out string definition))
+            return false;
+
+        var split = definition.Split(',', StringSplitOptions.TrimEntries);
+        string value;
+
+        switch (argument.Swizzle.GetSwizzle(0))
+        {
+            case Swizzle.X: value = split[0]; break;
+            case Swizzle.Y: value = split[1]; break;
+            case Swizzle.Z: value = split[2]; break;
+            case Swizzle.W: value = split[3]; break;
+            default: return false;
+        }
+
+        return value == "4";
+    }
+
     private static void WriteShaderFunction(StringBuilder stringBuilder, string functionName, Shader shader, ShaderMapping shaderMapping)
     {
         string inName = shader.Type == ShaderType.Pixel ? "ps" : "ia";
@@ -341,6 +363,20 @@ public static class ShaderConverter
         {
             if (instruction.Arguments != null)
             {
+                if (instruction.OpCode == "min")
+                {
+                    if (IsOutputColorClamp(shader, instruction.Arguments[1]))
+                    {
+                        instruction.OpCode = "mov";
+                        instruction.Arguments[1] = instruction.Arguments[2];
+                    }
+                    else if (IsOutputColorClamp(shader, instruction.Arguments[2]))
+                    {
+                        instruction.OpCode = "mov";
+                        instruction.Arguments[2] = instruction.Arguments[1];
+                    }
+                }
+
                 foreach (var argument in instruction.Arguments)
                 {
                     if (variableMap.TryGetValue(argument.Token, out string constantName))
