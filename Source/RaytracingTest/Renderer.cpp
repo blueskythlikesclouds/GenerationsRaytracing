@@ -285,7 +285,7 @@ void Renderer::update(const App& app, float deltaTime, Scene& scene)
 
     commandList->open();
 
-    ConstantBuffer bufferData;
+    ConstantBuffer bufferData {};
 
     const float fieldOfView = app.camera.fieldOfView / 180.0f * (float)M_PI;
     const float aspectRatio = (float)app.window.width / (float)app.window.height;

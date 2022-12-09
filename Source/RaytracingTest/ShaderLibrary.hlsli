@@ -97,8 +97,8 @@ float3 TraceGlobalIllumination(inout Payload payload, float3 normal)
 
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    ray.Direction = GetCosHemisphereSample(payload.random, normal);
-    ray.TMin = 0.01f;
+    ray.Direction = normalize(GetCosHemisphereSample(payload.random, normal));
+    ray.TMin = 0.001f;
     ray.TMax = Z_MAX;
 
     Payload payload1 = (Payload)0;
@@ -119,7 +119,7 @@ float3 TraceReflection(inout Payload payload, float3 normal)
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     ray.Direction = normalize(reflect(WorldRayDirection(), normal));
-    ray.TMin = 0.01f;
+    ray.TMin = 0.001f;
     ray.TMax = Z_MAX;
 
     Payload payload1 = (Payload)0;
@@ -140,7 +140,7 @@ float3 TraceRefraction(inout Payload payload, float3 normal)
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     ray.Direction = normalize(refract(WorldRayDirection(), normal, 1.0 / 1.333));
-    ray.TMin = 0.01f;
+    ray.TMin = 0.001f;
     ray.TMax = Z_MAX;
 
     Payload payload1 = (Payload)0;
@@ -173,7 +173,7 @@ float TraceShadow(inout uint random)
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
-    ray.TMin = 0.01f;
+    ray.TMin = 0.001f;
     ray.TMax = Z_MAX;
 
     Payload payload = (Payload)0;
@@ -202,7 +202,7 @@ void RayGeneration()
     RayDesc ray;
     ray.Origin = g_Globals.position;
     ray.Direction = normalize(mul(g_Globals.rotation, float4(ndc.x * g_Globals.tanFovy * g_Globals.aspectRatio, -ndc.y * g_Globals.tanFovy, -1.0, 0.0)).xyz);
-    ray.TMin = 0.01f;
+    ray.TMin = 0.001f;
     ray.TMax = Z_MAX;
 
     TraceRay(g_BVH, 0, INSTANCE_MASK_OPAQUE_OR_PUNCH | INSTANCE_MASK_TRANS_OR_SPECIAL, 0, 1, 0, ray, payload);
@@ -218,7 +218,7 @@ void Miss(inout Payload payload : SV_RayPayload)
         RayDesc ray;
         ray.Origin = 0.0;
         ray.Direction = WorldRayDirection();
-        ray.TMin = 0.01f;
+        ray.TMin = 0.001f;
         ray.TMax = Z_MAX;
 
         payload.depth = 0xFF;

@@ -410,7 +410,6 @@ public static class ShaderConverter
                     stringBuilder.AppendFormat("\tiaParams.{0}.xyz = mul(ObjectToWorld3x4(), float4(", name);
                     WriteBarycentricLerp(stringBuilder, "g_NormalBuffer");
                     stringBuilder.AppendLine(", 0));");
-                    stringBuilder.AppendFormat("\tif (dot(WorldRayDirection(), iaParams.{0}.xyz) > 0) iaParams.{0}.xyz *= -1;\n", name);
                     break;
 
                 case "TANGENT":
@@ -456,7 +455,6 @@ public static class ShaderConverter
         if (hasGlobalIllumination || hasReflection || hasRefraction)
         {
             stringBuilder.AppendLine("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;");
-            stringBuilder.AppendLine("\tif (dot(WorldRayDirection(), normal) > 0) normal *= -1;");
         }
 
         stringBuilder.AppendFormat("\tfloat3 globalIllumination = {0};\n", hasGlobalIllumination ? "TraceGlobalIllumination(payload, normal)" : "0");
@@ -476,7 +474,7 @@ public static class ShaderConverter
         foreach (var (semantic, name) in pixelShader.InSemantics)
         {
             if (name == "vPos")
-                stringBuilder.AppendFormat("\tpsParams.{0}.xy = (float2)DispatchRaysDimensions().xy;\n", name);
+                stringBuilder.AppendFormat("\tpsParams.{0}.xy = (float2)DispatchRaysIndex().xy;\n", name);
 
             else if (vertexShader.OutSemantics.TryGetValue(semantic, out string targetName))
                 stringBuilder.AppendFormat("\tpsParams.{0} = vsParams.{1};\n", name, targetName);
