@@ -36,7 +36,7 @@ struct ConstantBuffer
     float middleGray;
     float lumMin;
     float lumMax;
-    uint32_t padding1;
+    uint32_t lightCount;
 };
 
 Renderer::Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibraryHolder)
@@ -84,6 +84,7 @@ Renderer::Renderer(const Device& device, const Window& window, const ShaderLibra
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(7))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(8))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(9))
+        .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(10))
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
         .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
@@ -261,6 +262,7 @@ void Renderer::update(const App& app, float deltaTime, Scene& scene)
             .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(7, scene.gpu.texCoordBuffer))
             .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(8, scene.gpu.colorBuffer))
             .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(9, scene.gpu.indexBuffer))
+            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(10, scene.gpu.lightBuffer))
             .addItem(nvrhi::BindingSetItem::Texture_UAV(0, texture))
             .addItem(nvrhi::BindingSetItem::Sampler(0, linearRepeatSampler)), bindingLayout);
 
@@ -297,8 +299,8 @@ void Renderer::update(const App& app, float deltaTime, Scene& scene)
     bufferData.skyIntensityScale = scene.cpu.effect.defaults.skyIntensityScale;
     bufferData.deltaTime = deltaTime;
 
-    bufferData.lightDirection = scene.cpu.lightDirection;
-    bufferData.lightColor = scene.cpu.lightColor;
+    bufferData.lightDirection.head<3>() = scene.cpu.globalLight.position;
+    bufferData.lightColor.head<3>() = scene.cpu.globalLight.color;
 
     bufferData.lightScatteringColor = scene.cpu.effect.lightScattering.color;
     bufferData.rayMieRay2Mie2 = scene.cpu.effect.lightScattering.gpu.rayMieRay2Mie2;
@@ -313,6 +315,8 @@ void Renderer::update(const App& app, float deltaTime, Scene& scene)
     bufferData.middleGray = scene.cpu.effect.hdr.middleGray;
     bufferData.lumMin = scene.cpu.effect.hdr.lumMin;
     bufferData.lumMax = scene.cpu.effect.hdr.lumMax;
+
+    bufferData.lightCount = (uint32_t)scene.cpu.localLights.size();
 
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
 

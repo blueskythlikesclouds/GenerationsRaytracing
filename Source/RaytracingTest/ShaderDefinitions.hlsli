@@ -45,6 +45,7 @@ struct cbGlobals
     float middleGray;
     float lumMin;
     float lumMax;
+    uint lightCount;
 };
 
 ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);

@@ -372,8 +372,28 @@ struct SceneLoader
 
         if (light->type == hl::hh::mirage::raw_light_type::directional)
         {
-            memcpy(&scene.cpu.lightDirection, &light->directionalData.dir, sizeof(light->directionalData.dir));
-            memcpy(&scene.cpu.lightColor, &light->directionalData.color, sizeof(light->directionalData.color));
+            scene.cpu.globalLight.position.x() = light->directionalData.dir.x;
+            scene.cpu.globalLight.position.y() = light->directionalData.dir.y;
+            scene.cpu.globalLight.position.z() = light->directionalData.dir.z;
+            scene.cpu.globalLight.position.normalize();
+
+            scene.cpu.globalLight.color.x() = light->directionalData.color.x;
+            scene.cpu.globalLight.color.y() = light->directionalData.color.y;
+            scene.cpu.globalLight.color.z() = light->directionalData.color.z;
+        }
+        else
+        {
+            auto& omniLight = scene.cpu.localLights.emplace_back();
+
+            omniLight.position.x() = light->pointData.pos.x;
+            omniLight.position.y() = light->pointData.pos.y;
+            omniLight.position.z() = light->pointData.pos.z;
+            omniLight.outerRadius = light->pointData.range.z;
+
+            omniLight.color.x() = light->pointData.color.x;
+            omniLight.color.y() = light->pointData.color.y;
+            omniLight.color.z() = light->pointData.color.z;
+            omniLight.innerRadius = light->pointData.range.w;
         }
     }
 
@@ -587,6 +607,13 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         .setKeepInitialState(true)
         .setIsAccelStructBuildInput(true));
 
+    gpu.lightBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+        .setByteSize(vectorByteSize(cpu.localLights))
+        .setFormat(nvrhi::Format::RGBA32_FLOAT)
+        .setCanHaveTypedViews(true)
+        .setInitialState(nvrhi::ResourceStates::ShaderResource)
+        .setKeepInitialState(true));
+
     std::vector<nvrhi::rt::AccelStructDesc> blasDescs;
 
     for (const auto& model : cpu.models)
@@ -693,6 +720,7 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
     commandList->writeBuffer(gpu.texCoordBuffer, cpu.texCoords.data(), vectorByteSize(cpu.texCoords));
     commandList->writeBuffer(gpu.colorBuffer, cpu.colors.data(), vectorByteSize(cpu.colors));
     commandList->writeBuffer(gpu.indexBuffer, cpu.indices.data(), vectorByteSize(cpu.indices));
+    commandList->writeBuffer(gpu.lightBuffer, cpu.localLights.data(), vectorByteSize(cpu.localLights));
 
     for (size_t i = 0; i < blasDescs.size(); i++)
         nvrhi::utils::BuildBottomLevelAccelStruct(commandList, gpu.modelBVHs[i], blasDescs[i]);

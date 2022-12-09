@@ -60,6 +60,14 @@ struct Instance
     }
 };
 
+struct Light
+{
+    Eigen::Vector3f position;
+    float outerRadius;
+    Eigen::Vector3f color;
+    float innerRadius;
+};
+
 struct Scene
 {
     struct CPU
@@ -78,8 +86,8 @@ struct Scene
         std::vector<uint32_t> colors;
         std::vector<uint16_t> indices;
 
-        Eigen::Vector4f lightDirection;
-        Eigen::Vector4f lightColor;
+        Light globalLight;
+        std::vector<Light> localLights;
 
         SceneEffect effect;
     } cpu;
@@ -101,6 +109,7 @@ struct Scene
         nvrhi::BufferHandle texCoordBuffer;
         nvrhi::BufferHandle colorBuffer;
         nvrhi::BufferHandle indexBuffer;
+        nvrhi::BufferHandle lightBuffer;
     } gpu;
 
     void loadCpuResources(const std::string& directoryPath);

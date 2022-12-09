@@ -158,6 +158,18 @@ public static class ShaderConverter
                         stringBuilder.Append("g_Globals.eyeLightAttribute");
                         break;
 
+                    case "mrgLocalLight0_Position":
+                        stringBuilder.Append("float4(g_LightBuffer[lightIndex + 0].xyz, 0)");
+                        break;        
+                    
+                    case "mrgLocalLight0_Color":
+                        stringBuilder.Append("float4(g_LightBuffer[lightIndex + 1].rgb * g_Globals.lightCount, 0)");
+                        break;   
+                    
+                    case "mrgLocalLight0_Range":
+                        stringBuilder.Append("float4(0, 0, g_LightBuffer[lightIndex + 0].w, g_LightBuffer[lightIndex + 1].w)");
+                        break;
+
                     default:
                         stringBuilder.Append("0");
                         break;
@@ -439,6 +451,7 @@ public static class ShaderConverter
         bool hasGlobalIllumination = isClosestHit && (vertexShader.Constants.Any(x => x.Name == "g_aLightField") || pixelShader.Constants.Any(x => x.Name == "g_aLightField"));
         bool hasReflection = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_ReflectionMapSampler" || x.Name == "g_ReflectionMapSampler2");
         bool hasRefraction = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler" || x.Name == "g_DepthSampler");
+        bool hasLocalLight = isClosestHit && pixelShader.Constants.Any(x => x.Name.StartsWith("mrgLocalLight0_"));
 
         if (hasGlobalIllumination || hasReflection || hasRefraction)
         {
@@ -450,6 +463,7 @@ public static class ShaderConverter
         stringBuilder.AppendFormat("\tfloat3 reflection = {0};\n", hasReflection ? "TraceReflection(payload, normal)" : "0");
         stringBuilder.AppendFormat("\tfloat3 refraction = {0};\n", hasRefraction ? "TraceRefraction(payload, normal)" : "0");
         stringBuilder.AppendFormat("\tfloat shadow = {0};\n", hasGlobalIllumination ? "TraceShadow(payload.random)" : "1");
+        stringBuilder.AppendFormat("\tuint lightIndex = {0};\n", hasLocalLight ? "2 * (NextRandomUint(payload.random) % g_Globals.lightCount)" : "0");
 
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
 

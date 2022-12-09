@@ -27,10 +27,19 @@ foreach (var (databaseData, shaderListData) in archiveDatabase.GetMany<ShaderLis
         defaultPixelShaderPermutation.VertexShaderPermutations.First(x => x.Name.Equals("none"));
 
     var (_, vertexShaderData) = archiveDatabase.Get<ShaderData>(noneVertexShaderPermutation.ShaderName + "_ConstTexCoord.vertexshader");
-    var (_, pixelShaderData) = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoLight_NoGI_ConstTexCoord.pixelshader");
+    var (_, pixelShaderData) = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoGI_ConstTexCoord.pixelshader");
 
     var vertexShaderCodeData = archiveDatabase.Get(vertexShaderData.CodeName + ".wvu");
     var pixelShaderCodeData = archiveDatabase.Get(pixelShaderData.CodeName + ".wpu");
+
+    if (vertexShaderCodeData == null || pixelShaderCodeData == null)
+    {
+        vertexShaderData = archiveDatabase.Get<ShaderData>(noneVertexShaderPermutation.ShaderName + ".vertexshader").Data;
+        pixelShaderData = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoGI.pixelshader").Data;
+
+        vertexShaderCodeData = archiveDatabase.Get(vertexShaderData.CodeName + ".wvu");
+        pixelShaderCodeData = archiveDatabase.Get(pixelShaderData.CodeName + ".wpu");
+    }
 
     var shaderMapping = new ShaderMapping();
 

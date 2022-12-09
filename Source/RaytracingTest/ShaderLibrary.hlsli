@@ -34,6 +34,8 @@ Buffer<float4> g_ColorBuffer : register(t8, space0);
 
 Buffer<uint> g_IndexBuffer : register(t9, space0);
 
+Buffer<float4> g_LightBuffer : register(t10, space0);
+
 SamplerState g_LinearRepeatSampler : register(s0, space0);
 
 RWTexture2D<float4> g_Output : register(u0, space0);
@@ -56,15 +58,15 @@ uint InitializeRandom(uint val0, uint val1, uint backoff = 16)
     return v0;
 }
 
-void NextRandomUint(inout uint s)
+uint NextRandomUint(inout uint s)
 {
     s = (1664525u * s + 1013904223u);
+    return s;
 }
 
 float NextRandom(inout uint s)
 {
-    NextRandomUint(s);
-    return float(s & 0x00FFFFFF) / float(0x01000000);
+    return float(NextRandomUint(s) & 0x00FFFFFF) / float(0x01000000);
 }
 
 float3 GetPerpendicularVector(float3 u)

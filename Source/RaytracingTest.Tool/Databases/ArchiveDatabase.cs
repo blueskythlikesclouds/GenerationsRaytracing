@@ -177,7 +177,7 @@ public class ArchiveDatabase
 
     public DatabaseData Get(string name)
     {
-        return Contents.First(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        return Contents.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 
     public IEnumerable<DatabaseData> GetMany(string extension) 
@@ -192,6 +192,8 @@ public class ArchiveDatabase
     public (DatabaseData DatabaseData, T Data) Get<T>(string name) where T : IBinarySerializable, new()
     {
         var databaseData = Get(name);
+        if (databaseData == null)
+            return (null, default);
 
         var data = new T();
         data.Load(databaseData.Data);
