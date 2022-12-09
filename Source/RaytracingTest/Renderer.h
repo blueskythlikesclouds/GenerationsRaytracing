@@ -53,6 +53,8 @@ struct Renderer
 
     int sampleCount = 0;
 
+    float aspectRatio = 0.0f;
+
     Renderer(const Device& device, const Window& window, const ShaderLibrary& shaderLibraryHolder);
 
     void update(const App& app, float deltaTime, Scene& scene);

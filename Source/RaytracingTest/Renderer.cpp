@@ -285,10 +285,21 @@ void Renderer::update(const App& app, float deltaTime, Scene& scene)
 
     commandList->open();
 
-    ConstantBuffer bufferData {};
-
     const float fieldOfView = app.camera.fieldOfView / 180.0f * (float)M_PI;
-    const float aspectRatio = (float)app.window.width / (float)app.window.height;
+
+    RECT clientRect;
+    GetClientRect(app.window.handle, &clientRect);
+
+    const float newAspectRatio = 
+        (float)(clientRect.right - clientRect.left) /
+        (float)(clientRect.bottom - clientRect.top);
+
+    if (aspectRatio != newAspectRatio)
+        sampleCount = 0;
+
+    aspectRatio = newAspectRatio;
+
+    ConstantBuffer bufferData{};
 
     bufferData.position = app.camera.position;
     bufferData.tanFovy = tan(fieldOfView / 2.0f);

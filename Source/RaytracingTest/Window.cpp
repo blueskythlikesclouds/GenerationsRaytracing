@@ -33,13 +33,39 @@ Window::Window(const Device& device, int width, int height)
 
     RegisterClassEx(&wndClassEx);
 
+    MONITORINFO monitorInfo;
+    monitorInfo.cbSize = sizeof(MONITORINFO);
+
+    GetMonitorInfo(MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY), &monitorInfo);
+
+    int workWidth = monitorInfo.rcWork.right - monitorInfo.rcWork.left;
+    int workHeight = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
+
+    int x = monitorInfo.rcWork.left;
+    int y = monitorInfo.rcWork.top;
+
+    if (width > workWidth)
+    {
+        workWidth = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left;
+        x = monitorInfo.rcMonitor.left;
+    }
+
+    if (height > workHeight)
+    {
+        workHeight = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
+        y = monitorInfo.rcMonitor.top;
+    }
+
+    x += (workWidth - width) / 2;
+    y += (workHeight - height) / 2;
+
     handle = CreateWindowEx(
         WS_EX_APPWINDOW,
         wndClassEx.lpszClassName,
         wndClassEx.lpszClassName,
         WS_OVERLAPPEDWINDOW,
-        0,
-        0,
+        x,
+        y,
         width,
         height,
         nullptr,
@@ -49,7 +75,27 @@ Window::Window(const Device& device, int width, int height)
 
     assert(handle);
 
-    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)this);
+    RECT windowRect, clientRect;
+    GetWindowRect(handle, &windowRect);
+    GetClientRect(handle, &clientRect);
+
+    int windowWidth = windowRect.right - windowRect.left;
+    int windowHeight = windowRect.bottom - windowRect.top;
+
+    int clientWidth = clientRect.right - clientRect.left;
+    int clientHeight = clientRect.bottom - clientRect.top;
+
+    int deltaX = windowWidth - clientWidth;
+    int deltaY = windowHeight - clientHeight;
+
+    SetWindowPos(
+        handle,
+        HWND_TOP,
+        windowRect.left - deltaX / 2,
+        windowRect.top - deltaY / 2, 
+        width + deltaX, 
+        height + deltaY,
+        SWP_FRAMECHANGED);
 
     const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
     const DWORD currentThreadId = GetCurrentThreadId();
@@ -58,6 +104,8 @@ Window::Window(const Device& device, int width, int height)
     BringWindowToTop(handle);
     ShowWindow(handle, SW_SHOW);
     AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
+
+    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)this);
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
     swapChainDesc.Width = (UINT)width;
