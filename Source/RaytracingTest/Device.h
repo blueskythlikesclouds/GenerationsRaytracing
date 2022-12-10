@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-class MessageCallback;
 struct Window;
 
 struct Device
@@ -14,7 +13,6 @@ struct Device
     } d3d12;
 
     ComPtr<IDXGIFactory4> dxgiFactory;
-    std::unique_ptr<MessageCallback> messageCallback;
     nvrhi::DeviceHandle nvrhi;
 
     Device();

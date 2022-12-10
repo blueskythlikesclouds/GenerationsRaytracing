@@ -1,26 +1,24 @@
 ﻿#include "Window.h"
-
-#include "Device.h"
+#include "App.h"
 
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
-    Window* window = (Window*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    App* app = (App*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
-    if (window->input.wndProc(hWnd, Msg, wParam, lParam))
+    if (app->input.wndProc(hWnd, Msg, wParam, lParam))
         return 0;
 
     switch (Msg)
     {
     case WM_CLOSE:
-        window->shouldClose = true;
+        app->window.shouldClose = true;
         return 0;
     }
 
     return DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
-Window::Window(const Device& device, int width, int height)
-    : width(width), height(height)
+Window::Window(const App& app)
 {
     WNDCLASSEX wndClassEx {};
 
@@ -44,20 +42,20 @@ Window::Window(const Device& device, int width, int height)
     int x = monitorInfo.rcWork.left;
     int y = monitorInfo.rcWork.top;
 
-    if (width > workWidth)
+    if (app.width > workWidth)
     {
         workWidth = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left;
         x = monitorInfo.rcMonitor.left;
     }
 
-    if (height > workHeight)
+    if (app.height > workHeight)
     {
         workHeight = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
         y = monitorInfo.rcMonitor.top;
     }
 
-    x += (workWidth - width) / 2;
-    y += (workHeight - height) / 2;
+    x += (workWidth - app.width) / 2;
+    y += (workHeight - app.height) / 2;
 
     handle = CreateWindowEx(
         WS_EX_APPWINDOW,
@@ -66,8 +64,8 @@ Window::Window(const Device& device, int width, int height)
         WS_OVERLAPPEDWINDOW,
         x,
         y,
-        width,
-        height,
+        app.width,
+        app.height,
         nullptr,
         nullptr,
         nullptr,
@@ -93,8 +91,8 @@ Window::Window(const Device& device, int width, int height)
         HWND_TOP,
         windowRect.left - deltaX / 2,
         windowRect.top - deltaY / 2, 
-        width + deltaX, 
-        height + deltaY,
+        app.width + deltaX, 
+        app.height + deltaY,
         SWP_FRAMECHANGED);
 
     const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
@@ -105,11 +103,11 @@ Window::Window(const Device& device, int width, int height)
     ShowWindow(handle, SW_SHOW);
     AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
 
-    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)this);
+    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)&app);
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
-    swapChainDesc.Width = (UINT)width;
-    swapChainDesc.Height = (UINT)height;
+    swapChainDesc.Width = (UINT)app.width;
+    swapChainDesc.Height = (UINT)app.height;
     swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swapChainDesc.Stereo = FALSE;
     swapChainDesc.SampleDesc.Count = 1;
@@ -122,7 +120,7 @@ Window::Window(const Device& device, int width, int height)
     swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
     ComPtr<IDXGISwapChain1> swapChain;
-    device.dxgiFactory->CreateSwapChainForHwnd(device.d3d12.graphicsCommandQueue.Get(), handle, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf());
+    app.device.dxgiFactory->CreateSwapChainForHwnd(app.device.d3d12.graphicsCommandQueue.Get(), handle, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf());
     assert(swapChain);
 
     swapChain.As(&dxgi.swapChain);
@@ -143,21 +141,19 @@ Window::Window(const Device& device, int width, int height)
             .setInitialState(nvrhi::ResourceStates::Present)
             .setKeepInitialState(true);
 
-        nvrhi.swapChainTextures.push_back(device.nvrhi->createHandleForNativeTexture(nvrhi::ObjectTypes::D3D12_Resource, backBuffer.Get(), textureDesc));
+        nvrhi.swapChainTextures.push_back(app.device.nvrhi->createHandleForNativeTexture(nvrhi::ObjectTypes::D3D12_Resource, backBuffer.Get(), textureDesc));
         assert(nvrhi.swapChainTextures.back());
 
         const auto framebufferDesc = nvrhi::FramebufferDesc()
             .addColorAttachment(nvrhi.swapChainTextures.back());
 
-        nvrhi.swapChainFramebuffers.push_back(device.nvrhi->createFramebuffer(framebufferDesc));
+        nvrhi.swapChainFramebuffers.push_back(app.device.nvrhi->createFramebuffer(framebufferDesc));
         assert(nvrhi.swapChainFramebuffers.back());
     }
 }
 
-void Window::processMessages()
+void Window::processMessages() const
 {
-    input.update();
-
     MSG msg;
     while (PeekMessage(&msg, handle, 0, 0, TRUE))
     {
@@ -169,14 +165,4 @@ void Window::processMessages()
 void Window::present() const
 {
     dxgi.swapChain->Present(1, 0);
-}
-
-nvrhi::ITexture* Window::getCurrentSwapChainTexture() const
-{
-    return nvrhi.swapChainTextures[dxgi.swapChain->GetCurrentBackBufferIndex()];
-}
-
-nvrhi::IFramebuffer* Window::getCurrentSwapChainFramebuffer() const
-{
-    return nvrhi.swapChainFramebuffers[dxgi.swapChain->GetCurrentBackBufferIndex()];
 }

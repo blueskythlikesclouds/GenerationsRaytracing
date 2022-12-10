@@ -1,15 +1,10 @@
 ﻿#pragma once
 
-#include "Input.h"
-
-struct Device;
+struct App;
 
 struct Window
 {
-    int width = 0;
-    int height = 0;
     HWND handle = nullptr;
-    Input input;
 
     struct
     {
@@ -24,12 +19,14 @@ struct Window
 
     bool shouldClose = false;
 
-    Window(const Device& device, int width, int height);
+    Window(const App& app);
 
-    void processMessages();
+    void processMessages() const;
     void present() const;
 
-    nvrhi::ITexture* getCurrentSwapChainTexture() const;
-    nvrhi::IFramebuffer* getCurrentSwapChainFramebuffer() const;
+    int getBackBufferIndex() const
+    {
+        return dxgi.swapChain->GetCurrentBackBufferIndex();
+    }
 };
 

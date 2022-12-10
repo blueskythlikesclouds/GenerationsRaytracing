@@ -44,7 +44,7 @@ bool Input::wndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
     return true;
 }
 
-void Input::update()
+void Input::recordHistory()
 {
     prevCursorX = cursorX;
     prevCursorY = cursorY;

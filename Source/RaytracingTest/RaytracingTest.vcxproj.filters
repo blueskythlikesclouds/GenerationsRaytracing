@@ -176,12 +176,14 @@
       <Filter>Dependencies</Filter>
     </ClCompile>
     <ClCompile Include="SceneEffect.cpp" />
+    <ClCompile Include="ComputeLuminancePass.cpp" />
+    <ClCompile Include="RaytracingPass.cpp" />
+    <ClCompile Include="ToneMapPass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="Window.h" />
-    <ClInclude Include="MessageCallback.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="ArchiveDatabase.h" />
     <ClInclude Include="Path.h" />
@@ -195,6 +197,9 @@
     <ClInclude Include="ShaderLibrary.h" />
     <ClInclude Include="SceneEffect.h" />
     <ClInclude Include="Math.h" />
+    <ClInclude Include="ComputeLuminancePass.h" />
+    <ClInclude Include="RaytracingPass.h" />
+    <ClInclude Include="ToneMapPass.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Dependencies">

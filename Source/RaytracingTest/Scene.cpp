@@ -1,11 +1,10 @@
 ﻿#include "Scene.h"
 
+#include "App.h"
 #include "ArchiveDatabase.h"
-#include "Device.h"
 #include "Math.h"
 #include "Path.h"
 #include "ShaderDefinitions.hlsli"
-#include "ShaderMapping.h"
 #include "Utilities.h"
 
 struct SceneLoader
@@ -486,14 +485,14 @@ void Scene::loadCpuResources(const std::string& directoryPath)
     loader.load(directoryPath);
 }
 
-void Scene::createGpuResources(const Device& device, const ShaderMapping& shaderMapping)
+void Scene::createGpuResources(const App& app)
 {
     std::vector<std::vector<D3D12_SUBRESOURCE_DATA>> subResourcesPerTexture;
 
     for (const auto& texture : cpu.textures)
     {
         DirectX::LoadDDSTextureFromMemory(
-            device.nvrhi,
+            app.device.nvrhi,
             texture.data.get(),
             texture.dataSize,
             std::addressof(gpu.textures.emplace_back()),
@@ -509,9 +508,9 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
     {
         auto& gpuMaterial = materialBuffer.emplace_back();
 
-        const auto shaderPair = shaderMapping.map.find(material.shader);
+        const auto shaderPair = app.shaderLibrary.shaderMapping.map.find(material.shader);
 
-        if (shaderPair != shaderMapping.map.end())
+        if (shaderPair != app.shaderLibrary.shaderMapping.map.end())
         {
             for (auto& paramPair : material.parameters)
             {
@@ -549,7 +548,7 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         }
     }
 
-    gpu.materialBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.materialBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(materialBuffer))
         .setStructStride(vectorByteStride(materialBuffer))
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
@@ -560,49 +559,49 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
     for (const auto& mesh : cpu.meshes)
         meshBuffer.push_back({ mesh.vertexOffset, mesh.indexOffset, mesh.materialIndex, mesh.type });
 
-    gpu.meshBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.meshBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(meshBuffer))
         .setFormat(nvrhi::Format::RGBA32_UINT)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
-    gpu.vertexBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.vertexBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.vertices))
         .setFormat(nvrhi::Format::RGB32_FLOAT)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true)
         .setIsAccelStructBuildInput(true));
 
-    gpu.normalBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.normalBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.normals))
         .setFormat(nvrhi::Format::RGBA8_SNORM)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
-    gpu.tangentBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.tangentBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.tangents))
         .setFormat(nvrhi::Format::RGBA8_SNORM)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
-    gpu.texCoordBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.texCoordBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.texCoords))
         .setFormat(nvrhi::Format::RG16_FLOAT)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
-    gpu.colorBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.colorBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.colors))
         .setFormat(nvrhi::Format::RGBA8_UNORM)
         .setCanHaveTypedViews(true)
         .setInitialState(nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true));
 
-    gpu.indexBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.indexBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.indices))
         .setFormat(nvrhi::Format::R16_UINT)
         .setCanHaveTypedViews(true)
@@ -610,7 +609,7 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         .setKeepInitialState(true)
         .setIsAccelStructBuildInput(true));
 
-    gpu.lightBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+    gpu.lightBuffer = app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(cpu.localLights))
         .setFormat(nvrhi::Format::RGBA32_FLOAT)
         .setCanHaveTypedViews(true)
@@ -645,7 +644,7 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
             triangles.vertexStride = (uint32_t)vectorByteStride(cpu.vertices);
         }
 
-        gpu.modelBVHs.push_back(device.nvrhi->createAccelStruct(blasDesc));
+        gpu.modelBVHs.push_back(app.device.nvrhi->createAccelStruct(blasDesc));
     }
 
     std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
@@ -683,18 +682,14 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         .setIsTopLevel(true)
         .setBuildFlags(nvrhi::rt::AccelStructBuildFlags::PreferFastTrace);
 
-    gpu.bvh = device.nvrhi->createAccelStruct(bvhDesc
+    gpu.bvh = app.device.nvrhi->createAccelStruct(bvhDesc
         .setTopLevelMaxInstances(instanceDescs.size()));
 
-    gpu.shadowBVH = device.nvrhi->createAccelStruct(bvhDesc
+    gpu.shadowBVH = app.device.nvrhi->createAccelStruct(bvhDesc
         .setTopLevelMaxInstances(shadowInstanceDescs.size()));
 
-    gpu.skyBVH = device.nvrhi->createAccelStruct(bvhDesc
+    gpu.skyBVH = app.device.nvrhi->createAccelStruct(bvhDesc
         .setTopLevelMaxInstances(skyInstanceDescs.size()));
-
-    auto commandList = device.nvrhi->createCommandList();
-
-    commandList->open();
 
     for (size_t i = 0; i < subResourcesPerTexture.size(); i++)
     {
@@ -705,7 +700,7 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         {
             const auto& subResource = subResources[j];
 
-            commandList->writeTexture(
+            app.renderer.commandList->writeTexture(
                 gpu.textures[i],
                 j / texture->getDesc().mipLevels,
                 j % texture->getDesc().mipLevels,
@@ -715,25 +710,20 @@ void Scene::createGpuResources(const Device& device, const ShaderMapping& shader
         }
     }
 
-    commandList->writeBuffer(gpu.materialBuffer, materialBuffer.data(), vectorByteSize(materialBuffer));
-    commandList->writeBuffer(gpu.meshBuffer, meshBuffer.data(), vectorByteSize(meshBuffer));
-    commandList->writeBuffer(gpu.vertexBuffer, cpu.vertices.data(), vectorByteSize(cpu.vertices));
-    commandList->writeBuffer(gpu.normalBuffer, cpu.normals.data(), vectorByteSize(cpu.normals));
-    commandList->writeBuffer(gpu.tangentBuffer, cpu.tangents.data(), vectorByteSize(cpu.tangents));
-    commandList->writeBuffer(gpu.texCoordBuffer, cpu.texCoords.data(), vectorByteSize(cpu.texCoords));
-    commandList->writeBuffer(gpu.colorBuffer, cpu.colors.data(), vectorByteSize(cpu.colors));
-    commandList->writeBuffer(gpu.indexBuffer, cpu.indices.data(), vectorByteSize(cpu.indices));
-    commandList->writeBuffer(gpu.lightBuffer, cpu.localLights.data(), vectorByteSize(cpu.localLights));
+    app.renderer.commandList->writeBuffer(gpu.materialBuffer, materialBuffer.data(), vectorByteSize(materialBuffer));
+    app.renderer.commandList->writeBuffer(gpu.meshBuffer, meshBuffer.data(), vectorByteSize(meshBuffer));
+    app.renderer.commandList->writeBuffer(gpu.vertexBuffer, cpu.vertices.data(), vectorByteSize(cpu.vertices));
+    app.renderer.commandList->writeBuffer(gpu.normalBuffer, cpu.normals.data(), vectorByteSize(cpu.normals));
+    app.renderer.commandList->writeBuffer(gpu.tangentBuffer, cpu.tangents.data(), vectorByteSize(cpu.tangents));
+    app.renderer.commandList->writeBuffer(gpu.texCoordBuffer, cpu.texCoords.data(), vectorByteSize(cpu.texCoords));
+    app.renderer.commandList->writeBuffer(gpu.colorBuffer, cpu.colors.data(), vectorByteSize(cpu.colors));
+    app.renderer.commandList->writeBuffer(gpu.indexBuffer, cpu.indices.data(), vectorByteSize(cpu.indices));
+    app.renderer.commandList->writeBuffer(gpu.lightBuffer, cpu.localLights.data(), vectorByteSize(cpu.localLights));
 
     for (size_t i = 0; i < blasDescs.size(); i++)
-        nvrhi::utils::BuildBottomLevelAccelStruct(commandList, gpu.modelBVHs[i], blasDescs[i]);
+        nvrhi::utils::BuildBottomLevelAccelStruct(app.renderer.commandList, gpu.modelBVHs[i], blasDescs[i]);
 
-    commandList->buildTopLevelAccelStruct(gpu.bvh, instanceDescs.data(), instanceDescs.size());
-    commandList->buildTopLevelAccelStruct(gpu.shadowBVH, shadowInstanceDescs.data(), shadowInstanceDescs.size());
-    commandList->buildTopLevelAccelStruct(gpu.skyBVH, skyInstanceDescs.data(), skyInstanceDescs.size());
-
-    commandList->close();
-
-    device.nvrhi->executeCommandList(commandList);
-    device.nvrhi->waitForIdle();
+    app.renderer.commandList->buildTopLevelAccelStruct(gpu.bvh, instanceDescs.data(), instanceDescs.size());
+    app.renderer.commandList->buildTopLevelAccelStruct(gpu.shadowBVH, shadowInstanceDescs.data(), shadowInstanceDescs.size());
+    app.renderer.commandList->buildTopLevelAccelStruct(gpu.skyBVH, skyInstanceDescs.data(), skyInstanceDescs.size());
 }

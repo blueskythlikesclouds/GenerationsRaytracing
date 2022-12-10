@@ -15,7 +15,7 @@ int main(int argc, const char* argv[])
 
     const std::string directoryPath = getDirectoryPath(argv[0]);
 
-    App app(directoryPath.empty() ? "." : directoryPath, 1280, 720);
+    App app(1280, 720, directoryPath.empty() ? "." : directoryPath);
     app.run(scene);
 
     return 0;

@@ -1,7 +1,5 @@
 ﻿#include "Device.h"
 
-#include "MessageCallback.h"
-
 static ID3D12CommandQueue* createCommandQueue(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE type)
 {
     D3D12_COMMAND_QUEUE_DESC commandQueueDesc;
@@ -17,6 +15,24 @@ static ID3D12CommandQueue* createCommandQueue(ID3D12Device* device, D3D12_COMMAN
     assert(commandQueue);
     return commandQueue;
 }
+
+static class MessageCallback : public nvrhi::IMessageCallback
+{
+public:
+    void message(nvrhi::MessageSeverity severity, const char* messageText) override
+    {
+        constexpr const char* SEVERITY_TEXT[] =
+        {
+            "Info",
+            "Warning",
+            "Error",
+            "Fatal"
+};
+
+        printf("%s: %s\n", SEVERITY_TEXT[(int)severity], messageText);
+        assert(severity != nvrhi::MessageSeverity::Error && severity != nvrhi::MessageSeverity::Fatal);
+    }
+} messageCallback;
 
 Device::Device()
 {
@@ -49,10 +65,8 @@ Device::Device()
     d3d12.computeCommandQueue.Attach(createCommandQueue(d3d12.device.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE));
     d3d12.copyCommandQueue.Attach(createCommandQueue(d3d12.device.Get(), D3D12_COMMAND_LIST_TYPE_COPY));
 
-    messageCallback = std::make_unique<MessageCallback>();
-
     nvrhi::d3d12::DeviceDesc deviceDesc;
-    deviceDesc.errorCB = messageCallback.get();
+    deviceDesc.errorCB = &messageCallback;
     deviceDesc.pDevice = d3d12.device.Get();
     deviceDesc.pGraphicsCommandQueue = d3d12.graphicsCommandQueue.Get();
     deviceDesc.pComputeCommandQueue = d3d12.computeCommandQueue.Get();

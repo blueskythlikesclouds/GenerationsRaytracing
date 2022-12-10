@@ -1,12 +1,14 @@
 ﻿#pragma once
 
-struct Input;
+struct App;
 
 struct Camera
 {
     Eigen::Vector3f position;
     Eigen::Quaternionf rotation;
     float fieldOfView = 90.0f;
+    float aspectRatio = 1.0f;
+
     bool dirty = false;
 
     Camera() :
@@ -16,5 +18,5 @@ struct Camera
         
     }
 
-    void update(const Input& input, float deltaTime);
+    void update(const App& app);
 };

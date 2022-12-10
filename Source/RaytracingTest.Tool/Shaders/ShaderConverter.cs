@@ -392,7 +392,17 @@ public static class ShaderConverter
                         }
 
                         if (tracedGlobalIllumination || tracedReflection || tracedRefraction)
-                            Console.WriteLine("Shader uses raytraced constants before dot product with global light: {0}", functionName);
+                        {
+                            Console.Write(
+                                "Shader uses raytraced constants before dot product with global light: {0}",
+                                functionName);
+
+                            if (tracedGlobalIllumination) Console.Write(", GI");
+                            if (tracedReflection) Console.Write(", Reflection");
+                            if (tracedRefraction) Console.Write(", Refraction");
+
+                            Console.WriteLine();
+                        }
                     }
                 }
 
@@ -466,9 +476,17 @@ public static class ShaderConverter
 
             if (instrLine.Contains('{')) ++indent;
         }
-        
+
         if (!seenDotProductWithGlobalLight && (tracedGlobalIllumination || tracedReflection || tracedRefraction))
-            Console.WriteLine("Shader uses raytraced constants despite not using global light: {0}", functionName);
+        {
+            Console.Write("Shader uses raytraced constants despite not using global light: {0}", functionName);
+
+            if (tracedGlobalIllumination) Console.Write(", GI");
+            if (tracedReflection) Console.Write(", Reflection");
+            if (tracedRefraction) Console.Write(", Refraction");
+
+            Console.WriteLine();
+        }
 
         stringBuilder.AppendLine("}\n");
     }

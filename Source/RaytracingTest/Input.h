@@ -11,5 +11,5 @@ struct Input
     int prevCursorY = 0;
 
     bool wndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
-    void update();
+    void recordHistory();
 };

@@ -1,8 +1,8 @@
 ﻿#pragma once
+
 #include "SceneEffect.h"
 
-struct ShaderMapping;
-struct Device;
+struct App;
 
 struct Texture
 {
@@ -113,5 +113,5 @@ struct Scene
     } gpu;
 
     void loadCpuResources(const std::string& directoryPath);
-    void createGpuResources(const Device& device, const ShaderMapping& shaderMapping);
+    void createGpuResources(const App& app);
 };

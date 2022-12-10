@@ -1267,16 +1267,16 @@ namespace
         {
             desc.dimension = arraySize > 1 ? nvrhi::TextureDimension::Texture1DArray : nvrhi::TextureDimension::Texture1D;
         }
-    	else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+        else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
         {
             desc.dimension = arraySize > 1 ? nvrhi::TextureDimension::Texture2DArray : nvrhi::TextureDimension::Texture2D;
         }
-    	else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+        else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
         {
             desc.dimension = nvrhi::TextureDimension::Texture3D;
         }
 
-    	constexpr std::pair<nvrhi::Format, DXGI_FORMAT> FORMAT_MAPPING[] =
+        constexpr std::pair<nvrhi::Format, DXGI_FORMAT> FORMAT_MAPPING[] =
         {
             { nvrhi::Format::R8_UINT,           DXGI_FORMAT_R8_UINT             },
             { nvrhi::Format::R8_SINT,           DXGI_FORMAT_R8_SINT             },
@@ -1343,11 +1343,11 @@ namespace
 
         for (const auto& formatMapping : FORMAT_MAPPING)
         {
-	        if (formatMapping.second == format)
-	        {
+            if (formatMapping.second == format)
+            {
                 desc.format = formatMapping.first;
                 break;
-	        }
+            }
         }
 
         *texture = d3dDevice->createTexture(desc);

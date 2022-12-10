@@ -648,11 +648,14 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="RaytracingPass.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneEffect.cpp" />
     <ClCompile Include="ShaderLibrary.cpp" />
     <ClCompile Include="ShaderMapping.cpp" />
+    <ClCompile Include="ToneMapPass.cpp" />
+    <ClCompile Include="ComputeLuminancePass.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -663,9 +666,9 @@
     <ClInclude Include="File.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Math.h" />
-    <ClInclude Include="MessageCallback.h" />
     <ClInclude Include="Path.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="RaytracingPass.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneEffect.h" />
@@ -675,6 +678,8 @@
     </None>
     <ClInclude Include="ShaderLibrary.h" />
     <ClInclude Include="ShaderMapping.h" />
+    <ClInclude Include="ToneMapPass.h" />
+    <ClInclude Include="ComputeLuminancePass.h" />
     <ClInclude Include="Utilities.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>

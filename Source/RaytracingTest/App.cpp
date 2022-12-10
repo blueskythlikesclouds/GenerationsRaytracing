@@ -1,7 +1,14 @@
 ﻿#include "App.h"
 
-App::App(const std::string& directoryPath, int width, int height)
-    : device(), window(device, width, height), shaderLibrary(directoryPath), renderer(device, window, shaderLibrary)
+App::App(int width, int height, const std::string& directoryPath) :
+    width(width),
+    height(height),
+    device(),
+    window(*this),
+    input(),
+    shaderLibrary(*this, directoryPath),
+    renderer(*this),
+    camera()
 {
 }
 
@@ -12,11 +19,12 @@ void App::run(Scene& scene)
     while (!window.shouldClose)
     {
         const auto currentTime = std::chrono::system_clock::now();
-        const float deltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - prevTime).count();
+        deltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - prevTime).count();
 
+        input.recordHistory();
         window.processMessages();
-        camera.update(window.input, deltaTime);
-        renderer.update(*this, deltaTime, scene);
+        camera.update(*this);
+        renderer.execute(*this, scene);
         device.nvrhi->waitForIdle();
         window.present();
 
