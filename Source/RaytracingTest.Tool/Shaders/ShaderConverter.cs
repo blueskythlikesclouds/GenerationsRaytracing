@@ -48,11 +48,6 @@ public static class ShaderConverter
             stringBuilder.AppendFormat("\t{0}.{1}[1] = float4(0, 1, 0, 0);\n", outName, constant.Name);
             stringBuilder.AppendFormat("\t{0}.{1}[2] = float4(0, 0, 1, 0);\n", outName, constant.Name);
         }
-        else if (constant.Name == "g_aLightField")
-        {
-            for (int i = 0; i < constant.Size; i++)
-                stringBuilder.AppendFormat("\t{0}.{1}[{2}] = float4(globalIllumination, shadow);\n", outName, constant.Name, i);
-        }
         else if (constant.Size <= 1)
         {
             stringBuilder.AppendFormat("\t{0}.{1} = ", outName, constant.Name);
@@ -103,15 +98,6 @@ public static class ShaderConverter
 
                     case "mrgPlayableParam":
                         stringBuilder.Append("float4(-10000, 64, 0, 0)");
-                        break;
-
-                    case "g_ReflectionMapSampler":
-                    case "g_ReflectionMapSampler2":
-                        stringBuilder.Append("float4(reflection, 1.0)");
-                        break;
-
-                    case "g_FramebufferSampler":
-                        stringBuilder.Append("float4(refraction, 1.0)");
                         break;
 
                     case "g_DepthSampler":
@@ -315,7 +301,8 @@ public static class ShaderConverter
 
         stringBuilder.AppendLine("};\n");
 
-        stringBuilder.AppendFormat("void {1}_{0}(inout {1}_{2}Params {3}Params, inout {1}_{4}Params {5}Params)\n{{\n",
+        stringBuilder.AppendLine("template<bool AllowTraceRay>");
+        stringBuilder.AppendFormat("void {1}_{0}(inout Payload payload, inout float3 normal, inout {1}_{2}Params {3}Params, inout {1}_{4}Params {5}Params)\n{{\n",
             shader.Type == ShaderType.Pixel ? "PS" : "VS",
             functionName,
             inNameUpperCase,
@@ -359,8 +346,11 @@ public static class ShaderConverter
 
         int indent = 1;
 
-        bool alreadySeenRaytracedConstants = false;
-        bool seenDp3WithGlobalLight = false;
+        bool seenDotProductWithGlobalLight = false;
+        bool tracedGlobalIllumination = false;
+        bool tracedShadow = false;
+        bool tracedRefraction = false;
+        bool tracedReflection = false;
 
         foreach (var instruction in shader.Instructions)
         {
@@ -383,14 +373,7 @@ public static class ShaderConverter
                 foreach (var argument in instruction.Arguments)
                 {
                     if (variableMap.TryGetValue(argument.Token, out string constantName))
-                    {
                         argument.Token = constantName;
-
-                        alreadySeenRaytracedConstants |=
-                            (constantName.Contains("g_aLightField") && argument.Swizzle.GetSwizzle(0) != Swizzle.W) ||
-                            constantName.Contains("g_ReflectionMap") ||
-                            constantName.Contains("g_FramebufferSampler");
-                    }
 
                     else if (argument.Token[0] == 'c')
                         argument.Token = $"C[{argument.Token.Substring(1)}]";
@@ -398,11 +381,17 @@ public static class ShaderConverter
 
                 if (shader.Type == ShaderType.Pixel && instruction.OpCode == "dp3")
                 {
-                    if (instruction.Arguments.Any(x => x.Token.Contains("mrgGlobalLight_Direction")))
-                    {
-                        seenDp3WithGlobalLight = true;
+                    var globalLightArgument = instruction.Arguments.FirstOrDefault(x => x.Token.Contains("mrgGlobalLight_Direction"));
 
-                        if (alreadySeenRaytracedConstants)
+                    if (globalLightArgument != null)
+                    {
+                        if (!seenDotProductWithGlobalLight)
+                        {
+                            stringBuilder.AppendFormat("\tnormal = ({0}).xyz;\n", instruction.Arguments[1] == globalLightArgument ? instruction.Arguments[2] : instruction.Arguments[1]);
+                            seenDotProductWithGlobalLight = true;
+                        }
+
+                        if (tracedGlobalIllumination || tracedReflection || tracedRefraction)
                             Console.WriteLine("Shader uses raytraced constants before dot product with global light: {0}", functionName);
                     }
                 }
@@ -414,6 +403,53 @@ public static class ShaderConverter
                 {
                     instruction.OpCode = "mov";
                     instruction.Arguments[1]  = instruction.Arguments[2];
+                }
+
+                foreach (var argument in instruction.Arguments)
+                {
+                    if (argument.Token.Contains("g_aLightField"))
+                    {
+                        if (argument.Swizzle.GetSwizzle(0) == Swizzle.W)
+                        {
+                            if (!tracedShadow)
+                            {
+                                stringBuilder.AppendLine("\tfloat shadow = AllowTraceRay ? TraceShadow(payload.random) : 1;");
+                                tracedShadow = true;
+                            }
+
+                            argument.Token = "(shadow.xxxx)";
+                        }
+                        else
+                        {
+                            if (!tracedGlobalIllumination)
+                            {
+                                stringBuilder.AppendLine("\tfloat3 globalIllumination = AllowTraceRay ? TraceGlobalIllumination(payload, normal) : 0;");
+                                tracedGlobalIllumination = true;
+                            }
+
+                            argument.Token = "float4(globalIllumination, 1.0)";
+                        }
+                    }
+                    else if (argument.Token.Contains("g_ReflectionMap"))
+                    {
+                        if (!tracedReflection)
+                        {
+                            stringBuilder.AppendLine("\tfloat3 reflection = AllowTraceRay ? TraceReflection(payload, normal) : 0;");
+                            tracedReflection = true;
+                        }
+
+                        argument.Token = "float4(reflection, 1.0)";
+                    }
+                    else if (argument.Token.Contains("g_FramebufferSampler"))
+                    {
+                        if (!tracedRefraction)
+                        {
+                            stringBuilder.AppendLine("\tfloat3 refraction = AllowTraceRay ? TraceRefraction(payload, normal) : 0;");
+                            tracedRefraction = true;
+                        }
+
+                        argument.Token = "float4(refraction, 1.0)";
+                    }
                 }
             }
 
@@ -431,7 +467,7 @@ public static class ShaderConverter
             if (instrLine.Contains('{')) ++indent;
         }
         
-        if (!seenDp3WithGlobalLight && alreadySeenRaytracedConstants)
+        if (!seenDotProductWithGlobalLight && (tracedGlobalIllumination || tracedReflection || tracedRefraction))
             Console.WriteLine("Shader uses raytraced constants despite not using global light: {0}", functionName);
 
         stringBuilder.AppendLine("}\n");
@@ -451,6 +487,7 @@ public static class ShaderConverter
                 indices.z = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 2];
 
                 float3 uv = float3(1.0 - attributes.uv.x - attributes.uv.y, attributes.uv.x, attributes.uv.y);
+                float3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;
 
                 Material material = g_MaterialBuffer[mesh.z];
 
@@ -508,27 +545,15 @@ public static class ShaderConverter
         }
 
         bool isClosestHit = shaderType == "closesthit";
-        bool hasGlobalIllumination = isClosestHit && (vertexShader.Constants.Any(x => x.Name == "g_aLightField") || pixelShader.Constants.Any(x => x.Name == "g_aLightField"));
-        bool hasReflection = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_ReflectionMapSampler" || x.Name == "g_ReflectionMapSampler2");
-        bool hasRefraction = isClosestHit && pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler" || x.Name == "g_DepthSampler");
         bool hasLocalLight = isClosestHit && pixelShader.Constants.Any(x => x.Name.StartsWith("mrgLocalLight0_"));
 
-        if (hasGlobalIllumination || hasReflection || hasRefraction)
-        {
-            stringBuilder.AppendLine("\tfloat3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;");
-        }
-
-        stringBuilder.AppendFormat("\tfloat3 globalIllumination = {0};\n", hasGlobalIllumination ? "TraceGlobalIllumination(payload, normal)" : "0");
-        stringBuilder.AppendFormat("\tfloat3 reflection = {0};\n", hasReflection ? "TraceReflection(payload, normal)" : "0");
-        stringBuilder.AppendFormat("\tfloat3 refraction = {0};\n", hasRefraction ? "TraceRefraction(payload, normal)" : "0");
-        stringBuilder.AppendFormat("\tfloat shadow = {0};\n", hasGlobalIllumination ? "TraceShadow(payload.random)" : "1");
         stringBuilder.AppendFormat("\tuint lightIndex = {0};\n", hasLocalLight ? "2 * (NextRandomUint(payload.random) % g_Globals.lightCount)" : "0");
 
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
 
         stringBuilder.AppendFormat("\n\t{0}_VSParams vsParams = ({0}_VSParams)0;\n", functionName);
 
-        stringBuilder.AppendFormat("\t{0}_VS(iaParams, vsParams);\n\n", functionName);
+        stringBuilder.AppendFormat("\t{0}_VS<{1}>(payload, normal, iaParams, vsParams);\n\n", functionName, isClosestHit ? "true" : "false");
 
         stringBuilder.AppendFormat("\t{0}_PSParams psParams = ({0}_PSParams)0;\n", functionName);
 
@@ -566,7 +591,7 @@ public static class ShaderConverter
 
         stringBuilder.AppendFormat("\n\t{0}_OMParams omParams = ({0}_OMParams)0;\n", functionName);
 
-        stringBuilder.AppendFormat("\t{0}_PS(psParams, omParams);\n\n", functionName);
+        stringBuilder.AppendFormat("\t{0}_PS<{1}>(payload, normal, psParams, omParams);\n\n", functionName, isClosestHit ? "true" : "false");
 
         if (shaderType == "closesthit")
         {

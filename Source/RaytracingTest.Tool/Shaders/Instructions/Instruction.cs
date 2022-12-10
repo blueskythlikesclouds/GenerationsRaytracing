@@ -38,7 +38,7 @@ public class Instruction
                 Arguments[2].Swizzle.Convert(Arguments[0].Swizzle);
                 Arguments[3].Swizzle.Convert(Arguments[0].Swizzle);
 
-                stringBuilder.AppendFormat("{0} = {1} >= 0 ? {2} : {3};", Arguments[0], Arguments[1], Arguments[2], Arguments[3]);
+                stringBuilder.AppendFormat("{0} = select({1} >= 0, {2}, {3});", Arguments[0], Arguments[1], Arguments[2], Arguments[3]);
                 break;
 
             case "dp2add":
