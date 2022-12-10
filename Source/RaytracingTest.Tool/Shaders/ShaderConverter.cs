@@ -359,11 +359,14 @@ public static class ShaderConverter
 
         int indent = 1;
 
+        bool alreadySeenRaytracedConstants = false;
+        bool seenDp3WithGlobalLight = false;
+
         foreach (var instruction in shader.Instructions)
         {
             if (instruction.Arguments != null)
             {
-                if (instruction.OpCode == "min")
+                if (shader.Type == ShaderType.Pixel && instruction.OpCode == "min" && !functionName.Contains("Water"))
                 {
                     if (IsOutputColorClamp(shader, instruction.Arguments[1]))
                     {
@@ -380,13 +383,32 @@ public static class ShaderConverter
                 foreach (var argument in instruction.Arguments)
                 {
                     if (variableMap.TryGetValue(argument.Token, out string constantName))
+                    {
                         argument.Token = constantName;
+
+                        alreadySeenRaytracedConstants |=
+                            (constantName.Contains("g_aLightField") && argument.Swizzle.GetSwizzle(0) != Swizzle.W) ||
+                            constantName.Contains("g_ReflectionMap") ||
+                            constantName.Contains("g_FramebufferSampler");
+                    }
 
                     else if (argument.Token[0] == 'c')
                         argument.Token = $"C[{argument.Token.Substring(1)}]";
                 }
 
-                if (instruction.Arguments.Length == 3 &&
+                if (shader.Type == ShaderType.Pixel && instruction.OpCode == "dp3")
+                {
+                    if (instruction.Arguments.Any(x => x.Token.Contains("mrgGlobalLight_Direction")))
+                    {
+                        seenDp3WithGlobalLight = true;
+
+                        if (alreadySeenRaytracedConstants)
+                            Console.WriteLine("Shader uses raytraced constants before dot product with global light: {0}", functionName);
+                    }
+                }
+
+                if (shader.Type == ShaderType.Pixel &&
+                    instruction.Arguments.Length == 3 &&
                     instruction.Arguments[2].Token.Contains(".g_") &&
                     instruction.Arguments[2].Token.Contains("Sampler"))
                 {
@@ -408,6 +430,9 @@ public static class ShaderConverter
 
             if (instrLine.Contains('{')) ++indent;
         }
+        
+        if (!seenDp3WithGlobalLight && alreadySeenRaytracedConstants)
+            Console.WriteLine("Shader uses raytraced constants despite not using global light: {0}", functionName);
 
         stringBuilder.AppendLine("}\n");
     }
