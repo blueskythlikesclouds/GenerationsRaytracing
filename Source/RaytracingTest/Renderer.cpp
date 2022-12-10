@@ -1,6 +1,7 @@
 ﻿#include "Renderer.h"
 
 #include "App.h"
+#include "Math.h"
 #include "Scene.h"
 
 struct ConstantBuffer
@@ -8,6 +9,12 @@ struct ConstantBuffer
     Eigen::Vector3f position;
     float tanFovy;
     Eigen::Matrix4f rotation;
+
+    Eigen::Matrix4f view;
+    Eigen::Matrix4f projection;
+
+    Eigen::Matrix4f previousView;
+    Eigen::Matrix4f previousProjection;
 
     float aspectRatio;
     uint32_t sampleCount;
@@ -31,9 +38,11 @@ struct ConstantBuffer
     float lumMin;
     float lumMax;
     uint32_t lightCount;
+
+    Eigen::Vector2f pixelJitter;
 };
 
-Renderer::Renderer(const App& app) :
+Renderer::Renderer(const App& app, const std::string& directoryPath) :
     constantBuffer(app.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(sizeof(ConstantBuffer))
         .setIsConstantBuffer(true)
@@ -43,6 +52,7 @@ Renderer::Renderer(const App& app) :
     commandList(app.device.nvrhi->createCommandList()),
 
     raytracingPass(app),
+    dlssPass(app, directoryPath),
     computeLuminancePass(app)
 {
     quadDrawArgs.setVertexCount(6);
@@ -53,17 +63,22 @@ Renderer::Renderer(const App& app) :
 
 void Renderer::execute(const App& app, Scene& scene)
 {
-    if (app.camera.dirty)
-        sampleCount = 0;
+    pixelJitter = haltonJitter((int)currentFrame, 64);
 
     ConstantBuffer bufferData{};
 
     bufferData.position = app.camera.position;
-    bufferData.tanFovy = tan(app.camera.fieldOfView / 360.0f * (float)M_PI);
+    bufferData.tanFovy = tan(app.camera.fieldOfView / 2.0f);
     bufferData.rotation.block(0, 0, 3, 3) = app.camera.rotation.toRotationMatrix();
 
+    bufferData.view = app.camera.view;
+    bufferData.projection = app.camera.projection;
+
+    bufferData.previousView = app.camera.previous.view;
+    bufferData.previousProjection = app.camera.previous.projection;
+
     bufferData.aspectRatio = app.camera.aspectRatio;
-    bufferData.sampleCount = ++sampleCount;
+    bufferData.sampleCount = ++currentFrame;
     bufferData.skyIntensityScale = scene.cpu.effect.defaults.skyIntensityScale;
     bufferData.deltaTime = app.deltaTime;
 
@@ -86,10 +101,13 @@ void Renderer::execute(const App& app, Scene& scene)
 
     bufferData.lightCount = (uint32_t)scene.cpu.localLights.size();
 
+    bufferData.pixelJitter = pixelJitter;
+
     commandList->open();
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
 
     raytracingPass.execute(app, scene);
+    dlssPass.execute(app);
     computeLuminancePass.execute(app);
     toneMapPasses[app.window.getBackBufferIndex()].execute(app);
 

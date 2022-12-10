@@ -179,6 +179,7 @@
     <ClCompile Include="ComputeLuminancePass.cpp" />
     <ClCompile Include="RaytracingPass.cpp" />
     <ClCompile Include="ToneMapPass.cpp" />
+    <ClCompile Include="DLSSPass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -200,6 +201,7 @@
     <ClInclude Include="ComputeLuminancePass.h" />
     <ClInclude Include="RaytracingPass.h" />
     <ClInclude Include="ToneMapPass.h" />
+    <ClInclude Include="DLSSPass.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Dependencies">

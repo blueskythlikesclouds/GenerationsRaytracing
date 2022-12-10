@@ -18,7 +18,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     return DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
-Window::Window(const App& app)
+Window::Window(App& app)
 {
     WNDCLASSEX wndClassEx {};
 
@@ -36,6 +36,8 @@ Window::Window(const App& app)
 
     GetMonitorInfo(MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY), &monitorInfo);
 
+    bool windowed = true;
+
     int workWidth = monitorInfo.rcWork.right - monitorInfo.rcWork.left;
     int workHeight = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
 
@@ -44,14 +46,18 @@ Window::Window(const App& app)
 
     if (app.width > workWidth)
     {
-        workWidth = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left;
+        app.width = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left;
+        workWidth = app.width;
         x = monitorInfo.rcMonitor.left;
+        windowed = false;
     }
 
     if (app.height > workHeight)
     {
-        workHeight = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
+        app.height = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
+        workHeight = app.height;
         y = monitorInfo.rcMonitor.top;
+        windowed = false;
     }
 
     x += (workWidth - app.width) / 2;
@@ -61,7 +67,7 @@ Window::Window(const App& app)
         WS_EX_APPWINDOW,
         wndClassEx.lpszClassName,
         wndClassEx.lpszClassName,
-        WS_OVERLAPPEDWINDOW,
+        windowed ? WS_OVERLAPPEDWINDOW : WS_POPUP,
         x,
         y,
         app.width,
@@ -73,27 +79,30 @@ Window::Window(const App& app)
 
     assert(handle);
 
-    RECT windowRect, clientRect;
-    GetWindowRect(handle, &windowRect);
-    GetClientRect(handle, &clientRect);
+    if (windowed)
+    {
+        RECT windowRect, clientRect;
+        GetWindowRect(handle, &windowRect);
+        GetClientRect(handle, &clientRect);
 
-    int windowWidth = windowRect.right - windowRect.left;
-    int windowHeight = windowRect.bottom - windowRect.top;
+        int windowWidth = windowRect.right - windowRect.left;
+        int windowHeight = windowRect.bottom - windowRect.top;
 
-    int clientWidth = clientRect.right - clientRect.left;
-    int clientHeight = clientRect.bottom - clientRect.top;
+        int clientWidth = clientRect.right - clientRect.left;
+        int clientHeight = clientRect.bottom - clientRect.top;
 
-    int deltaX = windowWidth - clientWidth;
-    int deltaY = windowHeight - clientHeight;
+        int deltaX = windowWidth - clientWidth;
+        int deltaY = windowHeight - clientHeight;
 
-    SetWindowPos(
-        handle,
-        HWND_TOP,
-        windowRect.left - deltaX / 2,
-        windowRect.top - deltaY / 2, 
-        app.width + deltaX, 
-        app.height + deltaY,
-        SWP_FRAMECHANGED);
+        SetWindowPos(
+            handle,
+            HWND_TOP,
+            windowRect.left - deltaX / 2,
+            windowRect.top - deltaY / 2,
+            app.width + deltaX,
+            app.height + deltaY,
+            SWP_FRAMECHANGED);
+    }
 
     const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
     const DWORD currentThreadId = GetCurrentThreadId();

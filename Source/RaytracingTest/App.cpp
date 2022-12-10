@@ -7,7 +7,7 @@ App::App(int width, int height, const std::string& directoryPath) :
     window(*this),
     input(),
     shaderLibrary(*this, directoryPath),
-    renderer(*this),
+    renderer(*this, directoryPath),
     camera()
 {
 }
@@ -26,6 +26,7 @@ void App::run(Scene& scene)
         camera.update(*this);
         renderer.execute(*this, scene);
         device.nvrhi->waitForIdle();
+        device.nvrhi->runGarbageCollection();
         window.present();
 
         prevTime = currentTime;

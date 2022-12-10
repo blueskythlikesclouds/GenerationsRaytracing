@@ -16,7 +16,7 @@ struct App
     Input input;
     ShaderLibrary shaderLibrary;
     Renderer renderer;
-    Camera camera;
+    CameraController camera;
     float deltaTime = 0.0f;
 
     App(int width, int height, const std::string& directoryPath);

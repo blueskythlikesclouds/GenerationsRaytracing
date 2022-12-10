@@ -28,13 +28,13 @@ ComputeLuminancePass::ComputeLuminancePass(const App& app)
                 .setCullNone()))
         .addBindingLayout(bindingLayout);
 
-    int luminanceWidth = nextPowerOfTwo(app.renderer.raytracingPass.texture->getDesc().width);
-    int luminanceHeight = nextPowerOfTwo(app.renderer.raytracingPass.texture->getDesc().height);
+    int luminanceWidth = nextPowerOfTwo(app.renderer.dlssPass.outputTexture->getDesc().width);
+    int luminanceHeight = nextPowerOfTwo(app.renderer.dlssPass.outputTexture->getDesc().height);
 
-    while (luminanceWidth >= app.renderer.raytracingPass.texture->getDesc().width) luminanceWidth >>= 1;
-    while (luminanceHeight >= app.renderer.raytracingPass.texture->getDesc().height) luminanceHeight >>= 1;
+    while (luminanceWidth >= app.renderer.dlssPass.outputTexture->getDesc().width) luminanceWidth >>= 1;
+    while (luminanceHeight >= app.renderer.dlssPass.outputTexture->getDesc().height) luminanceHeight >>= 1;
 
-    auto previousTexture = app.renderer.raytracingPass.texture;
+    auto previousTexture = app.renderer.dlssPass.outputTexture;
 
     while (true)
     {
@@ -55,7 +55,7 @@ ComputeLuminancePass::ComputeLuminancePass(const App& app)
             .addColorAttachment(pass.texture));
 
         pass.pipeline = app.device.nvrhi->createGraphicsPipeline(pipelineDesc
-            .setPixelShader(previousTexture == app.renderer.raytracingPass.texture ? app.shaderLibrary.copyLuminancePS : app.shaderLibrary.copyPS), pass.framebuffer);
+            .setPixelShader(previousTexture == app.renderer.dlssPass.outputTexture ? app.shaderLibrary.copyLuminancePS : app.shaderLibrary.copyPS), pass.framebuffer);
 
         pass.bindingSet = app.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
             .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, app.renderer.constantBuffer))

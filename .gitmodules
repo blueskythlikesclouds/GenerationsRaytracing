@@ -10,3 +10,6 @@
 [submodule "Dependencies/tinyxml2"]
 	path = Dependencies/tinyxml2
 	url = https://github.com/leethomason/tinyxml2.git
+[submodule "Dependencies/DLSS"]
+	path = Dependencies/DLSS
+	url = https://github.com/NVIDIA/DLSS.git

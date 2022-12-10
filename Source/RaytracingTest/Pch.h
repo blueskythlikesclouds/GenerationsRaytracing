@@ -41,4 +41,6 @@
 
 #include <tinyxml2/tinyxml2.h>
 
+#include <nvsdk_ngx_helpers.h>
+
 using Microsoft::WRL::ComPtr;

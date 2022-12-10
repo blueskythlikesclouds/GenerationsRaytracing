@@ -1,8 +1,11 @@
 ﻿#include "Camera.h"
 #include "App.h"
+#include "Math.h"
+#include "ShaderDefinitions.hlsli"
 
-void Camera::update(const App& app)
+void CameraController::update(const App& app)
 {
+    previous = *static_cast<Camera*>(this);
     dirty = false;
 
     if (app.input.key['Q'] ^ app.input.key['E'])
@@ -49,7 +52,7 @@ void Camera::update(const App& app)
 
     if (app.input.key[VK_ADD] ^ app.input.key[VK_SUBTRACT])
     {
-        fieldOfView = fmodf(fieldOfView + (app.input.key[VK_ADD] ? 1.0f : -1.0f), 180.0f);
+        fieldOfView = fmodf(fieldOfView + (app.input.key[VK_ADD] ? 1.0f : -1.0f) / 180.0f * (float) M_PI, (float) M_PI);
         dirty = true;
     }
 
@@ -64,5 +67,11 @@ void Camera::update(const App& app)
     {
         aspectRatio = newAspectRatio;
         dirty = true;
+    }
+
+    if (dirty)
+    {
+        view = (Eigen::Translation3f(position) * rotation).inverse().matrix();
+        projection = Eigen::CreatePerspective(fieldOfView, aspectRatio, 0.001f, Z_MAX);
     }
 }

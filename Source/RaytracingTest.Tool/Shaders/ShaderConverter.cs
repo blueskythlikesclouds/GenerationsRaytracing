@@ -615,6 +615,7 @@ public static class ShaderConverter
         {
             stringBuilder.Append("""
                 payload.color = omParams.oC0.rgb;
+                payload.t = RayTCurrent();
             }
 
 

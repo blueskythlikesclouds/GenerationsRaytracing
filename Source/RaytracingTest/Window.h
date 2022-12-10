@@ -19,7 +19,7 @@ struct Window
 
     bool shouldClose = false;
 
-    Window(const App& app);
+    Window(App& app);
 
     void processMessages() const;
     void present() const;

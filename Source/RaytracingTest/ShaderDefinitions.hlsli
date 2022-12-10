@@ -14,7 +14,7 @@
 #define FLT_MAX                         asfloat(0x7f7fffff)
 #endif
 
-#define Z_MAX                           10000.0
+#define Z_MAX                           10000.0f
 
 #ifndef __cplusplus
 
@@ -24,8 +24,14 @@ struct cbGlobals
     float tanFovy;
     float4x4 rotation;
 
+    float4x4 view;
+    float4x4 projection;
+
+    float4x4 previousView;
+    float4x4 previousProjection;
+
     float aspectRatio;
-    uint sampleCount;
+    uint currentFrame;
     float skyIntensityScale;
     float deltaTime;
 
@@ -46,6 +52,8 @@ struct cbGlobals
     float lumMin;
     float lumMax;
     uint lightCount;
+
+    float2 pixelJitter;
 };
 
 ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);

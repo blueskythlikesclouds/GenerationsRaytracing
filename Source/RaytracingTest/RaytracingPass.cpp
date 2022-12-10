@@ -5,15 +5,6 @@
 
 RaytracingPass::RaytracingPass(const App& app)
 {
-    auto textureDesc = app.window.nvrhi.swapChainTextures.front()->getDesc();
-
-    texture = app.device.nvrhi->createTexture(textureDesc
-        .setFormat(nvrhi::Format::RGBA32_FLOAT)
-        .setIsUAV(true)
-        .setIsRenderTarget(false)
-        .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
-        .setKeepInitialState(true));
-
     linearRepeatSampler = app.device.nvrhi->createSampler(nvrhi::SamplerDesc()
         .setAllFilters(true)
         .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat));
@@ -33,6 +24,8 @@ RaytracingPass::RaytracingPass(const App& app)
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(9))
         .addItem(nvrhi::BindingLayoutItem::TypedBuffer_SRV(10))
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
+        .addItem(nvrhi::BindingLayoutItem::Texture_UAV(1))
+        .addItem(nvrhi::BindingLayoutItem::Texture_UAV(2))
         .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
     bindlessLayout = app.device.nvrhi->createBindlessLayout(nvrhi::BindlessLayoutDesc()
@@ -84,7 +77,9 @@ void RaytracingPass::execute(const App& app, Scene& scene)
             .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(8, scene.gpu.colorBuffer))
             .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(9, scene.gpu.indexBuffer))
             .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(10, scene.gpu.lightBuffer))
-            .addItem(nvrhi::BindingSetItem::Texture_UAV(0, texture))
+            .addItem(nvrhi::BindingSetItem::Texture_UAV(0, app.renderer.dlssPass.texture))
+            .addItem(nvrhi::BindingSetItem::Texture_UAV(1, app.renderer.dlssPass.depthTexture))
+            .addItem(nvrhi::BindingSetItem::Texture_UAV(2, app.renderer.dlssPass.motionVectorTexture))
             .addItem(nvrhi::BindingSetItem::Sampler(0, linearRepeatSampler)), bindingLayout);
 
         shaderTable = pipeline->createShaderTable();
@@ -107,6 +102,6 @@ void RaytracingPass::execute(const App& app, Scene& scene)
         .addBindingSet(descriptorTable));
 
     app.renderer.commandList->dispatchRays(nvrhi::rt::DispatchRaysArguments()
-        .setWidth(texture->getDesc().width)
-        .setHeight(texture->getDesc().height));
+        .setWidth(app.renderer.dlssPass.width)
+        .setHeight(app.renderer.dlssPass.height));
 }

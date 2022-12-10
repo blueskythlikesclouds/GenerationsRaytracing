@@ -42,7 +42,7 @@ inline uint8_t quantizeUint8(float v)
         return (uint8_t)(v * 0xFF);
 }
 
-// From https://github.com/zeux/meshoptimizer/blob/master/src/meshoptimizer.h
+// https://github.com/zeux/meshoptimizer/blob/master/src/meshoptimizer.h
 inline uint16_t quantizeHalf(float v)
 {
     union { float f; unsigned int ui; } u = { v };
@@ -64,4 +64,45 @@ inline uint16_t quantizeHalf(float v)
     h = (em > (255 << 23)) ? 0x7e00 : h;
 
     return (uint16_t)(s | h);
+}
+
+// https://github.com/DarioSamo/RT64/blob/main/src/rt64lib/private/rt64_common.h
+inline float haltonSequence(int i, int b)
+{
+    float f = 1.0;
+    float r = 0.0;
+
+    while (i > 0) 
+    {
+        f = f / float(b);
+        r = r + f * float(i % b);
+        i = i / b;
+    }
+
+    return r;
+}
+
+inline Eigen::Vector2f haltonJitter(int frame, int phases)
+{
+    return { haltonSequence(frame % phases + 1, 2) - 0.5f, haltonSequence(frame % phases + 1, 3) - 0.5f };
+}
+
+namespace Eigen
+{
+    template<typename Scalar>
+    Matrix<Scalar, 4, 4> CreatePerspective(const Scalar fieldOfView, const Scalar aspectRatio, const Scalar zNear, const Scalar zFar)
+    {
+        const Scalar yScale = (Scalar)1 / std::tan(fieldOfView / (Scalar)2);
+        const Scalar xScale = yScale / aspectRatio;
+
+        Matrix<Scalar, 4, 4> matrix;
+
+        matrix <<
+            xScale, 0, 0, 0,
+            0, yScale, 0, 0,
+            0, 0, -(zFar + zNear) / (zFar - zNear), -2 * zNear * zFar / (zFar - zNear),
+            0, 0, -1, 0;
+
+        return matrix;
+    }
 }

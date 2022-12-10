@@ -5,7 +5,7 @@ ToneMapPass::ToneMapPass(const App& app, nvrhi::IFramebuffer* framebuffer)
 {
     bindingSet = app.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, app.renderer.constantBuffer))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, app.renderer.raytracingPass.texture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, app.renderer.dlssPass.outputTexture))
         .addItem(nvrhi::BindingSetItem::Texture_SRV(1, app.renderer.computeLuminancePass.adaptedLuminanceSubPass.texture))
         .addItem(nvrhi::BindingSetItem::Sampler(0, app.renderer.computeLuminancePass.linearClampSampler)), app.renderer.computeLuminancePass.bindingLayout);
 

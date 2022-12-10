@@ -6,7 +6,7 @@ struct Payload
     float3 color;
     uint random;
     uint depth;
-    bool miss;
+    float t;
 };
 
 struct Attributes
@@ -39,6 +39,8 @@ Buffer<float4> g_LightBuffer : register(t10, space0);
 SamplerState g_LinearRepeatSampler : register(s0, space0);
 
 RWTexture2D<float4> g_Output : register(u0, space0);
+RWTexture2D<float> g_OutputDepth : register(u1, space0);
+RWTexture2D<float2> g_OutputMotionVector : register(u2, space0);
 
 Texture2D<float4> g_BindlessTexture2D[] : register(t0, space1);
 TextureCube<float4> g_BindlessTextureCube[] : register(t0, space2);
@@ -180,7 +182,7 @@ float TraceShadow(inout uint random)
     payload.depth = 0xFF;
     TraceRay(g_ShadowBVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, INSTANCE_MASK_OPAQUE_OR_PUNCH, 0, 1, 0, ray, payload);
 
-    return payload.miss ? 1.0 : 0.0;
+    return payload.t == FLT_MAX ? 1.0 : 0.0;
 }
 
 [shader("raygeneration")]
@@ -190,14 +192,9 @@ void RayGeneration()
     uint2 dimensions = DispatchRaysDimensions().xy;
 
     Payload payload = (Payload)0;
-    payload.random = InitializeRandom(index.x + index.y * dimensions.x, g_Globals.sampleCount);
+    payload.random = InitializeRandom(index.x + index.y * dimensions.x, g_Globals.currentFrame);
 
-    float u1 = 2.0f * NextRandom(payload.random);
-    float u2 = 2.0f * NextRandom(payload.random);
-    float dx = u1 < 1 ? sqrt(u1) - 1.0 : 1.0 - sqrt(2.0 - u1);
-    float dy = u2 < 1 ? sqrt(u2) - 1.0 : 1.0 - sqrt(2.0 - u2);
-
-    float2 ndc = (index + float2(dx, dy) + 0.5) / dimensions * 2.0 - 1.0;
+    float2 ndc = (index + g_Globals.pixelJitter + 0.5) / dimensions * 2.0 - 1.0;
 
     RayDesc ray;
     ray.Origin = g_Globals.position;
@@ -207,7 +204,19 @@ void RayGeneration()
 
     TraceRay(g_BVH, 0, INSTANCE_MASK_OPAQUE_OR_PUNCH | INSTANCE_MASK_TRANS_OR_SPECIAL, 0, 1, 0, ray, payload);
 
-    g_Output[index] = lerp(g_Output[index], float4(payload.color, 1.0), 1.0 / g_Globals.sampleCount);
+    //g_Output[index] = lerp(g_Output[index], float4(payload.color, 1.0), 1.0 / g_Globals.currentFrame);
+    g_Output[index] = float4(payload.color, 1.0);
+
+    float3 position = ray.Origin + ray.Direction * min(payload.t, Z_MAX);
+
+    float4 projectedPos = mul(g_Globals.projection, mul(g_Globals.view, float4(position, 1.0)));
+    float2 pixelPos = (projectedPos.xy / projectedPos.w * float2(0.5, -0.5) + 0.5) * dimensions;
+
+    float4 prevProjectedPos = mul(g_Globals.previousProjection, mul(g_Globals.previousView, float4(position, 1.0)));
+    float2 prevPixelPos = (prevProjectedPos.xy / prevProjectedPos.w * float2(0.5, -0.5) + 0.5) * dimensions;
+
+    g_OutputDepth[index] = projectedPos.z / projectedPos.w;
+    g_OutputMotionVector[index] = prevPixelPos - pixelPos;
 }
 
 [shader("miss")]
@@ -225,5 +234,5 @@ void Miss(inout Payload payload : SV_RayPayload)
         TraceRay(g_SkyBVH, 0, INSTANCE_MASK_SKY, 0, 1, 0, ray, payload);
     }
 
-    payload.miss = true;
+    payload.t = FLT_MAX;
 }

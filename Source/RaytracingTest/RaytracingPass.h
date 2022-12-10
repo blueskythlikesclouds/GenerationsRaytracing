@@ -5,7 +5,6 @@ struct Scene;
 
 struct RaytracingPass
 {
-    nvrhi::TextureHandle texture;
     nvrhi::SamplerHandle linearRepeatSampler;
 
     nvrhi::BindingLayoutHandle bindingLayout;
