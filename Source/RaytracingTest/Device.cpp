@@ -81,4 +81,7 @@ Device::Device()
 #endif
 }
 
-Device::~Device() = default;
+Device::~Device()
+{
+    nvrhi->waitForIdle();
+}

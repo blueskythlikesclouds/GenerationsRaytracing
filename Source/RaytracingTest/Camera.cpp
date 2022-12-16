@@ -52,7 +52,7 @@ void CameraController::update(const App& app)
 
     if (app.input.key[VK_ADD] ^ app.input.key[VK_SUBTRACT])
     {
-        fieldOfView = fmodf(fieldOfView + (app.input.key[VK_ADD] ? 1.0f : -1.0f) / 180.0f * (float) M_PI, (float) M_PI);
+        fieldOfView = fmodf(fieldOfView + (app.input.key[VK_ADD] ? 1.0f : -1.0f) / 180.0f * (float)M_PI, (float)M_PI);
         dirty = true;
     }
 
@@ -74,4 +74,6 @@ void CameraController::update(const App& app)
         view = (Eigen::Translation3f(position) * rotation).inverse().matrix();
         projection = Eigen::CreatePerspective(fieldOfView, aspectRatio, 0.001f, Z_MAX);
     }
+
+    pixelJitter = haltonJitter(++currentFrame, 64);
 }

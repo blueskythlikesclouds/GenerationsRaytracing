@@ -38,9 +38,9 @@ Buffer<float4> g_LightBuffer : register(t10, space0);
 
 SamplerState g_LinearRepeatSampler : register(s0, space0);
 
-RWTexture2D<float4> g_Output : register(u0, space0);
-RWTexture2D<float> g_OutputDepth : register(u1, space0);
-RWTexture2D<float2> g_OutputMotionVector : register(u2, space0);
+RWTexture2D<float4> g_Texture : register(u0, space0);
+RWTexture2D<float> g_Depth : register(u1, space0);
+RWTexture2D<float2> g_MotionVector : register(u2, space0);
 
 Texture2D<float4> g_BindlessTexture2D[] : register(t0, space1);
 TextureCube<float4> g_BindlessTextureCube[] : register(t0, space2);
@@ -90,6 +90,35 @@ float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNormal)
     float phi = 2.0f * 3.14159265f * randomValue.y;
 
     return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
+}
+
+float3 GetPosition(in RayDesc ray, in Payload payload)
+{
+    return ray.Origin + ray.Direction * min(payload.t, Z_MAX);
+}
+
+float3 GetPosition()
+{
+    return WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+}
+
+float3 GetPixelPositionAndDepth(float3 position, float4x4 view, float4x4 projection)
+{
+    float4 screenCoords = mul(projection, mul(view, float4(position, 1.0)));
+    screenCoords /= screenCoords.w;
+
+    screenCoords.xy = (screenCoords.xy * float2(0.5, -0.5) + 0.5) * DispatchRaysDimensions().xy;
+    return screenCoords.xyz;
+}
+
+float3 GetCurrentPixelPositionAndDepth(float3 position)
+{
+    return GetPixelPositionAndDepth(position, g_Globals.view, g_Globals.projection);
+}
+
+float3 GetPreviousPixelPositionAndDepth(float3 position)
+{
+    return GetPixelPositionAndDepth(position, g_Globals.previousView, g_Globals.previousProjection);
 }
 
 float3 TraceGlobalIllumination(inout Payload payload, float3 normal)
@@ -204,19 +233,13 @@ void RayGeneration()
 
     TraceRay(g_BVH, 0, INSTANCE_MASK_OPAQUE_OR_PUNCH | INSTANCE_MASK_TRANS_OR_SPECIAL, 0, 1, 0, ray, payload);
 
-    //g_Output[index] = lerp(g_Output[index], float4(payload.color, 1.0), 1.0 / g_Globals.currentFrame);
-    g_Output[index] = float4(payload.color, 1.0);
+    float3 position = GetPosition(ray, payload);
+    float3 curPixelPosAndDepth = GetCurrentPixelPositionAndDepth(position);
+    float3 prevPixelPosAndDepth = GetPreviousPixelPositionAndDepth(position);
 
-    float3 position = ray.Origin + ray.Direction * min(payload.t, Z_MAX);
-
-    float4 projectedPos = mul(g_Globals.projection, mul(g_Globals.view, float4(position, 1.0)));
-    float2 pixelPos = (projectedPos.xy / projectedPos.w * float2(0.5, -0.5) + 0.5) * dimensions;
-
-    float4 prevProjectedPos = mul(g_Globals.previousProjection, mul(g_Globals.previousView, float4(position, 1.0)));
-    float2 prevPixelPos = (prevProjectedPos.xy / prevProjectedPos.w * float2(0.5, -0.5) + 0.5) * dimensions;
-
-    g_OutputDepth[index] = projectedPos.z / projectedPos.w;
-    g_OutputMotionVector[index] = prevPixelPos - pixelPos;
+    g_Texture[index] = float4(payload.color, 1.0);
+    g_Depth[index] = curPixelPosAndDepth.z;
+    g_MotionVector[index] = prevPixelPosAndDepth.xy - curPixelPosAndDepth.xy;
 }
 
 [shader("miss")]

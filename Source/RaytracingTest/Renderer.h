@@ -18,9 +18,6 @@ struct Renderer
     ComputeLuminancePass computeLuminancePass;
     std::vector<ToneMapPass> toneMapPasses;
 
-    uint32_t currentFrame = 0;
-    Eigen::Vector2f pixelJitter = Eigen::Vector2f::Zero();
-
     Renderer(const App& app, const std::string& directoryPath);
 
     void execute(const App& app, Scene& scene);

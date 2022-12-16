@@ -112,10 +112,11 @@ void DLSSPass::execute(const App& app)
     params.Feature.InSharpness = sharpness;
     params.pInDepth = depthTexture->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     params.pInMotionVectors = motionVectorTexture->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
-    params.InJitterOffsetX = -app.renderer.pixelJitter.x();
-    params.InJitterOffsetY = -app.renderer.pixelJitter.y();
+    params.InJitterOffsetX = -app.camera.pixelJitter.x();
+    params.InJitterOffsetY = -app.camera.pixelJitter.y();
     params.InRenderSubrectDimensions.Width = width;
     params.InRenderSubrectDimensions.Height = height;
+    params.InFrameTimeDeltaInMsec = app.deltaTime * 1000.0f;
 
     THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSS_EXT(app.renderer.commandList->getNativeObject(nvrhi::ObjectTypes::D3D12_GraphicsCommandList), feature, parameters, &params));
 

@@ -63,8 +63,6 @@ Renderer::Renderer(const App& app, const std::string& directoryPath) :
 
 void Renderer::execute(const App& app, Scene& scene)
 {
-    pixelJitter = haltonJitter((int)currentFrame, 64);
-
     ConstantBuffer bufferData{};
 
     bufferData.position = app.camera.position;
@@ -78,7 +76,7 @@ void Renderer::execute(const App& app, Scene& scene)
     bufferData.previousProjection = app.camera.previous.projection;
 
     bufferData.aspectRatio = app.camera.aspectRatio;
-    bufferData.sampleCount = ++currentFrame;
+    bufferData.sampleCount = app.camera.currentFrame;
     bufferData.skyIntensityScale = scene.cpu.effect.defaults.skyIntensityScale;
     bufferData.deltaTime = app.deltaTime;
 
@@ -101,7 +99,7 @@ void Renderer::execute(const App& app, Scene& scene)
 
     bufferData.lightCount = (uint32_t)scene.cpu.localLights.size();
 
-    bufferData.pixelJitter = pixelJitter;
+    bufferData.pixelJitter = app.camera.pixelJitter;
 
     commandList->open();
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
