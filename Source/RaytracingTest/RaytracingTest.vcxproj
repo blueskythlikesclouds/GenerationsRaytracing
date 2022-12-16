@@ -640,6 +640,7 @@ copy /Y "$(ProjectDir)..\..\Dependencies\DLSS\lib\Windows_x86_64\rel\nvngx_dlss.
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </ForcedIncludeFiles>
     </ClCompile>
+    <ClCompile Include="AccumulatePass.cpp" />
     <ClCompile Include="App.cpp" />
     <ClCompile Include="ArchiveDatabase.cpp" />
     <ClCompile Include="Camera.cpp" />
@@ -662,6 +663,7 @@ copy /Y "$(ProjectDir)..\..\Dependencies\DLSS\lib\Windows_x86_64\rel\nvngx_dlss.
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AccumulatePass.h" />
     <ClInclude Include="App.h" />
     <ClInclude Include="ArchiveDatabase.h" />
     <ClInclude Include="Camera.h" />
@@ -688,6 +690,20 @@ copy /Y "$(ProjectDir)..\..\Dependencies\DLSS\lib\Windows_x86_64\rel\nvngx_dlss.
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="ShaderAccumulatePS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SHADER_ACCUMULATE_PS</VariableName>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SHADER_ACCUMULATE_PS</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)ShaderAccumulatePS.h</HeaderFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </ObjectFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)ShaderAccumulatePS.h</HeaderFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ObjectFileOutput>
+    </FxCompile>
     <FxCompile Include="ShaderCopyPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>

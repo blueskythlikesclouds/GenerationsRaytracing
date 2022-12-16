@@ -73,7 +73,9 @@ void CameraController::update(const App& app)
     {
         view = (Eigen::Translation3f(position) * rotation).inverse().matrix();
         projection = Eigen::CreatePerspective(fieldOfView, aspectRatio, 0.001f, Z_MAX);
+        currentAccum = 0;
     }
 
     pixelJitter = haltonJitter(++currentFrame, 64);
+    ++currentAccum;
 }

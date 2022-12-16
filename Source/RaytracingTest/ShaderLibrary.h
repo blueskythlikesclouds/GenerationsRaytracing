@@ -13,6 +13,7 @@ struct ShaderLibrary
     nvrhi::ShaderLibraryHandle handle;
     nvrhi::ShaderHandle copyVS;
     nvrhi::ShaderHandle copyPS;
+    nvrhi::ShaderHandle accumulatePS;
     nvrhi::ShaderHandle copyLuminancePS;
     nvrhi::ShaderHandle lerpLuminancePS;
     nvrhi::ShaderHandle toneMapPS;

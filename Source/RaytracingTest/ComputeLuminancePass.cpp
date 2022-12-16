@@ -5,17 +5,6 @@
 
 ComputeLuminancePass::ComputeLuminancePass(const App& app)
 {
-    bindingLayout = app.device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
-        .setVisibility(nvrhi::ShaderType::Pixel)
-        .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
-        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0))
-        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(1))
-        .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
-
-    linearClampSampler = app.device.nvrhi->createSampler(nvrhi::SamplerDesc()
-        .setAllFilters(true)
-        .setAllAddressModes(nvrhi::SamplerAddressMode::Clamp));
-
     auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
         .setVertexShader(app.shaderLibrary.copyVS)
         .setPrimType(nvrhi::PrimitiveType::TriangleList)
@@ -26,15 +15,15 @@ ComputeLuminancePass::ComputeLuminancePass(const App& app)
                 .disableStencil())
             .setRasterState(nvrhi::RasterState()
                 .setCullNone()))
-        .addBindingLayout(bindingLayout);
+        .addBindingLayout(app.renderer.accumulatePass.bindingLayout);
 
-    int luminanceWidth = nextPowerOfTwo(app.renderer.dlssPass.outputTexture->getDesc().width);
-    int luminanceHeight = nextPowerOfTwo(app.renderer.dlssPass.outputTexture->getDesc().height);
+    int luminanceWidth = nextPowerOfTwo(app.renderer.accumulatePass.texture->getDesc().width);
+    int luminanceHeight = nextPowerOfTwo(app.renderer.accumulatePass.texture->getDesc().height);
 
-    while (luminanceWidth >= app.renderer.dlssPass.outputTexture->getDesc().width) luminanceWidth >>= 1;
-    while (luminanceHeight >= app.renderer.dlssPass.outputTexture->getDesc().height) luminanceHeight >>= 1;
+    while (luminanceWidth >= app.renderer.accumulatePass.texture->getDesc().width) luminanceWidth >>= 1;
+    while (luminanceHeight >= app.renderer.accumulatePass.texture->getDesc().height) luminanceHeight >>= 1;
 
-    auto previousTexture = app.renderer.dlssPass.outputTexture;
+    auto previousTexture = app.renderer.accumulatePass.texture;
 
     while (true)
     {
@@ -55,13 +44,13 @@ ComputeLuminancePass::ComputeLuminancePass(const App& app)
             .addColorAttachment(pass.texture));
 
         pass.pipeline = app.device.nvrhi->createGraphicsPipeline(pipelineDesc
-            .setPixelShader(previousTexture == app.renderer.dlssPass.outputTexture ? app.shaderLibrary.copyLuminancePS : app.shaderLibrary.copyPS), pass.framebuffer);
+            .setPixelShader(previousTexture == app.renderer.accumulatePass.texture ? app.shaderLibrary.copyLuminancePS : app.shaderLibrary.copyPS), pass.framebuffer);
 
         pass.bindingSet = app.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
             .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, app.renderer.constantBuffer))
             .addItem(nvrhi::BindingSetItem::Texture_SRV(0, previousTexture))
             .addItem(nvrhi::BindingSetItem::Texture_SRV(1, previousTexture))
-            .addItem(nvrhi::BindingSetItem::Sampler(0, linearClampSampler)), bindingLayout);
+            .addItem(nvrhi::BindingSetItem::Sampler(0, app.renderer.accumulatePass.linearClampSampler)), app.renderer.accumulatePass.bindingLayout);
 
         pass.graphicsState
             .setPipeline(pass.pipeline)
@@ -101,7 +90,7 @@ ComputeLuminancePass::ComputeLuminancePass(const App& app)
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, app.renderer.constantBuffer))
         .addItem(nvrhi::BindingSetItem::Texture_SRV(0, adaptedLuminanceTexture))
         .addItem(nvrhi::BindingSetItem::Texture_SRV(1, previousTexture))
-        .addItem(nvrhi::BindingSetItem::Sampler(0, linearClampSampler)), bindingLayout);
+        .addItem(nvrhi::BindingSetItem::Sampler(0, app.renderer.accumulatePass.linearClampSampler)), app.renderer.accumulatePass.bindingLayout);
 
     adaptedLuminanceSubPass.graphicsState
         .setPipeline(adaptedLuminanceSubPass.pipeline)

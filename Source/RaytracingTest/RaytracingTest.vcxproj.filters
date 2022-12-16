@@ -180,6 +180,7 @@
     <ClCompile Include="RaytracingPass.cpp" />
     <ClCompile Include="ToneMapPass.cpp" />
     <ClCompile Include="DLSSPass.cpp" />
+    <ClCompile Include="AccumulatePass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -202,6 +203,7 @@
     <ClInclude Include="RaytracingPass.h" />
     <ClInclude Include="ToneMapPass.h" />
     <ClInclude Include="DLSSPass.h" />
+    <ClInclude Include="AccumulatePass.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Dependencies">
@@ -238,6 +240,9 @@
     </FxCompile>
     <FxCompile Include="ShaderLerpLuminancePS.hlsl">
       <Filter>Shaders\Filter\ToneMap</Filter>
+    </FxCompile>
+    <FxCompile Include="ShaderAccumulatePS.hlsl">
+      <Filter>Shaders\Filter</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

@@ -11,6 +11,7 @@ struct Camera
     float fieldOfView = (float) M_PI_2;
     float aspectRatio = 1.0f;
     int currentFrame = -1;
+    int currentAccum = 0;
     Eigen::Vector2f pixelJitter = Eigen::Vector2f::Zero();
 
     Camera() :

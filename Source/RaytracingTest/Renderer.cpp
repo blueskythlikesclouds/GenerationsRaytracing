@@ -40,6 +40,8 @@ struct ConstantBuffer
     uint32_t lightCount;
 
     Eigen::Vector2f pixelJitter;
+
+    float currentAccum;
 };
 
 Renderer::Renderer(const App& app, const std::string& directoryPath) :
@@ -53,6 +55,7 @@ Renderer::Renderer(const App& app, const std::string& directoryPath) :
 
     raytracingPass(app),
     dlssPass(app, directoryPath),
+    accumulatePass(app),
     computeLuminancePass(app)
 {
     quadDrawArgs.setVertexCount(6);
@@ -101,11 +104,14 @@ void Renderer::execute(const App& app, Scene& scene)
 
     bufferData.pixelJitter = app.camera.pixelJitter;
 
+    bufferData.currentAccum = 1.0f / (float)app.camera.currentAccum;
+
     commandList->open();
     commandList->writeBuffer(constantBuffer, &bufferData, sizeof(ConstantBuffer));
 
     raytracingPass.execute(app, scene);
     dlssPass.execute(app);
+    accumulatePass.execute(app);
     computeLuminancePass.execute(app);
     toneMapPasses[app.window.getBackBufferIndex()].execute(app);
 

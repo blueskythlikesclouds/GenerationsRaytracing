@@ -13,9 +13,6 @@ struct ComputeLuminancePass
         nvrhi::GraphicsState graphicsState;
     };
 
-    nvrhi::BindingLayoutHandle bindingLayout;
-
-    nvrhi::SamplerHandle linearClampSampler;
     nvrhi::TextureHandle adaptedLuminanceTexture;
 
     std::vector<SubPass> subPasses;

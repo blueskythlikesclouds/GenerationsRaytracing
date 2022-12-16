@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "AccumulatePass.h"
 #include "ComputeLuminancePass.h"
 #include "DLSSPass.h"
 #include "RaytracingPass.h"
@@ -15,6 +16,7 @@ struct Renderer
 
     RaytracingPass raytracingPass;
     DLSSPass dlssPass;
+    AccumulatePass accumulatePass;
     ComputeLuminancePass computeLuminancePass;
     std::vector<ToneMapPass> toneMapPasses;
 

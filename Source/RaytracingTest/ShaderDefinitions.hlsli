@@ -54,6 +54,7 @@ struct cbGlobals
     uint lightCount;
 
     float2 pixelJitter;
+    float currentAccum;
 };
 
 ConstantBuffer<cbGlobals> g_Globals : register(b0, space0);
