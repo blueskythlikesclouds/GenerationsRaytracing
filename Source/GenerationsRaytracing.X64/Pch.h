@@ -8,6 +8,7 @@
 #include <dxgi1_4.h>
 
 #include <cstdio>
+#include <unordered_map>
 
 #include <nvrhi/d3d12.h>
 #include <nvrhi/utils.h>

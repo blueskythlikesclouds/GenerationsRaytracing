@@ -1,5 +1,8 @@
 ﻿#include "Unknown.h"
 
+#include "Message.h"
+#include "MessageSender.h"
+
 Unknown::Unknown() : refCount(1)
 {
 }
@@ -24,4 +27,9 @@ ULONG Unknown::Release()
     return result;
 }
 
-Unknown::~Unknown() = default;
+Unknown::~Unknown()
+{
+    const auto msg = msgSender.start<MsgReleaseResource>();
+    msg->resource = (unsigned int)this;
+    msgSender.finish();
+}

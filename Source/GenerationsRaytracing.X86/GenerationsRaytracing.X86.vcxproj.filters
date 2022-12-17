@@ -32,6 +32,5 @@
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="Patches.h" />
     <ClInclude Include="MessageSender.h" />
-    <ClInclude Include="CriticalSection.h" />
   </ItemGroup>
 </Project>

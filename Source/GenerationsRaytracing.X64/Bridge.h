@@ -7,8 +7,15 @@ struct Bridge
 {
     MessageReceiver msgReceiver;
     Device device;
+    nvrhi::CommandListHandle commandList;
+
     ComPtr<IDXGISwapChain2> swapChain;
+
+    std::unordered_map<unsigned int, nvrhi::ResourceHandle> resources;
+
     bool shouldExit = false;
+
+    Bridge();
 
     void procMsgSetFVF();
     void procMsgInitSwapChain();
@@ -45,6 +52,7 @@ struct Bridge
     void procMsgMakePicture();
     void procMsgWriteBuffer();
     void procMsgExit();
+    void procMsgReleaseResource();
 
     void processMessages();
     void receiveMessages();

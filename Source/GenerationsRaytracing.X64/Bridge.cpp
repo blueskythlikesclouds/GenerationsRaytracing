@@ -1,6 +1,13 @@
 ﻿#include "Bridge.h"
 
+#include "Format.h"
 #include "Message.h"
+
+Bridge::Bridge()
+{
+    commandList = device.nvrhi->createCommandList();
+    commandList->open();
+}
 
 void Bridge::procMsgSetFVF()
 {
@@ -44,22 +51,59 @@ void Bridge::procMsgInitSwapChain()
 void Bridge::procMsgPresent()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgPresent>();
+
+    commandList->close();
+
+    device.nvrhi->executeCommandList(commandList);
+    device.nvrhi->waitForIdle();
+
     swapChain->Present(0, 0);
+
+    commandList->open();
 }
 
 void Bridge::procMsgCreateTexture()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateTexture>();
+
+    const auto format = Format::convert(msg->format);
+    if (format == nvrhi::Format::UNKNOWN)
+        return;
+
+    resources[msg->texture] = device.nvrhi->createTexture(nvrhi::TextureDesc()
+        .setWidth(msg->width)
+        .setHeight(msg->height)
+        .setMipLevels(msg->levels)
+        .setIsRenderTarget(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL))
+        .setInitialState(
+            msg->usage & D3DUSAGE_RENDERTARGET ? nvrhi::ResourceStates::RenderTarget :
+            msg->usage & D3DUSAGE_DEPTHSTENCIL ? nvrhi::ResourceStates::DepthWrite :
+            nvrhi::ResourceStates::ShaderResource)
+        .setKeepInitialState(true)
+        .setFormat(format)
+        .setIsTypeless(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)));
 }
 
 void Bridge::procMsgCreateVertexBuffer()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateVertexBuffer>();
+
+    resources[msg->vertexBuffer] = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+        .setByteSize(msg->length)
+        .setIsVertexBuffer(true)
+        .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+        .setKeepInitialState(true));
 }
 
 void Bridge::procMsgCreateIndexBuffer()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateIndexBuffer>();
+
+    resources[msg->indexBuffer] = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+        .setByteSize(msg->length)
+        .setIsIndexBuffer(true)
+        .setInitialState(nvrhi::ResourceStates::IndexBuffer)
+        .setKeepInitialState(true));
 }
 
 void Bridge::procMsgCreateRenderTarget()
@@ -204,17 +248,54 @@ void Bridge::procMsgMakePicture()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgMakePicture>();
     const void* data = msgReceiver.getDataAndMoveNext(msg->size);
+
+    nvrhi::TextureHandle texture;
+    std::vector<D3D12_SUBRESOURCE_DATA> subResources;
+
+    DirectX::LoadDDSTextureFromMemory(
+        device.nvrhi,
+        (const uint8_t*)data,
+        msg->size,
+        std::addressof(texture),
+        subResources);
+
+    for (uint32_t i = 0; i < subResources.size(); i++)
+    {
+        const auto& subResource = subResources[i];
+
+        commandList->writeTexture(
+            texture,
+            i / texture->getDesc().mipLevels,
+            i % texture->getDesc().mipLevels,
+            subResource.pData,
+            subResource.RowPitch,
+            subResource.SlicePitch);
+    }
+
+    resources[msg->texture] = texture;
 }
 
 void Bridge::procMsgWriteBuffer()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgWriteBuffer>();
     const void* data = msgReceiver.getDataAndMoveNext(msg->size);
+
+    commandList->writeBuffer(
+        static_cast<nvrhi::IBuffer*>(resources[msg->buffer].Get()),
+        data,
+        msg->size);
 }
 
 void Bridge::procMsgExit()
 {
+    msgReceiver.getMsgAndMoveNext<MsgExit>();
     shouldExit = true;
+}
+
+void Bridge::procMsgReleaseResource()
+{
+    const auto msg = msgReceiver.getMsgAndMoveNext<MsgReleaseResource>();
+    resources.erase(msg->resource);
 }
 
 void Bridge::processMessages()
@@ -224,7 +305,7 @@ void Bridge::processMessages()
         switch (msgReceiver.getMsgId())
         {
         case MsgSetFVF::ID:                    procMsgSetFVF(); break;
-        case MsgInitSwapChain::ID:           procMsgInitSwapChain(); break;
+        case MsgInitSwapChain::ID:             procMsgInitSwapChain(); break;
         case MsgPresent::ID:                   procMsgPresent(); break;
         case MsgCreateTexture::ID:             procMsgCreateTexture(); break;
         case MsgCreateVertexBuffer::ID:        procMsgCreateVertexBuffer(); break;
@@ -258,6 +339,7 @@ void Bridge::processMessages()
         case MsgMakePicture::ID:               procMsgMakePicture(); break;
         case MsgWriteBuffer::ID:               procMsgWriteBuffer(); break;
         case MsgExit::ID:                      procMsgExit(); break;
+        case MsgReleaseResource::ID:           procMsgReleaseResource(); break;
         default:                               assert(0 && "Unknown message type"); break;
         }
     }

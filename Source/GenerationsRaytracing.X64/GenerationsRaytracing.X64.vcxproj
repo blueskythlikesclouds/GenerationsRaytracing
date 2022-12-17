@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Device.cpp" />
+    <ClCompile Include="Format.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MessageReceiver.cpp" />
     <ClCompile Include="Pch.cpp">
@@ -21,6 +22,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Format.h" />
     <ClInclude Include="MessageReceiver.h" />
     <ClInclude Include="Bridge.h" />
     <ClInclude Include="Device.h" />

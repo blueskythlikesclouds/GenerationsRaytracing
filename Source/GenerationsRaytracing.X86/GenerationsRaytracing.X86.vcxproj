@@ -122,7 +122,6 @@
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="MessageSender.h" />
     <ClInclude Include="Configuration.h" />
-    <ClInclude Include="CriticalSection.h" />
     <ClInclude Include="D3D9.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="Patches.h" />

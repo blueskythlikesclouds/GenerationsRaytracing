@@ -6,11 +6,13 @@
     <ClCompile Include="MessageReceiver.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="Bridge.cpp" />
+    <ClCompile Include="Format.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
     <ClInclude Include="MessageReceiver.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="Bridge.h" />
+    <ClInclude Include="Format.h" />
   </ItemGroup>
 </Project>

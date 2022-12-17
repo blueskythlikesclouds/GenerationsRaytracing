@@ -273,3 +273,9 @@ struct MsgExit
 {
     DEFINE_MSG_ID;
 };
+
+struct MsgReleaseResource
+{
+    DEFINE_MSG_ID;
+    int resource;
+};

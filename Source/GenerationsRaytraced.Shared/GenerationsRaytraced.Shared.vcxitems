@@ -14,9 +14,11 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)..\GenerationsRaytracing.X86\CriticalSection.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Event.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Message.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)MemoryMappedFile.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Process.h" />
   </ItemGroup>
 </Project>
