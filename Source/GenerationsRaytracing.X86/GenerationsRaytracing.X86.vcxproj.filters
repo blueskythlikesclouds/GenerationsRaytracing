@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Mod.cpp" />
+    <ClCompile Include="Pch.cpp" />
+    <ClCompile Include="BaseTexture.cpp" />
+    <ClCompile Include="Buffer.cpp" />
+    <ClCompile Include="Device.cpp" />
+    <ClCompile Include="Resource.cpp" />
+    <ClCompile Include="Surface.cpp" />
+    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="VertexDeclaration.cpp" />
+    <ClCompile Include="D3D9.cpp" />
+    <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="Unknown.cpp" />
+    <ClCompile Include="Configuration.cpp" />
+    <ClCompile Include="Patches.cpp" />
+    <ClCompile Include="MessageSender.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Pch.h" />
+    <ClInclude Include="BaseTexture.h" />
+    <ClInclude Include="Buffer.h" />
+    <ClInclude Include="Device.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="Surface.h" />
+    <ClInclude Include="Texture.h" />
+    <ClInclude Include="VertexDeclaration.h" />
+    <ClInclude Include="D3D9.h" />
+    <ClInclude Include="Shader.h" />
+    <ClInclude Include="Unknown.h" />
+    <ClInclude Include="Configuration.h" />
+    <ClInclude Include="Patches.h" />
+    <ClInclude Include="MessageSender.h" />
+    <ClInclude Include="CriticalSection.h" />
+  </ItemGroup>
+</Project>

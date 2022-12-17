@@ -5,176 +5,14 @@
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="Window.cpp" />
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\common\dxgi-format.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\common\format-info.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\common\misc.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\common\shader-blob.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\common\state-tracking.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\common\utils.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-buffer.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-commandlist.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-compute.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-constants.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-descriptor-heap.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-device.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-graphics.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-meshlets.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-queries.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-raytracing.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-resource-bindings.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-shader.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-state-tracking.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-texture.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\d3d12\d3d12-upload.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\validation\validation-commandlist.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\src\validation\validation-device.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\textures\hl_hh_texture.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\terrain\hl_hh_terrain.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\shader\hl_hh_shader.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\models\hl_hh_model.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\materials\hl_hh_material.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\io\hl_stream.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\io\hl_path.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\io\hl_hh_mirage.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\io\hl_mem_stream.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\io\hl_file.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\io\hl_bina.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_text.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_tool_helpers.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_radix_tree.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_resource.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_internal.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_math.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_blob.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hh\hl_hh_needle_texture_streaming.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hh\hl_hh_needle.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hh\hl_hh_light.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\effects\hl_grif.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\archives\hl_hh_archive.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\archives\hl_archive.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_scene.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\hl_compression.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\HedgeLib\HedgeLib\src\archives\hl_pacx.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
     <ClCompile Include="ArchiveDatabase.cpp" />
     <ClCompile Include="Scene.cpp" />
-    <ClCompile Include="..\..\Dependencies\nvrhi\rtxmu\src\D3D12AccelStructManager.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Dependencies\nvrhi\rtxmu\src\D3D12Suballocator.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="..\..\Dependencies\DDSTextureLoader\DDSTextureLoader12.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
     <ClCompile Include="ShaderMapping.cpp" />
     <ClCompile Include="ShaderLibrary.cpp" />
-    <ClCompile Include="..\..\Dependencies\tinyxml2\tinyxml2.cpp">
-      <Filter>Dependencies</Filter>
-    </ClCompile>
     <ClCompile Include="SceneEffect.cpp" />
     <ClCompile Include="ComputeLuminancePass.cpp" />
     <ClCompile Include="RaytracingPass.cpp" />
@@ -206,9 +44,6 @@
     <ClInclude Include="AccumulatePass.h" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Dependencies">
-      <UniqueIdentifier>{2af4b336-29bc-48f3-bc42-bfbb6cb0cf9d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{c8c31556-7aa0-49f4-b2d9-fc4a51c79e65}</UniqueIdentifier>
     </Filter>

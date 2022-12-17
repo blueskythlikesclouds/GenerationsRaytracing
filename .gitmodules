@@ -13,3 +13,6 @@
 [submodule "Dependencies/DLSS"]
 	path = Dependencies/DLSS
 	url = https://github.com/NVIDIA/DLSS.git
+[submodule "Dependencies/BlueBlur"]
+	path = Dependencies/BlueBlur
+	url = https://github.com/blueskythlikesclouds/BlueBlur.git

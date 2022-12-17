@@ -1,7 +1,8 @@
+ShaderAccumulatePS.h
 ShaderCopyLuminancePS.h
 ShaderCopyPS.h
 ShaderCopyVS.h
 ShaderLerpLuminancePS.h
-ShaderToneMapPS.h
 ShaderLibrary.hlsl
 ShaderMapping.bin
+ShaderToneMapPS.h
