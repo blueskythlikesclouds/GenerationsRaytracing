@@ -235,6 +235,8 @@ FUNCTION_STUB(HRESULT, Device::MultiplyTransform, D3DTRANSFORMSTATETYPE, CONST D
 
 HRESULT Device::SetViewport(CONST D3DVIEWPORT9* pViewport)
 {
+    viewport = *pViewport;
+
     const auto msg = msgSender.start<MsgSetViewport>();
 
     msg->x = pViewport->X;
@@ -251,6 +253,7 @@ HRESULT Device::SetViewport(CONST D3DVIEWPORT9* pViewport)
 
 HRESULT Device::GetViewport(D3DVIEWPORT9* pViewport)
 {
+    *pViewport = viewport;
     return S_OK;
 }
 

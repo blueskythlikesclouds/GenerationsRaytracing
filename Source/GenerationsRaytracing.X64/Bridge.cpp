@@ -804,15 +804,15 @@ void Bridge::procMsgDrawPrimitiveUP()
         Format::convertPrimitiveType(msg->primitiveType),
         DirtyFlags::FramebufferAndPipeline);
 
-    if (!vertexBuffer || vertexBuffer->getDesc().byteSize < msg->vertexStreamZeroSize)
+    auto& vertexBuffer = vertexBuffers[msg->vertexStreamZeroSize];
+
+    if (!vertexBuffer)
     {
         vertexBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
             .setByteSize(msg->vertexStreamZeroSize)
             .setIsVertexBuffer(true)
             .setInitialState(nvrhi::ResourceStates::VertexBuffer)
             .setKeepInitialState(true));
-
-        vertexBufferHash = 0;
     }
 
     if (graphicsState.vertexBuffers.empty())
@@ -821,13 +821,8 @@ void Bridge::procMsgDrawPrimitiveUP()
         dirtyFlags |= DirtyFlags::VertexBuffer;
     }
 
-    const XXH64_hash_t hash = XXH64(data, msg->vertexStreamZeroSize, 0);
-    if (hash != vertexBufferHash)
-    {
-        commandList->writeBuffer(vertexBuffer, data, msg->vertexStreamZeroSize);
-        dirtyFlags |= DirtyFlags::GraphicsState;
-        vertexBufferHash = hash;
-    }
+    commandList->writeBuffer(vertexBuffer, data, msg->vertexStreamZeroSize);
+    dirtyFlags |= DirtyFlags::GraphicsState;
 
     assignAndUpdateDirtyFlags(graphicsState.vertexBuffers[0].buffer, vertexBuffer, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(graphicsState.vertexBuffers[0].slot, 0, DirtyFlags::GraphicsState);
@@ -890,18 +885,18 @@ void Bridge::procMsgCreateVertexDeclaration()
             .setOffset(element.Offset);
     }
 
-    //addVertexAttributeDesc("POSITION", nvrhi::Format::RGB32_FLOAT, attributes);
-    //addVertexAttributeDesc("NORMAL", nvrhi::Format::RGB32_FLOAT, attributes);
-    //addVertexAttributeDesc("TANGENT", nvrhi::Format::RGB32_FLOAT, attributes);
-    //addVertexAttributeDesc("BINORMAL", nvrhi::Format::RGB32_FLOAT, attributes);
-    //addVertexAttributeDesc("TEXCOORD", nvrhi::Format::RG32_FLOAT, attributes);
-    //addVertexAttributeDesc("TEXCOORD_ONE", nvrhi::Format::RG32_FLOAT, attributes);
-    //addVertexAttributeDesc("TEXCOORD_TWO", nvrhi::Format::RG32_FLOAT, attributes);
-    //addVertexAttributeDesc("TEXCOORD_THREE", nvrhi::Format::RG32_FLOAT, attributes);
-    //addVertexAttributeDesc("COLOR", nvrhi::Format::BGRA8_UNORM, attributes);
-    //addVertexAttributeDesc("COLOR_ONE", nvrhi::Format::BGRA8_UNORM, attributes);
-    //addVertexAttributeDesc("BLENDWEIGHT", nvrhi::Format::RGBA8_UNORM, attributes);
-    //addVertexAttributeDesc("BLENDINDICES", nvrhi::Format::RGBA8_UINT, attributes);
+    addVertexAttributeDesc("POSITION", nvrhi::Format::RGB32_FLOAT, attributes);
+    addVertexAttributeDesc("NORMAL", nvrhi::Format::RGB32_FLOAT, attributes);
+    addVertexAttributeDesc("TANGENT", nvrhi::Format::RGB32_FLOAT, attributes);
+    addVertexAttributeDesc("BINORMAL", nvrhi::Format::RGB32_FLOAT, attributes);
+    addVertexAttributeDesc("TEXCOORD", nvrhi::Format::RG32_FLOAT, attributes);
+    addVertexAttributeDesc("TEXCOORD_ONE", nvrhi::Format::RG32_FLOAT, attributes);
+    addVertexAttributeDesc("TEXCOORD_TWO", nvrhi::Format::RG32_FLOAT, attributes);
+    addVertexAttributeDesc("TEXCOORD_THREE", nvrhi::Format::RG32_FLOAT, attributes);
+    addVertexAttributeDesc("COLOR", nvrhi::Format::BGRA8_UNORM, attributes);
+    addVertexAttributeDesc("COLOR_ONE", nvrhi::Format::BGRA8_UNORM, attributes);
+    addVertexAttributeDesc("BLENDWEIGHT", nvrhi::Format::RGBA8_UNORM, attributes);
+    addVertexAttributeDesc("BLENDINDICES", nvrhi::Format::RGBA8_UINT, attributes);
 }
 
 void Bridge::procMsgSetVertexDeclaration()

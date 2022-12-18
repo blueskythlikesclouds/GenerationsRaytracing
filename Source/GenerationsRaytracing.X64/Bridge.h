@@ -74,8 +74,7 @@ struct Bridge
     nvrhi::GraphicsPipelineDesc pipelineDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::GraphicsPipelineHandle> pipelines;
 
-    XXH64_hash_t vertexBufferHash = 0;
-    nvrhi::BufferHandle vertexBuffer;
+    std::unordered_map<unsigned int, nvrhi::BufferHandle> vertexBuffers;
     uint32_t vertexStrides[8] {};
     bool instancing = false;
     uint32_t instanceCount = 0;

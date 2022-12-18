@@ -15,6 +15,7 @@ class Device : public Unknown
 public:
     ComPtr<Surface> swapChainSurface;
     ComPtr<Surface> depthStencilSurface;
+    D3DVIEWPORT9 viewport {};
 
     Device();
     virtual ~Device() final;
