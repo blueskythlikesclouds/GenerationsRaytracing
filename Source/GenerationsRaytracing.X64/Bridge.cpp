@@ -149,6 +149,7 @@ void Bridge::openCommandList()
     assert(!openedCommandList);
     commandList->open();
     openedCommandList = true;
+    dirtyFlags = DirtyFlags::All;
 }
 
 void Bridge::closeAndExecuteCommandList()
@@ -879,7 +880,7 @@ void Bridge::procMsgCreateVertexDeclaration()
     for (size_t i = 0; i < msg->vertexElementCount; i++)
     {
         auto& element = ((D3DVERTEXELEMENT9*)data)[i];
-        if (element.Stream == 0xFF)
+        if (element.Stream == 0xFF || element.Type == D3DDECLTYPE_UNUSED)
             break;
 
         std::string name = Format::convertDeclUsage(element.Usage);
@@ -1145,6 +1146,19 @@ void Bridge::receiveMessages()
         {
             swapChain->Present(0, 0);
             shouldPresent = false;
+
+#if 0
+            printf("resources: %lld\n", resources.size());
+            printf("textureBindingSets: %lld\n", textureBindingSets.size());
+            printf("samplers: %lld\n", samplers.size());
+            printf("samplerBindingSets: %lld\n", samplerBindingSets.size());
+            printf("framebuffers: %lld\n", framebuffers.size());
+            printf("vertexAttributeDescs: %lld\n", vertexAttributeDescs.size());
+            printf("inputLayouts: %lld\n", inputLayouts.size());
+            printf("pipelines: %lld\n", pipelines.size());
+            printf("vertexBuffers: %lld\n", vertexBuffers.size());
+            printf("\n");
+#endif
         }
     }
 }

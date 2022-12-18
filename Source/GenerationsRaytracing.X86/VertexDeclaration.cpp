@@ -6,7 +6,7 @@ VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* elements)
     {
         vertexElements.push_back(elements[i]);
 
-        if (elements[i].Stream == 0xFF)
+        if (elements[i].Stream == 0xFF || elements[i].Type == D3DDECLTYPE_UNUSED)
             break;
     }
 
