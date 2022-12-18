@@ -64,15 +64,15 @@ void MessageSender::commitAllMessages()
 
     assert((buffer.size() & (MSG_ALIGNMENT - 1)) == 0);
 
-    if (buffer.size() < MEMORY_MAPPED_FILE_SIZE)
-        buffer.resize(buffer.size() + 4);
+    if (buffer.size() <= MEMORY_MAPPED_FILE_SIZE - MSG_ALIGNMENT)
+        buffer.resize(buffer.size() + MSG_ALIGNMENT);
 
     gpuEvent.wait();
 
     memcpy(memoryMappedFileBuffer, buffer.data(), buffer.size());
     
-    cpuEvent.set();
     gpuEvent.reset();
+    cpuEvent.set();
 
     buffer.clear();
 }

@@ -15,5 +15,6 @@
     <ClInclude Include="Bridge.h" />
     <ClInclude Include="Format.h" />
     <ClInclude Include="ConstantBuffer.h" />
+    <ClInclude Include="Hash.h" />
   </ItemGroup>
 </Project>

@@ -24,6 +24,7 @@
   <ItemGroup>
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="Format.h" />
+    <ClInclude Include="Hash.h" />
     <ClInclude Include="MessageReceiver.h" />
     <ClInclude Include="Bridge.h" />
     <ClInclude Include="Device.h" />

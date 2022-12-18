@@ -11,7 +11,7 @@ struct MessageReceiver
     Event gpuEvent;
 
     MemoryMappedFile memoryMappedFile;
-    void* buffer = nullptr;
+    uint8_t* buffer = nullptr;
     size_t position = INVALID_POSITION_VALUE;
 
     MessageReceiver();

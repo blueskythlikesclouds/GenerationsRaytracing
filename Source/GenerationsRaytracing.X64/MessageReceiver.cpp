@@ -5,7 +5,7 @@
 MessageReceiver::MessageReceiver()
     : cpuEvent(TEXT(EVENT_NAME_CPU)), gpuEvent(TEXT(EVENT_NAME_GPU))
 {
-    buffer = memoryMappedFile.map();
+    buffer = (uint8_t*)memoryMappedFile.map();
 }
 
 MessageReceiver::~MessageReceiver()
@@ -21,7 +21,7 @@ bool MessageReceiver::hasNext()
         position = 0;
     }
 
-    if (position < MEMORY_MAPPED_FILE_SIZE && *(int*)((char*)buffer + position) != 0)
+    if (position < MEMORY_MAPPED_FILE_SIZE && *(int*)(buffer + position) != 0)
         return true;
 
 #if 0
@@ -38,27 +38,27 @@ bool MessageReceiver::hasNext()
 
     position = INVALID_POSITION_VALUE;
 
-    gpuEvent.set();
     cpuEvent.reset();
+    gpuEvent.set();
 
     return false;
 }
 
 int MessageReceiver::getMsgId() const
 {
-    return *(int*)((char*)buffer + position);
+    return *(int*)(buffer + position);
 }
 
 void* MessageReceiver::getMsgAndMoveNext(size_t msgSize)
 {
-    void* command = (char*)buffer + position;
+    void* command = buffer + position;
     position += MSG_ALIGN(msgSize);
     return command;
 }
 
 void* MessageReceiver::getDataAndMoveNext(size_t dataSize)
 {
-    void* data = (char*)buffer + position;
+    void* data = buffer + position;
     position += MSG_ALIGN(dataSize);
     return data;
 }

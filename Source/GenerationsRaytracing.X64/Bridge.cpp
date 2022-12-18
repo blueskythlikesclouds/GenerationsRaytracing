@@ -1,6 +1,7 @@
 ﻿#include "Bridge.h"
 
 #include "Format.h"
+#include "Hash.h"
 #include "Message.h"
 
 Bridge::Bridge()
@@ -178,8 +179,7 @@ void Bridge::processDirtyFlags()
 
     if ((dirtyFlags & DirtyFlags::Texture) != DirtyFlags::None)
     {
-        hash = XXH64(&textureBindingSetDesc, sizeof(textureBindingSetDesc), 0);
-        auto& textureBindingSet = textureBindingSets[hash];
+        auto& textureBindingSet = textureBindingSets[hash = computeHash(textureBindingSetDesc.bindings.data(), textureBindingSetDesc.bindings.size(), 0)];
         if (!textureBindingSet)
             textureBindingSet = device.nvrhi->createBindingSet(textureBindingSetDesc, textureBindingLayout);
 
@@ -190,16 +190,14 @@ void Bridge::processDirtyFlags()
     {
         for (uint32_t i = 0; i < 16; i++)
         {
-            hash = XXH64(&samplerDescs[i], sizeof(samplerDescs[i]), 0);
-            auto& sampler = samplers[hash];
+            auto& sampler = samplers[hash = computeHash(samplerDescs[i], 0)];
             if (!sampler)
                 sampler = device.nvrhi->createSampler(samplerDescs[i]);
 
             samplerBindingSetDesc.bindings[i] = nvrhi::BindingSetItem::Sampler(i, sampler);
         }
 
-        hash = XXH64(&samplerBindingSetDesc, sizeof(samplerBindingSetDesc), 0);
-        auto& samplerBindingSet = samplerBindingSets[hash];
+        auto& samplerBindingSet = samplerBindingSets[hash = computeHash(samplerBindingSetDesc.bindings.data(), samplerBindingSetDesc.bindings.size(), 0)];
         if (!samplerBindingSet)
             samplerBindingSet = device.nvrhi->createBindingSet(samplerBindingSetDesc, samplerBindingLayout);
 
@@ -217,7 +215,7 @@ void Bridge::processDirtyFlags()
                 attribute.isInstanced = attribute.bufferIndex > 0 && instancing;
             }
 
-            hash = XXH64(attributes.data(), attributes.size() * sizeof(nvrhi::VertexAttributeDesc), 0);
+            hash = computeHash(attributes.data(), attributes.size(), 0);
             auto& inputLayout = inputLayouts[hash];
             if (!inputLayout)
                 inputLayout = device.nvrhi->createInputLayout(attributes.data(), (uint32_t)attributes.size(), nullptr);
@@ -254,12 +252,14 @@ void Bridge::processDirtyFlags()
 
     if ((dirtyFlags & DirtyFlags::FramebufferAndPipeline) != DirtyFlags::None)
     {
-        hash = XXH64(&framebufferDesc, sizeof(framebufferDesc), 0);
+        hash = computeHash(framebufferDesc.colorAttachments.data(), framebufferDesc.colorAttachments.size(), 0);
+        hash = computeHash(framebufferDesc.depthAttachment, hash);
+
         auto& framebuffer = framebuffers[hash];
         if (!framebuffer)
             framebuffer = device.nvrhi->createFramebuffer(framebufferDesc);
 
-        hash = XXH64(&pipelineDesc, sizeof(pipelineDesc), hash);
+        hash = computeHash(pipelineDesc, hash);
         auto& pipeline = pipelines[hash];
         if (!pipeline)
             pipeline = device.nvrhi->createGraphicsPipeline(pipelineDesc, framebuffer);
@@ -880,8 +880,6 @@ void Bridge::procMsgCreateVertexDeclaration()
     for (size_t i = 0; i < msg->vertexElementCount; i++)
     {
         auto& element = ((D3DVERTEXELEMENT9*)data)[i];
-        if (element.Stream == 0xFF || element.Type == D3DDECLTYPE_UNUSED)
-            break;
 
         std::string name = Format::convertDeclUsage(element.Usage);
         if (element.UsageIndex > 0)
