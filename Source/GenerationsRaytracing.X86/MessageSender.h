@@ -12,8 +12,9 @@ struct MessageSender
     Event gpuEvent;
 
     MemoryMappedFile memoryMappedFile;
-    void* buffer = nullptr;
-    size_t position = 0;
+    void* memoryMappedFileBuffer = nullptr;
+
+    std::vector<uint8_t> buffer;
 
     std::atomic<size_t> messagesInProgress;
 

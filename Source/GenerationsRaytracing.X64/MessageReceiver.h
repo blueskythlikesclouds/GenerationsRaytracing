@@ -3,6 +3,8 @@
 #include "Event.h"
 #include "MemoryMappedFile.h"
 
+#define INVALID_POSITION_VALUE (size_t)-1
+
 struct MessageReceiver
 {
     Event cpuEvent;
@@ -10,9 +12,10 @@ struct MessageReceiver
 
     MemoryMappedFile memoryMappedFile;
     void* buffer = nullptr;
-    size_t position = 0;
+    size_t position = INVALID_POSITION_VALUE;
 
     MessageReceiver();
+    ~MessageReceiver();
 
     bool hasNext();
 

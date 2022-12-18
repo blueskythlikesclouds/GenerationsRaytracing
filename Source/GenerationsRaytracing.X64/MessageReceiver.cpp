@@ -5,14 +5,19 @@
 MessageReceiver::MessageReceiver()
     : cpuEvent(TEXT(EVENT_NAME_CPU)), gpuEvent(TEXT(EVENT_NAME_GPU))
 {
+    buffer = memoryMappedFile.map();
+}
+
+MessageReceiver::~MessageReceiver()
+{
+    memoryMappedFile.unmap(buffer);
 }
 
 bool MessageReceiver::hasNext()
 {
-    if (!buffer)
+    if (position == INVALID_POSITION_VALUE)
     {
         cpuEvent.wait();
-        buffer = memoryMappedFile.map();
         position = 0;
     }
 
@@ -31,10 +36,7 @@ bool MessageReceiver::hasNext()
     }
 #endif
 
-    memoryMappedFile.unmap(buffer);
-
-    buffer = nullptr;
-    position = 0;
+    position = INVALID_POSITION_VALUE;
 
     gpuEvent.set();
     cpuEvent.reset();
