@@ -35,11 +35,12 @@ struct Bridge
     std::unordered_map<unsigned int, nvrhi::ResourceHandle> resources;
 
     nvrhi::CommandListHandle commandList;
+    bool openedCommandList = false;
 
-    ConstantBuffer<256> vsConstants;
+    ConstantBuffer<256> vsConstants {};
     nvrhi::BufferHandle vsConstantBuffer;
 
-    ConstantBuffer<224> psConstants;
+    ConstantBuffer<224> psConstants {};
     nvrhi::BufferHandle psConstantBuffer;
 
     SharedConstantBuffer sharedConstants;
@@ -82,8 +83,12 @@ struct Bridge
     nvrhi::GraphicsState graphicsState;
 
     bool shouldExit = false;
+    bool shouldPresent = false;
 
     Bridge();
+
+    void openCommandList();
+    void closeAndExecuteCommandList();
 
     template<typename T1, typename T2>
     void assignAndUpdateDirtyFlags(T1& dest, const T2& src, DirtyFlags flags)
@@ -95,7 +100,7 @@ struct Bridge
         }
     }
 
-    void flush();
+    void processDirtyFlags();
 
     void procMsgSetFVF();
     void procMsgInitSwapChain();

@@ -101,6 +101,7 @@
   <ItemGroup>
     <ClCompile Include="BaseTexture.cpp" />
     <ClCompile Include="Buffer.cpp" />
+    <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="MessageSender.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="D3D9.cpp" />
@@ -121,6 +122,7 @@
   <ItemGroup>
     <ClInclude Include="BaseTexture.h" />
     <ClInclude Include="Buffer.h" />
+    <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MessageSender.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="D3D9.h" />

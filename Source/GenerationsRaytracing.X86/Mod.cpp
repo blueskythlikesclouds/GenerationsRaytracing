@@ -43,7 +43,7 @@ extern "C" __declspec(dllexport) void Init()
 #ifdef _DEBUG 
         0,
 #else
-        CREATE_NO_WINDOW,
+        CREATE_NO_WINDOW | INHERIT_PARENT_AFFINITY,
 #endif
         nullptr,
         nullptr,

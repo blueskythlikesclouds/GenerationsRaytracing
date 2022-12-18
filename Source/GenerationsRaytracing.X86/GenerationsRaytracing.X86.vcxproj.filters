@@ -16,6 +16,7 @@
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="Patches.cpp" />
     <ClCompile Include="MessageSender.cpp" />
+    <ClCompile Include="MemoryAllocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -32,5 +33,6 @@
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="Patches.h" />
     <ClInclude Include="MessageSender.h" />
+    <ClInclude Include="MemoryAllocator.h" />
   </ItemGroup>
 </Project>

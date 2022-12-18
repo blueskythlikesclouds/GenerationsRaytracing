@@ -6,7 +6,6 @@
 Bridge::Bridge()
 {
     commandList = device.nvrhi->createCommandList();
-    commandList->open();
 
     vsConstantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setDebugName("VS Constants")
@@ -145,7 +144,25 @@ Bridge::Bridge()
     graphicsState.bindings.emplace_back();
 }
 
-void Bridge::flush()
+void Bridge::openCommandList()
+{
+    assert(!openedCommandList);
+    commandList->open();
+    openedCommandList = true;
+}
+
+void Bridge::closeAndExecuteCommandList()
+{
+    if (!openedCommandList)
+        return;
+
+    commandList->close();
+    device.nvrhi->executeCommandList(commandList);
+    device.nvrhi->waitForIdle();
+    openedCommandList = false;
+}
+
+void Bridge::processDirtyFlags()
 {
     if ((dirtyFlags & DirtyFlags::VsConstants) != DirtyFlags::None)
         vsConstants.writeBuffer(commandList, vsConstantBuffer);
@@ -369,17 +386,7 @@ void Bridge::procMsgInitSwapChain()
 void Bridge::procMsgPresent()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgPresent>();
-
-    commandList->close();
-
-    device.nvrhi->executeCommandList(commandList);
-    device.nvrhi->waitForIdle();
-    device.nvrhi->runGarbageCollection();
-
-    swapChain->Present(0, 0);
-
-    dirtyFlags = DirtyFlags::All;
-    commandList->open();
+    shouldPresent = true;
 }
 
 void Bridge::procMsgCreateTexture()
@@ -700,6 +707,14 @@ void Bridge::procMsgSetTexture()
         textureBindingSetDesc.bindings[msg->stage], 
         nvrhi::BindingSetItem::Texture_SRV(msg->stage, texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()) : nullTexture.Get()),
         DirtyFlags::Texture);
+
+    if (msg->stage == 7 || msg->stage == 13)
+    {
+        assignAndUpdateDirtyFlags(
+            samplerDescs[msg->stage].reductionType,
+            nvrhi::SamplerReductionType::Comparison,
+            DirtyFlags::Sampler);
+    }
 }
 
 void Bridge::procMsgSetSamplerState()
@@ -768,7 +783,7 @@ void Bridge::procMsgDrawPrimitive()
         Format::convertPrimitiveType(msg->primitiveType), 
         DirtyFlags::FramebufferAndPipeline);
 
-    flush();
+    processDirtyFlags();
 
     commandList->draw(nvrhi::DrawArguments()
         .setStartVertexLocation(msg->startVertex)
@@ -785,7 +800,7 @@ void Bridge::procMsgDrawIndexedPrimitive()
         Format::convertPrimitiveType(msg->primitiveType),
         DirtyFlags::FramebufferAndPipeline);
 
-    flush();
+    processDirtyFlags();
 
     commandList->drawIndexed(nvrhi::DrawArguments()
         .setStartVertexLocation(msg->baseVertexIndex)
@@ -829,7 +844,7 @@ void Bridge::procMsgDrawPrimitiveUP()
     assignAndUpdateDirtyFlags(graphicsState.vertexBuffers[0].offset, 0, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexStrides[0], msg->vertexStreamZeroStride, DirtyFlags::InputLayout);
 
-    flush();
+    processDirtyFlags();
     commandList->draw(nvrhi::DrawArguments()
         .setVertexCount(msg->primitiveCount)
         .setInstanceCount(instancing ? instanceCount : 1));
@@ -1122,6 +1137,14 @@ void Bridge::receiveMessages()
 {
     while (!shouldExit)
     {
+        openCommandList();
         processMessages();
+        closeAndExecuteCommandList();
+
+        if (shouldPresent)
+        {
+            swapChain->Present(0, 0);
+            shouldPresent = false;
+        }
     }
 }

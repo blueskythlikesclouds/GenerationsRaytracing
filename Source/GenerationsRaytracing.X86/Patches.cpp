@@ -4,6 +4,7 @@
 #include "Patches.h"
 
 #include "D3D9.h"
+#include "MemoryAllocator.h"
 #include "Message.h"
 #include "MessageSender.h"
 #include "Texture.h"
@@ -123,6 +124,8 @@ HOOK(D3D9*, __cdecl, Direct3DCreate, 0xA5EDD0, UINT SDKVersion)
 
 void Patches::init()
 {
+    MemoryAllocator::init();
+
     INSTALL_HOOK(LoadPictureData);
     INSTALL_HOOK(FillTexture);
     INSTALL_HOOK(Direct3DCreate);
