@@ -7,7 +7,7 @@ public class Instruction
     public bool Saturate { get; set; }
     public ComparisonType ComparisonType { get; set; }
 
-    public override string ToString()
+    public string Convert(bool isRaytracingShader)
     {
         var stringBuilder = new StringBuilder();
 
@@ -38,7 +38,10 @@ public class Instruction
                 Arguments[2].Swizzle.Convert(Arguments[0].Swizzle);
                 Arguments[3].Swizzle.Convert(Arguments[0].Swizzle);
 
-                stringBuilder.AppendFormat("{0} = select({1} >= 0, {2}, {3});", Arguments[0], Arguments[1], Arguments[2], Arguments[3]);
+                stringBuilder.AppendFormat(
+                    isRaytracingShader ? "{0} = select({1} >= 0, {2}, {3});" : "{0} = {1} >= 0 ? {2} : {3};",
+                    Arguments[0], Arguments[1], Arguments[2], Arguments[3]);
+
                 break;
 
             case "dp2add":
@@ -194,13 +197,20 @@ public class Instruction
                 break;
 
             case "texld":
-                stringBuilder.AppendFormat("{0} = {1}.SampleLevel(g_LinearRepeatSampler, {2}, 0);", Arguments[0], Arguments[2], Arguments[1]);
+                stringBuilder.AppendFormat(
+                    isRaytracingShader
+                        ? "{0} = {1}.SampleLevel(g_LinearRepeatSampler, {2}, 0);"
+                        : "{0} = {1}.Sample({1}_s, {2});", Arguments[0], Arguments[2], Arguments[1]);
                 break;
 
             case "texldb":
                 Arguments[1].Swizzle.Resize(4);
 
-                stringBuilder.AppendFormat("{0} = {1}.SampleBias(g_LinearRepeatSampler, {2}, ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+                stringBuilder.AppendFormat(
+                    isRaytracingShader
+                        ? "{0} = {1}.SampleBias(g_LinearRepeatSampler, {2}, ({2}).w);"
+                        : "{0} = {1}.SampleBias({1}_s, {2}, ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+
                 break;
 
             case "texldd":
@@ -208,19 +218,30 @@ public class Instruction
                 Arguments[3].Swizzle.Resize(4);
                 Arguments[4].Swizzle.Resize(4);
 
-                stringBuilder.AppendFormat("{0} = {1}.SampleGrad(g_LinearRepeatSampler, {2}, {3}, {4});", Arguments[0], Arguments[2], Arguments[1], Arguments[3], Arguments[4]);
+                stringBuilder.AppendFormat(
+                    isRaytracingShader
+                        ? "{0} = {1}.SampleGrad(g_LinearRepeatSampler, {2}, {3}, {4});"
+                        : "{0} = {1}.SampleGrad({1}_s, {2}, {3}, {4});", Arguments[0], Arguments[2], Arguments[1],
+                    Arguments[3], Arguments[4]);
+
                 break;
 
             case "texldl":
                 Arguments[1].Swizzle.Resize(4);
 
-                stringBuilder.AppendFormat("{0} = {1}.SampleLevel(g_LinearRepeatSampler, {2}, ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+                stringBuilder.AppendFormat(
+                    isRaytracingShader
+                        ? "{0} = {1}.SampleLevel(g_LinearRepeatSampler, {2}, ({2}).w);"
+                        : "{0} = {1}.SampleLevel({1}_s, {2}, ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+
                 break;
 
             case "texldp":
                 Arguments[1].Swizzle.Resize(4);
 
-                //stringBuilder.AppendFormat("{0} = {1}.SampleCmpLevelZero(g_ComparisonSampler, ({2}).xy / ({2}).w, ({2}).z / ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+                if (!isRaytracingShader)
+                    stringBuilder.AppendFormat("{0} = {1}.SampleCmp({1}_s, ({2}).xy / ({2}).w, ({2}).z / ({2}).w);", Arguments[0], Arguments[2], Arguments[1]);
+
                 break;
 
             case "if":

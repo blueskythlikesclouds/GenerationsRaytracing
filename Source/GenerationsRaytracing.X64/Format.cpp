@@ -54,3 +54,63 @@ nvrhi::Format Format::convert(unsigned int format)
     default: return nvrhi::Format::UNKNOWN;
     }
 }
+
+nvrhi::Format Format::convertDeclType(unsigned type)
+{
+    switch (type)
+    {
+    case D3DDECLTYPE_FLOAT1: return nvrhi::Format::R32_FLOAT;
+    case D3DDECLTYPE_FLOAT2: return nvrhi::Format::RG32_FLOAT;
+    case D3DDECLTYPE_FLOAT3: return nvrhi::Format::RGB32_FLOAT;
+    case D3DDECLTYPE_FLOAT4: return nvrhi::Format::RGBA32_FLOAT;
+    case D3DDECLTYPE_D3DCOLOR: return nvrhi::Format::BGRA8_UNORM;
+    case D3DDECLTYPE_UBYTE4: return nvrhi::Format::RGBA8_UINT;
+    case D3DDECLTYPE_SHORT2: return nvrhi::Format::RG16_SINT;
+    case D3DDECLTYPE_SHORT4: return nvrhi::Format::RGBA16_SINT;
+    case D3DDECLTYPE_UBYTE4N: return nvrhi::Format::RGBA8_UNORM;
+    case D3DDECLTYPE_SHORT2N: return nvrhi::Format::RG16_SNORM;
+    case D3DDECLTYPE_SHORT4N: return nvrhi::Format::RGBA16_SNORM;
+    case D3DDECLTYPE_USHORT2N: return nvrhi::Format::RG16_UNORM;
+    case D3DDECLTYPE_USHORT4N: return nvrhi::Format::RGBA16_UNORM;
+    case D3DDECLTYPE_DEC3N: return nvrhi::Format::R10G10B10A2_UNORM;
+    case D3DDECLTYPE_FLOAT16_2: return nvrhi::Format::RG16_FLOAT;
+    case D3DDECLTYPE_FLOAT16_4: return nvrhi::Format::RGBA16_FLOAT;
+    default:
+    case D3DDECLTYPE_UNUSED: return nvrhi::Format::UNKNOWN;
+    }
+}
+
+const char* Format::convertDeclUsage(unsigned int usage)
+{
+    switch (usage)
+    {
+    case D3DDECLUSAGE_POSITION: return "POSITION";
+    case D3DDECLUSAGE_BLENDWEIGHT: return "BLENDWEIGHT";
+    case D3DDECLUSAGE_BLENDINDICES: return "BLENDINDICES";
+    case D3DDECLUSAGE_NORMAL: return "NORMAL";
+    case D3DDECLUSAGE_PSIZE: return "PSIZE";
+    case D3DDECLUSAGE_TEXCOORD: return "TEXCOORD";
+    case D3DDECLUSAGE_TANGENT: return "TANGENT";
+    case D3DDECLUSAGE_BINORMAL: return "BINORMAL";
+    case D3DDECLUSAGE_TESSFACTOR: return "TESSFACTOR";
+    case D3DDECLUSAGE_POSITIONT: return "POSITIONT";
+    case D3DDECLUSAGE_COLOR: return "COLOR";
+    case D3DDECLUSAGE_FOG: return "FOG";
+    case D3DDECLUSAGE_DEPTH: return "DEPTH";
+    case D3DDECLUSAGE_SAMPLE: return "SAMPLE";
+    default: return "UNKNOWN";
+    }
+}
+
+nvrhi::PrimitiveType Format::convertPrimitiveType(unsigned int primitiveType)
+{
+    switch (primitiveType)
+    {
+    case D3DPT_POINTLIST: return nvrhi::PrimitiveType::PointList;
+    case D3DPT_LINELIST: return nvrhi::PrimitiveType::LineList;
+    case D3DPT_TRIANGLELIST: return nvrhi::PrimitiveType::TriangleList;
+    case D3DPT_TRIANGLESTRIP: return nvrhi::PrimitiveType::TriangleStrip;
+    }
+
+    return nvrhi::PrimitiveType::PointList;
+}

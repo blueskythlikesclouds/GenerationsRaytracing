@@ -1,11 +1,17 @@
 ﻿#include "Texture.h"
+#include "Surface.h"
 
 HRESULT Texture::GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc)
 {
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Texture::GetSurfaceLevel, UINT Level, Surface** ppSurfaceLevel)
+HRESULT Texture::GetSurfaceLevel(UINT Level, Surface** ppSurfaceLevel)
+{
+    *ppSurfaceLevel = reinterpret_cast<Surface*>(this);
+    (*ppSurfaceLevel)->AddRef();
+    return S_OK;
+}
 
 HRESULT Texture::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags)
 {

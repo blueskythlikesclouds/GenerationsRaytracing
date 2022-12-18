@@ -21,4 +21,8 @@ enum
 struct Format
 {
     static nvrhi::Format convert(unsigned int format);
+
+    static nvrhi::Format convertDeclType(unsigned int type);
+    static const char* convertDeclUsage(unsigned int usage);
+    static nvrhi::PrimitiveType convertPrimitiveType(unsigned int primitiveType);
 };

@@ -51,7 +51,7 @@ HRESULT Device::Present(CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDe
 
 HRESULT Device::GetBackBuffer(UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, Surface** ppBackBuffer)
 {
-    *ppBackBuffer = new Surface();
+    swapChainSurface.CopyTo(ppBackBuffer);
     return S_OK;
 }
     
@@ -106,6 +106,7 @@ HRESULT Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3
     const auto msg = msgSender.start<MsgCreateIndexBuffer>();
 
     msg->length = Length;
+    msg->format = Format;
     msg->indexBuffer = (unsigned int)*ppIndexBuffer;
 
     msgSender.finish();
@@ -363,33 +364,6 @@ FUNCTION_STUB(HRESULT, Device::SetNPatchMode, float nSegments)
 
 FUNCTION_STUB(float, Device::GetNPatchMode)
 
-HRESULT Device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
-{
-    const auto msg = msgSender.start<MsgDrawPrimitive>();
-
-    msg->primitiveType = PrimitiveType;
-    msg->startVertex = StartVertex;
-    msg->primitiveCount = PrimitiveCount;
-
-    msgSender.finish();
-
-    return S_OK;
-}       
-        
-HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
-{
-    const auto msg = msgSender.start<MsgDrawIndexedPrimitive>();
-
-    msg->primitiveType = PrimitiveType;
-    msg->baseVertexIndex = BaseVertexIndex;
-    msg->startIndex = startIndex;
-    msg->primitiveCount = primCount;
-
-    msgSender.finish();
-
-    return S_OK;
-}
-
 static UINT calculateIndexCount(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount)
 {
     UINT vertexCount = 0;
@@ -416,15 +390,43 @@ static UINT calculateIndexCount(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCo
     }
     return vertexCount;
 }
+
+HRESULT Device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
+{
+    const auto msg = msgSender.start<MsgDrawPrimitive>();
+
+    msg->primitiveType = PrimitiveType;
+    msg->startVertex = StartVertex;
+    msg->primitiveCount = calculateIndexCount(PrimitiveType, PrimitiveCount);
+
+    msgSender.finish();
+
+    return S_OK;
+}       
+        
+HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
+{
+    const auto msg = msgSender.start<MsgDrawIndexedPrimitive>();
+
+    msg->primitiveType = PrimitiveType;
+    msg->baseVertexIndex = BaseVertexIndex;
+    msg->startIndex = startIndex;
+    msg->primitiveCount = calculateIndexCount(PrimitiveType, primCount);
+
+    msgSender.finish();
+
+    return S_OK;
+}
         
 HRESULT Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 {
-    const unsigned int vertexStreamZeroSize = calculateIndexCount(PrimitiveType, PrimitiveCount) * VertexStreamZeroStride;
+    const unsigned int primitiveCount = calculateIndexCount(PrimitiveType, PrimitiveCount);
+    const unsigned int vertexStreamZeroSize = primitiveCount * VertexStreamZeroStride;
 
     const auto msg = msgSender.start<MsgDrawPrimitiveUP>(vertexStreamZeroSize);
 
     msg->primitiveType = PrimitiveType;
-    msg->primitiveCount = PrimitiveCount;
+    msg->primitiveCount = primitiveCount;
     msg->vertexStreamZeroSize = vertexStreamZeroSize;
     msg->vertexStreamZeroStride = VertexStreamZeroStride;
 

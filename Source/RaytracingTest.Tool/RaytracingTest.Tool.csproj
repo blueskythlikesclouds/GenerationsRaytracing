@@ -12,4 +12,19 @@
     <ProjectReference Include="..\..\Dependencies\Amicitia.IO\src\Amicitia.IO\Amicitia.IO.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Update="Resources\ConverterInternal.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ConverterInternal.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\ConverterInternal.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>ConverterInternal.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

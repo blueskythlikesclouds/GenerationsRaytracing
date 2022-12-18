@@ -5,7 +5,7 @@ using System.Xml.Linq;
 
 namespace RaytracingTest.Tool.Shaders;
 
-public static class ShaderConverter
+public static class RaytracingShaderConverter
 {
     private static void WriteBarycentricLerp(StringBuilder stringBuilder, string buffer)
     {
@@ -463,7 +463,7 @@ public static class ShaderConverter
                 }
             }
 
-            string instrLine = instruction.ToString();
+            string instrLine = instruction.Convert(true);
 
             if (instrLine.Contains('}')) --indent;
 

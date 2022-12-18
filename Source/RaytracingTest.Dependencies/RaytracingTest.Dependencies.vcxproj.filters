@@ -55,5 +55,6 @@
     <ClCompile Include="..\..\Dependencies\nvrhi\src\common\utils.cpp" />
     <ClCompile Include="..\..\Dependencies\nvrhi\src\validation\validation-commandlist.cpp" />
     <ClCompile Include="..\..\Dependencies\nvrhi\src\validation\validation-device.cpp" />
+    <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c" />
   </ItemGroup>
 </Project>

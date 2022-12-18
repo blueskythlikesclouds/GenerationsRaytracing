@@ -20,6 +20,7 @@ struct MsgInitSwapChain
     unsigned int bufferCount;
     unsigned int scaling;
     unsigned int handle;
+    unsigned int surface;
 };
 
 struct MsgPresent
@@ -49,6 +50,7 @@ struct MsgCreateIndexBuffer
 {
     DEFINE_MSG_ID;
     unsigned int length;
+    unsigned int format;
     unsigned int indexBuffer;
 };
 

@@ -12,10 +12,10 @@ class VertexDeclaration;
 
 class Device : public Unknown
 {
-protected:
+public:
+    ComPtr<Surface> swapChainSurface;
     ComPtr<Surface> depthStencilSurface;
 
-public:
     Device();
     virtual ~Device() final;
 

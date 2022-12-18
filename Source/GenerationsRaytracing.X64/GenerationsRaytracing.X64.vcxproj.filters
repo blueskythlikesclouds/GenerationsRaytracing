@@ -14,5 +14,6 @@
     <ClInclude Include="Device.h" />
     <ClInclude Include="Bridge.h" />
     <ClInclude Include="Format.h" />
+    <ClInclude Include="ConstantBuffer.h" />
   </ItemGroup>
 </Project>

@@ -7,6 +7,7 @@
 #include "Device.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "Surface.h"
 
 void D3D9::ensureNotNull()
 {
@@ -129,6 +130,9 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
     if (displayMode == DisplayMode::Windowed)
         ShowCursor(true);
 
+    *ppReturnedDeviceInterface = new Device();
+    (*ppReturnedDeviceInterface)->swapChainSurface.Attach(new Surface());
+
     const auto msg = msgSender.start<MsgInitSwapChain>();
 
     msg->width = pPresentationParameters->BackBufferWidth;
@@ -138,10 +142,9 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
         width != pPresentationParameters->BackBufferWidth ||
         height != pPresentationParameters->BackBufferHeight ? DXGI_SCALING_STRETCH : DXGI_SCALING_NONE;
     msg->handle = (unsigned int)pPresentationParameters->hDeviceWindow;
+    msg->surface = (unsigned int)(*ppReturnedDeviceInterface)->swapChainSurface.Get();
 
     msgSender.finish();
-
-    *ppReturnedDeviceInterface = new Device();
 
     // Force the window to the foreground.
     const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
