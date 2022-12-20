@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Windows.h>
+#include <detours.h>
 
 #include <wrl/client.h>
 
@@ -17,6 +18,8 @@
 
 #include <DDSTextureLoader12.h>
 
+#include <D3D12MemAlloc.h>
+
 #ifndef _DEBUG
 #define inline __forceinline
 #include <xxHash.h>
@@ -24,5 +27,7 @@
 #else
 #include <xxHash.h>
 #endif
+
+#include <Helpers.h>
 
 using Microsoft::WRL::ComPtr;

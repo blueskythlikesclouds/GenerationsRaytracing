@@ -228,7 +228,6 @@ void Bridge::processDirtyFlags()
         }
     }
 
-#ifdef _DEBUG
     auto framebufferDesc = this->framebufferDesc;
     auto pipelineDesc = this->pipelineDesc;
 
@@ -237,18 +236,15 @@ void Bridge::processDirtyFlags()
         auto& textureDesc = framebufferDesc.colorAttachments[0].texture->getDesc();
 
         if (textureDesc.width == 320 && textureDesc.height == 180)
-            framebufferDesc.depthAttachment.texture = nullptr;
+            assignAndUpdateDirtyFlags(framebufferDesc.depthAttachment.texture, nullptr, DirtyFlags::FramebufferAndPipeline);
     }
     if (!framebufferDesc.depthAttachment.texture &&
         (pipelineDesc.renderState.depthStencilState.depthTestEnable ||
             pipelineDesc.renderState.depthStencilState.depthWriteEnable))
     {
-        pipelineDesc.renderState.depthStencilState.depthTestEnable = false;
-        pipelineDesc.renderState.depthStencilState.depthWriteEnable = false;
+        assignAndUpdateDirtyFlags(pipelineDesc.renderState.depthStencilState.depthTestEnable, false, DirtyFlags::FramebufferAndPipeline);
+        assignAndUpdateDirtyFlags(pipelineDesc.renderState.depthStencilState.depthWriteEnable, false, DirtyFlags::FramebufferAndPipeline);
     }
-
-    dirtyFlags |= DirtyFlags::FramebufferAndPipeline;
-#endif
 
     if ((dirtyFlags & DirtyFlags::FramebufferAndPipeline) != DirtyFlags::None)
     {
@@ -283,6 +279,8 @@ void Bridge::processDirtyFlags()
 
     if ((dirtyFlags & DirtyFlags::GraphicsState) != DirtyFlags::None)
         commandList->setGraphicsState(graphicsState);
+
+    commandList->commitBarriers();
 
     dirtyFlags = DirtyFlags::None;
 }
@@ -838,7 +836,7 @@ void Bridge::procMsgDrawPrimitiveUP()
     }
 
     commandList->writeBuffer(vertexBuffer, data, msg->vertexStreamZeroSize);
-    dirtyFlags |= DirtyFlags::GraphicsState;
+    commandList->setBufferState(vertexBuffer, nvrhi::ResourceStates::VertexBuffer);
 
     assignAndUpdateDirtyFlags(graphicsState.vertexBuffers[0].buffer, vertexBuffer, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(graphicsState.vertexBuffers[0].slot, 0, DirtyFlags::GraphicsState);
@@ -1059,6 +1057,8 @@ void Bridge::procMsgMakePicture()
             subResource.SlicePitch);
     }
 
+    commandList->setTextureState(texture, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
+
     resources[msg->texture] = texture;
 }
 
@@ -1067,10 +1067,14 @@ void Bridge::procMsgWriteBuffer()
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgWriteBuffer>();
     const void* data = msgReceiver.getDataAndMoveNext(msg->size);
 
+    const auto buffer = nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->buffer].Get());
+
     commandList->writeBuffer(
-        nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->buffer].Get()),
+        buffer,
         data,
         msg->size);
+
+    commandList->setBufferState(buffer, buffer->getDesc().initialState);
 }
 
 void Bridge::procMsgExit()

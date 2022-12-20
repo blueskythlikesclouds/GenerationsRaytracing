@@ -56,5 +56,6 @@
     <ClCompile Include="..\..\Dependencies\nvrhi\src\validation\validation-commandlist.cpp" />
     <ClCompile Include="..\..\Dependencies\nvrhi\src\validation\validation-device.cpp" />
     <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c" />
+    <ClCompile Include="..\..\Dependencies\D3D12MemoryAllocator\src\D3D12MemAlloc.cpp" />
   </ItemGroup>
 </Project>
