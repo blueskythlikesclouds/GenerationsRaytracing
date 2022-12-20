@@ -14,8 +14,24 @@ class Device : public Unknown
 {
 public:
     ComPtr<Surface> swapChainSurface;
+    ComPtr<Surface> renderTargets[4];
     ComPtr<Surface> depthStencilSurface;
-    D3DVIEWPORT9 viewport {};
+    D3DVIEWPORT9 viewport{};
+    DWORD renderStates[210]{};
+    ComPtr<BaseTexture> textures[16];
+    DWORD samplerStates[16][14]{};
+    RECT scissorRect{};
+    ComPtr<VertexDeclaration> vertexDeclaration;
+    DWORD fvf{};
+    ComPtr<Shader> vertexShader;
+    BOOL boolConstantsVS[16]{};
+    ComPtr<Buffer> streamBuffers[8];
+    UINT streamOffsets[8]{};
+    UINT streamStrides[8]{};
+    UINT streamSettings[8]{};
+    ComPtr<Buffer> indices;
+    ComPtr<Shader> pixelShader;
+    BOOL boolConstantsPS[16]{};
 
     Device();
     virtual ~Device() final;

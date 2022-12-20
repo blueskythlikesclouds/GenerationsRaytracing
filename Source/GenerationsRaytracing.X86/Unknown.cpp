@@ -3,10 +3,6 @@
 #include "Message.h"
 #include "MessageSender.h"
 
-Unknown::Unknown() : refCount(1)
-{
-}
-
 HRESULT Unknown::QueryInterface(const IID& riid, void** ppvObj)
 {
     // Not used by game.
@@ -15,12 +11,12 @@ HRESULT Unknown::QueryInterface(const IID& riid, void** ppvObj)
 
 ULONG Unknown::AddRef()
 {
-    return InterlockedIncrement(&refCount);
+    return ++refCount;
 }
 
 ULONG Unknown::Release()
 {
-    const ULONG result = InterlockedDecrement(&refCount);
+    const ULONG result = --refCount;
     if (result == 0)
         delete this;
 

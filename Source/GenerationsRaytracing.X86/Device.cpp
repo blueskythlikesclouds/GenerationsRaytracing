@@ -169,6 +169,9 @@ HRESULT Device::CreateOffscreenPlainSurface(UINT Width, UINT Height, D3DFORMAT F
 
 HRESULT Device::SetRenderTarget(DWORD RenderTargetIndex, Surface* pRenderTarget)
 {
+    if (renderTargets[RenderTargetIndex].Get() == pRenderTarget) return S_OK;
+    renderTargets[RenderTargetIndex] = pRenderTarget;
+
     const auto msg = msgSender.start<MsgSetRenderTarget>();
 
     msg->index = RenderTargetIndex;
@@ -186,6 +189,7 @@ HRESULT Device::GetRenderTarget(DWORD RenderTargetIndex, Surface** ppRenderTarge
 
 HRESULT Device::SetDepthStencilSurface(Surface* pNewZStencil)
 {
+    if (depthStencilSurface.Get() == pNewZStencil) return S_OK;
     depthStencilSurface = pNewZStencil;
 
     const auto msg = msgSender.start<MsgSetDepthStencilSurface>();
@@ -235,6 +239,7 @@ FUNCTION_STUB(HRESULT, Device::MultiplyTransform, D3DTRANSFORMSTATETYPE, CONST D
 
 HRESULT Device::SetViewport(CONST D3DVIEWPORT9* pViewport)
 {
+    if (memcmp(&viewport, pViewport, sizeof(D3DVIEWPORT9)) == 0) return S_OK;
     viewport = *pViewport;
 
     const auto msg = msgSender.start<MsgSetViewport>();
@@ -275,6 +280,9 @@ FUNCTION_STUB(HRESULT, Device::GetClipPlane, DWORD Index, float* pPlane)
 
 HRESULT Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value)
 {
+    if (renderStates[State] == Value) return S_OK;
+    renderStates[State] = Value;
+
     const auto msg = msgSender.start<MsgSetRenderState>();
 
     msg->state = State;
@@ -301,6 +309,9 @@ FUNCTION_STUB(HRESULT, Device::GetTexture, DWORD Stage, BaseTexture** ppTexture)
 
 HRESULT Device::SetTexture(DWORD Stage, BaseTexture* pTexture)
 {
+    if (textures[Stage].Get() == pTexture) return S_OK;
+    textures[Stage] = pTexture;
+
     const auto msg = msgSender.start<MsgSetTexture>();
 
     msg->stage = Stage;
@@ -322,6 +333,9 @@ FUNCTION_STUB(HRESULT, Device::GetSamplerState, DWORD Sampler, D3DSAMPLERSTATETY
 
 HRESULT Device::SetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value)
 {
+    if (samplerStates[Sampler][Type] == Value) return S_OK;
+    samplerStates[Sampler][Type] = Value;
+
     const auto msg = msgSender.start<MsgSetSamplerState>();
 
     msg->sampler = Sampler;
@@ -345,6 +359,9 @@ FUNCTION_STUB(HRESULT, Device::GetCurrentTexturePalette, UINT *PaletteNumber)
 
 HRESULT Device::SetScissorRect(CONST RECT* pRect)
 {
+    if (memcmp(&scissorRect, pRect, sizeof(RECT)) == 0) return S_OK;
+    scissorRect = *pRect;
+
     const auto msg = msgSender.start<MsgSetScissorRect>();
 
     msg->left = pRect->left;
@@ -462,6 +479,11 @@ HRESULT Device::CreateVertexDeclaration(CONST D3DVERTEXELEMENT9* pVertexElements
 
 HRESULT Device::SetVertexDeclaration(VertexDeclaration* pDecl)
 {
+    if (vertexDeclaration.Get() == pDecl) return S_OK;
+
+    vertexDeclaration = pDecl;
+    fvf = 0;
+
     const auto msg = msgSender.start<MsgSetVertexDeclaration>();
 
     msg->vertexDeclaration = (unsigned int)pDecl;
@@ -475,6 +497,11 @@ FUNCTION_STUB(HRESULT, Device::GetVertexDeclaration, VertexDeclaration** ppDecl)
 
 HRESULT Device::SetFVF(DWORD FVF)
 {
+    if (fvf == FVF) return S_OK;
+
+    vertexDeclaration = nullptr;
+    fvf = FVF;
+
     const auto msg = msgSender.start<MsgSetFVF>();
 
     msg->fvf = FVF;
@@ -504,6 +531,9 @@ HRESULT Device::CreateVertexShader(CONST DWORD* pFunction, Shader** ppShader, DW
 
 HRESULT Device::SetVertexShader(Shader* pShader)
 {
+    if (vertexShader.Get() == pShader) return S_OK;
+    vertexShader = pShader;
+
     const auto msg = msgSender.start<MsgSetVertexShader>();
 
     msg->shader = (unsigned int)pShader;
@@ -540,12 +570,18 @@ FUNCTION_STUB(HRESULT, Device::GetVertexShaderConstantI, UINT StartRegister, int
 
 HRESULT Device::SetVertexShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount)
 {
-    const auto msg = msgSender.start<MsgSetVertexShaderConstantB>(BoolCount * sizeof(BOOL));
+    void* dest = &boolConstantsVS[StartRegister];
+    const size_t destSize = BoolCount * sizeof(BOOL);
+
+    if (memcmp(dest, pConstantData, destSize) == 0) return S_OK;
+    memcpy(dest, pConstantData, destSize);
+
+    const auto msg = msgSender.start<MsgSetVertexShaderConstantB>(destSize);
 
     msg->startRegister = StartRegister;
     msg->boolCount = BoolCount;
 
-    memcpy(MSG_DATA_PTR(msg), pConstantData, BoolCount * sizeof(BOOL));
+    memcpy(MSG_DATA_PTR(msg), pConstantData, destSize);
 
     msgSender.finish();
 
@@ -556,6 +592,15 @@ FUNCTION_STUB(HRESULT, Device::GetVertexShaderConstantB, UINT StartRegister, BOO
 
 HRESULT Device::SetStreamSource(UINT StreamNumber, Buffer* pStreamData, UINT OffsetInBytes, UINT Stride)
 {
+    if (streamBuffers[StreamNumber].Get() == pStreamData &&
+        streamOffsets[StreamNumber] == OffsetInBytes &&
+        streamStrides[StreamNumber] == Stride)
+        return S_OK;
+
+    streamBuffers[StreamNumber] = pStreamData;
+    streamOffsets[StreamNumber] = OffsetInBytes;
+    streamOffsets[StreamNumber] = Stride;
+
     const auto msg = msgSender.start<MsgSetStreamSource>();
 
     msg->streamNumber = StreamNumber;
@@ -572,6 +617,9 @@ FUNCTION_STUB(HRESULT, Device::GetStreamSource, UINT StreamNumber, Buffer** ppSt
 
 HRESULT Device::SetStreamSourceFreq(UINT StreamNumber, UINT Setting)
 {
+    if (streamSettings[StreamNumber] == Setting) return S_OK;
+    streamSettings[StreamNumber] = Setting;
+
     const auto msg = msgSender.start<MsgSetStreamSourceFreq>();
 
     msg->streamNumber = StreamNumber;
@@ -586,6 +634,9 @@ FUNCTION_STUB(HRESULT, Device::GetStreamSourceFreq, UINT StreamNumber, UINT* pSe
 
 HRESULT Device::SetIndices(Buffer* pIndexData)
 {
+    if (indices.Get() == pIndexData) return S_OK;
+    indices = pIndexData;
+
     const auto msg = msgSender.start<MsgSetIndices>();
 
     msg->indexData = (unsigned int)pIndexData;
@@ -615,6 +666,9 @@ HRESULT Device::CreatePixelShader(CONST DWORD* pFunction, Shader** ppShader, DWO
 
 HRESULT Device::SetPixelShader(Shader* pShader)
 {
+    if (pixelShader.Get() == pShader) return S_OK;
+    pixelShader = pShader;
+
     const auto msg = msgSender.start<MsgSetPixelShader>();
 
     msg->shader = (unsigned int)pShader;
@@ -651,12 +705,18 @@ FUNCTION_STUB(HRESULT, Device::GetPixelShaderConstantI, UINT StartRegister, int*
 
 HRESULT Device::SetPixelShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount)
 {
-    const auto msg = msgSender.start<MsgSetPixelShaderConstantB>(BoolCount * sizeof(BOOL));
+    void* dest = &boolConstantsPS[StartRegister];
+    const size_t destSize = BoolCount * sizeof(BOOL);
+
+    if (memcmp(dest, pConstantData, destSize) == 0) return S_OK;
+    memcpy(dest, pConstantData, destSize);
+
+    const auto msg = msgSender.start<MsgSetPixelShaderConstantB>(destSize);
 
     msg->startRegister = StartRegister;
     msg->boolCount = BoolCount;
 
-    memcpy(MSG_DATA_PTR(msg), pConstantData, BoolCount * sizeof(BOOL));
+    memcpy(MSG_DATA_PTR(msg), pConstantData, destSize);
 
     msgSender.finish();
 
