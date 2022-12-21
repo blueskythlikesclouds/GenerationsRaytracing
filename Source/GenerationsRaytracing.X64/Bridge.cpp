@@ -180,11 +180,27 @@ void Bridge::processDirtyFlags()
 
     XXH64_hash_t hash = 0;
 
+    auto curTextureBindingSetDesc = this->textureBindingSetDesc;
+
+    if (!framebufferDesc.colorAttachments.empty() && 
+        ((dirtyFlags & DirtyFlags::Texture) != DirtyFlags::None ||
+        (dirtyFlags & DirtyFlags::FramebufferAndPipeline) != DirtyFlags::None))
+    {
+        for (uint32_t i = 0; i < 16; i++)
+        {
+            if (curTextureBindingSetDesc.bindings[i].resourceHandle != framebufferDesc.colorAttachments[0].texture)
+                continue;
+
+            curTextureBindingSetDesc.bindings[i] = nvrhi::BindingSetItem::Texture_SRV(i, nullTexture);
+            dirtyFlags |= DirtyFlags::Texture;
+        }
+    }
+
     if ((dirtyFlags & DirtyFlags::Texture) != DirtyFlags::None)
     {
-        auto& textureBindingSet = textureBindingSets[hash = computeHash(textureBindingSetDesc.bindings.data(), textureBindingSetDesc.bindings.size(), 0)];
+        auto& textureBindingSet = textureBindingSets[hash = computeHash(curTextureBindingSetDesc.bindings.data(), curTextureBindingSetDesc.bindings.size(), 0)];
         if (!textureBindingSet)
-            textureBindingSet = device.nvrhi->createBindingSet(textureBindingSetDesc, textureBindingLayout);
+            textureBindingSet = device.nvrhi->createBindingSet(curTextureBindingSetDesc, textureBindingLayout);
 
         assignAndUpdateDirtyFlags(graphicsState.bindings[2], textureBindingSet, DirtyFlags::GraphicsState);
     }
@@ -231,37 +247,37 @@ void Bridge::processDirtyFlags()
         }
     }
 
-    auto framebufferDesc = this->framebufferDesc;
-    auto pipelineDesc = this->pipelineDesc;
+    auto curFramebufferDesc = this->framebufferDesc;
+    auto curPipelineDesc = this->pipelineDesc;
 
-    if (!framebufferDesc.colorAttachments.empty() && framebufferDesc.depthAttachment.texture)
+    if (!curFramebufferDesc.colorAttachments.empty() && curFramebufferDesc.depthAttachment.texture)
     {
-        auto& textureDesc = framebufferDesc.colorAttachments[0].texture->getDesc();
+        auto& textureDesc = curFramebufferDesc.colorAttachments[0].texture->getDesc();
 
         if (textureDesc.width == 320 && textureDesc.height == 180)
-            assignAndUpdateDirtyFlags(framebufferDesc.depthAttachment.texture, nullptr, DirtyFlags::FramebufferAndPipeline);
+            assignAndUpdateDirtyFlags(curFramebufferDesc.depthAttachment.texture, nullptr, DirtyFlags::FramebufferAndPipeline);
     }
-    if (!framebufferDesc.depthAttachment.texture &&
-        (pipelineDesc.renderState.depthStencilState.depthTestEnable ||
-            pipelineDesc.renderState.depthStencilState.depthWriteEnable))
+    if (!curFramebufferDesc.depthAttachment.texture &&
+        (curPipelineDesc.renderState.depthStencilState.depthTestEnable ||
+            curPipelineDesc.renderState.depthStencilState.depthWriteEnable))
     {
-        assignAndUpdateDirtyFlags(pipelineDesc.renderState.depthStencilState.depthTestEnable, false, DirtyFlags::FramebufferAndPipeline);
-        assignAndUpdateDirtyFlags(pipelineDesc.renderState.depthStencilState.depthWriteEnable, false, DirtyFlags::FramebufferAndPipeline);
+        assignAndUpdateDirtyFlags(curPipelineDesc.renderState.depthStencilState.depthTestEnable, false, DirtyFlags::FramebufferAndPipeline);
+        assignAndUpdateDirtyFlags(curPipelineDesc.renderState.depthStencilState.depthWriteEnable, false, DirtyFlags::FramebufferAndPipeline);
     }
 
     if ((dirtyFlags & DirtyFlags::FramebufferAndPipeline) != DirtyFlags::None)
     {
-        hash = computeHash(framebufferDesc.colorAttachments.data(), framebufferDesc.colorAttachments.size(), 0);
-        hash = computeHash(framebufferDesc.depthAttachment, hash);
+        hash = computeHash(curFramebufferDesc.colorAttachments.data(), curFramebufferDesc.colorAttachments.size(), 0);
+        hash = computeHash(curFramebufferDesc.depthAttachment, hash);
 
         auto& framebuffer = framebuffers[hash];
         if (!framebuffer)
-            framebuffer = device.nvrhi->createFramebuffer(framebufferDesc);
+            framebuffer = device.nvrhi->createFramebuffer(curFramebufferDesc);
 
-        hash = computeHash(pipelineDesc, hash);
+        hash = computeHash(curPipelineDesc, hash);
         auto& pipeline = pipelines[hash];
         if (!pipeline)
-            pipeline = device.nvrhi->createGraphicsPipeline(pipelineDesc, framebuffer);
+            pipeline = device.nvrhi->createGraphicsPipeline(curPipelineDesc, framebuffer);
 
         assignAndUpdateDirtyFlags(graphicsState.framebuffer, framebuffer, DirtyFlags::GraphicsState);
         assignAndUpdateDirtyFlags(graphicsState.pipeline, pipeline, DirtyFlags::GraphicsState);
@@ -805,6 +821,8 @@ void Bridge::procMsgDrawIndexedPrimitive()
         DirtyFlags::FramebufferAndPipeline);
 
     processDirtyFlags();
+
+    assert(graphicsState.indexBuffer.buffer);
 
     commandList->drawIndexed(nvrhi::DrawArguments()
         .setStartVertexLocation(msg->baseVertexIndex)

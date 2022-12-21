@@ -6,6 +6,8 @@ constexpr LPCTSTR SONIC_GENERATIONS = TEXT("SonicGenerations.exe");
 
 int main()
 {
+    std::atexit([] { terminateProcess(SONIC_GENERATIONS); });
+
 #ifdef _DEBUG 
     if (GetConsoleWindow())
         freopen("CONOUT$", "w", stdout);
@@ -51,6 +53,4 @@ int main()
 
     Bridge bridge;
     bridge.receiveMessages();
-
-    terminateProcess(SONIC_GENERATIONS);
 }

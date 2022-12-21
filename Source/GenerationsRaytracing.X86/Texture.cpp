@@ -15,12 +15,12 @@ HRESULT Texture::GetSurfaceLevel(UINT Level, Surface** ppSurfaceLevel)
 
 HRESULT Texture::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags)
 {
-    return S_OK;
+    return E_FAIL;
 }
 
 HRESULT Texture::UnlockRect(UINT Level)
 {
-    return S_OK;
+    return E_FAIL;
 }
 
 FUNCTION_STUB(HRESULT, Texture::AddDirtyRect, CONST RECT* pDirtyRect)
