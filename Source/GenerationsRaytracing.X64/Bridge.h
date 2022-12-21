@@ -80,6 +80,8 @@ struct Bridge
     bool instancing = false;
     uint32_t instanceCount = 0;
 
+    std::unordered_map<XXH64_hash_t, nvrhi::ShaderHandle> shaders;
+
     nvrhi::GraphicsState graphicsState;
 
     bool shouldExit = false;

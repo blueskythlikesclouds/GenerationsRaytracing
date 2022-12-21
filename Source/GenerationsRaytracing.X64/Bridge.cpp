@@ -930,7 +930,11 @@ void Bridge::procMsgCreateVertexShader()
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateVertexShader>();
     const void* data = msgReceiver.getDataAndMoveNext(msg->functionSize);
 
-    resources[msg->shader] = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), data, msg->functionSize);
+    auto& shader = shaders[XXH64(data, msg->functionSize, 0)];
+    if (!shader)
+        shader = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), data, msg->functionSize);
+
+    resources[msg->shader] = shader;
 }
 
 void Bridge::procMsgSetVertexShader()
@@ -1007,7 +1011,11 @@ void Bridge::procMsgCreatePixelShader()
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreatePixelShader>();
     const void* data = msgReceiver.getDataAndMoveNext(msg->functionSize);
 
-    resources[msg->shader] = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), data, msg->functionSize);
+    auto& shader = shaders[XXH64(data, msg->functionSize, 0)];
+    if (!shader)
+        shader = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), data, msg->functionSize);
+
+    resources[msg->shader] = shader;
 }
 
 void Bridge::procMsgSetPixelShader()
