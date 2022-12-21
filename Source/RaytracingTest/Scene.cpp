@@ -498,6 +498,7 @@ void Scene::createGpuResources(const App& app)
             texture.dataSize,
             std::addressof(gpu.textures.emplace_back()),
             gpu.allocations.emplace_back().GetAddressOf(),
+            nullptr,
             subResourcesPerTexture.emplace_back());
 
         if (!gpu.textures.back())

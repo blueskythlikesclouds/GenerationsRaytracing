@@ -33,7 +33,6 @@ struct Bridge
     std::vector<nvrhi::TextureHandle> swapChainTextures;
 
     std::unordered_map<unsigned int, nvrhi::ResourceHandle> resources;
-    std::unordered_map<unsigned int, ComPtr<D3D12MA::Allocation>> allocations;
 
     nvrhi::CommandListHandle commandList;
     bool openedCommandList = false;

@@ -15,7 +15,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X86",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X64", "GenerationsRaytracing.X64\GenerationsRaytracing.X64.vcxproj", "{23F4A718-1EE8-44F7-98A8-602E10051EC4}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytraced.Shared", "GenerationsRaytraced.Shared\GenerationsRaytraced.Shared.vcxitems", "{71F0CD88-E769-4407-B43E-17F652ACEBCB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.Shared", "GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems", "{71F0CD88-E769-4407-B43E-17F652ACEBCB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RaytracingTest.Dependencies", "RaytracingTest.Dependencies\RaytracingTest.Dependencies.vcxproj", "{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}"
 EndProject
@@ -60,8 +60,8 @@ Global
 		SolutionGuid = {9FDEA5CC-43E1-4BCC-8DEF-36A8B7A7F146}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		GenerationsRaytraced.Shared\GenerationsRaytraced.Shared.vcxitems*{23f4a718-1ee8-44f7-98a8-602e10051ec4}*SharedItemsImports = 4
-		GenerationsRaytraced.Shared\GenerationsRaytraced.Shared.vcxitems*{71f0cd88-e769-4407-b43e-17f652acebcb}*SharedItemsImports = 9
-		GenerationsRaytraced.Shared\GenerationsRaytraced.Shared.vcxitems*{f300f7d5-ee2f-439a-a3b9-c08ca3744009}*SharedItemsImports = 4
+		GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems*{23f4a718-1ee8-44f7-98a8-602e10051ec4}*SharedItemsImports = 4
+		GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems*{71f0cd88-e769-4407-b43e-17f652acebcb}*SharedItemsImports = 9
+		GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems*{f300f7d5-ee2f-439a-a3b9-c08ca3744009}*SharedItemsImports = 4
 	EndGlobalSection
 EndGlobal

@@ -38,9 +38,22 @@
 #include <memory>
 #include <vector>
 
-#include <nvrhi/nvrhi.h>
+namespace nvrhi
+{
+    class IDevice;
+    class ITexture;
 
-#include <D3D12MemAlloc.h>
+    template <typename T>
+    class RefCountPtr;
+
+    typedef RefCountPtr<ITexture> TextureHandle;
+}
+
+namespace D3D12MA
+{
+    class Allocator;
+    class Allocation;
+}
 
 namespace DirectX
 {
@@ -88,6 +101,7 @@ namespace DirectX
         size_t ddsDataSize,
         _Outptr_ nvrhi::TextureHandle* texture,
         _Outptr_ D3D12MA::Allocation** allocation,
+        _Outptr_ ID3D12Resource** resource,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         size_t maxsize = 0,
         _Out_opt_ DDS_ALPHA_MODE* alphaMode = nullptr);
@@ -98,6 +112,7 @@ namespace DirectX
         _In_z_ const wchar_t* szFileName,
         _Outptr_ nvrhi::TextureHandle* texture,
         _Outptr_ D3D12MA::Allocation** allocation,
+        _Outptr_ ID3D12Resource** resource,
         std::unique_ptr<uint8_t[]>& ddsData,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         size_t maxsize = 0,
@@ -114,6 +129,7 @@ namespace DirectX
         DDS_LOADER_FLAGS loadFlags,
         _Outptr_ nvrhi::TextureHandle* texture,
         _Outptr_ D3D12MA::Allocation** allocation,
+        _Outptr_ ID3D12Resource** resource,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         _Out_opt_ DDS_ALPHA_MODE* alphaMode = nullptr);
 
@@ -126,6 +142,7 @@ namespace DirectX
         DDS_LOADER_FLAGS loadFlags,
         _Outptr_ nvrhi::TextureHandle* texture,
         _Outptr_ D3D12MA::Allocation** allocation,
+        _Outptr_ ID3D12Resource** resource,
         std::unique_ptr<uint8_t[]>& ddsData,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         _Out_opt_ DDS_ALPHA_MODE* alphaMode = nullptr);

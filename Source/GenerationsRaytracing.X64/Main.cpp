@@ -2,13 +2,15 @@
 #include "MemoryMappedFile.h"
 #include "Process.h"
 
+constexpr LPCTSTR SONIC_GENERATIONS = TEXT("SonicGenerations.exe");
+
 int main()
 {
 #ifdef _DEBUG 
     if (GetConsoleWindow())
         freopen("CONOUT$", "w", stdout);
 
-    if (!isProcessRunning(TEXT("SonicGenerations.exe")))
+    if (!findProcess(SONIC_GENERATIONS))
     {
         STARTUPINFO startupInfo{};
         startupInfo.cb = sizeof(startupInfo);
@@ -29,7 +31,7 @@ int main()
 
         printf("Waiting for Sonic Generations...\n");
 
-        while (!isProcessRunning(TEXT("SonicGenerations.exe")))
+        while (!findProcess(SONIC_GENERATIONS))
             Sleep(10);
 
         printf("Waiting for memory mapped file...\n");
@@ -49,4 +51,6 @@ int main()
 
     Bridge bridge;
     bridge.receiveMessages();
+
+    terminateProcess(SONIC_GENERATIONS);
 }

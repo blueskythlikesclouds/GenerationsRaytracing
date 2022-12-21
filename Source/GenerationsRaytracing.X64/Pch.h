@@ -19,10 +19,6 @@
 
 #include <DDSTextureLoader12.h>
 
-#include <D3D12MemAlloc.h>
-
-#include <d3dx12.h>
-
 #ifndef _DEBUG
 #define inline __forceinline
 #include <xxHash.h>

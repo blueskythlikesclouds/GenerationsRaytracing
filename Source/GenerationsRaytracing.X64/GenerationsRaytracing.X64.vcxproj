@@ -60,7 +60,7 @@
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared">
-    <Import Project="..\GenerationsRaytraced.Shared\GenerationsRaytraced.Shared.vcxitems" Label="Shared" />
+    <Import Project="..\GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems" Label="Shared" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -87,7 +87,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -108,7 +108,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <StringPooling>true</StringPooling>
       <AdditionalOptions>/Ob3 %(AdditionalOptions)</AdditionalOptions>

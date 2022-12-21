@@ -4,11 +4,16 @@
 #include "Patches.h"
 #include "Process.h"
 
+constexpr LPCTSTR GENERATIONS_RAYTRACING_X64 = TEXT("GenerationsRaytracing.X64.exe");
+
 Mutex mutex;
 MemoryMappedFile memoryMappedFile;
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
+    if (reason == DLL_PROCESS_DETACH)
+        terminateProcess(GENERATIONS_RAYTRACING_X64);
+
     return TRUE;
 }
 
@@ -23,7 +28,7 @@ extern "C" __declspec(dllexport) void Init()
 
     freopen("CONOUT$", "w", stdout);
 
-    if (isProcessRunning(TEXT("GenerationsRaytracing.X64.exe")))
+    if (findProcess(GENERATIONS_RAYTRACING_X64))
         return;
 
     MessageBox(nullptr, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_OK);
@@ -35,7 +40,7 @@ extern "C" __declspec(dllexport) void Init()
     PROCESS_INFORMATION processInformation{};
 
     CreateProcess(
-        TEXT("GenerationsRaytracing.X64.exe"),
+        GENERATIONS_RAYTRACING_X64,
         nullptr,
         nullptr,
         nullptr,
@@ -55,11 +60,3 @@ extern "C" __declspec(dllexport) void PostInit()
 {
     Patches::init();
 }
-
-#if _DEBUG
-extern "C" __declspec(dllexport) void OnFrame()
-{
-    if (!isProcessRunning(TEXT("GenerationsRaytracing.X64.exe")))
-        exit(0);
-}
-#endif

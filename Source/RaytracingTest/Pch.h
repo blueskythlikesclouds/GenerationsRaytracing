@@ -43,4 +43,6 @@
 
 #include <nvsdk_ngx_helpers.h>
 
+#include <D3D12MemAlloc.h>
+
 using Microsoft::WRL::ComPtr;
