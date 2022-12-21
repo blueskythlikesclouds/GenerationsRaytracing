@@ -373,10 +373,16 @@ public class DefaultShaderConverter
             if (disassembly.Contains("oDepth"))
                 stringBuilder.AppendLine("\tout float oDepth : SV_Depth,");
 
-            stringBuilder.AppendLine("\tout float4 oC0 : SV_Target0,");
-            stringBuilder.AppendLine("\tout float4 oC1 : SV_Target1,");
-            stringBuilder.AppendLine("\tout float4 oC2 : SV_Target2,");
-            stringBuilder.AppendLine("\tout float4 oC3 : SV_Target3");
+            stringBuilder.Append("\tout float4 oC0 : SV_Target0");
+
+            if (disassembly.Contains("oC1"))
+                stringBuilder.Append(",\n\tout float4 oC1 : SV_Target1");
+
+            if (disassembly.Contains("oC2"))
+                stringBuilder.Append(",\n\tout float4 oC2 : SV_Target2");
+
+            if (disassembly.Contains("oC3"))
+                stringBuilder.Append(",\n\tout float4 oC3 : SV_Target3");
         }
 
         stringBuilder.AppendLine(")\n{");
