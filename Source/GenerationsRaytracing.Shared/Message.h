@@ -262,6 +262,7 @@ struct MsgMakePicture
     DEFINE_MSG_ID;
     unsigned int texture;
     unsigned int size;
+    wchar_t name[256];
 };
 
 struct MsgWriteBuffer

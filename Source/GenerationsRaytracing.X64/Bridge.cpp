@@ -1079,6 +1079,8 @@ void Bridge::procMsgMakePicture()
 
     commandList->setTextureState(texture, nvrhi::TextureSubresourceSet(), texture->getDesc().initialState);
 
+    static_cast<ID3D12Resource*>(texture->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource))->SetName(msg->name);
+
     resources[msg->texture] = texture;
 }
 

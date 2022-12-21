@@ -21,6 +21,7 @@ HOOK(void, __cdecl, LoadPictureData, 0x743DE0,
 
     msg->texture = (unsigned int)pPictureData->m_pD3DTexture;
     msg->size = length;
+    MultiByteToWideChar(CP_UTF8, 0, pPictureData->m_TypeAndName.c_str() + sizeof("Mirage.picture"), -1, msg->name, -1);
 
     memcpy(MSG_DATA_PTR(msg), pData, length);
 
