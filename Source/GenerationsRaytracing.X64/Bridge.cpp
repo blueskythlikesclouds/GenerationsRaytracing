@@ -410,7 +410,9 @@ void Bridge::procMsgCreateTexture()
             nvrhi::ResourceStates::ShaderResource)
         .setKeepInitialState(true)
         .setFormat(format)
-        .setIsTypeless(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)));
+        .setIsTypeless(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL))
+        .setClearValue(msg->usage & D3DUSAGE_DEPTHSTENCIL ? nvrhi::Color(1, 0, 0, 0) : nvrhi::Color(0))
+        .setUseClearValue(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)));
 }
 
 void Bridge::procMsgCreateVertexBuffer()
@@ -1086,13 +1088,15 @@ void Bridge::procMsgWriteBuffer()
     const void* data = msgReceiver.getDataAndMoveNext(msg->size);
 
     const auto buffer = nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->buffer].Get());
+    if (!buffer || msg->size == 0)
+        return;
 
     assert(msg->size);
 
     commandList->writeBuffer(
         buffer,
         data,
-        msg->size);
+        min(msg->size, buffer->getDesc().byteSize));
 
     commandList->setBufferState(buffer, buffer->getDesc().initialState);
 }

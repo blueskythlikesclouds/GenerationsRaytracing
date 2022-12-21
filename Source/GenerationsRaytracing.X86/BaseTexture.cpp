@@ -6,7 +6,7 @@ FUNCTION_STUB(DWORD, BaseTexture::GetLOD)
 
 DWORD BaseTexture::GetLevelCount()
 {
-    return 0;
+    return 1;
 }
 
 FUNCTION_STUB(HRESULT, BaseTexture::SetAutoGenFilterType, D3DTEXTUREFILTERTYPE FilterType)
