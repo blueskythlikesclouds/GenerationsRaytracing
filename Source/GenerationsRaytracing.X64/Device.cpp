@@ -27,7 +27,7 @@ public:
             "Warning",
             "Error",
             "Fatal"
-};
+        };
 
         printf("%s: %s\n", SEVERITY_TEXT[(int)severity], messageText);
         assert(severity != nvrhi::MessageSeverity::Error && severity != nvrhi::MessageSeverity::Fatal);
@@ -36,7 +36,7 @@ public:
 
 Device::Device()
 {
-#if _DEBUG
+#ifdef _DEBUG
     ComPtr<ID3D12Debug> debugInterface;
     D3D12GetDebugInterface(IID_PPV_ARGS(debugInterface.GetAddressOf()));
     assert(debugInterface);
@@ -45,7 +45,7 @@ Device::Device()
 #endif
 
     CreateDXGIFactory2(
-#if _DEBUG
+#ifdef _DEBUG
         DXGI_CREATE_FACTORY_DEBUG,
 #else
         0,
@@ -75,10 +75,17 @@ Device::Device()
     nvrhi = nvrhi::d3d12::createDevice(deviceDesc);
     assert(nvrhi);
 
-#if _DEBUG
+#ifdef _DEBUG
     nvrhi = nvrhi::validation::createValidationLayer(nvrhi);
     assert(nvrhi);
 #endif
+
+    D3D12MA::ALLOCATOR_DESC desc{};
+    desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
+    desc.pDevice = d3d12.device.Get();
+    desc.pAdapter = dxgiAdapter.Get();
+
+    D3D12MA::CreateAllocator(&desc, allocator.GetAddressOf());
 }
 
 Device::~Device()

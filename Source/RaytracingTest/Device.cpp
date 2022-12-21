@@ -27,7 +27,7 @@ public:
             "Warning",
             "Error",
             "Fatal"
-};
+        };
 
         printf("%s: %s\n", SEVERITY_TEXT[(int)severity], messageText);
         assert(severity != nvrhi::MessageSeverity::Error && severity != nvrhi::MessageSeverity::Fatal);
@@ -79,6 +79,12 @@ Device::Device()
     nvrhi = nvrhi::validation::createValidationLayer(nvrhi);
     assert(nvrhi);
 #endif
+
+    D3D12MA::ALLOCATOR_DESC desc{};
+    desc.pDevice = d3d12.device.Get();
+    desc.pAdapter = dxgiAdapter.Get();
+
+    D3D12MA::CreateAllocator(&desc, allocator.GetAddressOf());
 }
 
 Device::~Device()

@@ -148,8 +148,10 @@ Bridge::Bridge()
 void Bridge::openCommandList()
 {
     assert(!openedCommandList);
+
     commandList->open();
     openedCommandList = true;
+
     dirtyFlags = DirtyFlags::All;
 }
 
@@ -159,9 +161,10 @@ void Bridge::closeAndExecuteCommandList()
         return;
 
     commandList->close();
+    openedCommandList = false;
+
     device.nvrhi->executeCommandList(commandList);
     device.nvrhi->waitForIdle();
-    openedCommandList = false;
 }
 
 void Bridge::processDirtyFlags()
@@ -410,27 +413,63 @@ void Bridge::procMsgCreateTexture()
         .setIsTypeless(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)));
 }
 
+static void createBuffer(const Bridge& bridge, size_t length, D3D12_RESOURCE_STATES initialState, D3D12MA::Allocation** allocation)
+{
+    D3D12MA::ALLOCATION_DESC allocationDesc{};
+    allocationDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
+    allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+    const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(length);
+
+    const HRESULT result = bridge.device.allocator->CreateResource(
+        &allocationDesc,
+        &resourceDesc,
+        initialState,
+        nullptr,
+        allocation,
+        IID_ID3D12Resource,
+        nullptr);
+
+    assert(result == S_OK && *allocation && (*allocation)->GetResource());
+}
+
+static void allocateVertexBuffer(const Bridge& bridge, size_t length, nvrhi::BufferHandle& buffer, D3D12MA::Allocation** allocation)
+{
+    createBuffer(bridge, length, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, allocation);
+
+    buffer = bridge.device.nvrhi->createHandleForNativeBuffer(nvrhi::ObjectTypes::D3D12_Resource,
+        (*allocation)->GetResource(),
+        nvrhi::BufferDesc()
+            .setByteSize(length)
+            .setIsVertexBuffer(true)
+            .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+            .setKeepInitialState(true));
+}
+
 void Bridge::procMsgCreateVertexBuffer()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateVertexBuffer>();
 
-    resources[msg->vertexBuffer] = device.nvrhi->createBuffer(nvrhi::BufferDesc()
-        .setByteSize(msg->length)
-        .setIsVertexBuffer(true)
-        .setInitialState(nvrhi::ResourceStates::VertexBuffer)
-        .setKeepInitialState(true));
+    nvrhi::BufferHandle buffer;
+    allocateVertexBuffer(*this, msg->length, buffer, allocations[msg->vertexBuffer].GetAddressOf());
+    resources[msg->vertexBuffer] = buffer;
 }
 
 void Bridge::procMsgCreateIndexBuffer()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateIndexBuffer>();
 
-    resources[msg->indexBuffer] = device.nvrhi->createBuffer(nvrhi::BufferDesc()
-        .setByteSize(msg->length)
-        .setFormat(Format::convert(msg->format))
-        .setIsIndexBuffer(true)
-        .setInitialState(nvrhi::ResourceStates::IndexBuffer)
-        .setKeepInitialState(true));
+    auto& allocation = allocations[msg->indexBuffer];
+    createBuffer(*this, msg->length, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, allocation.GetAddressOf());
+
+    resources[msg->indexBuffer] = device.nvrhi->createHandleForNativeBuffer(nvrhi::ObjectTypes::D3D12_Resource,
+        allocation->GetResource(),
+        nvrhi::BufferDesc()
+            .setByteSize(msg->length)
+            .setFormat(Format::convert(msg->format))
+            .setIsIndexBuffer(true)
+            .setInitialState(nvrhi::ResourceStates::IndexBuffer)
+            .setKeepInitialState(true));
 }
 
 void Bridge::procMsgCreateRenderTarget()
@@ -821,13 +860,7 @@ void Bridge::procMsgDrawPrimitiveUP()
     auto& vertexBuffer = vertexBuffers[msg->vertexStreamZeroSize];
 
     if (!vertexBuffer)
-    {
-        vertexBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
-            .setByteSize(msg->vertexStreamZeroSize)
-            .setIsVertexBuffer(true)
-            .setInitialState(nvrhi::ResourceStates::VertexBuffer)
-            .setKeepInitialState(true));
-    }
+        allocateVertexBuffer(*this, msg->vertexStreamZeroSize, vertexBuffer, allocations[msg->vertexStreamZeroSize].GetAddressOf());
 
     if (graphicsState.vertexBuffers.empty())
     {
@@ -844,6 +877,7 @@ void Bridge::procMsgDrawPrimitiveUP()
     assignAndUpdateDirtyFlags(vertexStrides[0], msg->vertexStreamZeroStride, DirtyFlags::InputLayout);
 
     processDirtyFlags();
+
     commandList->draw(nvrhi::DrawArguments()
         .setVertexCount(msg->primitiveCount)
         .setInstanceCount(instancing ? instanceCount : 1));
@@ -967,7 +1001,7 @@ void Bridge::procMsgSetStreamSource()
     auto& vertexBuffer = graphicsState.vertexBuffers[msg->streamNumber];
 
     assignAndUpdateDirtyFlags(vertexBuffer.slot, msg->streamNumber, DirtyFlags::GraphicsState);
-    assignAndUpdateDirtyFlags(vertexBuffer.buffer, nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->streamData].Get()), DirtyFlags::GraphicsState);
+    assignAndUpdateDirtyFlags(vertexBuffer.buffer, nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->streamData].Get()), DirtyFlags::VertexBuffer | DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexBuffer.offset, msg->offsetInBytes, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexStrides[msg->streamNumber], msg->stride, DirtyFlags::InputLayout);
 }
@@ -1035,13 +1069,16 @@ void Bridge::procMsgMakePicture()
     const void* data = msgReceiver.getDataAndMoveNext(msg->size);
 
     nvrhi::TextureHandle texture;
+    auto& allocation = allocations[msg->texture];
     std::vector<D3D12_SUBRESOURCE_DATA> subResources;
 
     DirectX::LoadDDSTextureFromMemory(
         device.nvrhi,
+        device.allocator.Get(),
         (const uint8_t*)data,
         msg->size,
         std::addressof(texture),
+        allocation.GetAddressOf(),
         subResources);
 
     for (uint32_t i = 0; i < subResources.size(); i++)
@@ -1057,8 +1094,6 @@ void Bridge::procMsgMakePicture()
             subResource.SlicePitch);
     }
 
-    commandList->setTextureState(texture, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
-
     resources[msg->texture] = texture;
 }
 
@@ -1069,12 +1104,12 @@ void Bridge::procMsgWriteBuffer()
 
     const auto buffer = nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->buffer].Get());
 
+    assert(msg->size);
+
     commandList->writeBuffer(
         buffer,
         data,
         msg->size);
-
-    commandList->setBufferState(buffer, buffer->getDesc().initialState);
 }
 
 void Bridge::procMsgExit()
@@ -1086,7 +1121,10 @@ void Bridge::procMsgExit()
 void Bridge::procMsgReleaseResource()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgReleaseResource>();
+
     resources.erase(msg->resource);
+    allocations.erase(msg->resource);
+    vertexAttributeDescs.erase(msg->resource);
 }
 
 void Bridge::processMessages()

@@ -493,9 +493,11 @@ void Scene::createGpuResources(const App& app)
     {
         DirectX::LoadDDSTextureFromMemory(
             app.device.nvrhi,
+            app.device.allocator.Get(),
             texture.data.get(),
             texture.dataSize,
             std::addressof(gpu.textures.emplace_back()),
+            gpu.allocations.emplace_back().GetAddressOf(),
             subResourcesPerTexture.emplace_back());
 
         if (!gpu.textures.back())

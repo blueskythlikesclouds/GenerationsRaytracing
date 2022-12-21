@@ -60,7 +60,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\..\Dependencies;..\..\Dependencies\HedgeLib\Dependencies\include;..\..\Dependencies\HedgeLib\HedgeLib\include;..\..\Dependencies\nvrhi\include;..\..\Dependencies\nvrhi\rtxmu\include;..\..\Dependencies\DLSS\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\Dependencies;..\..\Dependencies\HedgeLib\Dependencies\include;..\..\Dependencies\HedgeLib\HedgeLib\include;..\..\Dependencies\nvrhi\include;..\..\Dependencies\nvrhi\rtxmu\include;..\..\Dependencies\DLSS\include;..\..\Dependencies\D3D12MemoryAllocator\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -87,7 +87,7 @@ copy /Y "$(ProjectDir)..\..\Dependencies\DLSS\lib\Windows_x86_64\dev\nvngx_dlss.
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\Dependencies;..\..\Dependencies\HedgeLib\Dependencies\include;..\..\Dependencies\HedgeLib\HedgeLib\include;..\..\Dependencies\nvrhi\include;..\..\Dependencies\nvrhi\rtxmu\include;..\..\Dependencies\DLSS\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\Dependencies;..\..\Dependencies\HedgeLib\Dependencies\include;..\..\Dependencies\HedgeLib\HedgeLib\include;..\..\Dependencies\nvrhi\include;..\..\Dependencies\nvrhi\rtxmu\include;..\..\Dependencies\DLSS\include;..\..\Dependencies\D3D12MemoryAllocator\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>

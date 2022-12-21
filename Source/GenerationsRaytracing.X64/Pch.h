@@ -10,6 +10,7 @@
 
 #include <cstdio>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <nvrhi/common/misc.h>
 #include <nvrhi/d3d12.h>
@@ -19,6 +20,8 @@
 #include <DDSTextureLoader12.h>
 
 #include <D3D12MemAlloc.h>
+
+#include <d3dx12.h>
 
 #ifndef _DEBUG
 #define inline __forceinline

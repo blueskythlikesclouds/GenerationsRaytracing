@@ -12,6 +12,7 @@ struct Device
 
     ComPtr<IDXGIFactory4> dxgiFactory;
     nvrhi::DeviceHandle nvrhi;
+    ComPtr<D3D12MA::Allocator> allocator;
 
     Device();
     ~Device();

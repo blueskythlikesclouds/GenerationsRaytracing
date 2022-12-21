@@ -1227,6 +1227,7 @@ namespace
     //--------------------------------------------------------------------------------------
     HRESULT CreateTextureResource(
         _In_ nvrhi::IDevice* d3dDevice,
+        _In_ D3D12MA::Allocator* allocator,
         D3D12_RESOURCE_DIMENSION resDim,
         size_t width,
         size_t height,
@@ -1234,12 +1235,16 @@ namespace
         size_t mipCount,
         size_t arraySize,
         DXGI_FORMAT format,
+        D3D12_RESOURCE_FLAGS resFlags,
         DDS_LOADER_FLAGS loadFlags,
         bool isCubeMap,
-        _Outptr_ nvrhi::TextureHandle* texture) noexcept
+        _Outptr_ nvrhi::TextureHandle* texture,
+        _Outptr_ D3D12MA::Allocation** allocation) noexcept
     {
         if (!d3dDevice)
             return E_POINTER;
+
+        HRESULT hr = E_FAIL;
 
         if (loadFlags & DDS_LOADER_FORCE_SRGB)
         {
@@ -1250,30 +1255,57 @@ namespace
             format = MakeLinear(format);
         }
 
-        nvrhi::TextureDesc desc;
-        desc.width = static_cast<uint32_t>(width);
-        desc.height = static_cast<uint32_t>(height);
-        desc.depth = static_cast<uint32_t>(depth);
-        desc.arraySize = static_cast<uint32_t>(arraySize);
-        desc.mipLevels = static_cast<uint32_t>(mipCount);
-        desc.initialState = nvrhi::ResourceStates::ShaderResource;
-        desc.keepInitialState = true;
+        D3D12_RESOURCE_DESC desc = {};
+        desc.Width = static_cast<UINT>(width);
+        desc.Height = static_cast<UINT>(height);
+        desc.MipLevels = static_cast<UINT16>(mipCount);
+        desc.DepthOrArraySize = (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE3D) ? static_cast<UINT16>(depth) : static_cast<UINT16>(arraySize);
+        desc.Format = format;
+        desc.Flags = resFlags;
+        desc.SampleDesc.Count = 1;
+        desc.SampleDesc.Quality = 0;
+        desc.Dimension = resDim;
+
+        D3D12MA::ALLOCATION_DESC allocationDesc{};
+        allocationDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
+        allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+        hr = allocator->CreateResource(
+            &allocationDesc,
+            &desc,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+            nullptr,
+            allocation,
+            IID_ID3D12Resource,
+            nullptr);
+
+        if (FAILED(hr))
+            return S_OK;
+
+        nvrhi::TextureDesc textureDesc;
+        textureDesc.width = static_cast<uint32_t>(width);
+        textureDesc.height = static_cast<uint32_t>(height);
+        textureDesc.depth = static_cast<uint32_t>(depth);
+        textureDesc.arraySize = static_cast<uint32_t>(arraySize);
+        textureDesc.mipLevels = static_cast<uint32_t>(mipCount);
+        textureDesc.initialState = nvrhi::ResourceStates::ShaderResource;
+        textureDesc.keepInitialState = true;
 
         if (isCubeMap)
         {
-            desc.dimension = arraySize > 6 ? nvrhi::TextureDimension::TextureCubeArray : nvrhi::TextureDimension::TextureCube;
+            textureDesc.dimension = arraySize > 6 ? nvrhi::TextureDimension::TextureCubeArray : nvrhi::TextureDimension::TextureCube;
         }
         else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE1D)
         {
-            desc.dimension = arraySize > 1 ? nvrhi::TextureDimension::Texture1DArray : nvrhi::TextureDimension::Texture1D;
+            textureDesc.dimension = arraySize > 1 ? nvrhi::TextureDimension::Texture1DArray : nvrhi::TextureDimension::Texture1D;
         }
         else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
         {
-            desc.dimension = arraySize > 1 ? nvrhi::TextureDimension::Texture2DArray : nvrhi::TextureDimension::Texture2D;
+            textureDesc.dimension = arraySize > 1 ? nvrhi::TextureDimension::Texture2DArray : nvrhi::TextureDimension::Texture2D;
         }
         else if (resDim == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
         {
-            desc.dimension = nvrhi::TextureDimension::Texture3D;
+            textureDesc.dimension = nvrhi::TextureDimension::Texture3D;
         }
 
         constexpr std::pair<nvrhi::Format, DXGI_FORMAT> FORMAT_MAPPING[] =
@@ -1345,12 +1377,12 @@ namespace
         {
             if (formatMapping.second == format)
             {
-                desc.format = formatMapping.first;
+                textureDesc.format = formatMapping.first;
                 break;
             }
         }
 
-        *texture = d3dDevice->createTexture(desc);
+        *texture = d3dDevice->createHandleForNativeTexture(nvrhi::ObjectTypes::D3D12_Resource, (*allocation)->GetResource(), textureDesc);
 
         if (*texture != nullptr)
         {
@@ -1363,6 +1395,7 @@ namespace
 
     //--------------------------------------------------------------------------------------
     HRESULT CreateTextureFromDDS(_In_ nvrhi::IDevice* d3dDevice,
+        _In_ D3D12MA::Allocator* allocator,
         _In_ const DDS_HEADER* header,
         _In_reads_bytes_(bitSize) const uint8_t* bitData,
         size_t bitSize,
@@ -1370,6 +1403,7 @@ namespace
         D3D12_RESOURCE_FLAGS resFlags,
         DDS_LOADER_FLAGS loadFlags,
         _Outptr_ nvrhi::TextureHandle* texture,
+        _Outptr_ D3D12MA::Allocation** allocation,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources) noexcept(false)
     {
         HRESULT hr = S_OK;
@@ -1579,8 +1613,8 @@ namespace
                     CountMips(width, height));
             }
 
-            hr = CreateTextureResource(d3dDevice, resDim, twidth, theight, tdepth, reservedMips - skipMip, arraySize,
-                format, loadFlags, isCubeMap, texture);
+            hr = CreateTextureResource(d3dDevice, allocator, resDim, twidth, theight, tdepth, reservedMips - skipMip, arraySize,
+                format, resFlags, loadFlags, isCubeMap, texture, allocation);
 
             if (FAILED(hr) && !maxsize && (mipCount > 1))
             {
@@ -1597,8 +1631,8 @@ namespace
                     twidth, theight, tdepth, skipMip, subresources);
                 if (SUCCEEDED(hr))
                 {
-                    hr = CreateTextureResource(d3dDevice, resDim, twidth, theight, tdepth, mipCount - skipMip, arraySize,
-                        format, loadFlags, isCubeMap, texture);
+                    hr = CreateTextureResource(d3dDevice, allocator, resDim, twidth, theight, tdepth, mipCount - skipMip, arraySize,
+                        format, resFlags, loadFlags, isCubeMap, texture, allocation);
                 }
             }
         }
@@ -1671,21 +1705,25 @@ namespace
 _Use_decl_annotations_
 HRESULT DirectX::LoadDDSTextureFromMemory(
     nvrhi::IDevice* d3dDevice,
+    D3D12MA::Allocator* allocator,
     const uint8_t* ddsData,
     size_t ddsDataSize,
     nvrhi::TextureHandle* texture,
+    D3D12MA::Allocation** allocation,
     std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
     size_t maxsize,
     DDS_ALPHA_MODE* alphaMode)
 {
     return LoadDDSTextureFromMemoryEx(
         d3dDevice,
+        allocator,
         ddsData,
         ddsDataSize,
         maxsize,
         D3D12_RESOURCE_FLAG_NONE,
         DDS_LOADER_DEFAULT,
         texture,
+        allocation,
         subresources,
         alphaMode);
 }
@@ -1694,12 +1732,14 @@ HRESULT DirectX::LoadDDSTextureFromMemory(
 _Use_decl_annotations_
 HRESULT DirectX::LoadDDSTextureFromMemoryEx(
     nvrhi::IDevice* d3dDevice,
+    D3D12MA::Allocator* allocator,
     const uint8_t* ddsData,
     size_t ddsDataSize,
     size_t maxsize,
     D3D12_RESOURCE_FLAGS resFlags,
     DDS_LOADER_FLAGS loadFlags,
     nvrhi::TextureHandle* texture,
+    D3D12MA::Allocation** allocation,
     std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
     DDS_ALPHA_MODE* alphaMode)
 {
@@ -1733,10 +1773,10 @@ HRESULT DirectX::LoadDDSTextureFromMemoryEx(
         return hr;
     }
 
-    hr = CreateTextureFromDDS(d3dDevice,
+    hr = CreateTextureFromDDS(d3dDevice, allocator,
         header, bitData, bitSize, maxsize,
         resFlags, loadFlags,
-        texture, subresources);
+        texture, allocation, subresources);
     if (SUCCEEDED(hr))
     {
         SetDebugObjectName((*texture)->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource), L"DDSTextureLoader");
@@ -1753,8 +1793,10 @@ HRESULT DirectX::LoadDDSTextureFromMemoryEx(
 _Use_decl_annotations_
 HRESULT DirectX::LoadDDSTextureFromFile(
     nvrhi::IDevice* d3dDevice,
+    D3D12MA::Allocator* allocator,
     const wchar_t* fileName,
     nvrhi::TextureHandle* texture,
+    D3D12MA::Allocation** allocation,
     std::unique_ptr<uint8_t[]>& ddsData,
     std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
     size_t maxsize,
@@ -1762,11 +1804,13 @@ HRESULT DirectX::LoadDDSTextureFromFile(
 {
     return LoadDDSTextureFromFileEx(
         d3dDevice,
+        allocator,
         fileName,
         maxsize,
         D3D12_RESOURCE_FLAG_NONE,
         DDS_LOADER_DEFAULT,
         texture,
+        allocation,
         ddsData,
         subresources,
         alphaMode);
@@ -1775,11 +1819,13 @@ HRESULT DirectX::LoadDDSTextureFromFile(
 _Use_decl_annotations_
 HRESULT DirectX::LoadDDSTextureFromFileEx(
     nvrhi::IDevice* d3dDevice,
+    D3D12MA::Allocator* allocator,
     const wchar_t* fileName,
     size_t maxsize,
     D3D12_RESOURCE_FLAGS resFlags,
     DDS_LOADER_FLAGS loadFlags,
     nvrhi::TextureHandle* texture,
+    D3D12MA::Allocation** allocation,
     std::unique_ptr<uint8_t[]>& ddsData,
     std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
     DDS_ALPHA_MODE* alphaMode)
@@ -1813,10 +1859,10 @@ HRESULT DirectX::LoadDDSTextureFromFileEx(
         return hr;
     }
 
-    hr = CreateTextureFromDDS(d3dDevice,
+    hr = CreateTextureFromDDS(d3dDevice, allocator,
         header, bitData, bitSize, maxsize,
         resFlags, loadFlags,
-        texture, subresources);
+        texture, allocation, subresources);
 
     if (SUCCEEDED(hr))
     {

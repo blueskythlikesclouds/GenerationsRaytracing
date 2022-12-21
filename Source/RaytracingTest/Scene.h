@@ -95,6 +95,7 @@ struct Scene
     struct GPU
     {
         std::vector<nvrhi::TextureHandle> textures;
+        std::vector<ComPtr<D3D12MA::Allocation>> allocations;
 
         std::vector<nvrhi::rt::AccelStructHandle> modelBVHs;
         nvrhi::rt::AccelStructHandle bvh;
