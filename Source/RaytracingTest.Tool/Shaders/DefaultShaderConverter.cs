@@ -20,14 +20,8 @@ public class DefaultShaderConverter
 
     private static string ConvertSemanticName(string semantic)
     {
-        switch (semantic)
-        {
-            case "TEXCOORD1": return "TEXCOORD_ONE";
-            case "TEXCOORD2": return "TEXCOORD_TWO";
-            case "TEXCOORD3": return "TEXCOORD_THREE";
-            case "COLOR1": return "COLOR_ONE";
-        }
-
+        if (char.IsDigit(semantic[^1]))
+            semantic += "N";
         return semantic;
     }
 

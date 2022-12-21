@@ -853,25 +853,6 @@ void Bridge::procMsgDrawPrimitiveUP()
         .setInstanceCount(instancing ? instanceCount : 1));
 }
 
-static void addVertexAttributeDesc(const char* name, nvrhi::Format format, std::vector<nvrhi::VertexAttributeDesc>& attributes)
-{
-    bool found = false;
-
-    for (auto& attr : attributes)
-    {
-        found = attr.name == name;
-        if (found)
-            break;
-    }
-
-    if (!found)
-    {
-        attributes.push_back(nvrhi::VertexAttributeDesc()
-            .setName(name)
-            .setFormat(format));
-    }
-}
-
 void Bridge::procMsgCreateVertexDeclaration()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateVertexDeclaration>();
@@ -886,12 +867,8 @@ void Bridge::procMsgCreateVertexDeclaration()
         std::string name = Format::convertDeclUsage(element.Usage);
         if (element.UsageIndex > 0)
         {
-            switch (element.UsageIndex)
-            {
-            case 1: name += "_ONE"; break;
-            case 2: name += "_TWO"; break;
-            case 3: name += "_THREE"; break;
-            }
+            name += std::to_string(element.UsageIndex);
+            name += "N";
         }
 
         attributes.emplace_back()
@@ -901,18 +878,44 @@ void Bridge::procMsgCreateVertexDeclaration()
             .setOffset(element.Offset);
     }
 
-    addVertexAttributeDesc("POSITION", nvrhi::Format::RGB32_FLOAT, attributes);
-    addVertexAttributeDesc("NORMAL", nvrhi::Format::RGB32_FLOAT, attributes);
-    addVertexAttributeDesc("TANGENT", nvrhi::Format::RGB32_FLOAT, attributes);
-    addVertexAttributeDesc("BINORMAL", nvrhi::Format::RGB32_FLOAT, attributes);
-    addVertexAttributeDesc("TEXCOORD", nvrhi::Format::RG32_FLOAT, attributes);
-    addVertexAttributeDesc("TEXCOORD_ONE", nvrhi::Format::RG32_FLOAT, attributes);
-    addVertexAttributeDesc("TEXCOORD_TWO", nvrhi::Format::RG32_FLOAT, attributes);
-    addVertexAttributeDesc("TEXCOORD_THREE", nvrhi::Format::RG32_FLOAT, attributes);
-    addVertexAttributeDesc("COLOR", nvrhi::Format::BGRA8_UNORM, attributes);
-    addVertexAttributeDesc("COLOR_ONE", nvrhi::Format::BGRA8_UNORM, attributes);
-    addVertexAttributeDesc("BLENDWEIGHT", nvrhi::Format::RGBA8_UNORM, attributes);
-    addVertexAttributeDesc("BLENDINDICES", nvrhi::Format::RGBA8_UINT, attributes);
+    constexpr const char* ATTRIBUTE_NAMES[] =
+    {
+        "POSITION",
+
+        "NORMAL",
+        "TANGENT",
+        "BINORMAL",
+
+        "TEXCOORD",
+        "TEXCOORD1N",
+        "TEXCOORD2N",
+        "TEXCOORD3N",
+
+        "COLOR",
+        "COLOR1N",
+
+        "BLENDWEIGHT",
+        "BLENDINDICES",
+    };
+
+    for (auto& name : ATTRIBUTE_NAMES)
+    {
+        bool found = false;
+
+        for (auto& attribute : attributes)
+        {
+            found = attribute.name == name;
+            if (found)
+                break;
+        }
+
+        if (!found)
+        {
+            attributes.push_back(nvrhi::VertexAttributeDesc()
+                .setName(name)
+                .setFormat(nvrhi::Format::R8_UNORM));
+        }
+    }
 }
 
 void Bridge::procMsgSetVertexDeclaration()
