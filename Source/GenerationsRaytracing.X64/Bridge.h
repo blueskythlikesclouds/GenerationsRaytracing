@@ -37,6 +37,9 @@ struct Bridge
     nvrhi::CommandListHandle commandList;
     bool openedCommandList = false;
 
+    nvrhi::CommandListHandle commandListForCopy;
+    bool openedCommandListForCopy = false;
+
     ConstantBuffer<256> vsConstants {};
     nvrhi::BufferHandle vsConstantBuffer;
 
@@ -75,7 +78,8 @@ struct Bridge
     nvrhi::GraphicsPipelineDesc pipelineDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::GraphicsPipelineHandle> pipelines;
 
-    std::unordered_map<unsigned int, nvrhi::BufferHandle> vertexBuffers;
+    std::unordered_map<XXH64_hash_t, nvrhi::BufferHandle> vertexBuffers;
+    size_t vertexBuffersMemorySize = 0;
     uint32_t vertexStrides[8] {};
     bool instancing = false;
     uint32_t instanceCount = 0;
@@ -90,7 +94,8 @@ struct Bridge
     Bridge();
 
     void openCommandList();
-    void closeAndExecuteCommandList();
+    void openCommandListForCopy();
+    void closeAndExecuteCommandLists();
 
     template<typename T1, typename T2>
     void assignAndUpdateDirtyFlags(T1& dest, const T2& src, DirtyFlags flags)

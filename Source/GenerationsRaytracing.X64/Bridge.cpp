@@ -6,7 +6,8 @@
 
 Bridge::Bridge()
 {
-    commandList = device.nvrhi->createCommandList();
+    commandList = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false).setQueueType(nvrhi::CommandQueue::Graphics));
+    commandListForCopy = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false).setQueueType(nvrhi::CommandQueue::Copy));
 
     vsConstantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setDebugName("VS Constants")
@@ -147,7 +148,8 @@ Bridge::Bridge()
 
 void Bridge::openCommandList()
 {
-    assert(!openedCommandList);
+    if (openedCommandList)
+        return;
 
     commandList->open();
     openedCommandList = true;
@@ -155,16 +157,40 @@ void Bridge::openCommandList()
     dirtyFlags = DirtyFlags::All;
 }
 
-void Bridge::closeAndExecuteCommandList()
+void Bridge::openCommandListForCopy()
 {
-    if (!openedCommandList)
+    if (openedCommandListForCopy)
         return;
 
-    commandList->close();
-    openedCommandList = false;
+    commandListForCopy->open();
+    openedCommandListForCopy = true;
+}
 
-    device.nvrhi->executeCommandList(commandList);
-    device.nvrhi->waitForIdle();
+void Bridge::closeAndExecuteCommandLists()
+{
+    if (openedCommandListForCopy)
+    {
+        commandListForCopy->close();
+        openedCommandListForCopy = false;
+
+        device.nvrhi->executeCommandList(commandListForCopy, nvrhi::CommandQueue::Copy);
+        device.nvrhi->waitForIdle();
+    }
+
+    if (openedCommandList)
+    {
+        commandList->close();
+        openedCommandList = false;
+
+        device.nvrhi->executeCommandList(commandList, nvrhi::CommandQueue::Graphics);
+        device.nvrhi->waitForIdle();
+    }
+
+    if (vertexBuffersMemorySize > 25 * 1024 * 1024)
+    {
+        vertexBuffers.clear();
+        vertexBuffersMemorySize = 0;
+    }
 }
 
 void Bridge::processDirtyFlags()
@@ -415,20 +441,22 @@ void Bridge::procMsgCreateTexture()
     if (format == nvrhi::Format::UNKNOWN)
         return;
 
+    const bool isRenderTargetOrDepthStencil = (msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
+
     resources[msg->texture] = device.nvrhi->createTexture(nvrhi::TextureDesc()
         .setWidth(msg->width)
         .setHeight(msg->height)
         .setMipLevels(msg->levels)
-        .setIsRenderTarget(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL))
+        .setIsRenderTarget(isRenderTargetOrDepthStencil)
         .setInitialState(
             msg->usage & D3DUSAGE_RENDERTARGET ? nvrhi::ResourceStates::RenderTarget :
             msg->usage & D3DUSAGE_DEPTHSTENCIL ? nvrhi::ResourceStates::DepthWrite :
-            nvrhi::ResourceStates::ShaderResource)
+            nvrhi::ResourceStates::CopyDest)
         .setKeepInitialState(true)
         .setFormat(format)
-        .setIsTypeless(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL))
+        .setIsTypeless(isRenderTargetOrDepthStencil)
         .setClearValue(msg->usage & D3DUSAGE_DEPTHSTENCIL ? nvrhi::Color(1, 0, 0, 0) : nvrhi::Color(0))
-        .setUseClearValue(msg->usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)));
+        .setUseClearValue(isRenderTargetOrDepthStencil));
 }
 
 void Bridge::procMsgCreateVertexBuffer()
@@ -438,7 +466,7 @@ void Bridge::procMsgCreateVertexBuffer()
     resources[msg->vertexBuffer] = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(msg->length)
         .setIsVertexBuffer(true)
-        .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+        .setInitialState(nvrhi::ResourceStates::CopyDest)
         .setKeepInitialState(true));
 }
 
@@ -450,7 +478,7 @@ void Bridge::procMsgCreateIndexBuffer()
         .setByteSize(msg->length)
         .setFormat(Format::convert(msg->format))
         .setIsIndexBuffer(true)
-        .setInitialState(nvrhi::ResourceStates::IndexBuffer)
+        .setInitialState(nvrhi::ResourceStates::CopyDest)
         .setKeepInitialState(true));
 }
 
@@ -841,15 +869,22 @@ void Bridge::procMsgDrawPrimitiveUP()
         Format::convertPrimitiveType(msg->primitiveType),
         DirtyFlags::FramebufferAndPipeline);
 
-    auto& vertexBuffer = vertexBuffers[msg->vertexStreamZeroSize];
+    auto& vertexBuffer = vertexBuffers[XXH64(data, msg->vertexStreamZeroSize, 0)];
 
     if (!vertexBuffer)
     {
         vertexBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
             .setByteSize(msg->vertexStreamZeroSize)
             .setIsVertexBuffer(true)
-            .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+            .setInitialState(nvrhi::ResourceStates::CopyDest)
             .setKeepInitialState(true));
+
+        vertexBuffersMemorySize += (msg->vertexStreamZeroSize + 0xFF) & ~0xFF;
+
+        openCommandListForCopy();
+        commandListForCopy->writeBuffer(vertexBuffer, data, msg->vertexStreamZeroSize);
+
+        commandList->setPermanentBufferState(vertexBuffer, nvrhi::ResourceStates::VertexBuffer);
     }
 
     if (graphicsState.vertexBuffers.empty())
@@ -857,9 +892,6 @@ void Bridge::procMsgDrawPrimitiveUP()
         graphicsState.vertexBuffers.emplace_back();
         dirtyFlags |= DirtyFlags::VertexBuffer;
     }
-
-    commandList->writeBuffer(vertexBuffer, data, msg->vertexStreamZeroSize);
-    commandList->setBufferState(vertexBuffer, nvrhi::ResourceStates::VertexBuffer);
 
     assignAndUpdateDirtyFlags(graphicsState.vertexBuffers[0].buffer, vertexBuffer, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(graphicsState.vertexBuffers[0].slot, 0, DirtyFlags::GraphicsState);
@@ -898,33 +930,29 @@ void Bridge::procMsgCreateVertexDeclaration()
             .setOffset(element.Offset);
     }
 
-    constexpr const char* ATTRIBUTE_NAMES[] =
+    constexpr std::pair<const char*, nvrhi::Format> ATTRIBUTE_DESC[] =
     {
-        "POSITION",
-
-        "NORMAL",
-        "TANGENT",
-        "BINORMAL",
-
-        "TEXCOORD",
-        "TEXCOORD1N",
-        "TEXCOORD2N",
-        "TEXCOORD3N",
-
-        "COLOR",
-        "COLOR1N",
-
-        "BLENDWEIGHT",
-        "BLENDINDICES",
+        { "POSITION", nvrhi::Format::R8_UNORM },
+        { "NORMAL", nvrhi::Format::R8_UNORM },
+        { "TANGENT", nvrhi::Format::R8_UNORM },
+        { "BINORMAL", nvrhi::Format::R8_UNORM },
+        { "TEXCOORD", nvrhi::Format::R8_UNORM },
+        { "TEXCOORD1N", nvrhi::Format::R8_UNORM },
+        { "TEXCOORD2N", nvrhi::Format::R8_UNORM },
+        { "TEXCOORD3N", nvrhi::Format::R8_UNORM },
+        { "COLOR", nvrhi::Format::R8_UNORM },
+        { "COLOR1N", nvrhi::Format::R8_UNORM },
+        { "BLENDWEIGHT", nvrhi::Format::R8_UNORM },
+        { "BLENDINDICES", nvrhi::Format::R8_UINT }
     };
 
-    for (auto& name : ATTRIBUTE_NAMES)
+    for (auto& desc : ATTRIBUTE_DESC)
     {
         bool found = false;
 
         for (auto& attribute : attributes)
         {
-            found = attribute.name == name;
+            found = attribute.name == desc.first;
             if (found)
                 break;
         }
@@ -932,8 +960,8 @@ void Bridge::procMsgCreateVertexDeclaration()
         if (!found)
         {
             attributes.push_back(nvrhi::VertexAttributeDesc()
-                .setName(name)
-                .setFormat(nvrhi::Format::R8_UNORM));
+                .setName(desc.first)
+                .setFormat(desc.second));
         }
     }
 }
@@ -1082,11 +1110,13 @@ void Bridge::procMsgMakePicture()
         nullptr,
         subResources);
 
+    openCommandListForCopy();
+
     for (uint32_t i = 0; i < subResources.size(); i++)
     {
         const auto& subResource = subResources[i];
 
-        commandList->writeTexture(
+        commandListForCopy->writeTexture(
             texture,
             i / texture->getDesc().mipLevels,
             i % texture->getDesc().mipLevels,
@@ -1095,7 +1125,7 @@ void Bridge::procMsgMakePicture()
             subResource.SlicePitch);
     }
 
-    commandList->setTextureState(texture, nvrhi::TextureSubresourceSet(), texture->getDesc().initialState);
+    commandList->setPermanentTextureState(texture, nvrhi::ResourceStates::ShaderResource);
 
     static_cast<ID3D12Resource*>(texture->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource))->SetName(msg->name);
 
@@ -1111,12 +1141,12 @@ void Bridge::procMsgWriteBuffer()
     if (!buffer || msg->size == 0)
         return;
 
-    commandList->writeBuffer(
+    openCommandListForCopy();
+
+    commandListForCopy->writeBuffer(
         buffer,
         data,
         min(msg->size, buffer->getDesc().byteSize));
-
-    commandList->setBufferState(buffer, buffer->getDesc().initialState);
 }
 
 void Bridge::procMsgWriteTexture()
@@ -1126,14 +1156,12 @@ void Bridge::procMsgWriteTexture()
 
     const auto texture = nvrhi::checked_cast<nvrhi::ITexture*>(resources[msg->texture].Get());
 
-    commandList->writeTexture(
+    commandListForCopy->writeTexture(
         texture,
         0,
         0,
         data,
         msg->pitch);
-
-    commandList->setTextureState(texture, nvrhi::TextureSubresourceSet(), texture->getDesc().initialState);
 }
 
 void Bridge::procMsgExit()
@@ -1204,7 +1232,7 @@ void Bridge::receiveMessages()
     {
         openCommandList();
         processMessages();
-        closeAndExecuteCommandList();
+        closeAndExecuteCommandLists();
 
         if (shouldPresent)
         {

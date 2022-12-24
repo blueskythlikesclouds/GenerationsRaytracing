@@ -1267,7 +1267,7 @@ namespace
             hr = allocator->CreateResource(
                 &allocationDesc,
                 &resourceDesc,
-                D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE,
+                D3D12_RESOURCE_STATE_COPY_DEST,
                 nullptr,
                 allocation,
                 IID_ID3D12Resource, reinterpret_cast<void**>(d3d12Resource.GetAddressOf()));
@@ -1282,7 +1282,7 @@ namespace
                 &defaultHeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &resourceDesc,
-                D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE,
+                D3D12_RESOURCE_STATE_COPY_DEST,
                 nullptr,
                 IID_ID3D12Resource, reinterpret_cast<void**>(d3d12Resource.GetAddressOf()));
         }
@@ -1296,7 +1296,7 @@ namespace
         textureDesc.depth = static_cast<uint32_t>(depth);
         textureDesc.arraySize = static_cast<uint32_t>(arraySize);
         textureDesc.mipLevels = static_cast<uint32_t>(mipCount);
-        textureDesc.initialState = nvrhi::ResourceStates::ShaderResource;
+        textureDesc.initialState = nvrhi::ResourceStates::CopyDest;
         textureDesc.keepInitialState = true;
 
         if (isCubeMap)
