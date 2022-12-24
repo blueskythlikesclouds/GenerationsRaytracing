@@ -83,15 +83,11 @@ Device::Device()
 #endif
 
     d3d12.graphicsCommandQueue.Attach(createCommandQueue(d3d12.device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT));
-    d3d12.computeCommandQueue.Attach(createCommandQueue(d3d12.device.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE));
-    d3d12.copyCommandQueue.Attach(createCommandQueue(d3d12.device.Get(), D3D12_COMMAND_LIST_TYPE_COPY));
 
     nvrhi::d3d12::DeviceDesc deviceDesc;
     deviceDesc.errorCB = &messageCallback;
     deviceDesc.pDevice = d3d12.device.Get();
     deviceDesc.pGraphicsCommandQueue = d3d12.graphicsCommandQueue.Get();
-    deviceDesc.pComputeCommandQueue = d3d12.computeCommandQueue.Get();
-    deviceDesc.pCopyCommandQueue = d3d12.copyCommandQueue.Get();
 
     nvrhi = nvrhi::d3d12::createDevice(deviceDesc);
     assert(nvrhi);

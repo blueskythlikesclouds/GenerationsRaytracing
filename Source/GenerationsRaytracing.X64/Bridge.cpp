@@ -6,8 +6,8 @@
 
 Bridge::Bridge()
 {
-    commandList = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false).setQueueType(nvrhi::CommandQueue::Graphics));
-    commandListForCopy = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false).setQueueType(nvrhi::CommandQueue::Copy));
+    commandList = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false));
+    commandListForCopy = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false));
 
     vsConstantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setDebugName("VS Constants")
@@ -168,13 +168,15 @@ void Bridge::openCommandListForCopy()
 
 void Bridge::closeAndExecuteCommandLists()
 {
+    nvrhi::ICommandList* commandLists[] = { nullptr, nullptr };
+    size_t count = 0;
+
     if (openedCommandListForCopy)
     {
         commandListForCopy->close();
         openedCommandListForCopy = false;
 
-        device.nvrhi->executeCommandList(commandListForCopy, nvrhi::CommandQueue::Copy);
-        device.nvrhi->waitForIdle();
+        commandLists[count++] = commandListForCopy.Get();
     }
 
     if (openedCommandList)
@@ -182,14 +184,19 @@ void Bridge::closeAndExecuteCommandLists()
         commandList->close();
         openedCommandList = false;
 
-        device.nvrhi->executeCommandList(commandList, nvrhi::CommandQueue::Graphics);
-        device.nvrhi->waitForIdle();
+        commandLists[count++] = commandList.Get();
     }
 
-    if (vertexBuffersMemorySize > 25 * 1024 * 1024)
+    if (count > 0)
     {
-        vertexBuffers.clear();
-        vertexBuffersMemorySize = 0;
+        device.nvrhi->executeCommandLists(commandLists, count);
+        device.nvrhi->waitForIdle();
+
+        if (vertexBuffersMemorySize > 32u * 1024 * 1024)
+        {
+            vertexBuffers.clear();
+            vertexBuffersMemorySize = 0;
+        }
     }
 }
 
