@@ -11,13 +11,14 @@ MemoryMappedFile memoryMappedFile;
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
+    if (reason == DLL_PROCESS_DETACH)
+        terminateProcess(GENERATIONS_RAYTRACING_X64);
+
     return TRUE;
 }
 
 extern "C" __declspec(dllexport) void Init()
 {
-    std::atexit([] { terminateProcess(GENERATIONS_RAYTRACING_X64); });
-
     if (!Configuration::load("GenerationsRaytracing.ini"))
         MessageBox(nullptr, TEXT("Unable to open \"GenerationsRaytracing.ini\" in mod directory."), TEXT("GenerationsRaytracing"), MB_ICONERROR);
 

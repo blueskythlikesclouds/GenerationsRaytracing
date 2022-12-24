@@ -138,6 +138,7 @@ struct Bridge
     void procMsgSetPixelShaderConstantB();
     void procMsgMakePicture();
     void procMsgWriteBuffer();
+    void procMsgWriteTexture();
     void procMsgExit();
     void procMsgReleaseResource();
 

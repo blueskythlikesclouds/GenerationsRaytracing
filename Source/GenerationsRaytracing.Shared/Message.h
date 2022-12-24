@@ -272,6 +272,14 @@ struct MsgWriteBuffer
     unsigned int size;
 };
 
+struct MsgWriteTexture
+{
+    DEFINE_MSG_ID;
+    unsigned int texture;
+    unsigned int size;
+    unsigned int pitch;
+};
+
 struct MsgExit
 {
     DEFINE_MSG_ID;

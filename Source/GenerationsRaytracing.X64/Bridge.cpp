@@ -1111,14 +1111,29 @@ void Bridge::procMsgWriteBuffer()
     if (!buffer || msg->size == 0)
         return;
 
-    assert(msg->size);
-
     commandList->writeBuffer(
         buffer,
         data,
         min(msg->size, buffer->getDesc().byteSize));
 
     commandList->setBufferState(buffer, buffer->getDesc().initialState);
+}
+
+void Bridge::procMsgWriteTexture()
+{
+    const auto msg = msgReceiver.getMsgAndMoveNext<MsgWriteTexture>();
+    const void* data = msgReceiver.getDataAndMoveNext(msg->size);
+
+    const auto texture = nvrhi::checked_cast<nvrhi::ITexture*>(resources[msg->texture].Get());
+
+    commandList->writeTexture(
+        texture,
+        0,
+        0,
+        data,
+        msg->pitch);
+
+    commandList->setTextureState(texture, nvrhi::TextureSubresourceSet(), texture->getDesc().initialState);
 }
 
 void Bridge::procMsgExit()
@@ -1175,6 +1190,7 @@ void Bridge::processMessages()
         case MsgSetPixelShaderConstantB::ID:   procMsgSetPixelShaderConstantB(); break;
         case MsgMakePicture::ID:               procMsgMakePicture(); break;
         case MsgWriteBuffer::ID:               procMsgWriteBuffer(); break;
+        case MsgWriteTexture::ID:              procMsgWriteTexture(); break;
         case MsgExit::ID:                      procMsgExit(); break;
         case MsgReleaseResource::ID:           procMsgReleaseResource(); break;
         default:                               assert(0 && "Unknown message type"); break;

@@ -8,7 +8,12 @@
 #include "Texture.h"
 #include "VertexDeclaration.h"
 
-Device::Device() = default;
+Device::Device(size_t width, size_t height)
+{
+    swapChainSurface.Attach(new Surface());
+    swapChainSurface->texture.Attach(new Texture(width, height));
+}
+
 Device::~Device() = default;
 
 FUNCTION_STUB(HRESULT, Device::TestCooperativeLevel)
@@ -65,7 +70,13 @@ FUNCTION_STUB(void, Device::GetGammaRamp, UINT iSwapChain, D3DGAMMARAMP* pRamp)
 
 HRESULT Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Texture** ppTexture, HANDLE* pSharedHandle)
 {
-    *ppTexture = new Texture();
+    *ppTexture = new Texture(Width, Height);
+
+    assert((Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) ||
+        Format == D3DFMT_A8B8G8R8 ||
+        Format == D3DFMT_A8R8G8B8 ||
+        Format == D3DFMT_X8B8G8R8 ||
+        Format == D3DFMT_X8R8G8B8);
 
     const auto msg = msgSender.start<MsgCreateTexture>();
 
@@ -117,13 +128,14 @@ HRESULT Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3
 HRESULT Device::CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, Surface** ppSurface, HANDLE* pSharedHandle)
 {
     *ppSurface = new Surface();
+    (*ppSurface)->texture.Attach(new Texture(Width, Height));
 
     const auto msg = msgSender.start<MsgCreateRenderTarget>();
 
     msg->width = Width;
     msg->height = Height;
     msg->format = Format;
-    msg->surface = (unsigned int)*ppSurface;
+    msg->surface = (unsigned int)(*ppSurface)->texture.Get();
 
     msgSender.finish();
 
@@ -133,13 +145,14 @@ HRESULT Device::CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3
 HRESULT Device::CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, Surface** ppSurface, HANDLE* pSharedHandle)
 {
     *ppSurface = new Surface();
+    (*ppSurface)->texture.Attach(new Texture(Width, Height));
 
     const auto msg = msgSender.start<MsgCreateDepthStencilSurface>();
 
     msg->width = Width;
     msg->height = Height;
     msg->format = Format;
-    msg->surface = (unsigned int)*ppSurface;
+    msg->surface = (unsigned int)(*ppSurface)->texture.Get();
 
     msgSender.finish();
 
@@ -175,7 +188,7 @@ HRESULT Device::SetRenderTarget(DWORD RenderTargetIndex, Surface* pRenderTarget)
     const auto msg = msgSender.start<MsgSetRenderTarget>();
 
     msg->index = RenderTargetIndex;
-    msg->surface = (unsigned int)pRenderTarget;
+    msg->surface = pRenderTarget ? (unsigned int)pRenderTarget->texture.Get() : NULL;
 
     msgSender.finish();
 
@@ -194,7 +207,7 @@ HRESULT Device::SetDepthStencilSurface(Surface* pNewZStencil)
 
     const auto msg = msgSender.start<MsgSetDepthStencilSurface>();
 
-    msg->surface = (unsigned int)pNewZStencil;
+    msg->surface = pNewZStencil ? (unsigned int)pNewZStencil->texture.Get() : NULL;
 
     msgSender.finish();
 

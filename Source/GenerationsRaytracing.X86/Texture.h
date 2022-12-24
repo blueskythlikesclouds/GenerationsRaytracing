@@ -7,6 +7,14 @@ class Surface;
 class Texture : public BaseTexture
 {
 public:
+    size_t width = 0;
+    size_t height = 0;
+    ComPtr<Surface> surface;
+
+    Texture();
+    Texture(size_t width, size_t height);
+    ~Texture();
+
     virtual HRESULT GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) final;
     virtual HRESULT GetSurfaceLevel(UINT Level, Surface** ppSurfaceLevel);
     virtual HRESULT LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags) final;

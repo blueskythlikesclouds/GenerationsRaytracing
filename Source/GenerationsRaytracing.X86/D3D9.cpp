@@ -130,8 +130,7 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
     if (displayMode == DisplayMode::Windowed)
         ShowCursor(true);
 
-    *ppReturnedDeviceInterface = new Device();
-    (*ppReturnedDeviceInterface)->swapChainSurface.Attach(new Surface());
+    *ppReturnedDeviceInterface = new Device(pPresentationParameters->BackBufferWidth, pPresentationParameters->BackBufferHeight);
 
     const auto msg = msgSender.start<MsgInitSwapChain>();
 
@@ -142,7 +141,7 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
         width != pPresentationParameters->BackBufferWidth ||
         height != pPresentationParameters->BackBufferHeight ? DXGI_SCALING_STRETCH : DXGI_SCALING_NONE;
     msg->handle = (unsigned int)pPresentationParameters->hDeviceWindow;
-    msg->surface = (unsigned int)(*ppReturnedDeviceInterface)->swapChainSurface.Get();
+    msg->surface = (unsigned int)(*ppReturnedDeviceInterface)->swapChainSurface->texture.Get();
 
     msgSender.finish();
 

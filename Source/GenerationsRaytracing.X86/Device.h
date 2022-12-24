@@ -33,7 +33,7 @@ public:
     ComPtr<Shader> pixelShader;
     BOOL boolConstantsPS[16]{};
 
-    Device();
+    Device(size_t width, size_t height);
     virtual ~Device() final;
 
     virtual HRESULT TestCooperativeLevel() final;
