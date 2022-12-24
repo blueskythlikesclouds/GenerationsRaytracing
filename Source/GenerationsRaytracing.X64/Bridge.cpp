@@ -197,6 +197,8 @@ void Bridge::closeAndExecuteCommandLists()
             vertexBuffers.clear();
             vertexBuffersMemorySize = 0;
         }
+
+        device.nvrhi->runGarbageCollection();
     }
 }
 
