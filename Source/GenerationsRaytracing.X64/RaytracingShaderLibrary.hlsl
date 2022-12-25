@@ -145,6 +145,7 @@ StructuredBuffer<Geometry> g_GeometryBuffer : register(t1);
 StructuredBuffer<Material> g_MaterialBuffer : register(t2);
 
 RWTexture2D<float4> g_Texture : register(u0);
+RWTexture2D<float> g_Depth : register(u1);
 
 SamplerState g_LinearRepeatSampler : register(s0);
 
@@ -397,11 +398,20 @@ void RayGeneration()
     ray.TMax = g_CameraNearFarAspect.y;
 
     Payload payload = (Payload)0;
-    payload.random = InitializeRandom(index.x, index.y);
+    payload.random = InitializeRandom(index.x + index.y * dimensions.x, (uint)(g_TimeParam.y * 60.0f));
 
     TraceRay(g_BVH, 0, 1, 0, 0, 0, ray, payload);
 
-    g_Texture[index] = float4(payload.color, 1.0);
+    float3 pixelPosAndDepth = GetCurrentPixelPositionAndDepth(GetPosition(ray, payload));
+
+    float4 previous = g_Texture[index];
+    float factor = min(64, previous.w + 1.0);
+
+    if (abs(g_Depth[index] - pixelPosAndDepth.z) > 0.01)
+        factor = 1.0;
+
+    g_Texture[index] = float4(lerp(previous.rgb, payload.color, 1.0 / factor), factor);
+    g_Depth[index] = pixelPosAndDepth.z;
 }
 
 [shader("closesthit")]
@@ -419,8 +429,8 @@ void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : S
     payload.color += TraceGlobalIllumination(payload, vertex.normal);
     payload.color *= g_BindlessTexture2D[NonUniformResourceIndex(material.textures[0])].SampleLevel(g_LinearRepeatSampler, vertex.texCoord, 0).rgb;
 
-    //if (nDotV > 0)
-    //    payload.color += TraceReflection(payload, vertex.normal) * nDotV;
+    if (nDotV > 0)
+        payload.color += TraceReflection(payload, vertex.normal) * nDotV;
 
     payload.t = RayTCurrent();
 }

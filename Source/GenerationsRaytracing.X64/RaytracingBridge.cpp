@@ -116,6 +116,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(1))
             .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(2))
             .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
+            .addItem(nvrhi::BindingLayoutItem::Texture_UAV(1))
             .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
         geometryBindlessLayout = bridge.device.nvrhi->createBindlessLayout(nvrhi::BindlessLayoutDesc()
@@ -243,6 +244,9 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
             .setUseClearValue(false)
             .setIsUAV(true));
+
+        depth = bridge.device.nvrhi->createTexture(textureDesc
+            .setFormat(nvrhi::Format::R32_FLOAT));
     }
 
     bridge.vsConstants.writeBuffer(bridge.commandList, bridge.vsConstantBuffer);
@@ -255,6 +259,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, geometryBuffer))
         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, materialBuffer))
         .addItem(nvrhi::BindingSetItem::Texture_UAV(0, texture))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(1, depth))
         .addItem(nvrhi::BindingSetItem::Sampler(0, linearRepeatSampler)), bindingLayout);
 
     bridge.commandList->setRayTracingState(nvrhi::rt::State()

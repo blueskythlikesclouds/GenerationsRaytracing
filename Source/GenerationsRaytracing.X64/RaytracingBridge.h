@@ -40,6 +40,8 @@ struct RaytracingBridge
     ComPtr<D3D12MA::Allocation> geometryBufferAllocation;
 
     nvrhi::TextureHandle texture;
+    nvrhi::TextureHandle depth;
+
     nvrhi::DescriptorTableHandle geometryDescriptorTable;
     nvrhi::DescriptorTableHandle textureDescriptorTable;
 
