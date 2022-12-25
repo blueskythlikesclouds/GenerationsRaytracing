@@ -25,6 +25,7 @@ struct Geometry
     uint binormalOffset;
     uint texCoordOffset;
     uint colorOffset;
+    uint material;
 };
 
 struct Vertex
@@ -35,6 +36,11 @@ struct Vertex
     float3 binormal;
     float2 texCoord;
     float4 color;
+};
+
+struct Material
+{
+    uint textures[16];
 };
 
 cbuffer cbGlobalsVS : register(b0)
@@ -136,11 +142,15 @@ cbuffer cbGlobalsPS : register(b1)
 
 RaytracingAccelerationStructure g_BVH : register(t0);
 StructuredBuffer<Geometry> g_GeometryBuffer : register(t1);
+StructuredBuffer<Material> g_MaterialBuffer : register(t2);
 
 RWTexture2D<float4> g_Texture : register(u0);
 
+SamplerState g_LinearRepeatSampler : register(s0);
+
 Buffer<uint> g_BindlessIndexBuffer[] : register(t0, space1);
 ByteAddressBuffer g_BindlessVertexBuffer[] : register(t0, space2);
+Texture2D<float4> g_BindlessTexture2D[] : register(t0, space3);
 
 // http://intro-to-dxr.cwyman.org/
 
@@ -223,9 +233,9 @@ Vertex GetVertex(in Attributes attributes)
     float3 uv = float3(1.0 - attributes.uv.x - attributes.uv.y, attributes.uv.x, attributes.uv.y);
     uint index = InstanceID() + GeometryIndex();
 
-    Geometry geometry = g_GeometryBuffer[NonUniformResourceIndex(index)];
-    Buffer<uint> indexBuffer = g_BindlessIndexBuffer[NonUniformResourceIndex(index * 2 + 0)];
-    ByteAddressBuffer vertexBuffer = g_BindlessVertexBuffer[NonUniformResourceIndex(index * 2 + 1)];
+    Geometry geometry = g_GeometryBuffer[index];
+    Buffer<uint> indexBuffer = g_BindlessIndexBuffer[index * 2 + 0];
+    ByteAddressBuffer vertexBuffer = g_BindlessVertexBuffer[index * 2 + 1];
 
     uint3 indices;
     indices.x = indexBuffer[PrimitiveIndex() * 3 + 0];
@@ -272,6 +282,11 @@ Vertex GetVertex(in Attributes attributes)
     vertex.binormal = normalize(mul(ObjectToWorld3x4(), float4(vertex.binormal, 0)).xyz);
 
     return vertex;
+}
+
+Material GetMaterial()
+{
+    return g_MaterialBuffer[g_GeometryBuffer[InstanceID() + GeometryIndex()].material];
 }
 
 float3 TraceGlobalIllumination(inout Payload payload, float3 normal)
@@ -393,6 +408,7 @@ void RayGeneration()
 void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)
 {
     Vertex vertex = GetVertex(attributes);
+    Material material = GetMaterial();
 
     float nDotL = saturate(dot(vertex.normal, -mrgGlobalLight_Direction.xyz));
     float nDotV = pow(saturate(1.0 + dot(vertex.normal, WorldRayDirection())), 5.0);
@@ -401,10 +417,10 @@ void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : S
         payload.color += TraceShadow(payload.random) * mrgGlobalLight_Diffuse.rgb;
 
     payload.color += TraceGlobalIllumination(payload, vertex.normal);
-    payload.color *= vertex.normal * 0.5 + 0.5;
+    payload.color *= g_BindlessTexture2D[NonUniformResourceIndex(material.textures[0])].SampleLevel(g_LinearRepeatSampler, vertex.texCoord, 0).rgb;
 
-    if (nDotV > 0)
-        payload.color += TraceReflection(payload, vertex.normal) * nDotV;
+    //if (nDotV > 0)
+    //    payload.color += TraceReflection(payload, vertex.normal) * nDotV;
 
     payload.t = RayTCurrent();
 }
@@ -412,6 +428,6 @@ void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : S
 [shader("miss")]
 void Miss(inout Payload payload : SV_RayPayload)
 {
-    payload.color = 0.25;
+    payload.color = float3(106.0f / 255.0f, 113.0f / 255.0f, 179.0f / 255.0f);
     payload.t = FLT_MAX;
 }

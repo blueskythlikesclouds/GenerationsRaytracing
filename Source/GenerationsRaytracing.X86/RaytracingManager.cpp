@@ -3,9 +3,12 @@
 #include "Buffer.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "Texture.h"
 #include "VertexDeclaration.h"
 
 static CriticalSection criticalSection;
+static std::unordered_set<hh::mr::CMaterialData*> pendingMaterialSet;
+static std::unordered_set<const hh::mr::CMaterialData*> materialSet;
 static std::unordered_set<const void*> modelSet;
 static std::unordered_set<hh::mr::CTerrainInstanceInfoData*> instanceSet;
 static std::unordered_map<const hh::mr::CMeshData*, std::pair<ComPtr<Buffer>, size_t>> indexMap;
@@ -55,6 +58,8 @@ static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool o
             break;
         }
     }
+
+    msg->material = (unsigned int)mesh.m_spMaterial.get();
 
     assert(mesh.m_pD3DVertexBuffer && indexBuffer.first);
 
@@ -152,6 +157,31 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     std::lock_guard lock(criticalSection);
 
+    for (auto it = pendingMaterialSet.begin(); it != pendingMaterialSet.end();)
+    {
+        if ((*it)->IsMadeAll())
+        {
+            const auto msg = msgSender.start<MsgCreateMaterial>();
+
+            msg->material = (unsigned int)*it;
+            memset(msg->textures, 0, sizeof(msg->textures));
+
+            size_t index = 0;
+            for (auto& texture : (*it)->m_spTexsetData->m_TextureList)
+            {
+                if (texture->m_spPictureData)
+                    msg->textures[index++] = reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id;
+            }
+
+            msgSender.finish();
+
+            materialSet.insert(*it);
+            it = pendingMaterialSet.erase(it);
+        }
+        else
+            ++it;
+    }
+
     for (const auto instance : instanceSet)
     {
         if (!instance->IsMadeAll() || modelSet.find(instance->m_spTerrainModel.get()) == modelSet.end())
@@ -169,6 +199,25 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     }
 
     msgSender.oneShot<MsgNotifySceneTraversed>();
+}
+
+HOOK(void, __cdecl, MakeMaterial, 0x733E60,
+    const hh::base::CSharedString& name,
+    void* data,
+    size_t dataSize,
+    const boost::shared_ptr<hh::db::CDatabase>& database,
+    hh::mr::CRenderingInfrastructure& renderingInfrastructure)
+{
+    originalMakeMaterial(name, data, dataSize, database, renderingInfrastructure);
+
+    const auto material = hh::mr::CMirageDatabaseWrapper(database.get())
+        .GetMaterialData(name);
+
+    if (!material->m_spTexsetData)
+        return;
+
+    std::lock_guard lock(criticalSection);
+    pendingMaterialSet.insert(material.get());
 }
 
 static void convertToTriangles(const hh::mr::CMeshData& mesh, hl::hh::mirage::raw_mesh* data)
@@ -324,6 +373,17 @@ HOOK(void, __cdecl, MakeTerrainInstanceInfo, 0x734D90,
     }
 }
 
+HOOK(void, __fastcall, DestructMaterial, 0x704B80, hh::mr::CMaterialData* This)
+{
+    {
+        std::lock_guard lock(criticalSection);
+        pendingMaterialSet.erase(This);
+        materialSet.erase(This);
+    }
+
+    originalDestructMaterial(This);
+}
+
 HOOK(void, __fastcall, DestructMesh, 0x7227A0, hh::mr::CMeshData* This)
 {
     {
@@ -385,12 +445,14 @@ void RaytracingManager::init()
     WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
     WRITE_MEMORY(0x722760, uint8_t, 0xC3); // Disable shared buffer
 
+    INSTALL_HOOK(MakeMaterial); // Capture materials to use in shader
     INSTALL_HOOK(MakeMesh); // Convert triangle strips to triangles for BLAS creation
     INSTALL_HOOK(MakeMesh2); // Convert triangle strips to triangles for BLAS creation
     INSTALL_HOOK(MakeModel); // Capture models to construct BLAS
     INSTALL_HOOK(MakeTerrainModel); // Capture terrain models to construct BLAS
     INSTALL_HOOK(MakeTerrainInstanceInfo); // Capture instances to put to TLAS
 
+    INSTALL_HOOK(DestructMaterial); // Garbage collection
     INSTALL_HOOK(DestructMesh); // Garbage collection
     INSTALL_HOOK(DestructModel); // Garbage collection
     INSTALL_HOOK(DestructTerrainModel); // Garbage collection

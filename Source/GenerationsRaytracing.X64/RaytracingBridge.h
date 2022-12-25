@@ -10,6 +10,12 @@ struct Geometry
     uint32_t binormalOffset;
     uint32_t texCoordOffset;
     uint32_t colorOffset;
+    uint32_t material;
+};
+
+struct Material
+{
+    uint32_t textures[16]{};
 };
 
 struct BottomLevelAS
@@ -24,16 +30,25 @@ struct RaytracingBridge
     nvrhi::ShaderLibraryHandle shaderLibrary;
 
     nvrhi::BindingLayoutHandle bindingLayout;
-    nvrhi::BindingLayoutHandle bindlessLayout;
+    nvrhi::BindingLayoutHandle geometryBindlessLayout;
+    nvrhi::BindingLayoutHandle textureBindlessLayout;
+
+    nvrhi::BufferHandle materialBuffer;
+    ComPtr<D3D12MA::Allocation> materialBufferAllocation;
 
     nvrhi::BufferHandle geometryBuffer;
     ComPtr<D3D12MA::Allocation> geometryBufferAllocation;
+
     nvrhi::TextureHandle texture;
-    nvrhi::DescriptorTableHandle descriptorTable;
+    nvrhi::DescriptorTableHandle geometryDescriptorTable;
+    nvrhi::DescriptorTableHandle textureDescriptorTable;
+
+    nvrhi::SamplerHandle linearRepeatSampler;
 
     nvrhi::rt::PipelineHandle pipeline;
     nvrhi::rt::ShaderTableHandle shaderTable;
 
+    std::unordered_map<unsigned int, Material> materials;
     std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
     std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
 
@@ -41,4 +56,5 @@ struct RaytracingBridge
     void procMsgCreateBottomLevelAS(Bridge& bridge);
     void procMsgCreateInstance(Bridge& bridge);
     void procMsgNotifySceneTraversed(Bridge& bridge);
+    void procMsgCreateMaterial(Bridge& bridge);
 };

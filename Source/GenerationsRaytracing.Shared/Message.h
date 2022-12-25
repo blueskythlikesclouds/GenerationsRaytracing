@@ -297,6 +297,7 @@ struct MsgCreateGeometry
     unsigned int binormalOffset;
     unsigned int texCoordOffset;
     unsigned int colorOffset;
+    unsigned int material;
 };
 
 struct MsgCreateBottomLevelAS
@@ -315,6 +316,13 @@ struct MsgCreateInstance
 struct MsgNotifySceneTraversed
 {
     DEFINE_MSG_ID;
+};
+
+struct MsgCreateMaterial
+{
+    DEFINE_MSG_ID;
+    unsigned int material;
+    unsigned int textures[16]{};
 };
 
 struct MsgExit

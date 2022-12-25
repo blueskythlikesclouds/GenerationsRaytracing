@@ -1320,6 +1320,7 @@ void Bridge::processMessages()
         case MsgCreateBottomLevelAS::ID:       raytracing.procMsgCreateBottomLevelAS(*this); break;
         case MsgCreateInstance::ID:            raytracing.procMsgCreateInstance(*this); break;
         case MsgNotifySceneTraversed::ID:      raytracing.procMsgNotifySceneTraversed(*this); break;
+        case MsgCreateMaterial::ID:            raytracing.procMsgCreateMaterial(*this); break;
         case MsgExit::ID:                      procMsgExit(); break;
         case MsgReleaseResource::ID:           procMsgReleaseResource(); break;
         default:                               assert(0 && "Unknown message type"); break;
