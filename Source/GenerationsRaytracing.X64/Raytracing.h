@@ -13,7 +13,6 @@ struct Raytracing
     std::unordered_map<unsigned int, nvrhi::rt::AccelStructDesc> blasDescs;
     std::unordered_map<unsigned int, nvrhi::rt::AccelStructHandle> bottomLevelAccelStructs;
     std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
-    nvrhi::rt::AccelStructHandle topLevelAccelStruct;
 
     void procMsgCreateGeometry(Bridge& bridge);
     void procMsgCreateBottomLevelAS(Bridge& bridge);

@@ -16,11 +16,12 @@ HOOK(void, __cdecl, LoadPictureData, 0x743DE0,
     if (pPictureData->m_Flags & hh::db::eDatabaseDataFlags_IsMadeOne)
         return;
 
-    pPictureData->m_pD3DTexture = (DX_PATCH::IDirect3DBaseTexture9*)(new Texture());
+    const auto texture = new Texture();
+    pPictureData->m_pD3DTexture = (DX_PATCH::IDirect3DBaseTexture9*)texture;
 
     const auto msg = msgSender.start<MsgMakePicture>(length);
 
-    msg->texture = (unsigned int)pPictureData->m_pD3DTexture;
+    msg->texture = texture->id;
     msg->size = length;
     MultiByteToWideChar(CP_UTF8, 0, pPictureData->m_TypeAndName.c_str() + sizeof("Mirage.picture"), -1, msg->name, -1);
 

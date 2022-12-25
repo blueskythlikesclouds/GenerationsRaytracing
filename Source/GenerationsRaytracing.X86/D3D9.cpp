@@ -8,6 +8,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "Surface.h"
+#include "Texture.h"
 
 void D3D9::ensureNotNull()
 {
@@ -141,7 +142,7 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
         width != pPresentationParameters->BackBufferWidth ||
         height != pPresentationParameters->BackBufferHeight ? DXGI_SCALING_STRETCH : DXGI_SCALING_NONE;
     msg->handle = (unsigned int)pPresentationParameters->hDeviceWindow;
-    msg->surface = (unsigned int)(*ppReturnedDeviceInterface)->swapChainSurface->texture.Get();
+    msg->surface = (*ppReturnedDeviceInterface)->swapChainSurface->texture->id;
 
     msgSender.finish();
 

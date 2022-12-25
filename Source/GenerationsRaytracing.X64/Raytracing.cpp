@@ -17,7 +17,9 @@ void Raytracing::procMsgCreateGeometry(Bridge& bridge)
 
     triangles.indexBuffer = nvrhi::checked_cast<nvrhi::IBuffer*>(bridge.resources[msg->indexBuffer].Get());
     triangles.vertexBuffer = nvrhi::checked_cast<nvrhi::IBuffer*>(bridge.resources[msg->vertexBuffer].Get());
+
     assert(triangles.indexBuffer && triangles.vertexBuffer);
+
     triangles.indexFormat = nvrhi::Format::R16_UINT;
     triangles.vertexFormat = nvrhi::Format::RGB32_FLOAT;
     triangles.indexOffset = msg->indexOffset;
@@ -25,6 +27,7 @@ void Raytracing::procMsgCreateGeometry(Bridge& bridge)
     triangles.indexCount = msg->indexCount;
     triangles.vertexCount = msg->vertexCount;
     triangles.vertexStride = msg->vertexStride;
+
 }
 
 void Raytracing::procMsgCreateBottomLevelAS(Bridge& bridge)
@@ -33,9 +36,8 @@ void Raytracing::procMsgCreateBottomLevelAS(Bridge& bridge)
 
     auto& desc = blasDescs[msg->bottomLevelAS];
     auto& blas = bottomLevelAccelStructs[msg->bottomLevelAS];
-    blas = bridge.device.nvrhi->createAccelStruct(desc);
+    blas = bridge.device.nvrhi->createAccelStruct(desc.setTrackLiveness(true));
     nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, blas, desc);
-    blasDescs.erase(msg->bottomLevelAS);
 }
 
 void Raytracing::procMsgCreateInstance(Bridge& bridge)
@@ -47,7 +49,6 @@ void Raytracing::procMsgCreateInstance(Bridge& bridge)
     memcpy(instanceDesc.transform, msg->transform, sizeof(instanceDesc.transform));
     instanceDesc.instanceMask = 1;
     instanceDesc.bottomLevelAS = bottomLevelAccelStructs[msg->bottomLevelAS];
-
     assert(instanceDesc.bottomLevelAS);
 }
 
@@ -59,8 +60,9 @@ void Raytracing::procMsgNotifySceneTraversed(Bridge& bridge)
     if (!colorAttachment || !bridge.pipelineDesc.VS)
         return;
 
-    topLevelAccelStruct = bridge.device.nvrhi->createAccelStruct(nvrhi::rt::AccelStructDesc()
+    auto topLevelAccelStruct = bridge.device.nvrhi->createAccelStruct(nvrhi::rt::AccelStructDesc()
         .setIsTopLevel(true)
+        .setTrackLiveness(true)
         .setTopLevelMaxInstances(instanceDescs.size()));
 
     bridge.commandList->buildTopLevelAccelStruct(topLevelAccelStruct, instanceDescs.data(), instanceDescs.size());

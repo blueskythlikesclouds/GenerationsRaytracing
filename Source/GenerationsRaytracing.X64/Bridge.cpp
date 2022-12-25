@@ -197,8 +197,6 @@ void Bridge::closeAndExecuteCommandLists()
             vertexBuffers.clear();
             vertexBuffersMemorySize = 0;
         }
-
-        device.nvrhi->runGarbageCollection();
     }
 }
 
@@ -1184,10 +1182,7 @@ void Bridge::procMsgExit()
 void Bridge::procMsgReleaseResource()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgReleaseResource>();
-
-    resources.erase(msg->resource);
-    vertexAttributeDescs.erase(msg->resource);
-    raytracing.bottomLevelAccelStructs.erase(msg->resource);
+    pendingDeallocations.push_back(msg->resource);
 }
 
 void Bridge::processMessages()
@@ -1267,6 +1262,17 @@ void Bridge::receiveMessages()
             printf("vertexBuffers: %lld\n", vertexBuffers.size());
             printf("\n");
 #endif
+
+            for (const auto resource : pendingDeallocations)
+            {
+                resources.erase(resource);
+                vertexAttributeDescs.erase(resource);
+                raytracing.blasDescs.erase(resource);
+                raytracing.bottomLevelAccelStructs.erase(resource);
+            }
+
+            pendingDeallocations.clear();
+            device.nvrhi->runGarbageCollection();
         }
     }
 }

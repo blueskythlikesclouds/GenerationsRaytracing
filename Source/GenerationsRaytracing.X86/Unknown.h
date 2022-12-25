@@ -3,7 +3,10 @@
 class Unknown
 {
 public:
-    std::atomic<ULONG> refCount = 1;
+    const size_t id;
+    std::atomic<ULONG> refCount;
+
+    Unknown();
 
     virtual HRESULT QueryInterface(REFIID riid, void** ppvObj) final;
 

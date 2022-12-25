@@ -89,6 +89,8 @@ struct Bridge
 
     nvrhi::GraphicsState graphicsState;
 
+    std::vector<unsigned int> pendingDeallocations;
+
     Raytracing raytracing;
 
     bool shouldExit = false;

@@ -41,7 +41,6 @@ cbuffer cbGlobalsVS : register(b0)
 };
 
 RaytracingAccelerationStructure g_BVH : register(t0);
-
 RWTexture2D<float4> g_Texture : register(u0);
 
 struct Payload

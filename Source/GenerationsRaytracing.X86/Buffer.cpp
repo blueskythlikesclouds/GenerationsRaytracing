@@ -13,7 +13,7 @@ HRESULT Buffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD F
 
     const auto msg = msgSender.start<MsgWriteBuffer>(size);
 
-    msg->buffer = (unsigned int)this;
+    msg->buffer = id;
     msg->size = size;
 
     *ppbData = MSG_DATA_PTR(msg);

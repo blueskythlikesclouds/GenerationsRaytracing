@@ -3,6 +3,12 @@
 #include "Message.h"
 #include "MessageSender.h"
 
+static std::atomic<size_t> curObjectId = NULL;
+
+Unknown::Unknown() : id(++curObjectId), refCount(1)
+{
+}
+
 HRESULT Unknown::QueryInterface(const IID& riid, void** ppvObj)
 {
     // Not used by game.
@@ -26,6 +32,6 @@ ULONG Unknown::Release()
 Unknown::~Unknown()
 {
     const auto msg = msgSender.start<MsgReleaseResource>();
-    msg->resource = (unsigned int)this;
+    msg->resource = id;
     msgSender.finish();
 }

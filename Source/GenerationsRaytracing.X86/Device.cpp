@@ -85,7 +85,7 @@ HRESULT Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage,
     msg->levels = Levels;
     msg->usage = Usage;
     msg->format = Format;
-    msg->texture = (unsigned int)*ppTexture;
+    msg->texture = (*ppTexture)->id;
 
     msgSender.finish();
 
@@ -103,7 +103,7 @@ HRESULT Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL 
     const auto msg = msgSender.start<MsgCreateVertexBuffer>();
 
     msg->length = Length;
-    msg->vertexBuffer = (unsigned int)*ppVertexBuffer;
+    msg->vertexBuffer = (*ppVertexBuffer)->id;
 
     msgSender.finish();
 
@@ -118,7 +118,7 @@ HRESULT Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3
 
     msg->length = Length;
     msg->format = Format;
-    msg->indexBuffer = (unsigned int)*ppIndexBuffer;
+    msg->indexBuffer = (*ppIndexBuffer)->id;
 
     msgSender.finish();
 
@@ -135,7 +135,7 @@ HRESULT Device::CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3
     msg->width = Width;
     msg->height = Height;
     msg->format = Format;
-    msg->surface = (unsigned int)(*ppSurface)->texture.Get();
+    msg->surface = (*ppSurface)->texture->id;
 
     msgSender.finish();
 
@@ -152,7 +152,7 @@ HRESULT Device::CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT For
     msg->width = Width;
     msg->height = Height;
     msg->format = Format;
-    msg->surface = (unsigned int)(*ppSurface)->texture.Get();
+    msg->surface = (*ppSurface)->texture->id;
 
     msgSender.finish();
 
@@ -188,7 +188,7 @@ HRESULT Device::SetRenderTarget(DWORD RenderTargetIndex, Surface* pRenderTarget)
     const auto msg = msgSender.start<MsgSetRenderTarget>();
 
     msg->index = RenderTargetIndex;
-    msg->surface = pRenderTarget ? (unsigned int)pRenderTarget->texture.Get() : NULL;
+    msg->surface = pRenderTarget ? pRenderTarget->texture->id : NULL;
 
     msgSender.finish();
 
@@ -207,7 +207,7 @@ HRESULT Device::SetDepthStencilSurface(Surface* pNewZStencil)
 
     const auto msg = msgSender.start<MsgSetDepthStencilSurface>();
 
-    msg->surface = pNewZStencil ? (unsigned int)pNewZStencil->texture.Get() : NULL;
+    msg->surface = pNewZStencil ? pNewZStencil->texture->id : NULL;
 
     msgSender.finish();
 
@@ -328,7 +328,7 @@ HRESULT Device::SetTexture(DWORD Stage, BaseTexture* pTexture)
     const auto msg = msgSender.start<MsgSetTexture>();
 
     msg->stage = Stage;
-    msg->texture = (unsigned int)pTexture;
+    msg->texture = pTexture ? pTexture->id : NULL;
 
     msgSender.finish();
 
@@ -481,7 +481,7 @@ HRESULT Device::CreateVertexDeclaration(CONST D3DVERTEXELEMENT9* pVertexElements
     const auto msg = msgSender.start<MsgCreateVertexDeclaration>((*ppDecl)->getVertexElementsSize());
 
     msg->vertexElementCount = (*ppDecl)->vertexElements.size();
-    msg->vertexDeclaration = (unsigned int)*ppDecl;
+    msg->vertexDeclaration = (*ppDecl)->id;
 
     memcpy(MSG_DATA_PTR(msg), (*ppDecl)->vertexElements.data(), (*ppDecl)->getVertexElementsSize());
 
@@ -499,7 +499,7 @@ HRESULT Device::SetVertexDeclaration(VertexDeclaration* pDecl)
 
     const auto msg = msgSender.start<MsgSetVertexDeclaration>();
 
-    msg->vertexDeclaration = (unsigned int)pDecl;
+    msg->vertexDeclaration = pDecl ? pDecl->id : NULL;
 
     msgSender.finish();
 
@@ -532,7 +532,7 @@ HRESULT Device::CreateVertexShader(CONST DWORD* pFunction, Shader** ppShader, DW
 
     const auto msg = msgSender.start<MsgCreateVertexShader>(FunctionSize);
 
-    msg->shader = (unsigned int)*ppShader;
+    msg->shader = (*ppShader)->id;
     msg->functionSize = FunctionSize;
 
     memcpy(MSG_DATA_PTR(msg), pFunction, FunctionSize);
@@ -549,7 +549,7 @@ HRESULT Device::SetVertexShader(Shader* pShader)
 
     const auto msg = msgSender.start<MsgSetVertexShader>();
 
-    msg->shader = (unsigned int)pShader;
+    msg->shader = pShader ? pShader->id : NULL;
 
     msgSender.finish();
 
@@ -617,7 +617,7 @@ HRESULT Device::SetStreamSource(UINT StreamNumber, Buffer* pStreamData, UINT Off
     const auto msg = msgSender.start<MsgSetStreamSource>();
 
     msg->streamNumber = StreamNumber;
-    msg->streamData = (unsigned int)pStreamData;
+    msg->streamData = pStreamData ? pStreamData->id : NULL;
     msg->offsetInBytes = OffsetInBytes;
     msg->stride = Stride;
 
@@ -652,7 +652,7 @@ HRESULT Device::SetIndices(Buffer* pIndexData)
 
     const auto msg = msgSender.start<MsgSetIndices>();
 
-    msg->indexData = (unsigned int)pIndexData;
+    msg->indexData = pIndexData ? pIndexData->id : NULL;
 
     msgSender.finish();
 
@@ -667,7 +667,7 @@ HRESULT Device::CreatePixelShader(CONST DWORD* pFunction, Shader** ppShader, DWO
 
     const auto msg = msgSender.start<MsgCreatePixelShader>(FunctionSize);
 
-    msg->shader = (unsigned int)*ppShader;
+    msg->shader = (*ppShader)->id;
     msg->functionSize = FunctionSize;
 
     memcpy(MSG_DATA_PTR(msg), pFunction, FunctionSize);
@@ -684,7 +684,7 @@ HRESULT Device::SetPixelShader(Shader* pShader)
 
     const auto msg = msgSender.start<MsgSetPixelShader>();
 
-    msg->shader = (unsigned int)pShader;
+    msg->shader = pShader ? pShader->id : NULL;
 
     msgSender.finish();
 

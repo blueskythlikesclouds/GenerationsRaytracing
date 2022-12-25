@@ -34,7 +34,7 @@ HRESULT Texture::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* p
     const size_t size = width * height * 4;
     const auto msg = msgSender.start<MsgWriteTexture>(size);
 
-    msg->texture = (unsigned int)this;
+    msg->texture = id;
     msg->size = size;
     msg->pitch = width * 4;
 
