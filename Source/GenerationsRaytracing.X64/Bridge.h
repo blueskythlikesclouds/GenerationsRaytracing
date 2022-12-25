@@ -3,6 +3,7 @@
 #include "ConstantBuffer.h"
 #include "MessageReceiver.h"
 #include "Device.h"
+#include "Raytracing.h"
 
 enum class DirtyFlags
 {
@@ -88,10 +89,7 @@ struct Bridge
 
     nvrhi::GraphicsState graphicsState;
 
-    std::unordered_map<unsigned int, nvrhi::rt::AccelStructDesc> blasDescs;
-    std::unordered_map<unsigned int, nvrhi::rt::AccelStructHandle> bottomLevelAccelStructs;
-    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
-    nvrhi::rt::AccelStructHandle topLevelAccelStruct;
+    Raytracing raytracing;
 
     bool shouldExit = false;
     bool shouldPresent = false;
@@ -149,10 +147,6 @@ struct Bridge
     void procMsgMakePicture();
     void procMsgWriteBuffer();
     void procMsgWriteTexture();
-    void procMsgCreateGeometry();
-    void procMsgCreateBottomLevelAS();
-    void procMsgCreateInstance();
-    void procMsgNotifySceneTraversed();
     void procMsgExit();
     void procMsgReleaseResource();
 

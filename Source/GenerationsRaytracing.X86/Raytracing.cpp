@@ -105,8 +105,12 @@ static void traverse(const hh::mr::CRenderable* renderable)
     }
 }
 
-static void SceneTraversed_Raytracing(uintptr_t, uintptr_t)
+static FUNCTION_PTR(void, __cdecl, SceneRender, 0x652110, void* A1);
+
+static void __cdecl SceneRender_Raytracing(void* A1)
 {
+    SceneRender(A1);
+
     auto document = Sonic::CGameDocument::GetInstance();
     if (!document)
         return;
@@ -158,44 +162,6 @@ static void SceneTraversed_Raytracing(uintptr_t, uintptr_t)
 
     msgSender.oneShot<MsgNotifySceneTraversed>();
 }
-
-static hh::fx::SScreenRenderParam SCREEN_RENDER_PARAM =
-{
-    nullptr,
-    (void*)&SceneTraversed_Raytracing,
-    0,
-    {}
-};
-
-static const hh::fx::SDrawInstanceParam DRAW_INSTANCE_PARAM =
-{
-    0,
-    0,
-    nullptr,
-    0xE1,
-    (void*)0x651820,
-    &SCREEN_RENDER_PARAM,
-    0,
-    {},
-    0xFF,
-    0xFF,
-    0xFF,
-    0xFF,
-    {
-        {
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF
-        }
-    },
-    3,
-    0,
-    0x101,
-    0,
-    0,
-    0
-};
 
 HOOK(void, __fastcall, DestructModel, 0x4FA520, hh::mr::CModelData* This)
 {
@@ -347,10 +313,10 @@ HOOK(void, __fastcall, DestructTerrainInstanceInfo, 0x717090, hh::mr::CTerrainIn
 void Raytracing::init()
 {
     WRITE_MEMORY(0x13DDFD8, size_t, 0); // Disable shadow map
-    WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
+    //WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
     WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
     WRITE_MEMORY(0x13DDC20, size_t, 0); // Disable reflection map 2
-    WRITE_MEMORY(0x13DDC9C, void*, &DRAW_INSTANCE_PARAM); // Override game scene children
+    WRITE_MEMORY(0x13DC2D8, void*, &SceneRender_Raytracing); // Override scene render function
     WRITE_MEMORY(0x13DDCA0, size_t, 1); // Override game scene child count
     WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
     INSTALL_HOOK(DestructModel); // Garbage collection

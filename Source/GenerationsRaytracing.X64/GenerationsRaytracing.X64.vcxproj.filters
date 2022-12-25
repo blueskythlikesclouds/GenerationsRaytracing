@@ -7,6 +7,7 @@
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Format.cpp" />
+    <ClCompile Include="Raytracing.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -16,5 +17,9 @@
     <ClInclude Include="Format.h" />
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="Hash.h" />
+    <ClInclude Include="Raytracing.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="RaytracingShaderLibrary.hlsl" />
   </ItemGroup>
 </Project>
