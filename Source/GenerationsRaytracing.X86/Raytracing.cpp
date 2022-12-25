@@ -66,6 +66,9 @@ static void createBottomLevelAS(const T& model)
 
 static void traverse(const hh::mr::CRenderable* renderable)
 {
+    if (!renderable->m_Enabled)
+        return;
+
     if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
     {
         {
@@ -83,7 +86,7 @@ static void traverse(const hh::mr::CRenderable* renderable)
         for (size_t i = 0; i < 3; i++)
         {
             for (size_t j = 0; j < 4; j++)
-                msg->transform[i * 4 + j] = singleElement->m_spInstanceInfo->m_Transform(j, i);
+                msg->transform[i * 4 + j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
         }
 
         msg->bottomLevelAS = (unsigned int)singleElement->m_spModel.get();
@@ -127,6 +130,19 @@ static void SceneTraversed_Raytracing(uintptr_t, uintptr_t)
 
     for (const auto instance : instanceSet)
     {
+        if (!instance->m_spTerrainModel)
+            continue;
+
+        {
+            std::lock_guard lock(criticalSection);
+
+            if (modelSet.find(instance->m_spTerrainModel.get()) == modelSet.end())
+            {
+                createBottomLevelAS(*instance->m_spTerrainModel);
+                modelSet.insert(instance->m_spTerrainModel.get());
+            }
+        }
+
         const auto msg = msgSender.start<MsgCreateInstance>();
 
         for (size_t i = 0; i < 3; i++)
@@ -311,17 +327,9 @@ HOOK(void, __cdecl, MakeTerrainInstanceInfo, 0x734D90,
     const auto instance = hh::mr::CMirageDatabaseWrapper(database.get())
         .GetTerrainInstanceInfoData(name);
 
-    if (instance && 
-        instance->m_spTerrainModel)
+    if (instance)
     {
         std::lock_guard lock(criticalSection);
-
-        if (modelSet.find(instance->m_spTerrainModel.get()) == modelSet.end())
-        {
-            createBottomLevelAS(*instance->m_spTerrainModel);
-            modelSet.insert(instance->m_spTerrainModel.get());
-        }
-
         instanceSet.insert(instance.get());
     }
 }
