@@ -36,6 +36,8 @@ public:
     Device(size_t width, size_t height);
     virtual ~Device() final;
 
+    void reset();
+
     virtual HRESULT TestCooperativeLevel() final;
     virtual UINT GetAvailableTextureMem() final;
     virtual HRESULT EvictManagedResources() final;

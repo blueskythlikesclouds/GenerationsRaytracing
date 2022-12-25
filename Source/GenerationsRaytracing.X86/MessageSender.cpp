@@ -1,5 +1,6 @@
 ﻿#include "MessageSender.h"
 
+#include "Device.h"
 #include "Message.h"
 
 MessageSender::MessageSender()
@@ -75,6 +76,8 @@ void MessageSender::commitAllMessages()
     gpuEvent.reset();
 
     buffer.clear();
+
+    if (device) device->reset();
 }
 
 MessageSender msgSender;

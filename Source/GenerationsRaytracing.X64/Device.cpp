@@ -96,6 +96,13 @@ Device::Device()
     nvrhi = nvrhi::validation::createValidationLayer(nvrhi);
     assert(nvrhi);
 #endif
+
+    D3D12MA::ALLOCATOR_DESC desc{};
+    desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
+    desc.pDevice = d3d12.device.Get();
+    desc.pAdapter = dxgiAdapter.Get();
+
+    D3D12MA::CreateAllocator(&desc, allocator.GetAddressOf());
 }
 
 Device::~Device()

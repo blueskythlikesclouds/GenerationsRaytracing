@@ -105,7 +105,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -126,7 +126,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <StringPooling>true</StringPooling>
       <AdditionalOptions>/Ob3 %(AdditionalOptions)</AdditionalOptions>

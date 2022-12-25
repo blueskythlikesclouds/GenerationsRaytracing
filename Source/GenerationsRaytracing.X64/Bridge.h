@@ -34,6 +34,7 @@ struct Bridge
     std::vector<nvrhi::TextureHandle> swapChainTextures;
 
     std::unordered_map<unsigned int, nvrhi::ResourceHandle> resources;
+    std::unordered_map<unsigned int, ComPtr<D3D12MA::Allocation>> allocations;
 
     nvrhi::CommandListHandle commandList;
     bool openedCommandList = false;
@@ -80,7 +81,7 @@ struct Bridge
     std::unordered_map<XXH64_hash_t, nvrhi::GraphicsPipelineHandle> pipelines;
 
     std::unordered_map<XXH64_hash_t, nvrhi::BufferHandle> vertexBuffers;
-    size_t vertexBuffersMemorySize = 0;
+    std::vector<ComPtr<D3D12MA::Allocation>> vertexBufferAllocations;
     uint32_t vertexStrides[8] {};
     bool instancing = false;
     uint32_t instanceCount = 0;
@@ -113,6 +114,7 @@ struct Bridge
     }
 
     void processDirtyFlags();
+    void reset();
 
     void procMsgSetFVF();
     void procMsgInitSwapChain();

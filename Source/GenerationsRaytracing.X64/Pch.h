@@ -6,6 +6,7 @@
 #include <wrl/client.h>
 
 #include <d3d9.h>
+#include <d3dx12.h>
 #include <dxgi1_4.h>
 
 #include <cstdio>
@@ -18,6 +19,7 @@
 #include <nvrhi/validation.h>
 
 #include <DDSTextureLoader12.h>
+#include <D3D12MemAlloc.h>
 
 #ifndef _DEBUG
 #define inline __forceinline

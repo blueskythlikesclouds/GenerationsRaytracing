@@ -4,6 +4,8 @@
 #include "Event.h"
 #include "MemoryMappedFile.h"
 
+class Device;
+
 struct MessageSender
 {
     CriticalSection criticalSection;
@@ -17,6 +19,8 @@ struct MessageSender
     std::vector<uint8_t> buffer;
 
     std::atomic<size_t> messagesInProgress;
+
+    Device* device = nullptr;
 
     MessageSender();
     ~MessageSender();

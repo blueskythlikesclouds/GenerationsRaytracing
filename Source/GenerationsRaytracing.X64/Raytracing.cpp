@@ -57,7 +57,7 @@ void Raytracing::procMsgNotifySceneTraversed(Bridge& bridge)
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgNotifySceneTraversed>();
 
     auto& colorAttachment = bridge.framebufferDesc.colorAttachments[0].texture;
-    if (!colorAttachment || !bridge.pipelineDesc.VS)
+    if (!colorAttachment || colorAttachment->getDesc().format != nvrhi::Format::RGBA16_FLOAT)
         return;
 
     auto topLevelAccelStruct = bridge.device.nvrhi->createAccelStruct(nvrhi::rt::AccelStructDesc()
@@ -105,7 +105,8 @@ void Raytracing::procMsgNotifySceneTraversed(Bridge& bridge)
             .setIsUAV(true));
     }
 
-    bridge.processDirtyFlags();
+    bridge.vsConstants.writeBuffer(bridge.commandList, bridge.vsConstantBuffer);
+    bridge.psConstants.writeBuffer(bridge.commandList, bridge.psConstantBuffer);
 
     auto bindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, bridge.vsConstantBuffer))
