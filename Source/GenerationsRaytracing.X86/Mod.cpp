@@ -32,6 +32,8 @@ extern "C" __declspec(dllexport) void Init()
         return;
 
     MessageBox(nullptr, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_OK);
+#else
+    terminateProcess(GENERATIONS_RAYTRACING_X64);
 #endif
 
     STARTUPINFO startupInfo{};

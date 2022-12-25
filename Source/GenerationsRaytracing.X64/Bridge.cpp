@@ -530,7 +530,9 @@ static void createBuffer(
         .setIsAccelStructBuildInput(isAccelStructBuildInput)
         .setInitialState(nvrhi::ResourceStates::CopyDest)
         .setKeepInitialState(!isCpuWrite)
-        .setCpuAccess(isCpuWrite ? nvrhi::CpuAccessMode::Write : nvrhi::CpuAccessMode::None));
+        .setCpuAccess(isCpuWrite ? nvrhi::CpuAccessMode::Write : nvrhi::CpuAccessMode::None)
+        .setCanHaveTypedViews(format != nvrhi::Format::UNKNOWN)
+        .setCanHaveRawViews(format == nvrhi::Format::UNKNOWN));
 }
 
 void Bridge::procMsgCreateVertexBuffer()
@@ -1361,7 +1363,6 @@ void Bridge::receiveMessages()
                 resources.erase(resource);
                 allocations.erase(resource);
                 vertexAttributeDescs.erase(resource);
-                raytracing.blasDescs.erase(resource);
                 raytracing.bottomLevelAccelStructs.erase(resource);
             }
             pendingDeallocations.clear();

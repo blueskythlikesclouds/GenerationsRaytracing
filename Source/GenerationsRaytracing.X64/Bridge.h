@@ -3,7 +3,7 @@
 #include "ConstantBuffer.h"
 #include "MessageReceiver.h"
 #include "Device.h"
-#include "Raytracing.h"
+#include "RaytracingBridge.h"
 
 enum class DirtyFlags
 {
@@ -92,7 +92,7 @@ struct Bridge
 
     std::vector<unsigned int> pendingDeallocations;
 
-    Raytracing raytracing;
+    RaytracingBridge raytracing;
 
     bool shouldExit = false;
     bool shouldPresent = false;

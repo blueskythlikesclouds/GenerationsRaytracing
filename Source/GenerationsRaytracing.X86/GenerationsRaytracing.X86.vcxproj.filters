@@ -17,7 +17,7 @@
     <ClCompile Include="Patches.cpp" />
     <ClCompile Include="MessageSender.cpp" />
     <ClCompile Include="MemoryAllocator.cpp" />
-    <ClCompile Include="Raytracing.cpp" />
+    <ClCompile Include="RaytracingManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -35,6 +35,6 @@
     <ClInclude Include="Patches.h" />
     <ClInclude Include="MessageSender.h" />
     <ClInclude Include="MemoryAllocator.h" />
-    <ClInclude Include="Raytracing.h" />
+    <ClInclude Include="RaytracingManager.h" />
   </ItemGroup>
 </Project>

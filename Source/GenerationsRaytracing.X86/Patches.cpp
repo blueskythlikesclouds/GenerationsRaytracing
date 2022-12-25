@@ -7,7 +7,7 @@
 #include "MemoryAllocator.h"
 #include "Message.h"
 #include "MessageSender.h"
-#include "Raytracing.h"
+#include "RaytracingManager.h"
 #include "Texture.h"
 
 HOOK(void, __cdecl, LoadPictureData, 0x743DE0,
@@ -179,5 +179,5 @@ void Patches::init()
     // Patch SFD decode function to copy data when it's valid.
     WRITE_JUMP(0x1059130, sfdDecodeTrampoline);
 
-    Raytracing::init();
+    RaytracingManager::init();
 }

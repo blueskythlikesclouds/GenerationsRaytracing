@@ -292,6 +292,11 @@ struct MsgCreateGeometry
     unsigned int indexBuffer;
     unsigned int indexOffset;
     unsigned int indexCount;
+    unsigned int normalOffset;
+    unsigned int tangentOffset;
+    unsigned int binormalOffset;
+    unsigned int texCoordOffset;
+    unsigned int colorOffset;
 };
 
 struct MsgCreateBottomLevelAS

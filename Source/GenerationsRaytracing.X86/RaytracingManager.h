@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-struct Raytracing
+struct RaytracingManager
 {
     static void init();
 };

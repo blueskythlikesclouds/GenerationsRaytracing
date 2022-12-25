@@ -113,7 +113,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Raytracing.cpp" />
+    <ClCompile Include="RaytracingManager.cpp" />
     <ClCompile Include="Resource.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Surface.cpp" />
@@ -131,7 +131,7 @@
     <ClInclude Include="Device.h" />
     <ClInclude Include="Patches.h" />
     <ClInclude Include="Pch.h" />
-    <ClInclude Include="Raytracing.h" />
+    <ClInclude Include="RaytracingManager.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Surface.h" />

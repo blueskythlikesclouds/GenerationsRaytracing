@@ -1,8 +1,9 @@
-﻿#include "Raytracing.h"
+﻿#include "RaytracingManager.h"
 
 #include "Buffer.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "VertexDeclaration.h"
 
 static CriticalSection criticalSection;
 static std::unordered_set<const void*> modelSet;
@@ -26,6 +27,34 @@ static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool o
     msg->indexBuffer = indexBuffer.first->id;
     msg->indexOffset = 0;
     msg->indexCount = indexBuffer.second;
+
+    for (const auto& element : reinterpret_cast<VertexDeclaration*>(mesh.m_VertexDeclarationPtr.m_pD3DVertexDeclaration)->vertexElements)
+    {
+        if (element.UsageIndex > 0) continue;
+
+        switch (element.Usage)
+        {
+        case D3DDECLUSAGE_NORMAL: 
+            msg->normalOffset = element.Offset;
+            break;
+
+        case D3DDECLUSAGE_TANGENT: 
+            msg->tangentOffset = element.Offset;
+            break;
+
+        case D3DDECLUSAGE_BINORMAL: 
+            msg->binormalOffset = element.Offset;
+            break;
+
+        case D3DDECLUSAGE_TEXCOORD:
+            msg->texCoordOffset = element.Offset;
+            break;
+
+        case D3DDECLUSAGE_COLOR: 
+            msg->colorOffset = element.Offset;
+            break;
+        }
+    }
 
     assert(mesh.m_pD3DVertexBuffer && indexBuffer.first);
 
@@ -343,7 +372,7 @@ HOOK(void, __fastcall, DestructTerrainInstanceInfo, 0x717090, hh::mr::CTerrainIn
     originalDestructTerrainInstanceInfo(This);
 }
 
-void Raytracing::init()
+void RaytracingManager::init()
 {
     WRITE_MEMORY(0x13DDFD8, size_t, 0); // Disable shadow map
     WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render

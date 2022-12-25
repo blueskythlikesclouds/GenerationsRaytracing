@@ -20,5 +20,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)MemoryMappedFile.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Process.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Utilities.h" />
   </ItemGroup>
 </Project>
