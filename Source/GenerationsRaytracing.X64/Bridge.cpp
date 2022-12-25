@@ -192,7 +192,7 @@ void Bridge::closeAndExecuteCommandLists()
         device.nvrhi->executeCommandLists(commandLists, count);
         device.nvrhi->waitForIdle();
 
-        if (vertexBuffersMemorySize > 32u * 1024 * 1024)
+        if (vertexBuffersMemorySize > 128 * 1024 * 1024)
         {
             vertexBuffers.clear();
             vertexBuffersMemorySize = 0;
@@ -476,7 +476,8 @@ void Bridge::procMsgCreateVertexBuffer()
         .setByteSize(msg->length)
         .setIsVertexBuffer(true)
         .setInitialState(nvrhi::ResourceStates::CopyDest)
-        .setKeepInitialState(true));
+        .setKeepInitialState(true)
+        .setIsAccelStructBuildInput(true));
 }
 
 void Bridge::procMsgCreateIndexBuffer()
@@ -488,7 +489,8 @@ void Bridge::procMsgCreateIndexBuffer()
         .setFormat(Format::convert(msg->format))
         .setIsIndexBuffer(true)
         .setInitialState(nvrhi::ResourceStates::CopyDest)
-        .setKeepInitialState(true));
+        .setKeepInitialState(true)
+        .setIsAccelStructBuildInput(true));
 }
 
 void Bridge::procMsgCreateRenderTarget()
@@ -1173,6 +1175,65 @@ void Bridge::procMsgWriteTexture()
         msg->pitch);
 }
 
+void Bridge::procMsgCreateGeometry()
+{
+    const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateGeometry>();
+
+    auto& geometryDesc = blasDescs[msg->bottomLevelAS].bottomLevelGeometries.emplace_back();
+
+    if (msg->opaque)
+        geometryDesc.flags = nvrhi::rt::GeometryFlags::Opaque;
+
+    auto& triangles = geometryDesc.geometryData.triangles;
+
+    triangles.indexBuffer = nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->indexBuffer].Get());
+    triangles.vertexBuffer = nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->vertexBuffer].Get());
+    assert(triangles.indexBuffer && triangles.vertexBuffer);
+    triangles.indexFormat = nvrhi::Format::R16_UINT;
+    triangles.vertexFormat = nvrhi::Format::RGB32_FLOAT;
+    triangles.indexOffset = msg->indexOffset;
+    triangles.vertexOffset = msg->vertexOffset;
+    triangles.indexCount = msg->indexCount;
+    triangles.vertexCount = msg->vertexCount;
+    triangles.vertexStride = msg->vertexStride;
+}
+
+void Bridge::procMsgCreateBottomLevelAS()
+{
+    const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateBottomLevelAS>();
+
+    auto& desc = blasDescs[msg->bottomLevelAS];
+    auto& blas = bottomLevelAccelStructs[msg->bottomLevelAS];
+    blas = device.nvrhi->createAccelStruct(desc);
+    nvrhi::utils::BuildBottomLevelAccelStruct(commandList, blas, desc);
+    blasDescs.erase(msg->bottomLevelAS);
+}
+
+void Bridge::procMsgCreateInstance()
+{
+    const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateInstance>();
+
+    auto& instanceDesc = instanceDescs.emplace_back();
+
+    memcpy(instanceDesc.transform, msg->transform, sizeof(instanceDesc.transform));
+    instanceDesc.instanceMask = 1;
+    instanceDesc.bottomLevelAS = bottomLevelAccelStructs[msg->bottomLevelAS];
+
+    assert(instanceDesc.bottomLevelAS);
+}
+
+void Bridge::procMsgNotifySceneTraversed()
+{
+    const auto msg = msgReceiver.getMsgAndMoveNext<MsgNotifySceneTraversed>();
+
+    topLevelAccelStruct = device.nvrhi->createAccelStruct(nvrhi::rt::AccelStructDesc()
+        .setIsTopLevel(true)
+        .setTopLevelMaxInstances(instanceDescs.size()));
+
+    commandList->buildTopLevelAccelStruct(topLevelAccelStruct, instanceDescs.data(), instanceDescs.size());
+    instanceDescs.clear();
+}
+
 void Bridge::procMsgExit()
 {
     msgReceiver.getMsgAndMoveNext<MsgExit>();
@@ -1185,6 +1246,7 @@ void Bridge::procMsgReleaseResource()
 
     resources.erase(msg->resource);
     vertexAttributeDescs.erase(msg->resource);
+    bottomLevelAccelStructs.erase(msg->resource);
 }
 
 void Bridge::processMessages()
@@ -1228,6 +1290,10 @@ void Bridge::processMessages()
         case MsgMakePicture::ID:               procMsgMakePicture(); break;
         case MsgWriteBuffer::ID:               procMsgWriteBuffer(); break;
         case MsgWriteTexture::ID:              procMsgWriteTexture(); break;
+        case MsgCreateGeometry::ID:            procMsgCreateGeometry(); break;
+        case MsgCreateBottomLevelAS::ID:       procMsgCreateBottomLevelAS(); break;
+        case MsgCreateInstance::ID:            procMsgCreateInstance(); break;
+        case MsgNotifySceneTraversed::ID:      procMsgNotifySceneTraversed(); break;
         case MsgExit::ID:                      procMsgExit(); break;
         case MsgReleaseResource::ID:           procMsgReleaseResource(); break;
         default:                               assert(0 && "Unknown message type"); break;

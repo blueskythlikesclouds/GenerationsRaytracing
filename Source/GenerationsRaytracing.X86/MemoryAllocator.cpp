@@ -3,7 +3,7 @@
 // Copy pasted from GenerationsD3D9Ex:
 // https://github.com/blueskythlikesclouds/DllMods/blob/master/Source/GenerationsD3D9Ex/MemoryHandler.cpp
 
-constexpr const char* ALLOC_SIGNATURE = " GENSRT ";
+constexpr const char* ALLOC_SIGNATURE = " GensRT ";
 
 HANDLE hHeap = GetProcessHeap();
 
@@ -18,8 +18,8 @@ void* __cdecl alloc(const size_t byteSize)
     void* pMem = HeapAlloc(hHeap, 0, byteSize + 8);
     if (((uintptr_t)pMem % 16) == 0)
     {
-        void* pMemRealloc = HeapReAlloc(hHeap, HEAP_REALLOC_IN_PLACE_ONLY, pMem, byteSize);
-        return pMemRealloc ? pMemRealloc : pMem;
+        HeapReAlloc(hHeap, HEAP_REALLOC_IN_PLACE_ONLY, pMem, byteSize);
+        return pMem;
     }
 
     memcpy(pMem, ALLOC_SIGNATURE, 8);
@@ -34,7 +34,7 @@ void __cdecl dealloc(void* pMem)
     uintptr_t* pSignature = &((uintptr_t*)pMem)[-2];
     if (memcmp(pSignature, ALLOC_SIGNATURE, 8) == 0)
     {
-        memset(pSignature, 0, sizeof(*pSignature));
+        memset(pSignature, 0, 8);
         HeapFree(hHeap, 0, pSignature);
     }
     else

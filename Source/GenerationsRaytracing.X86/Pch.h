@@ -12,9 +12,16 @@
 
 #include <cstdio>
 #include <mutex>
+#include <unordered_set>
 
 #include <Helpers.h>
 #include <INIReader.h>
+
+#pragma warning(push, 0)
+
+#include <hedgelib/models/hl_hh_model.h>
+
+#pragma warning(pop)
 
 #if _DEBUG
 #define PRINT(x, ...) printf(x, __VA_ARGS__);

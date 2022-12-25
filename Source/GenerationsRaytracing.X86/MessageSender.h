@@ -33,6 +33,13 @@ struct MessageSender
 
     void finish();
 
+    template<typename T>
+    void oneShot()
+    {
+        start<T>();
+        finish();
+    }
+
     void commitAllMessages();  
 };
 

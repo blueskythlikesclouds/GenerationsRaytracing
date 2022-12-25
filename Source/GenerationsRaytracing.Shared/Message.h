@@ -280,6 +280,38 @@ struct MsgWriteTexture
     unsigned int pitch;
 };
 
+struct MsgCreateGeometry
+{
+    DEFINE_MSG_ID;
+    unsigned int bottomLevelAS;
+    bool opaque;
+    unsigned int vertexBuffer;
+    unsigned int vertexOffset;
+    unsigned int vertexCount;
+    unsigned int vertexStride;
+    unsigned int indexBuffer;
+    unsigned int indexOffset;
+    unsigned int indexCount;
+};
+
+struct MsgCreateBottomLevelAS
+{
+    DEFINE_MSG_ID;
+    unsigned int bottomLevelAS;
+};
+
+struct MsgCreateInstance
+{
+    DEFINE_MSG_ID;
+    float transform[12];
+    unsigned int bottomLevelAS;
+};
+
+struct MsgNotifySceneTraversed
+{
+    DEFINE_MSG_ID;
+};
+
 struct MsgExit
 {
     DEFINE_MSG_ID;

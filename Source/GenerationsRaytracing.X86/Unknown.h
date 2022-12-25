@@ -2,10 +2,9 @@
 
 class Unknown
 {
-protected:
+public:
     std::atomic<ULONG> refCount = 1;
 
-public:
     virtual HRESULT QueryInterface(REFIID riid, void** ppvObj) final;
 
     virtual ULONG AddRef() final;
