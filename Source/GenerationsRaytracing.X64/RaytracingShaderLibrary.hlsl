@@ -424,7 +424,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, Attributes attributes : S
     float nDotV = pow(saturate(1.0 + dot(vertex.normal, WorldRayDirection())), 5.0);
 
     if (nDotL > 0)
-        payload.color += TraceShadow(payload.random) * mrgGlobalLight_Diffuse.rgb;
+        payload.color += TraceShadow(payload.random) * nDotL * mrgGlobalLight_Diffuse.rgb;
 
     payload.color += TraceGlobalIllumination(payload, vertex.normal);
     payload.color *= g_BindlessTexture2D[NonUniformResourceIndex(material.textures[0])].SampleLevel(g_LinearRepeatSampler, vertex.texCoord, 0).rgb;
