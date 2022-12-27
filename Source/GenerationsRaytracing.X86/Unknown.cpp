@@ -1,11 +1,10 @@
 ﻿#include "Unknown.h"
 
+#include "Identifier.h"
 #include "Message.h"
 #include "MessageSender.h"
 
-static std::atomic<size_t> curObjectId = NULL;
-
-Unknown::Unknown() : id(++curObjectId), refCount(1)
+Unknown::Unknown() : id(getNextIdentifier()), refCount(1)
 {
 }
 

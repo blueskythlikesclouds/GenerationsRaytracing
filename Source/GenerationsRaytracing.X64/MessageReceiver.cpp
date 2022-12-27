@@ -38,9 +38,7 @@ bool MessageReceiver::hasNext()
 
     position = INVALID_POSITION_VALUE;
 
-    cpuEvent.reset();
     gpuEvent.set();
-
     return false;
 }
 

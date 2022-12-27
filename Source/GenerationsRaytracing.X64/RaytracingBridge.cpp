@@ -44,6 +44,11 @@ void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
     geometry.colorFormat = msg->colorFormat;
     geometry.material = msg->material;
     geometry.punchThrough = msg->punchThrough;
+
+    bottomLevelAS.buffers.push_back(triangles.indexBuffer);
+    bottomLevelAS.buffers.push_back(triangles.vertexBuffer);
+    bottomLevelAS.allocations.push_back(bridge.allocations[msg->indexBuffer]);
+    bottomLevelAS.allocations.push_back(bridge.allocations[msg->vertexBuffer]);
 }
 
 void RaytracingBridge::procMsgCreateBottomLevelAS(Bridge& bridge)
@@ -51,7 +56,7 @@ void RaytracingBridge::procMsgCreateBottomLevelAS(Bridge& bridge)
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateBottomLevelAS>();
 
     auto& blas = bottomLevelAccelStructs[msg->bottomLevelAS];
-    blas.handle = bridge.device.nvrhi->createAccelStruct(blas.desc.setTrackLiveness(true));
+    blas.handle = bridge.device.nvrhi->createAccelStruct(blas.desc);
     nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, blas.handle, blas.desc);
 }
 
@@ -59,12 +64,27 @@ void RaytracingBridge::procMsgCreateInstance(Bridge& bridge)
 {
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateInstance>();
 
+    const auto blas = bottomLevelAccelStructs.find(msg->bottomLevelAS);
+    if (blas == bottomLevelAccelStructs.end())
+        return;
+
     auto& instanceDesc = instanceDescs.emplace_back();
 
     memcpy(instanceDesc.transform, msg->transform, sizeof(instanceDesc.transform));
     instanceDesc.instanceMask = msg->instanceMask;
-    instanceDesc.bottomLevelAS = bottomLevelAccelStructs[msg->bottomLevelAS].handle;
+    instanceDesc.bottomLevelAS = blas->second.handle;
     assert(instanceDesc.bottomLevelAS);
+}
+
+void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)
+{
+    const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateMaterial>();
+
+    auto& material = materials[msg->material];
+
+    strcpy(material.shader, msg->shader);
+    memcpy(material.textures, msg->textures, sizeof(msg->textures));
+    memcpy(material.parameters, msg->parameters, sizeof(msg->parameters));
 }
 
 template<typename T>
@@ -364,14 +384,4 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     bridge.commandList->setGraphicsState(copyGraphicsState);
     bridge.commandList->draw(copyDrawArguments);
-}
-
-void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)
-{
-    const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateMaterial>();
-
-    auto& material = materials[msg->material];
-    strcpy(material.shader, msg->shader);
-    memcpy(material.textures, msg->textures, sizeof(msg->textures));
-    memcpy(material.parameters, msg->parameters, sizeof(msg->parameters));
 }

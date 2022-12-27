@@ -11,8 +11,7 @@ MessageSender::MessageSender()
 
 MessageSender::~MessageSender()
 {
-    start<MsgExit>();
-    finish();
+    oneShot<MsgExit>();
     commitAllMessages();
 
     memoryMappedFile.unmap(memoryMappedFileBuffer);
@@ -69,10 +68,7 @@ void MessageSender::commitAllMessages()
         buffer.resize(buffer.size() + MSG_ALIGNMENT);
 
     gpuEvent.wait();
-
     memcpy(memoryMappedFileBuffer, buffer.data(), buffer.size());
-    
-    gpuEvent.reset();
     cpuEvent.set();
 
     buffer.clear();

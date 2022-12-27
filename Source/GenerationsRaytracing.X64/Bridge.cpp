@@ -544,7 +544,7 @@ void Bridge::procMsgCreateVertexBuffer()
         msg->length,
         nvrhi::Format::UNKNOWN,
         reinterpret_cast<nvrhi::BufferHandle&>(resources[msg->vertexBuffer]),
-        allocations[msg->vertexBuffer].GetAddressOf(),
+        allocations[msg->vertexBuffer].ReleaseAndGetAddressOf(),
         true,
         false,
         true,
@@ -560,7 +560,7 @@ void Bridge::procMsgCreateIndexBuffer()
         msg->length,
         Format::convert(msg->format),
         reinterpret_cast<nvrhi::BufferHandle&>(resources[msg->indexBuffer]),
-        allocations[msg->indexBuffer].GetAddressOf(),
+        allocations[msg->indexBuffer].ReleaseAndGetAddressOf(),
         false,
         true,
         true,
@@ -1205,7 +1205,7 @@ void Bridge::procMsgMakePicture()
         (const uint8_t*)data,
         msg->size,
         std::addressof(texture),
-        allocations[msg->texture].GetAddressOf(),
+        allocations[msg->texture].ReleaseAndGetAddressOf(),
         nullptr,
         subResources);
 
@@ -1272,7 +1272,7 @@ void Bridge::procMsgExit()
 void Bridge::procMsgReleaseResource()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgReleaseResource>();
-    pendingDeallocations.push_back(msg->resource);
+    pendingReleases.push_back(msg->resource);
 }
 
 void Bridge::processMessages()
@@ -1359,15 +1359,15 @@ void Bridge::receiveMessages()
             fprintf(file, "vertexBuffers: %lld\n", vertexBuffers.size());
             fputs("\n", file);
 #endif
-            for (const auto resource : pendingDeallocations)
+            for (const auto resource : pendingReleases)
             {
-                resources.erase(resource);
-                allocations.erase(resource);
-                vertexAttributeDescs.erase(resource);
                 raytracing.bottomLevelAccelStructs.erase(resource);
                 raytracing.materials.erase(resource);
+                vertexAttributeDescs.erase(resource);
+                resources.erase(resource);
+                allocations.erase(resource);
             }
-            pendingDeallocations.clear();
+            pendingReleases.clear();
 
             device.nvrhi->runGarbageCollection();
         }

@@ -13,7 +13,7 @@ struct Event
     {
         handle = CreateEvent(
             nullptr,
-            TRUE,
+            FALSE,
             initialState,
             name);
 

@@ -27,6 +27,8 @@ struct BottomLevelAS
     nvrhi::rt::AccelStructDesc desc;
     std::vector<Geometry> geometries;
     nvrhi::rt::AccelStructHandle handle;
+    std::vector<nvrhi::BufferHandle> buffers;
+    std::vector<ComPtr<D3D12MA::Allocation>> allocations;
 };
 
 struct RaytracingBridge
@@ -73,6 +75,6 @@ struct RaytracingBridge
     void procMsgCreateGeometry(Bridge& bridge);
     void procMsgCreateBottomLevelAS(Bridge& bridge);
     void procMsgCreateInstance(Bridge& bridge);
-    void procMsgNotifySceneTraversed(Bridge& bridge);
     void procMsgCreateMaterial(Bridge& bridge);
+    void procMsgNotifySceneTraversed(Bridge& bridge);
 };

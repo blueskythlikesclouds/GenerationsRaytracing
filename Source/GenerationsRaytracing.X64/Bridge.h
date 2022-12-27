@@ -92,7 +92,7 @@ struct Bridge
 
     nvrhi::GraphicsState graphicsState;
 
-    std::vector<unsigned int> pendingDeallocations;
+    std::vector<unsigned int> pendingReleases;
 
     RaytracingBridge raytracing;
 

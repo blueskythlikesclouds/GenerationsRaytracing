@@ -1,6 +1,7 @@
 ﻿#include "RaytracingManager.h"
 
 #include "Buffer.h"
+#include "Identifier.h"
 #include "Message.h"
 #include "MessageSender.h"
 #include "ShaderMapping.h"
@@ -9,6 +10,9 @@
 
 static CriticalSection criticalSection;
 static ShaderMapping shaderMapping;
+
+static std::unordered_map<const hh::db::CDatabaseData*, size_t> identifierMap;
+
 static std::unordered_set<hh::mr::CTerrainInstanceInfoData*> instanceSet;
 static std::unordered_map<const hh::mr::CMeshData*, std::pair<ComPtr<Buffer>, size_t>> indexMap;
 
@@ -22,19 +26,48 @@ static void setMadeForBridge(const hh::db::CDatabaseData& databaseData, bool val
     *(bool*)((uintptr_t)&databaseData + 5) = value;
 }
 
-static void createMaterial(hh::mr::CMaterialData& material)
+struct SearchResult
 {
-    if (isMadeForBridge(material))
-        return;
+    size_t id;
+    bool shouldCreate;
+};
 
-    setMadeForBridge(material);
+static SearchResult searchDatabaseData(hh::db::CDatabaseData& databaseData)
+{
+    std::lock_guard lock(criticalSection);
+
+    SearchResult result{};
+
+    if (isMadeForBridge(databaseData))
+    {
+        result.id = identifierMap[&databaseData];
+        result.shouldCreate = false;
+    }
+    else
+    {
+        result.id = getNextIdentifier();
+        result.shouldCreate = true;
+
+        setMadeForBridge(databaseData);
+        identifierMap[&databaseData] = result.id;
+    }
+
+    return result;
+}
+
+static size_t createMaterial(hh::mr::CMaterialData& material)
+{
+    const auto result = searchDatabaseData(material);
+
+    if (!result.shouldCreate)
+        return result.id;
 
     const auto& shader = shaderMapping.shaders[
         material.m_spShaderListData ? material.m_spShaderListData->m_TypeAndName.c_str() + sizeof("Mirage.shader-list") : "SysError"];
 
     const auto msg = msgSender.start<MsgCreateMaterial>();
 
-    msg->material = (unsigned int)&material;
+    msg->material = result.id;
 
     strcpy(msg->shader, !shader.name.empty() ? shader.name.c_str() : "SysError");
     memset(msg->textures, 0, sizeof(msg->textures));
@@ -73,18 +106,21 @@ static void createMaterial(hh::mr::CMaterialData& material)
     }
 
     msgSender.finish();
+
+    return result.id;
 }
 
-template<typename T>
-static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool opaque, bool punchThrough)
+static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, bool opaque, bool punchThrough)
 {
+    const size_t materialId = createMaterial(*mesh.m_spMaterial);
+
     criticalSection.lock();
     auto& indexBuffer = indexMap[&mesh];
     criticalSection.unlock();
 
     const auto msg = msgSender.start<MsgCreateGeometry>();
 
-    msg->bottomLevelAS = (unsigned int)&model;
+    msg->bottomLevelAS = blasId;
     msg->opaque = opaque;
     msg->punchThrough = punchThrough;
     msg->vertexBuffer = reinterpret_cast<Buffer*>(mesh.m_pD3DVertexBuffer)->id;
@@ -124,8 +160,7 @@ static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool o
         }
     }
 
-    createMaterial(*mesh.m_spMaterial);
-    msg->material = (unsigned int)mesh.m_spMaterial.get();
+    msg->material = materialId;
 
     assert(mesh.m_pD3DVertexBuffer && indexBuffer.first);
 
@@ -133,37 +168,45 @@ static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool o
 }
 
 template<typename T>
-static void createBottomLevelAS(T& model)
+static size_t createBottomLevelAS(T& model)
 {
-    if (isMadeForBridge(model))
-        return;
+    const auto result = searchDatabaseData(model);
 
-    setMadeForBridge(model);
+    if (!result.shouldCreate)
+        return result.id;
 
     for (const auto& meshGroup : model.m_NodeGroupModels)
     {
         for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
-            createGeometry(model, *mesh, true, false);
+            createGeometry(result.id, *mesh, true, false);
 
         for (const auto& mesh : meshGroup->m_TransparentMeshes) 
-            createGeometry(model, *mesh, false, false);
+            createGeometry(result.id, *mesh, false, false);
 
         for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
-            createGeometry(model, *mesh, false, true);
+            createGeometry(result.id, *mesh, false, true);
+
+        for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
+        {
+            for (const auto& mesh : specialMeshGroup)
+                createGeometry(result.id, *mesh, false, false);
+        }
     }
 
     for (const auto& mesh : model.m_OpaqueMeshes) 
-        createGeometry(model, *mesh, true, false);
+        createGeometry(result.id, *mesh, true, false);
 
     for (const auto& mesh : model.m_TransparentMeshes) 
-        createGeometry(model, *mesh, false, false);
+        createGeometry(result.id, *mesh, false, false);
 
     for (const auto& mesh : model.m_PunchThroughMeshes) 
-        createGeometry(model, *mesh, false, true);
+        createGeometry(result.id, *mesh, false, true);
 
     const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
-    msg->bottomLevelAS = (unsigned int)&model;
+    msg->bottomLevelAS = result.id;
     msgSender.finish();
+
+    return result.id;
 }
 
 static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
@@ -173,7 +216,7 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
         if (!singleElement->m_spModel->IsMadeAll())
             return;
 
-        createBottomLevelAS(*singleElement->m_spModel);
+        const size_t blasId = createBottomLevelAS(*singleElement->m_spModel);
 
         const auto msg = msgSender.start<MsgCreateInstance>();
 
@@ -181,7 +224,7 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
             for (size_t j = 0; j < 4; j++)
                 msg->transform[i * 4 + j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
 
-        msg->bottomLevelAS = (unsigned int)singleElement->m_spModel.get();
+        msg->bottomLevelAS = blasId;
         msg->instanceMask = instanceMask;
 
         msgSender.finish();
@@ -241,7 +284,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
             continue;
         }
 
-        createBottomLevelAS(*(*it)->m_spTerrainModel);
+        const size_t modelId = createBottomLevelAS(*(*it)->m_spTerrainModel);
 
         const auto msg = msgSender.start<MsgCreateInstance>();
 
@@ -249,7 +292,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
             for (size_t j = 0; j < 4; j++)
                 msg->transform[i * 4 + j] = (*(*it)->m_scpTransform)(i, j);
 
-        msg->bottomLevelAS = (unsigned int)(*it)->m_spTerrainModel.get();
+        msg->bottomLevelAS = modelId;
         msg->instanceMask = INSTANCE_MASK_DEFAULT;
 
         msgSender.finish();
@@ -378,9 +421,17 @@ HOOK(void, __fastcall, DestructDatabaseData, 0x6993B0, hh::db::CDatabaseData* Th
 {
     if (isMadeForBridge(*This))
     {
-        const auto msg = msgSender.start<MsgReleaseResource>();
-        msg->resource = (unsigned int)This;
-        msgSender.finish();
+        std::lock_guard lock(criticalSection);
+        const auto pair = identifierMap.find(This);
+
+        if (pair != identifierMap.end())
+        {
+            identifierMap.erase(pair);
+
+            const auto msg = msgSender.start<MsgReleaseResource>();
+            msg->resource = pair->second;
+            msgSender.finish();
+        }
     }
 
     originalDestructDatabaseData(This);
