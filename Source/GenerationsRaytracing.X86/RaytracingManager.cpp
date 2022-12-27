@@ -270,34 +270,23 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     std::lock_guard lock(criticalSection);
 
-    for (auto it = instanceSet.begin(); it != instanceSet.end();)
+    for (const auto instance : instanceSet)
     {
-        if (!(*it)->IsMadeAll())
-        {
-            ++it;
+        if (!instance->IsMadeAll() || !instance->m_spTerrainModel)
             continue;
-        }
 
-        if (!(*it)->m_spTerrainModel)
-        {
-            it = instanceSet.erase(it);
-            continue;
-        }
-
-        const size_t modelId = createBottomLevelAS(*(*it)->m_spTerrainModel);
+        const size_t blasId = createBottomLevelAS(*instance->m_spTerrainModel);
 
         const auto msg = msgSender.start<MsgCreateInstance>();
 
         for (size_t i = 0; i < 3; i++)
             for (size_t j = 0; j < 4; j++)
-                msg->transform[i * 4 + j] = (*(*it)->m_scpTransform)(i, j);
+                msg->transform[i * 4 + j] = (*instance->m_scpTransform)(i, j);
 
-        msg->bottomLevelAS = modelId;
+        msg->bottomLevelAS = blasId;
         msg->instanceMask = INSTANCE_MASK_DEFAULT;
 
         msgSender.finish();
-
-        ++it;
     }
 
     msgSender.oneShot<MsgNotifySceneTraversed>();
