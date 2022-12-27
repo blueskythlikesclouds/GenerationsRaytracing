@@ -7,11 +7,6 @@ namespace RaytracingTest.Tool.Shaders;
 
 public static class RaytracingShaderConverter
 {
-    private static void WriteBarycentricLerp(StringBuilder stringBuilder, string buffer)
-    {
-        stringBuilder.AppendFormat("{0}[indices.x] * uv.x + {0}[indices.y] * uv.y + {0}[indices.z] * uv.z", buffer);
-    }
-
     private static void WriteConstant(StringBuilder stringBuilder, string outName, Constant constant, ShaderType shaderType, ShaderMapping shaderMapping)
     {
         if (constant.Name == "g_MtxProjection")
@@ -54,110 +49,50 @@ public static class RaytracingShaderConverter
 
             if (shaderMapping.CanMapFloat4(constant.Register, shaderType))
             {
-                stringBuilder.AppendFormat("material.float4Parameters[{0}]", shaderMapping.MapFloat4(constant.Register, shaderType));
+                stringBuilder.AppendFormat("material.Parameters[{0}]", shaderMapping.MapFloat4(constant.Register, shaderType));
             }
             else
             {
                 switch (constant.Name)
                 {
-                    case "g_EyeDirection":
-                        stringBuilder.Append("float4(WorldRayDirection(), 0)");
-                        break;
-
-                    case "g_GI0Scale":
-                    case "g_ForceAlphaColor":
-                    case "g_ShadowMapSampler":
-                    case "g_VerticalShadowMapSampler":
-                        stringBuilder.Append("1");
-                        break;
-
-                    case "g_BackGroundScale":
-                        stringBuilder.Append("g_Globals.skyIntensityScale");
-                        break;
-
-                    case "mrgGlobalLight_Diffuse":
-                    case "mrgGlobalLight_Specular":
-                        stringBuilder.Append("float4(g_Globals.lightColor, 0)");
-                        break;
-
                     case "g_EyePosition":
                         stringBuilder.Append("float4(WorldRayOrigin(), 0)");
                         break;
 
-                    case "mrgGlobalLight_Direction":
-                        stringBuilder.Append("float4(g_Globals.lightDirection, 0)");
-                        break;
-
-                    case "mrgGIAtlasParam":
-                        stringBuilder.Append("float4(1, 1, 0, 0)");
-                        break;
-
-                    case "g_VerticalLightDirection":
-                        stringBuilder.Append("float4(0, -1, 0, 0)");
-                        break;
-
-                    case "mrgPlayableParam":
-                        stringBuilder.Append("float4(-10000, 64, 0, 0)");
-                        break;
-
-                    case "g_DepthSampler":
-                        stringBuilder.Append("1");
-                        break;
-
-                    case "mrgInShadowScale":
-                        stringBuilder.Append("float4(0.3, 0.3, 1, 1)");
+                    case "g_EyeDirection":
+                        stringBuilder.Append("float4(WorldRayDirection(), 0)");
                         break;
 
                     case "g_ViewportSize":
                         stringBuilder.Append("float4(DispatchRaysDimensions().xy, 1.0 / (float2)DispatchRaysDimensions().xy)");
                         break;
 
-                    case "g_LightScatteringColor":
-                        stringBuilder.Append("g_Globals.lightScatteringColor");
+                    case "mrgGIAtlasParam":
+                        stringBuilder.Append("float4(1, 1, 0, 0)");
                         break;
 
-                    case "g_LightScattering_Ray_Mie_Ray2_Mie2":
-                        stringBuilder.Append("g_Globals.rayMieRay2Mie2");
-                        break;           
-                    
-                    case "g_LightScattering_ConstG_FogDensity":
-                        stringBuilder.Append("g_Globals.gAndFogDensity");
-                        break;            
-                    
-                    case "g_LightScatteringFarNearScale":
-                        stringBuilder.Append("g_Globals.farNearScale");
+                    case "mrgHasBone":
+                        stringBuilder.Append("false");
                         break;
 
-                    case "mrgEyeLight_Diffuse":
-                        stringBuilder.Append("g_Globals.eyeLightDiffuse");
+                    case "g_ShadowMapSampler":
+                    case "g_VerticalShadowMapSampler":
+                    case "g_DepthSampler":
+                        stringBuilder.Append("1");
                         break;
 
-                    case "mrgEyeLight_Specular":
-                        stringBuilder.Append("g_Globals.eyeLightSpecular");
-                        break;
-
-                    case "mrgEyeLight_Range":
-                        stringBuilder.Append("g_Globals.eyeLightRange");
-                        break;
-
-                    case "mrgEyeLight_Attribute":
-                        stringBuilder.Append("g_Globals.eyeLightAttribute");
-                        break;
-
-                    case "mrgLocalLight0_Position":
-                        stringBuilder.Append("float4(g_LightBuffer[lightIndex + 0].xyz, 0)");
-                        break;        
-                    
-                    case "mrgLocalLight0_Color":
-                        stringBuilder.Append("float4(g_LightBuffer[lightIndex + 1].rgb * g_Globals.lightCount, 0)");
-                        break;   
-                    
-                    case "mrgLocalLight0_Range":
-                        stringBuilder.Append("float4(0, 0, g_LightBuffer[lightIndex + 0].w, g_LightBuffer[lightIndex + 1].w)");
+                    case "mrgTexcoordOffset":
+                    case "mrgTexcoordIndex":
+                    case "g_aLightField":
+                    case "g_FramebufferSampler":
+                    case "g_ReflectionMapSampler":
+                    case "g_ReflectionMapSampler2":
+                    case "g_ShadowMapParams":
+                        stringBuilder.Append("0");
                         break;
 
                     default:
-                        stringBuilder.Append("0");
+                        stringBuilder.Append(constant.Name);
                         break;
                 }
             }
@@ -423,7 +358,7 @@ public static class RaytracingShaderConverter
                         {
                             if (!tracedShadow)
                             {
-                                stringBuilder.AppendLine("\tfloat shadow = AllowTraceRay ? TraceShadow(payload.random) : 1;");
+                                stringBuilder.AppendLine("\tfloat shadow = AllowTraceRay ? TraceShadow(payload.Random) : 1;");
                                 tracedShadow = true;
                             }
 
@@ -496,21 +431,9 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendFormat("[shader(\"{0}\")]\n", shaderType);
         stringBuilder.AppendFormat("void {0}_{1}(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", functionName, shaderType);
 
-        stringBuilder.AppendLine("\tuint4 mesh = g_MeshBuffer[InstanceID() + GeometryIndex()];");
-
-        stringBuilder.Append(""" 
-                uint3 indices;
-                indices.x = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 0];
-                indices.y = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 1];
-                indices.z = mesh.x + g_IndexBuffer[mesh.y + PrimitiveIndex() * 3 + 2];
-
-                float3 uv = float3(1.0 - attributes.uv.x - attributes.uv.y, attributes.uv.x, attributes.uv.y);
-                float3 normal = normalize(mul(ObjectToWorld3x4(), float4(g_NormalBuffer[indices.x] * uv.x + g_NormalBuffer[indices.y] * uv.y + g_NormalBuffer[indices.z] * uv.z, 0.0))).xyz;
-
-                Material material = g_MaterialBuffer[mesh.z];
-
-
-            """);
+        stringBuilder.AppendLine("\tVertex vertex = GetVertex(attributes);");
+        stringBuilder.AppendLine("\tMaterial material = GetMaterial();");
+        stringBuilder.AppendLine("\tGeometry geometry = GetGeometry();");
 
         stringBuilder.AppendFormat("\t{0}_IAParams iaParams = ({0}_IAParams)0;\n", functionName);
 
@@ -519,29 +442,19 @@ public static class RaytracingShaderConverter
             switch (semantic)
             {
                 case "POSITION":
-                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(WorldRayOrigin() + WorldRayDirection() * RayTCurrent(), 1.0);\n", name);
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(GetPosition(), 1.0);\n", name);
                     break;
 
                 case "NORMAL":
-                    stringBuilder.AppendFormat("\tiaParams.{0}.xyz = mul(ObjectToWorld3x4(), float4(", name);
-                    WriteBarycentricLerp(stringBuilder, "g_NormalBuffer");
-                    stringBuilder.AppendLine(", 0));");
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(vertex.Normal, 0.0);\n", name);
                     break;
 
                 case "TANGENT":
-                    stringBuilder.AppendFormat("\tiaParams.{0}.xyz = mul(ObjectToWorld3x4(), float4((", name);
-                    WriteBarycentricLerp(stringBuilder, "g_TangentBuffer");
-                    stringBuilder.AppendLine(").xyz, 0));");
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(vertex.Tangent, 0.0);\n", name);
                     break;
 
                 case "BINORMAL":
-                    stringBuilder.AppendFormat("\tiaParams.{0}.xyz = mul(ObjectToWorld3x4(), float4(cross(", name);
-                    WriteBarycentricLerp(stringBuilder, "g_NormalBuffer");
-                    stringBuilder.Append(", (");
-                    WriteBarycentricLerp(stringBuilder, "g_TangentBuffer");
-                    stringBuilder.Append(").xyz) * (");
-                    WriteBarycentricLerp(stringBuilder, "g_TangentBuffer");
-                    stringBuilder.AppendLine(").w, 0));");
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(vertex.Binormal, 0.0);\n", name);
                     break;
 
                 case "TEXCOORD":
@@ -549,29 +462,22 @@ public static class RaytracingShaderConverter
                 case "TEXCOORD1":
                 case "TEXCOORD2":
                 case "TEXCOORD3":
-                    stringBuilder.AppendFormat("\tiaParams.{0}.xy = ", name);
-                    WriteBarycentricLerp(stringBuilder, "g_TexCoordBuffer");
-                    stringBuilder.AppendLine(";");
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(vertex.TexCoord, 0.0, 0.0);\n", name);
                     break;
 
                 case "COLOR":
-                    stringBuilder.AppendFormat("\tiaParams.{0} = ", name);
-                    WriteBarycentricLerp(stringBuilder, "g_ColorBuffer");
-                    stringBuilder.AppendLine(";");
+                    stringBuilder.AppendFormat("\tiaParams.{0} = vertex.Color;\n", name);
                     break;
             }
         }
 
         bool isClosestHit = shaderType == "closesthit";
-        bool hasLocalLight = isClosestHit && pixelShader.Constants.Any(x => x.Name.StartsWith("mrgLocalLight0_"));
-
-        stringBuilder.AppendFormat("\tuint lightIndex = {0};\n", hasLocalLight ? "2 * (NextRandomUint(payload.random) % g_Globals.lightCount)" : "0");
 
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
 
         stringBuilder.AppendFormat("\n\t{0}_VSParams vsParams = ({0}_VSParams)0;\n", functionName);
 
-        stringBuilder.AppendFormat("\t{0}_VS<{1}>(payload, normal, iaParams, vsParams);\n\n", functionName, isClosestHit ? "true" : "false");
+        stringBuilder.AppendFormat("\t{0}_VS<{1}>(payload, vertex.Normal, iaParams, vsParams);\n\n", functionName, isClosestHit ? "true" : "false");
 
         stringBuilder.AppendFormat("\t{0}_PSParams psParams = ({0}_PSParams)0;\n", functionName);
 
@@ -600,7 +506,7 @@ public static class RaytracingShaderConverter
                 if (i > 0)
                     name += $"{i}";
 
-                stringBuilder.AppendFormat("\tpsParams.{0} = g_BindlessTexture{1}[NonUniformResourceIndex(material.textureIndices[{2}])];\n",
+                stringBuilder.AppendFormat("\tpsParams.{0} = g_BindlessTexture{1}[NonUniformResourceIndex(material.TextureIndices[{2}])];\n",
                     name,
                     pixelShader.Samplers[token],
                     shaderMapping.CanMapSampler(register) ? shaderMapping.MapSampler(register) : 0);
@@ -609,13 +515,13 @@ public static class RaytracingShaderConverter
 
         stringBuilder.AppendFormat("\n\t{0}_OMParams omParams = ({0}_OMParams)0;\n", functionName);
 
-        stringBuilder.AppendFormat("\t{0}_PS<{1}>(payload, normal, psParams, omParams);\n\n", functionName, isClosestHit ? "true" : "false");
+        stringBuilder.AppendFormat("\t{0}_PS<{1}>(payload, vertex.Normal, psParams, omParams);\n\n", functionName, isClosestHit ? "true" : "false");
 
         if (shaderType == "closesthit")
         {
             stringBuilder.Append("""
-                payload.color = omParams.oC0.rgb;
-                payload.t = RayTCurrent();
+                payload.Color = omParams.oC0.rgb;
+                payload.T = RayTCurrent();
             }
 
 
@@ -624,14 +530,14 @@ public static class RaytracingShaderConverter
         else if (shaderType == "anyhit")
         {
             stringBuilder.Append(""" 
-                if (mesh.w == MESH_TYPE_PUNCH)
+                if (geometry.PunchThrough != 0)
                 {
                     if (omParams.oC0.w < 0.5)
                         IgnoreHit();
                 }
                 else 
                 {
-                    if (omParams.oC0.w < NextRandom(payload.random))
+                    if (omParams.oC0.w < NextRandom(payload.Random))
                         IgnoreHit();
                 }
             }

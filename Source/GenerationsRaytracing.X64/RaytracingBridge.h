@@ -11,11 +11,14 @@ struct Geometry
     uint32_t texCoordOffset;
     uint32_t colorOffset;
     uint32_t material;
+    uint32_t punchThrough;
 };
 
 struct Material
 {
+    char shader[256];
     uint32_t textures[16]{};
+    float parameters[16][4];
 };
 
 struct BottomLevelAS

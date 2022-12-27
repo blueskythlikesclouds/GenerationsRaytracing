@@ -16,10 +16,13 @@
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)CriticalSection.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Event.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)File.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Message.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)MemoryMappedFile.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Path.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Process.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ShaderMapping.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Utilities.h" />
   </ItemGroup>
 </Project>

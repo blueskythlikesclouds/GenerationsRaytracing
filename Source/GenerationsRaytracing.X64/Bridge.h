@@ -24,6 +24,8 @@ DEFINE_ENUM_FLAG_OPERATORS(DirtyFlags);
 
 struct Bridge
 {
+    std::string directoryPath;
+
     MessageReceiver msgReceiver;
     Device device;
 
@@ -97,7 +99,7 @@ struct Bridge
     bool shouldExit = false;
     bool shouldPresent = false;
 
-    Bridge();
+    Bridge(const std::string& directoryPath);
 
     void openCommandList();
     void openCommandListForCopy();

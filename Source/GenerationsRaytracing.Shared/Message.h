@@ -285,6 +285,7 @@ struct MsgCreateGeometry
     DEFINE_MSG_ID;
     unsigned int bottomLevelAS;
     bool opaque;
+    bool punchThrough;
     unsigned int vertexBuffer;
     unsigned int vertexOffset;
     unsigned int vertexCount;
@@ -322,7 +323,9 @@ struct MsgCreateMaterial
 {
     DEFINE_MSG_ID;
     unsigned int material;
-    unsigned int textures[16]{};
+    char shader[256];
+    unsigned int textures[16];
+    float parameters[16][4];
 };
 
 struct MsgExit

@@ -19,6 +19,8 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 
 extern "C" __declspec(dllexport) void Init()
 {
+    Patches::init();
+
     if (!Configuration::load("GenerationsRaytracing.ini"))
         MessageBox(nullptr, TEXT("Unable to open \"GenerationsRaytracing.ini\" in mod directory."), TEXT("GenerationsRaytracing"), MB_ICONERROR);
 
@@ -56,9 +58,4 @@ extern "C" __declspec(dllexport) void Init()
         nullptr,
         &startupInfo,
         &processInformation);
-}
-
-extern "C" __declspec(dllexport) void PostInit()
-{
-    Patches::init();
 }

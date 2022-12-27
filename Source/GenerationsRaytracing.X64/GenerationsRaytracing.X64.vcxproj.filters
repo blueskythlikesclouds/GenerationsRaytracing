@@ -20,6 +20,15 @@
     <ClInclude Include="RaytracingBridge.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="RaytracingShaderLibrary.hlsl" />
+    <None Include="ShaderDefinitions.hlsli" />
+    <None Include="ShaderGlobals.hlsli" />
+    <None Include="ShaderFunctions.hlsli" />
+    <None Include="ShaderLibrary.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="ShaderLibrary.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="ShaderMapping.bin" />
   </ItemGroup>
 </Project>

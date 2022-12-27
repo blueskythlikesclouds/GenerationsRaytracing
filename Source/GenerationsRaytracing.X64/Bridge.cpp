@@ -4,7 +4,7 @@
 #include "Hash.h"
 #include "Message.h"
 
-Bridge::Bridge()
+Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
 {
     commandList = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false));
     commandListForCopy = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false));
@@ -1365,6 +1365,7 @@ void Bridge::receiveMessages()
                 allocations.erase(resource);
                 vertexAttributeDescs.erase(resource);
                 raytracing.bottomLevelAccelStructs.erase(resource);
+                raytracing.materials.erase(resource);
             }
             pendingDeallocations.clear();
 

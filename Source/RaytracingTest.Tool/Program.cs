@@ -10,7 +10,7 @@ if (args.Length < 2)
     return;
 }
 
-if (args[1].Contains("GenerationsRaytracing"))
+if (args[1].Contains("bb3"))
 {
     foreach (var shaderArchiveFilePath in Directory.GetFiles(args[0], "shader_*.ar.00"))
     {
@@ -30,6 +30,21 @@ if (args[1].Contains("GenerationsRaytracing"))
 }
 else
 {
+    var materialParameters = new HashSet<string>
+    {
+        "diffuse",
+        "ambient",
+        "specular",
+        "emissive",
+        "opacity_reflection_refraction_spectype",
+        "power_gloss_level",
+        "mrgLuminanceRange",
+        "mrgFresnelParam",
+    };
+
+    var vertexConstants = new Dictionary<string, int>();
+    var pixelConstants = new Dictionary<string, int>();
+
     var archiveDatabase = new ArchiveDatabase();
     archiveDatabase.Load(Path.Combine(args[0], "shader_r.ar.00"));
     archiveDatabase.Load(Path.Combine(args[0], "shader_r_add.ar.00"));
@@ -47,7 +62,7 @@ else
             defaultPixelShaderPermutation.VertexShaderPermutations.First(x => x.Name.Equals("none"));
     
         var (_, vertexShaderData) = archiveDatabase.Get<ShaderData>(noneVertexShaderPermutation.ShaderName + "_ConstTexCoord.vertexshader");
-        var (_, pixelShaderData) = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoGI_ConstTexCoord.pixelshader");
+        var (_, pixelShaderData) = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoLight_NoGI_ConstTexCoord.pixelshader");
     
         var vertexShaderCodeData = archiveDatabase.Get(vertexShaderData.CodeName + ".wvu");
         var pixelShaderCodeData = archiveDatabase.Get(pixelShaderData.CodeName + ".wpu");
@@ -55,7 +70,7 @@ else
         if (vertexShaderCodeData == null || pixelShaderCodeData == null)
         {
             vertexShaderData = archiveDatabase.Get<ShaderData>(noneVertexShaderPermutation.ShaderName + ".vertexshader").Data;
-            pixelShaderData = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoGI.pixelshader").Data;
+            pixelShaderData = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoLight_NoGI.pixelshader").Data;
     
             vertexShaderCodeData = archiveDatabase.Get(vertexShaderData.CodeName + ".wvu");
             pixelShaderCodeData = archiveDatabase.Get(pixelShaderData.CodeName + ".wpu");
@@ -70,19 +85,8 @@ else
             {
                 foreach (var parameter in parameterData.Vectors)
                 {
-                    switch (parameter.Name)
-                    {
-                        case "diffuse":
-                        case "ambient":
-                        case "specular":
-                        case "emissive":
-                        case "opacity_reflection_refraction_spectype":
-                        case "power_gloss_level":
-                        case "mrgLuminanceRange":
-                        case "mrgFresnelParam":
-                            shaderMapping.Float4VertexShaderParameters.Add(parameter);
-                            break;
-                    }
+                    if (materialParameters.Contains(parameter.Name))
+                        shaderMapping.Float4VertexShaderParameters.Add(parameter);
                 }
             }
             else
@@ -98,19 +102,8 @@ else
             {
                 foreach (var parameter in parameterData.Vectors)
                 {
-                    switch (parameter.Name)
-                    {
-                        case "diffuse":
-                        case "ambient":
-                        case "specular":
-                        case "emissive":
-                        case "opacity_reflection_refraction_spectype":
-                        case "power_gloss_level":
-                        case "mrgLuminanceRange":
-                        case "mrgFresnelParam":
-                            shaderMapping.Float4PixelShaderParameters.Add(parameter);
-                            break;
-                    }
+                    if (materialParameters.Contains(parameter.Name))
+                        shaderMapping.Float4PixelShaderParameters.Add(parameter);
                 }
             }
             else
@@ -122,6 +115,12 @@ else
     
         var vertexShader = ShaderParser.Parse(vertexShaderCodeData.Data);
         var pixelShader = ShaderParser.Parse(pixelShaderCodeData.Data);
+
+        foreach (var constant in vertexShader.Constants.Where(x => x.Type == ConstantType.Float4))
+            vertexConstants[constant.Name] = constant.Register;  
+        
+        foreach (var constant in pixelShader.Constants.Where(x => x.Type == ConstantType.Float4))
+            pixelConstants[constant.Name] = constant.Register;
     
         string shaderName = Path.GetFileNameWithoutExtension(databaseData.Name);
         string raytracingFunctionName = shaderName.Replace('[', '_').Replace(']', '_');
@@ -152,4 +151,10 @@ else
     }
     
     File.WriteAllText(Path.Combine(args[1], "ShaderLibrary.hlsl"), stringBuilder.ToString());
+
+    foreach (var (name, register) in vertexConstants.OrderBy(x => x.Value))
+        Console.WriteLine("float4 {0} : packoffset(c{1});", name, register);  
+    
+    foreach (var (name, register) in pixelConstants.OrderBy(x => x.Value))
+        Console.WriteLine("float4 {0} : packoffset(c{1});", name, register);
 }

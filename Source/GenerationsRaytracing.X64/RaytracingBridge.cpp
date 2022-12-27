@@ -1,8 +1,9 @@
 ﻿#include "RaytracingBridge.h"
 
 #include "Bridge.h"
+#include "File.h"
 #include "Message.h"
-#include "RaytracingShaderLibrary.h"
+#include "ShaderMapping.h"
 #include "Utilities.h"
 
 void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
@@ -38,6 +39,7 @@ void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
     geometry.texCoordOffset = msg->texCoordOffset;
     geometry.colorOffset = msg->colorOffset;
     geometry.material = msg->material;
+    geometry.punchThrough = msg->punchThrough;
 }
 
 void RaytracingBridge::procMsgCreateBottomLevelAS(Bridge& bridge)
@@ -106,7 +108,10 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     if (!shaderLibrary)
     {
-        shaderLibrary = bridge.device.nvrhi->createShaderLibrary(RAYTRACING_SHADER_LIBRARY, sizeof(RAYTRACING_SHADER_LIBRARY));
+        size_t shaderLibraryByteSize = 0;
+        auto shaderLibraryBytes = readAllBytes(bridge.directoryPath + "/ShaderLibrary.cso", shaderLibraryByteSize);
+
+        shaderLibrary = bridge.device.nvrhi->createShaderLibrary(shaderLibraryBytes.get(), shaderLibraryByteSize);
 
         bindingLayout = bridge.device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
             .setVisibility(nvrhi::ShaderType::AllRayTracing)
@@ -128,7 +133,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         textureBindlessLayout = bridge.device.nvrhi->createBindlessLayout(nvrhi::BindlessLayoutDesc()
             .setVisibility(nvrhi::ShaderType::AllRayTracing)
             .setMaxCapacity(65336)
-            .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(3)));
+            .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(3))
+            .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(4)));
 
         geometryDescriptorTable = bridge.device.nvrhi->createDescriptorTable(geometryBindlessLayout);
         textureDescriptorTable = bridge.device.nvrhi->createDescriptorTable(textureBindlessLayout);
@@ -137,26 +143,38 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .setAllFilters(true)
             .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat));
 
-        pipeline = bridge.device.nvrhi->createRayTracingPipeline(nvrhi::rt::PipelineDesc()
+        auto pipelineDesc = nvrhi::rt::PipelineDesc()
             .addBindingLayout(bindingLayout)
             .addBindingLayout(geometryBindlessLayout)
             .addBindingLayout(textureBindlessLayout)
             .addShader({ "", shaderLibrary->getShader("RayGeneration", nvrhi::ShaderType::RayGeneration) })
             .addShader({ "", shaderLibrary->getShader("Miss", nvrhi::ShaderType::Miss) })
-            .addHitGroup({ "HitGroup", shaderLibrary->getShader("ClosestHit", nvrhi::ShaderType::ClosestHit) })
             .setMaxRecursionDepth(8)
-            .setMaxPayloadSize(32));
+            .setMaxPayloadSize(32);
 
-        shaderTable = pipeline->createShaderTable();
-        shaderTable->setRayGenerationShader("RayGeneration");
-        shaderTable->addMissShader("Miss");
-        shaderTable->addHitGroup("HitGroup");
+        ShaderMapping shaderMapping;
+        shaderMapping.load(bridge.directoryPath + "/ShaderMapping.bin");
+
+        for (auto& [name, shader] : shaderMapping.shaders)
+        {
+            pipelineDesc.addHitGroup({ name,
+                shaderLibrary->getShader(shader.closestHit.c_str(), nvrhi::ShaderType::ClosestHit),
+                shaderLibrary->getShader(shader.anyHit.c_str(), nvrhi::ShaderType::AnyHit) });
+        }
+
+        pipeline = bridge.device.nvrhi->createRayTracingPipeline(pipelineDesc);
     }
 
-    std::vector<nvrhi::TextureHandle> textures;
-    std::unordered_map<unsigned int, uint32_t> textureMap;
+    std::vector<nvrhi::TextureHandle> textures = { bridge.nullTexture };
+    std::unordered_map<unsigned int, uint32_t> textureMap = { { 0, 0 } };
 
-    std::vector<Material> materialsForGpu;
+    struct MaterialForGpu
+    {
+        uint32_t textureIndices[16]{};
+        float parameters[16][4]{};
+    };
+
+    std::vector<MaterialForGpu> materialsForGpu;
     std::unordered_map<unsigned int, uint32_t> materialMap;
 
     for (auto& [id, material] : materials)
@@ -172,13 +190,15 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             const auto pair = textureMap.find(material.textures[i]);
             if (pair == textureMap.end())
             {
-                materialForGpu.textures[i] = (uint32_t)textures.size();
+                materialForGpu.textureIndices[i] = (uint32_t)textures.size();
                 const auto texture = bridge.resources[material.textures[i]];
                 textures.push_back(texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()) : bridge.nullTexture.Get());
             }
             else
-                materialForGpu.textures[i] = pair->second;
+                materialForGpu.textureIndices[i] = pair->second;
         }
+
+        memcpy(materialForGpu.parameters, material.parameters, sizeof(material.parameters));
     }
 
     bridge.device.nvrhi->resizeDescriptorTable(textureDescriptorTable, (uint32_t)textures.size(), false);
@@ -188,6 +208,10 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     std::vector<Geometry> geometriesForGpu;
     std::unordered_map<nvrhi::rt::IAccelStruct*, uint32_t> blasMap;
+
+    shaderTable = pipeline->createShaderTable();
+    shaderTable->setRayGenerationShader("RayGeneration");
+    shaderTable->addMissShader("Miss");
 
     for (auto& [id, blas] : bottomLevelAccelStructs)
     {
@@ -199,6 +223,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         {
             auto& geometryForGpu = geometriesForGpu.emplace_back(geometry);
             geometryForGpu.material = materialMap[geometry.material];
+
+            shaderTable->addHitGroup(materials[geometry.material].shader);
         }
     }
 
@@ -219,7 +245,10 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     }
 
     for (auto& instance : instanceDescs)
+    {
         instance.instanceID = blasMap[instance.bottomLevelAS];
+        instance.instanceContributionToHitGroupIndex = instance.instanceID;
+    }
 
     auto topLevelAccelStruct = bridge.device.nvrhi->createAccelStruct(nvrhi::rt::AccelStructDesc()
         .setIsTopLevel(true)
@@ -284,5 +313,7 @@ void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateMaterial>();
 
     auto& material = materials[msg->material];
+    strcpy(material.shader, msg->shader);
     memcpy(material.textures, msg->textures, sizeof(msg->textures));
+    memcpy(material.parameters, msg->parameters, sizeof(msg->parameters));
 }

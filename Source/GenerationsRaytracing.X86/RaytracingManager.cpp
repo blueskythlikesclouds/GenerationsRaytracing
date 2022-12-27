@@ -3,18 +3,19 @@
 #include "Buffer.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "ShaderMapping.h"
 #include "Texture.h"
 #include "VertexDeclaration.h"
 
 static CriticalSection criticalSection;
-static std::unordered_set<hh::mr::CMaterialData*> pendingMaterialSet;
-static std::unordered_set<const hh::mr::CMaterialData*> materialSet;
+static ShaderMapping shaderMapping;
+static std::unordered_set<hh::mr::CMaterialData*> materialSet;
 static std::unordered_set<const void*> modelSet;
 static std::unordered_set<hh::mr::CTerrainInstanceInfoData*> instanceSet;
 static std::unordered_map<const hh::mr::CMeshData*, std::pair<ComPtr<Buffer>, size_t>> indexMap;
 
 template<typename T>
-static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool opaque)
+static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool opaque, bool punchThrough)
 {
     std::lock_guard lock(criticalSection);
     auto& indexBuffer = indexMap[&mesh];
@@ -23,6 +24,7 @@ static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool o
 
     msg->bottomLevelAS = (unsigned int)&model;
     msg->opaque = opaque;
+    msg->punchThrough = punchThrough;
     msg->vertexBuffer = reinterpret_cast<Buffer*>(mesh.m_pD3DVertexBuffer)->id;
     msg->vertexOffset = mesh.m_VertexOffset;
     msg->vertexCount = mesh.m_VertexNum;
@@ -72,23 +74,23 @@ static void createBottomLevelAS(const T& model)
     for (const auto& meshGroup : model.m_NodeGroupModels)
     {
         for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
-            createGeometry(model, *mesh, true);
+            createGeometry(model, *mesh, true, false);
 
         for (const auto& mesh : meshGroup->m_TransparentMeshes) 
-            createGeometry(model, *mesh, false);
+            createGeometry(model, *mesh, false, false);
 
         for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
-            createGeometry(model, *mesh, false);
+            createGeometry(model, *mesh, false, true);
     }
 
     for (const auto& mesh : model.m_OpaqueMeshes) 
-        createGeometry(model, *mesh, true);
+        createGeometry(model, *mesh, true, false);
 
     for (const auto& mesh : model.m_TransparentMeshes) 
-        createGeometry(model, *mesh, false);
+        createGeometry(model, *mesh, false, false);
 
     for (const auto& mesh : model.m_PunchThroughMeshes) 
-        createGeometry(model, *mesh, false);
+        createGeometry(model, *mesh, false, true);
 
     const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
 
@@ -157,26 +159,56 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     std::lock_guard lock(criticalSection);
 
-    for (auto it = pendingMaterialSet.begin(); it != pendingMaterialSet.end();)
+    for (auto it = materialSet.begin(); it != materialSet.end();)
     {
         if ((*it)->IsMadeAll())
         {
+            const auto& shader = shaderMapping.shaders[
+                (*it)->m_spShaderListData ? (*it)->m_spShaderListData->m_TypeAndName.c_str() + sizeof("Mirage.shader-list") : "SysError"];
+
             const auto msg = msgSender.start<MsgCreateMaterial>();
 
             msg->material = (unsigned int)*it;
-            memset(msg->textures, 0, sizeof(msg->textures));
 
-            size_t index = 0;
-            for (auto& texture : (*it)->m_spTexsetData->m_TextureList)
+            strcpy(msg->shader, !shader.name.empty() ? shader.name.c_str() : "SysError");
+            memset(msg->textures, 0, sizeof(msg->textures));
+            memset(msg->parameters, 0, sizeof(msg->parameters));
+
+            std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
+
+            for (const auto& texture : (*it)->m_spTexsetData->m_TextureList)
             {
-                if (texture->m_spPictureData)
-                    msg->textures[index++] = reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id;
+                const size_t target = counts[texture->m_Type.m_pSymbolNode];
+                size_t current = 0;
+
+                for (size_t i = 0; i < shader.textures.size(); i++)
+                {
+                    if (shader.textures[i] == texture->m_Type.GetValue() && (current++) == target)
+                    {
+                        msg->textures[i] = texture->m_spPictureData && texture->m_spPictureData->m_pD3DTexture ? 
+                            reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id : NULL;
+
+                        ++counts[texture->m_Type.m_pSymbolNode];
+                        break;
+                    }
+                }
+            }
+
+            for (const auto& parameter : (*it)->m_Float4Params)
+            {
+                for (size_t i = 0; i < shader.parameters.size(); i++)
+                {
+                    if (shader.parameters[i] == parameter->m_Name.GetValue())
+                    {
+                        memcpy(msg->parameters[i], parameter->m_spValue.get(), sizeof(msg->parameters[i]));
+                        break;
+                    }
+                }
             }
 
             msgSender.finish();
 
-            materialSet.insert(*it);
-            it = pendingMaterialSet.erase(it);
+            it = materialSet.erase(it);
         }
         else
             ++it;
@@ -217,7 +249,7 @@ HOOK(void, __cdecl, MakeMaterial, 0x733E60,
         return;
 
     std::lock_guard lock(criticalSection);
-    pendingMaterialSet.insert(material.get());
+    materialSet.insert(material.get());
 }
 
 static void convertToTriangles(const hh::mr::CMeshData& mesh, hl::hh::mirage::raw_mesh* data)
@@ -376,8 +408,11 @@ HOOK(void, __cdecl, MakeTerrainInstanceInfo, 0x734D90,
 HOOK(void, __fastcall, DestructMaterial, 0x704B80, hh::mr::CMaterialData* This)
 {
     {
+        const auto msg = msgSender.start<MsgReleaseResource>();
+        msg->resource = (unsigned int)This;
+        msgSender.finish();
+
         std::lock_guard lock(criticalSection);
-        pendingMaterialSet.erase(This);
         materialSet.erase(This);
     }
 
@@ -434,6 +469,8 @@ HOOK(void, __fastcall, DestructTerrainInstanceInfo, 0x717090, hh::mr::CTerrainIn
 
 void RaytracingManager::init()
 {
+    shaderMapping.load("ShaderMapping.bin");
+
     WRITE_MEMORY(0x13DDFD8, size_t, 0); // Disable shadow map
     WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
     WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
@@ -457,5 +494,4 @@ void RaytracingManager::init()
     INSTALL_HOOK(DestructModel); // Garbage collection
     INSTALL_HOOK(DestructTerrainModel); // Garbage collection
     INSTALL_HOOK(DestructTerrainInstanceInfo); // Garbage collection
-
 }

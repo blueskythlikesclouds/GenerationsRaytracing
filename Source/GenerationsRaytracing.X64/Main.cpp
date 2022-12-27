@@ -1,10 +1,11 @@
 #include "Bridge.h"
 #include "MemoryMappedFile.h"
+#include "Path.h"
 #include "Process.h"
 
 constexpr LPCTSTR SONIC_GENERATIONS = TEXT("SonicGenerations.exe");
 
-int main()
+int main(int argc, char* argv[])
 {
 #ifdef _DEBUG 
     if (GetConsoleWindow())
@@ -49,7 +50,7 @@ int main()
     }
 #endif
 
-    Bridge bridge;
+    Bridge bridge(getDirectoryPath(argv[0]));
     bridge.receiveMessages();
 
     terminateProcess(SONIC_GENERATIONS);
