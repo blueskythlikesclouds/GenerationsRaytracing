@@ -57,6 +57,8 @@ struct RaytracingBridge
     std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
     std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
 
+    float prevEyePos[3]{};
+
     void procMsgCreateGeometry(Bridge& bridge);
     void procMsgCreateBottomLevelAS(Bridge& bridge);
     void procMsgCreateInstance(Bridge& bridge);

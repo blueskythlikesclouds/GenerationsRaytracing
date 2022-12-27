@@ -18,7 +18,7 @@ void RayGeneration()
     ray.TMax = Z_MAX;
 
     Payload payload = (Payload)0;
-#if 0
+#if 1
     payload.Random = InitializeRandom(index.x + index.y * dimensions.x, (uint)(g_TimeParam.y * 60.0f));
 #else
     payload.Random = InitializeRandom(index.x, index.y);
@@ -28,15 +28,9 @@ void RayGeneration()
 
     float3 pixelPosAndDepth = GetCurrentPixelPositionAndDepth(GetPosition(ray, payload));
 
-#if 0
+#if 1
     float4 previous = g_Texture[index];
-    float factor = min(64, previous.w + 1.0);
-
-    if (abs(g_Depth[index] - pixelPosAndDepth.z) > 0.01)
-    {
-        previous = 0.0;
-        factor = 1.0;
-    }
+    float factor = previous.w + 1.0;
 
     g_Texture[index] = float4(lerp(previous.rgb, payload.Color, 1.0 / factor), factor);
 #else

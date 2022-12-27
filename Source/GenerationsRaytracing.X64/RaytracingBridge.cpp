@@ -278,6 +278,17 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .setFormat(nvrhi::Format::R32_FLOAT));
     }
 
+    if (abs(bridge.vsConstants.c[178][0] - prevEyePos[0]) > 0.001f ||
+        abs(bridge.vsConstants.c[178][1] - prevEyePos[1]) > 0.001f ||
+        abs(bridge.vsConstants.c[178][2] - prevEyePos[2]) > 0.001f)
+    {
+        bridge.commandList->clearTextureFloat(texture, nvrhi::TextureSubresourceSet(), nvrhi::Color(0));
+    }
+
+    prevEyePos[0] = bridge.vsConstants.c[178][0];
+    prevEyePos[1] = bridge.vsConstants.c[178][1];
+    prevEyePos[2] = bridge.vsConstants.c[178][2];
+
     bridge.vsConstants.writeBuffer(bridge.commandList, bridge.vsConstantBuffer);
     bridge.psConstants.writeBuffer(bridge.commandList, bridge.psConstantBuffer);
 
