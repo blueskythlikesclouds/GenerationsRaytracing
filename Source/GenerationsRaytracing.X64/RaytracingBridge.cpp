@@ -58,7 +58,7 @@ void RaytracingBridge::procMsgCreateInstance(Bridge& bridge)
     auto& instanceDesc = instanceDescs.emplace_back();
 
     memcpy(instanceDesc.transform, msg->transform, sizeof(instanceDesc.transform));
-    instanceDesc.instanceMask = 1;
+    instanceDesc.instanceMask = msg->instanceMask;
     instanceDesc.bottomLevelAS = bottomLevelAccelStructs[msg->bottomLevelAS].handle;
     assert(instanceDesc.bottomLevelAS);
 }

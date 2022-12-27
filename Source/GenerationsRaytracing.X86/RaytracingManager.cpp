@@ -99,7 +99,7 @@ static void createBottomLevelAS(const T& model)
     msgSender.finish();
 }
 
-static void traverse(const hh::mr::CRenderable* renderable)
+static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
 {
     if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
     {
@@ -114,6 +114,7 @@ static void traverse(const hh::mr::CRenderable* renderable)
                     msg->transform[i * 4 + j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
 
             msg->bottomLevelAS = (unsigned int)singleElement->m_spModel.get();
+            msg->instanceMask = instanceMask;
 
             msgSender.finish();
         }
@@ -121,12 +122,12 @@ static void traverse(const hh::mr::CRenderable* renderable)
     else if (auto bundle = dynamic_cast<const hh::mr::CBundle*>(renderable))
     {
         for (const auto& it : bundle->m_RenderableList)
-            traverse(it.get());
+            traverse(it.get(), instanceMask);
     }
     else if (auto optimalBundle = dynamic_cast<const hh::mr::COptimalBundle*>(renderable))
     {
         for (const auto it : optimalBundle->m_RenderableList)
-            traverse(it);
+            traverse(it, instanceMask);
     }
 }
 
@@ -146,7 +147,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     auto& renderScene = world->m_pMember->m_spRenderScene;
 
-    const hh::base::CStringSymbol symbols[] = {"Object", "Player"};
+    const hh::base::CStringSymbol symbols[] = {"Sky", "Object", "Object_Overlay", "Player"};
 
     for (const auto symbol : symbols)
     {
@@ -154,7 +155,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
         if (pair == renderScene->m_BundleMap.end())
             continue;
 
-        traverse(pair->second.get());
+        traverse(pair->second.get(), symbol.m_pSymbolNode == symbols[0].m_pSymbolNode ? INSTANCE_MASK_SKY : INSTANCE_MASK_DEFAULT);
     }
 
     std::lock_guard lock(criticalSection);
@@ -226,6 +227,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
                 msg->transform[i * 4 + j] = (*instance->m_scpTransform)(i, j);
 
         msg->bottomLevelAS = (unsigned int)instance->m_spTerrainModel.get();
+        msg->instanceMask = INSTANCE_MASK_DEFAULT;
 
         msgSender.finish();
     }
@@ -472,7 +474,7 @@ void RaytracingManager::init()
     shaderMapping.load("ShaderMapping.bin");
 
     WRITE_MEMORY(0x13DDFD8, size_t, 0); // Disable shadow map
-    WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
+    //WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
     WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
     WRITE_MEMORY(0x13DDC20, size_t, 0); // Disable reflection map 2
 

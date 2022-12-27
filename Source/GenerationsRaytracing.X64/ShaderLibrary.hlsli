@@ -48,7 +48,18 @@ void RayGeneration()
 [shader("miss")]
 void Miss(inout Payload payload : SV_RayPayload)
 {
-    payload.Color = float3(106.0f / 255.0f, 113.0f / 255.0f, 179.0f / 255.0f);
+    if (payload.Depth != 0xFF)
+    {
+        RayDesc ray;
+        ray.Origin = 0.0;
+        ray.Direction = WorldRayDirection();
+        ray.TMin = 0.001f;
+        ray.TMax = Z_MAX;
+
+        payload.Depth = 0xFF;
+        TraceRay(g_BVH, 0, 2, 0, 1, 0, ray, payload);
+    }
+
     payload.T = FLT_MAX;
 }
 

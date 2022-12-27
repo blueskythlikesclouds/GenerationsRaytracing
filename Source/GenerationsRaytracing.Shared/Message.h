@@ -307,11 +307,15 @@ struct MsgCreateBottomLevelAS
     unsigned int bottomLevelAS;
 };
 
+#define INSTANCE_MASK_DEFAULT 1
+#define INSTANCE_MASK_SKY     2
+
 struct MsgCreateInstance
 {
     DEFINE_MSG_ID;
     float transform[12];
     unsigned int bottomLevelAS;
+    unsigned int instanceMask;
 };
 
 struct MsgNotifySceneTraversed
