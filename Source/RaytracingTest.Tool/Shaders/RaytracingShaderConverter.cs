@@ -11,24 +11,24 @@ public static class RaytracingShaderConverter
     {
         if (constant.Name == "g_MtxProjection")
         {
-            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[0] = float4(1, 0, 0, 0);\n", outName);
-            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[1] = float4(0, 1, 0, 0);\n", outName);
-            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[2] = float4(0, 0, 0, 0);\n", outName);
-            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[3] = float4(0, 0, 0, 1);\n", outName);
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxProjection[0];\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxProjection[1];\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxProjection[2];\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[3] = payload.Depth > 0 ? float4(0, 0, 0, 1) : g_MtxProjection[3];\n", outName);
         }      
         else if (constant.Name == "g_MtxInvProjection")
         {
-            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[0] = float4(1, 0, 0, 0);\n", outName);
-            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[1] = float4(0, 1, 0, 0);\n", outName);
-            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[2] = float4(0, 0, 0, 0);\n", outName);
-            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[3] = float4(0, 0, -Z_MAX, 1);\n", outName);
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxInvProjection[0];\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxInvProjection[1];\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxInvProjection[2];\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[3] = payload.Depth > 0 ? float4(0, 0, -Z_MAX, 1) : g_MtxInvProjection[3];\n", outName);
         }
         else if (constant.Name == "g_MtxView")
         {
-            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxView[0] = float4(1, 0, 0, 0);\n", outName);
-            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxView[1] = float4(0, 1, 0, 0);\n", outName);
-            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxView[2] = float4(0, 0, 0, 0);\n", outName);
-            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxView[3] = float4(0, 0, -RayTCurrent(), 1);\n", outName);
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxView[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxView[0];\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxView[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxView[1];\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxView[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxView[2];\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxView[3] = payload.Depth > 0 ? float4(0, 0, -RayTCurrent(), 1) : g_MtxView[3];\n", outName);
         }
         else if (constant.Size == 4)
         {
@@ -56,11 +56,11 @@ public static class RaytracingShaderConverter
                 switch (constant.Name)
                 {
                     case "g_EyePosition":
-                        stringBuilder.Append("float4(WorldRayOrigin(), 0)");
+                        stringBuilder.Append("payload.Depth > 0 ? float4(WorldRayOrigin(), 0) : g_EyePosition");
                         break;
 
                     case "g_EyeDirection":
-                        stringBuilder.Append("float4(WorldRayDirection(), 0)");
+                        stringBuilder.Append("payload.Depth > 0 ? float4(WorldRayDirection(), 0) : g_EyeDirection");
                         break;
 
                     case "g_ViewportSize":
