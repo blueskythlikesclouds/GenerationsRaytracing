@@ -306,7 +306,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     {
         for (size_t j = 0; j < 4; j++)
         {
-            changed |= abs(bridge.vsConstants.c[4 + i][j] - prevView[i][j]) > 0.01f;
+            changed |= abs(bridge.vsConstants.c[4 + i][j] - prevView[i][j]) > 0.001f;
             prevView[i][j] = bridge.vsConstants.c[4 + i][j];
         }
     }

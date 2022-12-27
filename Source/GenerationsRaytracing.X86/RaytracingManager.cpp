@@ -213,7 +213,9 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
 {
     if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
     {
-        if (!singleElement->m_spModel->IsMadeAll())
+        if (!singleElement->m_spModel->IsMadeAll() || 
+            strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_board_HD") ||
+            strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_spin_HD"))
             return;
 
         const size_t blasId = createBottomLevelAS(*singleElement->m_spModel);

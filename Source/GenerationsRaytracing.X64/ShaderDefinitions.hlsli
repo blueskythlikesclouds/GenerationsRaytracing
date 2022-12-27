@@ -67,10 +67,10 @@ TextureCube<float4> g_BindlessTextureCube[] : register(t0, space4);
 float4 DecodeColor(uint color)
 {
     return float4(
-        ((color >> 24) & 0xFF) / 255.0,
-        ((color >> 16) & 0xFF) / 255.0,
+        ((color >> 0) & 0xFF) / 255.0,
         ((color >> 8) & 0xFF) / 255.0,
-        ((color >> 0) & 0xFF) / 255.0);
+        ((color >> 16) & 0xFF) / 255.0,
+        ((color >> 24) & 0xFF) / 255.0);
 }
 
 Vertex GetVertex(in Attributes attributes)
