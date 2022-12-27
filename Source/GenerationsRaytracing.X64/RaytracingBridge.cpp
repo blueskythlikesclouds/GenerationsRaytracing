@@ -41,6 +41,7 @@ void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
     geometry.binormalOffset = msg->binormalOffset;
     geometry.texCoordOffset = msg->texCoordOffset;
     geometry.colorOffset = msg->colorOffset;
+    geometry.colorFormat = msg->colorFormat;
     geometry.material = msg->material;
     geometry.punchThrough = msg->punchThrough;
 }

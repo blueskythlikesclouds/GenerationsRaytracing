@@ -57,6 +57,7 @@ static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool o
 
         case D3DDECLUSAGE_COLOR: 
             msg->colorOffset = element.Offset;
+            msg->colorFormat = element.Type != D3DDECLTYPE_FLOAT4;
             break;
         }
     }

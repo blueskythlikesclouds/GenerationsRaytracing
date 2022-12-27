@@ -10,6 +10,7 @@ struct Geometry
     uint32_t binormalOffset;
     uint32_t texCoordOffset;
     uint32_t colorOffset;
+    uint32_t colorFormat;
     uint32_t material;
     uint32_t punchThrough;
 };

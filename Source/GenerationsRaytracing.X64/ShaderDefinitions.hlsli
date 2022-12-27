@@ -43,6 +43,7 @@ struct Geometry
     uint BinormalOffset;
     uint TexCoordOffset;
     uint ColorOffset;
+    uint ColorFormat;
     uint MaterialIndex;
     uint PunchThrough;
 };
@@ -62,6 +63,15 @@ ByteAddressBuffer g_BindlessVertexBuffer[] : register(t0, space2);
 
 Texture2D<float4> g_BindlessTexture2D[] : register(t0, space3);
 TextureCube<float4> g_BindlessTextureCube[] : register(t0, space4);
+
+float4 DecodeColor(uint color)
+{
+    return float4(
+        ((color >> 24) & 0xFF) / 255.0,
+        ((color >> 16) & 0xFF) / 255.0,
+        ((color >> 8) & 0xFF) / 255.0,
+        ((color >> 0) & 0xFF) / 255.0);
+}
 
 Vertex GetVertex(in Attributes attributes)
 {
@@ -106,10 +116,20 @@ Vertex GetVertex(in Attributes attributes)
         asfloat(vertexBuffer.Load2(texCoordOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load2(texCoordOffsets.z)) * uv.z;
 
-    vertex.Color =
-        asfloat(vertexBuffer.Load4(colorOffsets.x)) * uv.x +
-        asfloat(vertexBuffer.Load4(colorOffsets.y)) * uv.y +
-        asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
+    if (geometry.ColorFormat != 0)
+    {
+        vertex.Color =
+            DecodeColor(vertexBuffer.Load(colorOffsets.x)) * uv.x +
+            DecodeColor(vertexBuffer.Load(colorOffsets.y)) * uv.y +
+            DecodeColor(vertexBuffer.Load(colorOffsets.z)) * uv.z;
+    }
+    else
+    {
+        vertex.Color =
+            asfloat(vertexBuffer.Load4(colorOffsets.x)) * uv.x +
+            asfloat(vertexBuffer.Load4(colorOffsets.y)) * uv.y +
+            asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
+    }
 
     vertex.Normal = mul(ObjectToWorld3x4(), float4(vertex.Normal, 0)).xyz;
     vertex.Tangent = mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0)).xyz;
