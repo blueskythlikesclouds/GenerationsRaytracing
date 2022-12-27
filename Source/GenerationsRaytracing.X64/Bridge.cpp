@@ -1209,6 +1209,12 @@ void Bridge::procMsgMakePicture()
         nullptr,
         subResources);
 
+    if (!texture)
+    {
+        texture = nullTexture;
+        return;
+    }
+
     openCommandListForCopy();
 
     for (uint32_t i = 0; i < subResources.size(); i++)
