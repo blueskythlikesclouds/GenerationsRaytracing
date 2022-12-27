@@ -1,12 +1,10 @@
 #include "Configuration.h"
 #include "MemoryMappedFile.h"
-#include "Mutex.h"
 #include "Patches.h"
 #include "Process.h"
 
 constexpr LPCTSTR GENERATIONS_RAYTRACING_X64 = TEXT("GenerationsRaytracing.X64.exe");
 
-Mutex mutex;
 MemoryMappedFile memoryMappedFile;
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)

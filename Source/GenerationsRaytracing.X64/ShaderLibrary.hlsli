@@ -9,7 +9,24 @@ void RayGeneration()
     uint2 index = DispatchRaysIndex().xy;
     uint2 dimensions = DispatchRaysDimensions().xy;
 
-    float2 ndc = (index + 0.5) / dimensions * 2.0 - 1.0;
+    float3 previousColor = g_Texture[index].rgb;
+    float previousFactor = g_Texture[index].w;
+
+    Payload payload = (Payload)0;
+    payload.Random = InitializeRandom(index.x + index.y * dimensions.x, (uint)previousFactor);
+
+    float2 offset = 0.0;
+
+    if (previousFactor > 0.0)
+    {
+        float u1 = 2.0 * NextRandom(payload.Random);
+        float u2 = 2.0 * NextRandom(payload.Random);
+
+        offset.x = u1 < 1 ? sqrt(u1) - 1.0 : 1.0 - sqrt(2.0 - u1);
+        offset.y = u2 < 1 ? sqrt(u2) - 1.0 : 1.0 - sqrt(2.0 - u2);
+    }
+
+    float2 ndc = (index + offset + 0.5) / dimensions * 2.0 - 1.0;
 
     RayDesc ray;
     ray.Origin = g_EyePosition.xyz;
@@ -17,26 +34,19 @@ void RayGeneration()
     ray.TMin = g_CameraNearFarAspect.x;
     ray.TMax = g_CameraNearFarAspect.y;
 
-    Payload payload = (Payload)0;
-#if 1
-    payload.Random = InitializeRandom(index.x + index.y * dimensions.x, (uint)(g_TimeParam.y * 60.0f));
-#else
-    payload.Random = InitializeRandom(index.x, index.y);
-#endif
-
     TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload);
 
-    float3 pixelPosAndDepth = GetCurrentPixelPositionAndDepth(GetPosition(ray, payload));
+    if (previousFactor > 0)
+    {
+        float factor = previousFactor + 1.0;
+        g_Texture[index] = float4(lerp(previousColor, payload.Color, 1.0 / factor), factor);
+    }
+    else
+    {
+        g_Texture[index] = float4(payload.Color, 1.0);
+    }
 
-#if 1
-    float4 previous = g_Texture[index];
-    float factor = previous.w + 1.0;
-
-    g_Texture[index] = float4(lerp(previous.rgb, payload.Color, 1.0 / factor), factor);
-#else
-    g_Texture[index] = float4(payload.Color, 1.0);
-#endif
-    g_Depth[index] = pixelPosAndDepth.z;
+    g_Depth[index] = GetCurrentPixelPositionAndDepth(GetPosition(ray, payload)).z;
 }
 
 [shader("miss")]
