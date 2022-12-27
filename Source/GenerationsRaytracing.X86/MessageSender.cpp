@@ -72,8 +72,8 @@ void MessageSender::commitAllMessages()
 
     memcpy(memoryMappedFileBuffer, buffer.data(), buffer.size());
     
-    cpuEvent.set();
     gpuEvent.reset();
+    cpuEvent.set();
 
     buffer.clear();
 
