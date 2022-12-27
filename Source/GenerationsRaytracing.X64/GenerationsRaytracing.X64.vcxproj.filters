@@ -27,6 +27,8 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ShaderLibrary.hlsl" />
+    <FxCompile Include="CopyVS.hlsl" />
+    <FxCompile Include="CopyPS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="ShaderMapping.bin" />

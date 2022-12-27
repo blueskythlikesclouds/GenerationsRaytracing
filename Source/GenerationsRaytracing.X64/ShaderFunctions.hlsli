@@ -16,7 +16,7 @@ float3 GetPosition()
 
 float3 GetPixelPositionAndDepth(float3 position, float4x4 view, float4x4 projection)
 {
-    float4 screenCoords = mul(projection, mul(view, float4(position, 1.0)));
+    float4 screenCoords = mul(mul(float4(position, 1.0), view), projection);
     screenCoords /= screenCoords.w;
 
     screenCoords.xy = (screenCoords.xy * float2(0.5, -0.5) + 0.5) * DispatchRaysDimensions().xy;

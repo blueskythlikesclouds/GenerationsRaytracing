@@ -6,6 +6,9 @@
 #include "ShaderMapping.h"
 #include "Utilities.h"
 
+#include "CopyVS.h"
+#include "CopyPS.h"
+
 void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
 {
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateGeometry>();
@@ -106,7 +109,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     if (!colorAttachment || colorAttachment->getDesc().format != nvrhi::Format::RGBA16_FLOAT)
         return;
 
-    if (!shaderLibrary)
+    if (!pipeline)
     {
         size_t shaderLibraryByteSize = 0;
         auto shaderLibraryBytes = readAllBytes(bridge.directoryPath + "/ShaderLibrary.cso", shaderLibraryByteSize);
@@ -262,13 +265,11 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     createUploadBuffer(bridge, geometriesForGpu, geometryBuffer, geometryBufferAllocation);
     createUploadBuffer(bridge, materialsForGpu, materialBuffer, materialBufferAllocation);
 
-    if (!texture || 
-        texture->getDesc().width != colorAttachment->getDesc().width ||
-        texture->getDesc().height != colorAttachment->getDesc().height ||
-        texture->getDesc().format != colorAttachment->getDesc().format)
+    if (!texture)
     {
         auto textureDesc = colorAttachment->getDesc();
         texture = bridge.device.nvrhi->createTexture(textureDesc
+            .setFormat(nvrhi::Format::RGBA32_FLOAT)
             .setIsRenderTarget(false)
             .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
             .setUseClearValue(false)
@@ -312,11 +313,56 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         .setWidth(texture->getDesc().width)
         .setHeight(texture->getDesc().height));
 
-    bridge.commandList->copyTexture(
-        colorAttachment,
-        nvrhi::TextureSlice(),
-        texture,
-        nvrhi::TextureSlice());
+    if (!copyPipeline)
+    {
+        pointClampSampler = bridge.device.nvrhi->createSampler(nvrhi::SamplerDesc()
+            .setAllFilters(false)
+            .setAllAddressModes(nvrhi::SamplerAddressMode::Clamp));
+
+        copyBindingLayout = bridge.device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
+            .setVisibility(nvrhi::ShaderType::Pixel)
+            .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0))
+            .addItem(nvrhi::BindingLayoutItem::Texture_SRV(1))
+            .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
+
+        copyBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+            .addItem(nvrhi::BindingSetItem::Texture_SRV(0, texture))
+            .addItem(nvrhi::BindingSetItem::Texture_SRV(1, depth))
+            .addItem(nvrhi::BindingSetItem::Sampler(0, pointClampSampler)), copyBindingLayout);
+
+        copyVertexShader = bridge.device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), COPY_VS, sizeof(COPY_VS));
+        copyPixelShader = bridge.device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), COPY_PS, sizeof(COPY_PS));
+
+        copyFramebuffer = bridge.device.nvrhi->createFramebuffer(bridge.framebufferDesc);
+
+        copyPipeline = bridge.device.nvrhi->createGraphicsPipeline(nvrhi::GraphicsPipelineDesc()
+            .setVertexShader(copyVertexShader)
+            .setPixelShader(copyPixelShader)
+            .setPrimType(nvrhi::PrimitiveType::TriangleList)
+            .setRenderState(nvrhi::RenderState()
+                .setDepthStencilState(nvrhi::DepthStencilState()
+                    .enableDepthTest()
+                    .enableDepthWrite()
+                    .setDepthFunc(nvrhi::ComparisonFunc::Always)
+                    .disableStencil())
+                .setRasterState(nvrhi::RasterState()
+                    .setCullNone()))
+            .addBindingLayout(copyBindingLayout), copyFramebuffer);
+
+        copyGraphicsState
+            .setPipeline(copyPipeline)
+            .addBindingSet(copyBindingSet)
+            .setFramebuffer(copyFramebuffer)
+            .setViewport(nvrhi::ViewportState()
+                .addViewportAndScissorRect(nvrhi::Viewport(
+                    (float)texture->getDesc().width,
+                    (float)texture->getDesc().height)));
+
+        copyDrawArguments.setVertexCount(6);
+    }
+
+    bridge.commandList->setGraphicsState(copyGraphicsState);
+    bridge.commandList->draw(copyDrawArguments);
 }
 
 void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)

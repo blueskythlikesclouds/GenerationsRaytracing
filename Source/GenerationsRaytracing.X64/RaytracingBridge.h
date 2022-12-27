@@ -59,6 +59,16 @@ struct RaytracingBridge
 
     float prevEyePos[3]{};
 
+    nvrhi::SamplerHandle pointClampSampler;
+    nvrhi::BindingLayoutHandle copyBindingLayout;
+    nvrhi::BindingSetHandle copyBindingSet;
+    nvrhi::ShaderHandle copyVertexShader;
+    nvrhi::ShaderHandle copyPixelShader;
+    nvrhi::FramebufferHandle copyFramebuffer;
+    nvrhi::GraphicsPipelineHandle copyPipeline;
+    nvrhi::GraphicsState copyGraphicsState;
+    nvrhi::DrawArguments copyDrawArguments;
+
     void procMsgCreateGeometry(Bridge& bridge);
     void procMsgCreateBottomLevelAS(Bridge& bridge);
     void procMsgCreateInstance(Bridge& bridge);
