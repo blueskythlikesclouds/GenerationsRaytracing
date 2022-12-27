@@ -14,8 +14,8 @@ void RayGeneration()
     RayDesc ray;
     ray.Origin = g_EyePosition.xyz;
     ray.Direction = normalize(mul(g_MtxView, float4(ndc.x / g_MtxProjection[0][0], -ndc.y / g_MtxProjection[1][1], -1.0, 0.0)).xyz);
-    ray.TMin = 0.001f;
-    ray.TMax = Z_MAX;
+    ray.TMin = g_CameraNearFarAspect.x;
+    ray.TMax = g_CameraNearFarAspect.y;
 
     Payload payload = (Payload)0;
 #if 1

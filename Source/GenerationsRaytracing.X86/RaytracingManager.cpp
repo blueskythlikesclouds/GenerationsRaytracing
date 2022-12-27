@@ -9,16 +9,78 @@
 
 static CriticalSection criticalSection;
 static ShaderMapping shaderMapping;
-static std::unordered_set<hh::mr::CMaterialData*> materialSet;
-static std::unordered_set<const void*> modelSet;
 static std::unordered_set<hh::mr::CTerrainInstanceInfoData*> instanceSet;
 static std::unordered_map<const hh::mr::CMeshData*, std::pair<ComPtr<Buffer>, size_t>> indexMap;
+
+static bool isMadeForBridge(const hh::db::CDatabaseData& databaseData)
+{
+    return *(bool*)((uintptr_t)&databaseData + 5);
+}
+
+static void setMadeForBridge(const hh::db::CDatabaseData& databaseData, bool value = true)
+{
+    *(bool*)((uintptr_t)&databaseData + 5) = value;
+}
+
+static void createMaterial(hh::mr::CMaterialData& material)
+{
+    if (isMadeForBridge(material))
+        return;
+
+    setMadeForBridge(material);
+
+    const auto& shader = shaderMapping.shaders[
+        material.m_spShaderListData ? material.m_spShaderListData->m_TypeAndName.c_str() + sizeof("Mirage.shader-list") : "SysError"];
+
+    const auto msg = msgSender.start<MsgCreateMaterial>();
+
+    msg->material = (unsigned int)&material;
+
+    strcpy(msg->shader, !shader.name.empty() ? shader.name.c_str() : "SysError");
+    memset(msg->textures, 0, sizeof(msg->textures));
+    memset(msg->parameters, 0, sizeof(msg->parameters));
+
+    std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
+
+    for (const auto& texture : material.m_spTexsetData->m_TextureList)
+    {
+        const size_t target = counts[texture->m_Type.m_pSymbolNode];
+        size_t current = 0;
+
+        for (size_t i = 0; i < shader.textures.size(); i++)
+        {
+            if (shader.textures[i] == texture->m_Type.GetValue() && (current++) == target)
+            {
+                msg->textures[i] = texture->m_spPictureData && texture->m_spPictureData->m_pD3DTexture ?
+                    reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id : NULL;
+
+                ++counts[texture->m_Type.m_pSymbolNode];
+                break;
+            }
+        }
+    }
+
+    for (const auto& parameter : material.m_Float4Params)
+    {
+        for (size_t i = 0; i < shader.parameters.size(); i++)
+        {
+            if (shader.parameters[i] == parameter->m_Name.GetValue())
+            {
+                memcpy(msg->parameters[i], parameter->m_spValue.get(), sizeof(msg->parameters[i]));
+                break;
+            }
+        }
+    }
+
+    msgSender.finish();
+}
 
 template<typename T>
 static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool opaque, bool punchThrough)
 {
-    std::lock_guard lock(criticalSection);
+    criticalSection.lock();
     auto& indexBuffer = indexMap[&mesh];
+    criticalSection.unlock();
 
     const auto msg = msgSender.start<MsgCreateGeometry>();
 
@@ -62,6 +124,7 @@ static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool o
         }
     }
 
+    createMaterial(*mesh.m_spMaterial);
     msg->material = (unsigned int)mesh.m_spMaterial.get();
 
     assert(mesh.m_pD3DVertexBuffer && indexBuffer.first);
@@ -70,8 +133,13 @@ static void createGeometry(const T& model, const hh::mr::CMeshData& mesh, bool o
 }
 
 template<typename T>
-static void createBottomLevelAS(const T& model)
+static void createBottomLevelAS(T& model)
 {
+    if (isMadeForBridge(model))
+        return;
+
+    setMadeForBridge(model);
+
     for (const auto& meshGroup : model.m_NodeGroupModels)
     {
         for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
@@ -94,9 +162,7 @@ static void createBottomLevelAS(const T& model)
         createGeometry(model, *mesh, false, true);
 
     const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
-
     msg->bottomLevelAS = (unsigned int)&model;
-
     msgSender.finish();
 }
 
@@ -104,21 +170,21 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
 {
     if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
     {
-        std::lock_guard lock(criticalSection);
+        if (!singleElement->m_spModel->IsMadeAll())
+            return;
 
-        if (singleElement->m_spModel->IsMadeAll() && modelSet.find(singleElement->m_spModel.get()) != modelSet.end())
-        {
-            const auto msg = msgSender.start<MsgCreateInstance>();
+        createBottomLevelAS(*singleElement->m_spModel);
 
-            for (size_t i = 0; i < 3; i++)
-                for (size_t j = 0; j < 4; j++)
-                    msg->transform[i * 4 + j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
+        const auto msg = msgSender.start<MsgCreateInstance>();
 
-            msg->bottomLevelAS = (unsigned int)singleElement->m_spModel.get();
-            msg->instanceMask = instanceMask;
+        for (size_t i = 0; i < 3; i++)
+            for (size_t j = 0; j < 4; j++)
+                msg->transform[i * 4 + j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
 
-            msgSender.finish();
-        }
+        msg->bottomLevelAS = (unsigned int)singleElement->m_spModel.get();
+        msg->instanceMask = instanceMask;
+
+        msgSender.finish();
     }
     else if (auto bundle = dynamic_cast<const hh::mr::CBundle*>(renderable))
     {
@@ -161,98 +227,37 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     std::lock_guard lock(criticalSection);
 
-    for (auto it = materialSet.begin(); it != materialSet.end();)
+    for (auto it = instanceSet.begin(); it != instanceSet.end();)
     {
-        if ((*it)->IsMadeAll())
+        if (!(*it)->IsMadeAll())
         {
-            const auto& shader = shaderMapping.shaders[
-                (*it)->m_spShaderListData ? (*it)->m_spShaderListData->m_TypeAndName.c_str() + sizeof("Mirage.shader-list") : "SysError"];
-
-            const auto msg = msgSender.start<MsgCreateMaterial>();
-
-            msg->material = (unsigned int)*it;
-
-            strcpy(msg->shader, !shader.name.empty() ? shader.name.c_str() : "SysError");
-            memset(msg->textures, 0, sizeof(msg->textures));
-            memset(msg->parameters, 0, sizeof(msg->parameters));
-
-            std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
-
-            for (const auto& texture : (*it)->m_spTexsetData->m_TextureList)
-            {
-                const size_t target = counts[texture->m_Type.m_pSymbolNode];
-                size_t current = 0;
-
-                for (size_t i = 0; i < shader.textures.size(); i++)
-                {
-                    if (shader.textures[i] == texture->m_Type.GetValue() && (current++) == target)
-                    {
-                        msg->textures[i] = texture->m_spPictureData && texture->m_spPictureData->m_pD3DTexture ? 
-                            reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id : NULL;
-
-                        ++counts[texture->m_Type.m_pSymbolNode];
-                        break;
-                    }
-                }
-            }
-
-            for (const auto& parameter : (*it)->m_Float4Params)
-            {
-                for (size_t i = 0; i < shader.parameters.size(); i++)
-                {
-                    if (shader.parameters[i] == parameter->m_Name.GetValue())
-                    {
-                        memcpy(msg->parameters[i], parameter->m_spValue.get(), sizeof(msg->parameters[i]));
-                        break;
-                    }
-                }
-            }
-
-            msgSender.finish();
-
-            it = materialSet.erase(it);
-        }
-        else
             ++it;
-    }
-
-    for (const auto instance : instanceSet)
-    {
-        if (!instance->IsMadeAll() || modelSet.find(instance->m_spTerrainModel.get()) == modelSet.end())
             continue;
+        }
+
+        if (!(*it)->m_spTerrainModel)
+        {
+            it = instanceSet.erase(it);
+            continue;
+        }
+
+        createBottomLevelAS(*(*it)->m_spTerrainModel);
 
         const auto msg = msgSender.start<MsgCreateInstance>();
 
         for (size_t i = 0; i < 3; i++)
             for (size_t j = 0; j < 4; j++)
-                msg->transform[i * 4 + j] = (*instance->m_scpTransform)(i, j);
+                msg->transform[i * 4 + j] = (*(*it)->m_scpTransform)(i, j);
 
-        msg->bottomLevelAS = (unsigned int)instance->m_spTerrainModel.get();
+        msg->bottomLevelAS = (unsigned int)(*it)->m_spTerrainModel.get();
         msg->instanceMask = INSTANCE_MASK_DEFAULT;
 
         msgSender.finish();
+
+        ++it;
     }
 
     msgSender.oneShot<MsgNotifySceneTraversed>();
-}
-
-HOOK(void, __cdecl, MakeMaterial, 0x733E60,
-    const hh::base::CSharedString& name,
-    void* data,
-    size_t dataSize,
-    const boost::shared_ptr<hh::db::CDatabase>& database,
-    hh::mr::CRenderingInfrastructure& renderingInfrastructure)
-{
-    originalMakeMaterial(name, data, dataSize, database, renderingInfrastructure);
-
-    const auto material = hh::mr::CMirageDatabaseWrapper(database.get())
-        .GetMaterialData(name);
-
-    if (!material->m_spTexsetData)
-        return;
-
-    std::lock_guard lock(criticalSection);
-    materialSet.insert(material.get());
 }
 
 static void convertToTriangles(const hh::mr::CMeshData& mesh, hl::hh::mirage::raw_mesh* data)
@@ -347,48 +352,6 @@ HOOK(void, __cdecl, MakeMesh2, 0x744CC0,
     convertToTriangles(mesh, data);
 }
 
-HOOK(void, __cdecl, MakeModel, 0x7337A0,
-    const hh::base::CSharedString& name,
-    void* data,
-    size_t dataSize,
-    const boost::shared_ptr<hh::db::CDatabase>& database,
-    hh::mr::CRenderingInfrastructure& renderingInfrastructure)
-{
-    originalMakeModel(name, data, dataSize, database, renderingInfrastructure);
-
-    const auto model = hh::mr::CMirageDatabaseWrapper(database.get())
-        .GetModelData(name);
-
-    std::lock_guard lock(criticalSection);
-
-    if ((model->m_Flags & hh::db::eDatabaseDataFlags_IsMadeOne) && modelSet.find(model.get()) == modelSet.end())
-    {
-        modelSet.insert(model.get());
-        createBottomLevelAS(*model);
-    }
-}
-
-HOOK(void, __cdecl, MakeTerrainModel, 0x734960,
-    const hh::base::CSharedString& name,
-    void* data,
-    size_t dataSize,
-    const boost::shared_ptr<hh::db::CDatabase>& database,
-    hh::mr::CRenderingInfrastructure& renderingInfrastructure)
-{
-    originalMakeTerrainModel(name, data, dataSize, database, renderingInfrastructure);
-
-    const auto terrainModel = hh::mr::CMirageDatabaseWrapper(database.get())
-        .GetTerrainModelData(name);
-
-    std::lock_guard lock(criticalSection);
-
-    if ((terrainModel->m_Flags & hh::db::eDatabaseDataFlags_IsMadeOne) && modelSet.find(terrainModel.get()) == modelSet.end())
-    {
-        modelSet.insert(terrainModel.get());
-        createBottomLevelAS(*terrainModel);
-    }
-}
-
 HOOK(void, __cdecl, MakeTerrainInstanceInfo, 0x734D90,
     const hh::base::CSharedString& name,
     void* data,
@@ -401,25 +364,26 @@ HOOK(void, __cdecl, MakeTerrainInstanceInfo, 0x734D90,
     const auto instance = hh::mr::CMirageDatabaseWrapper(database.get())
         .GetTerrainInstanceInfoData(name);
 
-    if (instance->m_Flags & hh::db::eDatabaseDataFlags_IsMadeOne)
-    {
-        std::lock_guard lock(criticalSection);
-        instanceSet.insert(instance.get());
-    }
+    std::lock_guard lock(criticalSection);
+    instanceSet.insert(instance.get());
 }
 
-HOOK(void, __fastcall, DestructMaterial, 0x704B80, hh::mr::CMaterialData* This)
+HOOK(hh::db::CDatabaseData*, __fastcall, ConstructDatabaseData, 0x699380, hh::db::CDatabaseData* This)
 {
+    setMadeForBridge(*This, false);
+    return originalConstructDatabaseData(This);
+}
+
+HOOK(void, __fastcall, DestructDatabaseData, 0x6993B0, hh::db::CDatabaseData* This)
+{
+    if (isMadeForBridge(*This))
     {
         const auto msg = msgSender.start<MsgReleaseResource>();
         msg->resource = (unsigned int)This;
         msgSender.finish();
-
-        std::lock_guard lock(criticalSection);
-        materialSet.erase(This);
     }
 
-    originalDestructMaterial(This);
+    originalDestructDatabaseData(This);
 }
 
 HOOK(void, __fastcall, DestructMesh, 0x7227A0, hh::mr::CMeshData* This)
@@ -430,34 +394,6 @@ HOOK(void, __fastcall, DestructMesh, 0x7227A0, hh::mr::CMeshData* This)
     }
 
     originalDestructMesh(This);
-}
-
-HOOK(void, __fastcall, DestructModel, 0x4FA520, hh::mr::CModelData* This)
-{
-    {
-        const auto msg = msgSender.start<MsgReleaseResource>();
-        msg->resource = (unsigned int)This;
-        msgSender.finish();
-
-        std::lock_guard lock(criticalSection);
-        modelSet.erase(This);
-    }
-
-    originalDestructModel(This);
-}
-
-HOOK(void, __fastcall, DestructTerrainModel, 0x717230, hh::mr::CTerrainModelData* This)
-{
-    {
-        const auto msg = msgSender.start<MsgReleaseResource>();
-        msg->resource = (unsigned int)This;
-        msgSender.finish();
-
-        std::lock_guard lock(criticalSection);
-        modelSet.erase(This);
-    }
-
-    originalDestructTerrainModel(This);
 }
 
 HOOK(void, __fastcall, DestructTerrainInstanceInfo, 0x717090, hh::mr::CTerrainInstanceInfoData* This)
@@ -485,16 +421,13 @@ void RaytracingManager::init()
     WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
     WRITE_MEMORY(0x722760, uint8_t, 0xC3); // Disable shared buffer
 
-    INSTALL_HOOK(MakeMaterial); // Capture materials to use in shader
     INSTALL_HOOK(MakeMesh); // Convert triangle strips to triangles for BLAS creation
     INSTALL_HOOK(MakeMesh2); // Convert triangle strips to triangles for BLAS creation
-    INSTALL_HOOK(MakeModel); // Capture models to construct BLAS
-    INSTALL_HOOK(MakeTerrainModel); // Capture terrain models to construct BLAS
     INSTALL_HOOK(MakeTerrainInstanceInfo); // Capture instances to put to TLAS
 
-    INSTALL_HOOK(DestructMaterial); // Garbage collection
+    INSTALL_HOOK(ConstructDatabaseData); // Made for bridge flag
+    INSTALL_HOOK(DestructDatabaseData); // Garbage collection
+
     INSTALL_HOOK(DestructMesh); // Garbage collection
-    INSTALL_HOOK(DestructModel); // Garbage collection
-    INSTALL_HOOK(DestructTerrainModel); // Garbage collection
     INSTALL_HOOK(DestructTerrainInstanceInfo); // Garbage collection
 }

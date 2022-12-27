@@ -39,6 +39,7 @@ cbuffer cbGlobalsPS : register(b1)
     float4 g_Emission : packoffset(c19);
     float4 g_PowerGlossLevel : packoffset(c20);
     float4 g_OpacityReflectionRefractionSpectype : packoffset(c21);
+    float4 g_CameraNearFarAspect : packoffset(c25);
     float4 mrgEmissionPower : packoffset(c34);
     float4 mrgGlobalLight_Specular : packoffset(c37);
     float4 mrgEyeLight_Diffuse : packoffset(c58);

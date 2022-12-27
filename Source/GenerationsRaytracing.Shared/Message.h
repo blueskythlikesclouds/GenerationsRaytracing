@@ -298,6 +298,7 @@ struct MsgCreateGeometry
     unsigned int binormalOffset;
     unsigned int texCoordOffset;
     unsigned int colorOffset;
+    unsigned int colorFormat;
     unsigned int material;
 };
 

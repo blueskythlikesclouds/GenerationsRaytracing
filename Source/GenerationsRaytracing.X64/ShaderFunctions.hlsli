@@ -6,7 +6,7 @@
 
 float3 GetPosition(in RayDesc ray, in Payload payload)
 {
-    return ray.Origin + ray.Direction * min(payload.T, Z_MAX);
+    return ray.Origin + ray.Direction * min(payload.T, g_CameraNearFarAspect.y);
 }
 
 float3 GetPosition()
@@ -156,7 +156,7 @@ float TraceShadow(inout uint random)
     RayDesc ray;
     ray.Origin = GetPosition();
     ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
-    ray.TMin = 0.001f;
+    ray.TMin = 0.01f;
     ray.TMax = Z_MAX;
 
     Payload payload = (Payload)0;
