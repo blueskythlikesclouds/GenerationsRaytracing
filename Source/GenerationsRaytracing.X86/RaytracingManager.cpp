@@ -121,6 +121,9 @@ static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, b
     auto& indexBuffer = indexMap[&mesh];
     criticalSection.unlock();
 
+    if (!indexBuffer.first)
+        return;
+
     const auto msg = msgSender.start<MsgCreateGeometry>();
 
     msg->bottomLevelAS = blasId;
@@ -260,6 +263,30 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     if (!world)
         return;
 
+    // Set sky parameters
+    {
+        hh::mr::CRenderingDevice* renderingDevice = **(hh::mr::CRenderingDevice***)((char*)A1 + 16);
+
+        const float backGroundScale[] = 
+        {
+            *(float*)0x1A489F0,
+            0.0f,
+            0.0f,
+            0.0f
+        };
+
+        const float skyParam[] =
+        {
+            1.0f,
+            *(float*)0x1E5E228,
+            1.0f,
+            1.0f
+        };
+
+        renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(67, backGroundScale, 1);
+        renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(219, skyParam, 1);
+    }
+
     auto& renderScene = world->m_pMember->m_spRenderScene;
 
     const hh::base::CStringSymbol symbols[] = {"Sky", "Object", "Object_Overlay", "Player"};
@@ -344,7 +371,8 @@ static void convertToTriangles(const hh::mr::CMeshData& mesh, hl::hh::mirage::ra
         }
     }
 
-    assert(!indices.empty());
+    if (indices.empty())
+        return;
 
     const size_t dataSize = indices.size() * sizeof(hl::u16);
 
@@ -459,7 +487,7 @@ void RaytracingManager::init()
     shaderMapping.load("ShaderMapping.bin");
 
     WRITE_MEMORY(0x13DDFD8, size_t, 0); // Disable shadow map
-    //WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
+    WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
     WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
     WRITE_MEMORY(0x13DDC20, size_t, 0); // Disable reflection map 2
 

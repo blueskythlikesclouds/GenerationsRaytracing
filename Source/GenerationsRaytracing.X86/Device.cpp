@@ -123,6 +123,9 @@ HRESULT Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL 
 {
     *ppVertexBuffer = new Buffer(Length);
 
+    if (Length == 0)
+        return S_OK;
+
     const auto msg = msgSender.start<MsgCreateVertexBuffer>();
 
     msg->length = Length;
@@ -136,6 +139,9 @@ HRESULT Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL 
 HRESULT Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Buffer** ppIndexBuffer, HANDLE* pSharedHandle)
 {
     *ppIndexBuffer = new Buffer(Length);
+
+    if (Length == 0)
+        return S_OK;
 
     const auto msg = msgSender.start<MsgCreateIndexBuffer>();
 
@@ -479,6 +485,9 @@ HRESULT Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCo
     const unsigned int primitiveCount = calculateIndexCount(PrimitiveType, PrimitiveCount);
     const unsigned int vertexStreamZeroSize = primitiveCount * VertexStreamZeroStride;
 
+    if (vertexStreamZeroSize == 0)
+        return S_OK;
+
     const auto msg = msgSender.start<MsgDrawPrimitiveUP>(vertexStreamZeroSize);
 
     msg->primitiveType = PrimitiveType;
@@ -491,7 +500,7 @@ HRESULT Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCo
     msgSender.finish();
 
     return S_OK;
-}       
+}
         
 FUNCTION_STUB(HRESULT, Device::DrawIndexedPrimitiveUP, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, CONST void* pIndexData, D3DFORMAT IndexDataFormat, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 

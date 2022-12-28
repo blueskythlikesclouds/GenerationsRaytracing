@@ -9,12 +9,13 @@ Buffer::Buffer(size_t length) : length(length)
 
 HRESULT Buffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD Flags)
 {
-    const size_t size = SizeToLock == 0 ? length : SizeToLock;
+    if (length == 0)
+        return S_OK;
 
-    const auto msg = msgSender.start<MsgWriteBuffer>(size);
+    const auto msg = msgSender.start<MsgWriteBuffer>(length);
 
     msg->buffer = id;
-    msg->size = size;
+    msg->size = length;
 
     *ppbData = MSG_DATA_PTR(msg);
 
@@ -23,7 +24,9 @@ HRESULT Buffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD F
 
 HRESULT Buffer::Unlock()
 {
-    msgSender.finish();
+    if (length != 0)
+        msgSender.finish();
+
     return S_OK;
 }
 
