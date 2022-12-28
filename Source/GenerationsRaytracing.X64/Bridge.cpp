@@ -1,6 +1,7 @@
 ﻿#include "Bridge.h"
 
 #include "Format.h"
+#include "FVF.h"
 #include "Hash.h"
 #include "Message.h"
 
@@ -129,6 +130,8 @@ Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
         .addItem(nvrhi::BindingSetItem::Sampler(13, nullptr))
         .addItem(nvrhi::BindingSetItem::Sampler(14, nullptr))
         .addItem(nvrhi::BindingSetItem::Sampler(15, nullptr));
+
+    fvfShader = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), FVF, sizeof(FVF));
 
     reset();
 }
@@ -288,6 +291,9 @@ void Bridge::processDirtyFlags()
         if (!framebuffer)
             framebuffer = device.nvrhi->createFramebuffer(curFramebufferDesc);
 
+        if (fvf)
+            curPipelineDesc.VS = fvfShader;
+
         hash = computeHash(curPipelineDesc, hash);
         auto& pipeline = pipelines[hash];
         if (!pipeline)
@@ -390,6 +396,13 @@ void Bridge::procMsgSetFVF()
     }
 
     assignAndUpdateDirtyFlags(vertexDeclaration, msg->fvf, DirtyFlags::InputLayout);
+    assignAndUpdateDirtyFlags(pipelineDesc.VS, fvfShader, DirtyFlags::FramebufferAndPipeline);
+
+    if (!fvf)
+    {
+        fvf = true;
+        dirtyFlags |= DirtyFlags::FramebufferAndPipeline;
+    }
 }
 
 void Bridge::procMsgInitSwapChain()
@@ -1070,6 +1083,12 @@ void Bridge::procMsgSetVertexDeclaration()
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetVertexDeclaration>();
 
     assignAndUpdateDirtyFlags(vertexDeclaration, msg->vertexDeclaration, DirtyFlags::InputLayout);
+
+    if (fvf)
+    {
+        fvf = false;
+        dirtyFlags |= DirtyFlags::FramebufferAndPipeline;
+    }
 }
 
 void Bridge::procMsgCreateVertexShader()

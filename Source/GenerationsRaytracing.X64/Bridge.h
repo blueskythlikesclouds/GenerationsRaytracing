@@ -75,6 +75,9 @@ struct Bridge
     nvrhi::FramebufferDesc framebufferDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::FramebufferHandle> framebuffers;
 
+    nvrhi::ShaderHandle fvfShader;
+    bool fvf = false;
+
     std::unordered_map<unsigned int, std::vector<nvrhi::VertexAttributeDesc>> vertexAttributeDescs;
     std::unordered_map<XXH64_hash_t, nvrhi::InputLayoutHandle> inputLayouts;
     unsigned int vertexDeclaration = 0;

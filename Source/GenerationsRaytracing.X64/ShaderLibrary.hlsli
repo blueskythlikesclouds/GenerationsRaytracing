@@ -46,7 +46,7 @@ void RayGeneration()
         g_Texture[index] = float4(payload.Color, 1.0);
     }
 
-    g_Depth[index] = GetCurrentPixelPositionAndDepth(GetPosition(ray, payload)).z;
+    g_Depth[index] = payload.T == FLT_MAX ? 1.0 : GetCurrentPixelPositionAndDepth(GetPosition(ray, payload)).z;
 }
 
 [shader("miss")]

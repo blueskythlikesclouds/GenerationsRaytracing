@@ -291,7 +291,7 @@ public static class RaytracingShaderConverter
         {
             if (instruction.Arguments != null)
             {
-                if (shader.Type == ShaderType.Pixel && instruction.OpCode == "min" && !functionName.Contains("Water"))
+                if (shader.Type == ShaderType.Pixel && instruction.OpCode == "min")
                 {
                     if (IsOutputColorClamp(shader, instruction.Arguments[1]))
                     {

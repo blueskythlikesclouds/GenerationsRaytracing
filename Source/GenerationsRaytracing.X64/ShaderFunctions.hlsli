@@ -91,7 +91,7 @@ float3 TraceGlobalIllumination(inout Payload payload, float3 normal)
     TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
 
     payload.Random = payload1.Random;
-    return payload1.Color;
+    return min(payload1.Color, 4.0);
 }
 
 float3 TraceReflection(inout Payload payload, float3 normal)
@@ -112,7 +112,7 @@ float3 TraceReflection(inout Payload payload, float3 normal)
     TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
 
     payload.Random = payload1.Random;
-    return payload1.Color;
+    return min(payload1.Color, 4.0);
 }
 
 float3 TraceRefraction(inout Payload payload, float3 normal)
@@ -133,7 +133,7 @@ float3 TraceRefraction(inout Payload payload, float3 normal)
     TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
 
     payload.Random = payload1.Random;
-    return payload1.Color;
+    return min(payload1.Color, 4.0);
 }
 
 float TraceShadow(inout uint random)
