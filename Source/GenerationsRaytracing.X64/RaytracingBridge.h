@@ -29,6 +29,8 @@ struct BottomLevelAS
     nvrhi::rt::AccelStructHandle handle;
     std::vector<nvrhi::BufferHandle> buffers;
     std::vector<ComPtr<D3D12MA::Allocation>> allocations;
+
+    BottomLevelAS();
 };
 
 struct RaytracingBridge

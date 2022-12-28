@@ -9,6 +9,11 @@
 #include "CopyVS.h"
 #include "CopyPS.h"
 
+BottomLevelAS::BottomLevelAS()
+{
+    desc.setBuildFlags(nvrhi::rt::AccelStructBuildFlags::PreferFastTrace);
+}
+
 void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
 {
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateGeometry>();
