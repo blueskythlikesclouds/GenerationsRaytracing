@@ -62,6 +62,8 @@ struct Bridge
     nvrhi::TextureHandle nullTexture;
 
     nvrhi::TextureHandle textures[16];
+    ComPtr<D3D12MA::Allocation> textureAllocations[16];
+
     nvrhi::BindingLayoutHandle textureBindingLayout;
     nvrhi::BindingSetDesc textureBindingSetDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::BindingSetHandle> textureBindingSets;
@@ -75,6 +77,7 @@ struct Bridge
 
     nvrhi::TextureHandle renderTargets[4];
     nvrhi::TextureHandle depthStencil;
+
     nvrhi::FramebufferDesc framebufferDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::FramebufferHandle> framebuffers;
 
@@ -97,7 +100,11 @@ struct Bridge
     std::unordered_map<XXH64_hash_t, nvrhi::ShaderHandle> shaders;
 
     nvrhi::BufferHandle streamSources[8];
+    ComPtr<D3D12MA::Allocation> streamSourceAllocations[8];
+
     nvrhi::BufferHandle indices;
+    ComPtr<D3D12MA::Allocation> indicesAllocation;
+
     nvrhi::GraphicsState graphicsState;
 
     std::vector<unsigned int> pendingReleases;

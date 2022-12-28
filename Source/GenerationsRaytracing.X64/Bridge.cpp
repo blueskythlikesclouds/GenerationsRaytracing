@@ -843,6 +843,8 @@ void Bridge::procMsgSetTexture()
         nvrhi::BindingSetItem::Texture_SRV(msg->stage, textures[msg->stage] = texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()) : nullTexture.Get()),
         DirtyFlags::Texture);
 
+    textureAllocations[msg->stage] = allocations[msg->texture];
+
     if (msg->stage == 7 || msg->stage == 13)
     {
         assignAndUpdateDirtyFlags(
@@ -1132,6 +1134,7 @@ void Bridge::procMsgSetStreamSource()
     assignAndUpdateDirtyFlags(vertexStrides[msg->streamNumber], msg->stride, DirtyFlags::InputLayout);
 
     streamSources[msg->streamNumber] = graphicsState.vertexBuffers[msg->streamNumber].buffer;
+    streamSourceAllocations[msg->streamNumber] = allocations[msg->streamData];
 }
 
 void Bridge::procMsgSetStreamSourceFreq()
@@ -1157,6 +1160,7 @@ void Bridge::procMsgSetIndices()
         assignAndUpdateDirtyFlags(indexBuffer.format, indexBuffer.buffer->getDesc().format, DirtyFlags::GraphicsState);
 
     indices = indexBuffer.buffer;
+    indicesAllocation = allocations[msg->indexData];
 }
 
 void Bridge::procMsgCreatePixelShader()
@@ -1264,15 +1268,6 @@ void Bridge::procMsgWriteTexture()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgWriteTexture>();
     const void* data = msgReceiver.getDataAndMoveNext(msg->size);
-
-    const auto texture = nvrhi::checked_cast<nvrhi::ITexture*>(resources[msg->texture].Get());
-
-    commandListForCopy->writeTexture(
-        texture,
-        0,
-        0,
-        data,
-        msg->pitch);
 }
 
 void Bridge::procMsgExit()
