@@ -50,8 +50,10 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    Bridge bridge(getDirectoryPath(argv[0]));
-    bridge.receiveMessages();
+    {
+        auto bridge = std::make_unique<Bridge>(getDirectoryPath(argv[0]));
+        bridge->receiveMessages();
+    }
 
     terminateProcess(SONIC_GENERATIONS);
 }

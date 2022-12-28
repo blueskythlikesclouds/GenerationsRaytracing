@@ -37,6 +37,7 @@ Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
         .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)));
 
     vsBindingSet = device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+        .setTrackLiveness(false)
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, vsConstantBuffer))
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, sharedConstantBuffer)), vsBindingLayout);
 
@@ -46,6 +47,7 @@ Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
         .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)));
 
     psBindingSet = device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+        .setTrackLiveness(false)
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, psConstantBuffer))
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, sharedConstantBuffer)), psBindingLayout);
 
@@ -77,6 +79,7 @@ Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
         .addItem(nvrhi::BindingLayoutItem::Texture_SRV(15)));
 
     textureBindingSetDesc
+        .setTrackLiveness(false)
         .addItem(nvrhi::BindingSetItem::Texture_SRV(0, nullTexture))
         .addItem(nvrhi::BindingSetItem::Texture_SRV(1, nullTexture))
         .addItem(nvrhi::BindingSetItem::Texture_SRV(2, nullTexture))
@@ -114,6 +117,7 @@ Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
         .addItem(nvrhi::BindingLayoutItem::Sampler(15)));
 
     samplerBindingSetDesc
+        .setTrackLiveness(false)
         .addItem(nvrhi::BindingSetItem::Sampler(0, nullptr))
         .addItem(nvrhi::BindingSetItem::Sampler(1, nullptr))
         .addItem(nvrhi::BindingSetItem::Sampler(2, nullptr))
@@ -1368,13 +1372,15 @@ void Bridge::receiveMessages()
 #endif
             for (const auto resource : pendingReleases)
             {
+                vertexAttributeDescs.erase(resource);
                 raytracing.bottomLevelAccelStructs.erase(resource);
                 raytracing.materials.erase(resource);
-                vertexAttributeDescs.erase(resource);
                 resources.erase(resource);
                 allocations.erase(resource);
             }
 
+            textureBindingSets.clear();
+            samplerBindingSets.clear();
             vertexBuffers.clear();
             vertexBufferAllocations.clear();
             pendingReleases.clear();
