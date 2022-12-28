@@ -112,6 +112,9 @@ static size_t createMaterial(hh::mr::CMaterialData& material)
 
 static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, bool opaque, bool punchThrough)
 {
+    if (mesh.m_VertexNum == 0 || mesh.m_IndexNum <= 2)
+        return;
+
     const size_t materialId = createMaterial(*mesh.m_spMaterial);
 
     criticalSection.lock();
@@ -296,6 +299,9 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
 static void convertToTriangles(const hh::mr::CMeshData& mesh, hl::hh::mirage::raw_mesh* data)
 {
+    if (mesh.m_VertexNum == 0 || mesh.m_IndexNum <= 2)
+        return;
+
     std::vector<hl::u16> indices;
 
     hl::u32 index = 0;

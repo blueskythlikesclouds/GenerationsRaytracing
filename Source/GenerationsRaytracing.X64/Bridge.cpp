@@ -513,6 +513,13 @@ static void createBuffer(
     bool isAccelStructBuildInput,
     bool isCpuWrite)
 {
+    if (length == 0)
+    {
+        buffer = nullptr;
+        *allocation = nullptr;
+        return;
+    }
+
     createBuffer(
         bridge, 
         length, 
