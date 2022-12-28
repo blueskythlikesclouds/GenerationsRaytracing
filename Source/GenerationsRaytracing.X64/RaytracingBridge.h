@@ -62,7 +62,7 @@ struct RaytracingBridge
     std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
     std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
 
-    float prevView[4][4]{};
+    float prevProjView[8][4]{};
 
     nvrhi::SamplerHandle pointClampSampler;
     nvrhi::BindingLayoutHandle copyBindingLayout;

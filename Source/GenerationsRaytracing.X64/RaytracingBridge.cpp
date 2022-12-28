@@ -307,17 +307,24 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     bool changed = false;
 
-    for (size_t i = 0; i < 4; i++)
+    for (size_t i = 0; i < 8; i++)
     {
         for (size_t j = 0; j < 4; j++)
         {
-            changed |= abs(bridge.vsConstants.c[4 + i][j] - prevView[i][j]) > 0.001f;
-            prevView[i][j] = bridge.vsConstants.c[4 + i][j];
+            changed = abs(prevProjView[i][j] - bridge.vsConstants.c[i][j]) > 0.001f;
+            if (changed)
+                break;
         }
+
+        if (changed)
+            break;
     }
 
     if (changed)
+    {
+        memcpy(prevProjView, bridge.vsConstants.c, sizeof(prevProjView));
         bridge.commandList->clearTextureFloat(texture, nvrhi::TextureSubresourceSet(), nvrhi::Color(0));
+    }
 
     bridge.vsConstants.writeBuffer(bridge.commandList, bridge.vsConstantBuffer);
     bridge.psConstants.writeBuffer(bridge.commandList, bridge.psConstantBuffer);
