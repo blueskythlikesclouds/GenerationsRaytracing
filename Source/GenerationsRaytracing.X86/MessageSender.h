@@ -20,8 +20,6 @@ struct MessageSender
 
     std::atomic<size_t> messagesInProgress;
 
-    Device* device = nullptr;
-
     MessageSender();
     ~MessageSender();
 

@@ -72,8 +72,6 @@ void MessageSender::commitAllMessages()
     cpuEvent.set();
 
     buffer.clear();
-
-    if (device) device->reset();
 }
 
 MessageSender msgSender;

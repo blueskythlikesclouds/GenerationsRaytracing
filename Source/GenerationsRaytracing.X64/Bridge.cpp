@@ -77,22 +77,22 @@ Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
         .addItem(nvrhi::BindingLayoutItem::Texture_SRV(15)));
 
     textureBindingSetDesc
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(1, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(2, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(3, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(4, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(5, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(6, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(7, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(8, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(9, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(10, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(11, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(12, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(13, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(14, nullptr))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(15, nullptr));
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(1, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(2, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(3, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(4, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(5, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(6, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(7, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(8, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(9, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(10, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(11, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(12, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(13, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(14, nullTexture))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(15, nullTexture));
 
     samplerBindingLayout = device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
         .setVisibility(nvrhi::ShaderType::Pixel)
@@ -133,7 +133,15 @@ Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
 
     fvfShader = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), FVF, sizeof(FVF));
 
-    reset();
+    pipelineDesc.bindingLayouts.push_back(vsBindingLayout);
+    pipelineDesc.bindingLayouts.push_back(psBindingLayout);
+    pipelineDesc.bindingLayouts.push_back(textureBindingLayout);
+    pipelineDesc.bindingLayouts.push_back(samplerBindingLayout);
+
+    graphicsState.bindings.push_back(vsBindingSet);
+    graphicsState.bindings.push_back(psBindingSet);
+    graphicsState.bindings.emplace_back();
+    graphicsState.bindings.emplace_back();
 }
 
 void Bridge::openCommandList()
@@ -322,37 +330,6 @@ void Bridge::processDirtyFlags()
     commandList->commitBarriers();
 
     dirtyFlags = DirtyFlags::None;
-}
-
-void Bridge::reset()
-{
-    dirtyFlags = DirtyFlags::All;
-
-    for (auto& binding : textureBindingSetDesc.bindings)
-        binding.resourceHandle = nullTexture;
-
-    for (auto& sampler : samplerDescs)
-        sampler = nvrhi::SamplerDesc();
-
-    framebufferDesc = nvrhi::FramebufferDesc();
-    vertexDeclaration = 0;
-
-    pipelineDesc = nvrhi::GraphicsPipelineDesc();
-    pipelineDesc.bindingLayouts.push_back(vsBindingLayout);
-    pipelineDesc.bindingLayouts.push_back(psBindingLayout);
-    pipelineDesc.bindingLayouts.push_back(textureBindingLayout);
-    pipelineDesc.bindingLayouts.push_back(samplerBindingLayout);
-    vertexBuffers.clear();
-    vertexBufferAllocations.clear();
-    memset(vertexStrides, 0, sizeof(vertexStrides));
-    instancing = false;
-    instanceCount = 1;
-
-    graphicsState = nvrhi::GraphicsState();
-    graphicsState.bindings.push_back(vsBindingSet);
-    graphicsState.bindings.push_back(psBindingSet);
-    graphicsState.bindings.emplace_back();
-    graphicsState.bindings.emplace_back();
 }
 
 void Bridge::procMsgSetFVF()
@@ -608,6 +585,8 @@ void Bridge::procMsgSetRenderTarget()
             framebufferDesc.colorAttachments[0].texture,
             nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()), 
             DirtyFlags::FramebufferAndPipeline);
+
+        renderTargets[msg->index] = framebufferDesc.colorAttachments[msg->index].texture;
     }
     else
     {
@@ -617,6 +596,8 @@ void Bridge::procMsgSetRenderTarget()
             framebufferDesc.colorAttachments.pop_back();
             dirtyFlags |= DirtyFlags::FramebufferAndPipeline;
         }
+
+        renderTargets[msg->index] = nullptr;
     }
 }
 
@@ -628,6 +609,8 @@ void Bridge::procMsgSetDepthStencilSurface()
         framebufferDesc.depthAttachment.texture,
         nvrhi::checked_cast<nvrhi::ITexture*>(resources[msg->surface].Get()),
         DirtyFlags::FramebufferAndPipeline);
+
+    depthStencil = framebufferDesc.depthAttachment.texture;
 }
 
 void Bridge::procMsgClear()
@@ -857,7 +840,7 @@ void Bridge::procMsgSetTexture()
 
     assignAndUpdateDirtyFlags(
         textureBindingSetDesc.bindings[msg->stage], 
-        nvrhi::BindingSetItem::Texture_SRV(msg->stage, texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()) : nullTexture.Get()),
+        nvrhi::BindingSetItem::Texture_SRV(msg->stage, textures[msg->stage] = texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()) : nullTexture.Get()),
         DirtyFlags::Texture);
 
     if (msg->stage == 7 || msg->stage == 13)
@@ -1147,6 +1130,8 @@ void Bridge::procMsgSetStreamSource()
     assignAndUpdateDirtyFlags(vertexBuffer.buffer, nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->streamData].Get()), DirtyFlags::VertexBuffer | DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexBuffer.offset, msg->offsetInBytes, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexStrides[msg->streamNumber], msg->stride, DirtyFlags::InputLayout);
+
+    streamSources[msg->streamNumber] = graphicsState.vertexBuffers[msg->streamNumber].buffer;
 }
 
 void Bridge::procMsgSetStreamSourceFreq()
@@ -1170,6 +1155,8 @@ void Bridge::procMsgSetIndices()
 
     if (indexBuffer.buffer)
         assignAndUpdateDirtyFlags(indexBuffer.format, indexBuffer.buffer->getDesc().format, DirtyFlags::GraphicsState);
+
+    indices = indexBuffer.buffer;
 }
 
 void Bridge::procMsgCreatePixelShader()
@@ -1392,12 +1379,13 @@ void Bridge::receiveMessages()
                 resources.erase(resource);
                 allocations.erase(resource);
             }
+
+            vertexBuffers.clear();
+            vertexBufferAllocations.clear();
             pendingReleases.clear();
 
             device.nvrhi->runGarbageCollection();
         }
-
-        reset();
     }
 
 #ifdef SIZE_PROFILING

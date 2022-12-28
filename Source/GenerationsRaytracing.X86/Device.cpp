@@ -12,34 +12,9 @@ Device::Device(size_t width, size_t height)
 {
     swapChainSurface.Attach(new Surface());
     swapChainSurface->texture.Attach(new Texture(width, height));
-
-    msgSender.device = this;
 }
 
-Device::~Device()
-{
-    msgSender.device = nullptr;
-}
-
-void Device::reset()
-{
-    for (auto& it : renderTargets) it = nullptr;
-    depthStencilSurface = nullptr;
-    viewport = {};
-    memset(renderStates, 0, sizeof(renderStates));
-    for (auto& it : textures) it = nullptr;
-    memset(samplerStates, 0, sizeof(samplerStates));
-    scissorRect = {};
-    vertexDeclaration = nullptr;
-    fvf = 0;
-    vertexShader = nullptr;
-    for (auto& it : streamBuffers) it = nullptr;
-    memset(streamOffsets, 0, sizeof(streamOffsets));
-    memset(streamStrides, 0, sizeof(streamStrides));
-    memset(streamSettings, 0, sizeof(streamSettings));
-    indices = nullptr;
-    pixelShader = nullptr;
-}
+Device::~Device() = default;
 
 FUNCTION_STUB(HRESULT, Device::TestCooperativeLevel)
 

@@ -61,6 +61,7 @@ struct Bridge
 
     nvrhi::TextureHandle nullTexture;
 
+    nvrhi::TextureHandle textures[16];
     nvrhi::BindingLayoutHandle textureBindingLayout;
     nvrhi::BindingSetDesc textureBindingSetDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::BindingSetHandle> textureBindingSets;
@@ -72,6 +73,8 @@ struct Bridge
     nvrhi::BindingSetDesc samplerBindingSetDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::BindingSetHandle> samplerBindingSets;
 
+    nvrhi::TextureHandle renderTargets[4];
+    nvrhi::TextureHandle depthStencil;
     nvrhi::FramebufferDesc framebufferDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::FramebufferHandle> framebuffers;
 
@@ -93,6 +96,8 @@ struct Bridge
 
     std::unordered_map<XXH64_hash_t, nvrhi::ShaderHandle> shaders;
 
+    nvrhi::BufferHandle streamSources[8];
+    nvrhi::BufferHandle indices;
     nvrhi::GraphicsState graphicsState;
 
     std::vector<unsigned int> pendingReleases;
@@ -119,8 +124,6 @@ struct Bridge
     }
 
     void processDirtyFlags();
-    void reset();
-
     void procMsgSetFVF();
     void procMsgInitSwapChain();
     void procMsgPresent();
