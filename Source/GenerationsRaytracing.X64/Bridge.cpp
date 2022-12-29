@@ -493,7 +493,22 @@ static void createBuffer(
         IID_ID3D12Resource,
         nullptr);
 
+#ifndef _DEBUG
+    if (result != S_OK)
+    {
+        char text[1024]{};
+        sprintf(text,
+            "Allocation Failed!\n"
+            "length: %d\n"
+            "heapType: %d\n"
+            "initialState: %d\n"
+            "HRESULT: %x", length, heapType, initialState, result);
+
+        MessageBoxA(nullptr, text, nullptr, MB_ICONERROR);
+    }
+#else
     assert(result == S_OK && *allocation && (*allocation)->GetResource());
+#endif
 }
 
 static void createBuffer(
@@ -1370,23 +1385,24 @@ void Bridge::receiveMessages()
             fprintf(file, "vertexBuffers: %lld\n", vertexBuffers.size());
             fputs("\n", file);
 #endif
-            for (const auto resource : pendingReleases)
-            {
-                vertexAttributeDescs.erase(resource);
-                raytracing.bottomLevelAccelStructs.erase(resource);
-                raytracing.materials.erase(resource);
-                resources.erase(resource);
-                allocations.erase(resource);
-            }
-
-            textureBindingSets.clear();
-            samplerBindingSets.clear();
-            vertexBuffers.clear();
-            vertexBufferAllocations.clear();
-            pendingReleases.clear();
-
-            device.nvrhi->runGarbageCollection();
         }
+
+        device.nvrhi->runGarbageCollection();
+        textureBindingSets.clear();
+        samplerBindingSets.clear();
+        vertexBuffers.clear();
+        vertexBufferAllocations.clear();
+
+        for (const auto resource : pendingReleases)
+        {
+            vertexAttributeDescs.erase(resource);
+            raytracing.bottomLevelAccelStructs.erase(resource);
+            raytracing.materials.erase(resource);
+            resources.erase(resource);
+            allocations.erase(resource);
+        }
+
+        pendingReleases.clear();
     }
 
 #ifdef SIZE_PROFILING
