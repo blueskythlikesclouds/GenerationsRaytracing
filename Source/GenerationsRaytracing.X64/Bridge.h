@@ -36,13 +36,10 @@ struct Bridge
     std::vector<nvrhi::TextureHandle> swapChainTextures;
 
     std::unordered_map<unsigned int, nvrhi::ResourceHandle> resources;
-    std::unordered_map<unsigned int, ComPtr<D3D12MA::Allocation>> allocations;
 
     nvrhi::CommandListHandle commandList;
-    bool openedCommandList = false;
-
     nvrhi::CommandListHandle commandListForCopy;
-    bool openedCommandListForCopy = false;
+    bool openedCommandList = false;
 
     ConstantBuffer<256> vsConstants {};
     nvrhi::BufferHandle vsConstantBuffer;
@@ -61,9 +58,6 @@ struct Bridge
 
     nvrhi::TextureHandle nullTexture;
 
-    nvrhi::TextureHandle textures[16];
-    ComPtr<D3D12MA::Allocation> textureAllocations[16];
-
     nvrhi::BindingLayoutHandle textureBindingLayout;
     nvrhi::BindingSetDesc textureBindingSetDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::BindingSetHandle> textureBindingSets;
@@ -74,9 +68,6 @@ struct Bridge
     nvrhi::BindingLayoutHandle samplerBindingLayout;
     nvrhi::BindingSetDesc samplerBindingSetDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::BindingSetHandle> samplerBindingSets;
-
-    nvrhi::TextureHandle renderTargets[4];
-    nvrhi::TextureHandle depthStencil;
 
     nvrhi::FramebufferDesc framebufferDesc;
     std::unordered_map<XXH64_hash_t, nvrhi::FramebufferHandle> framebuffers;
@@ -92,18 +83,11 @@ struct Bridge
     std::unordered_map<XXH64_hash_t, nvrhi::GraphicsPipelineHandle> pipelines;
 
     std::unordered_map<XXH64_hash_t, nvrhi::BufferHandle> vertexBuffers;
-    std::vector<ComPtr<D3D12MA::Allocation>> vertexBufferAllocations;
     uint32_t vertexStrides[8] {};
     bool instancing = false;
     uint32_t instanceCount = 0;
 
     std::unordered_map<XXH64_hash_t, nvrhi::ShaderHandle> shaders;
-
-    nvrhi::BufferHandle streamSources[8];
-    ComPtr<D3D12MA::Allocation> streamSourceAllocations[8];
-
-    nvrhi::BufferHandle indices;
-    ComPtr<D3D12MA::Allocation> indicesAllocation;
 
     nvrhi::GraphicsState graphicsState;
 

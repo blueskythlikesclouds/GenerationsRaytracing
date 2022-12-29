@@ -52,8 +52,6 @@ void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
 
     bottomLevelAS.buffers.push_back(triangles.indexBuffer);
     bottomLevelAS.buffers.push_back(triangles.vertexBuffer);
-    bottomLevelAS.allocations.push_back(bridge.allocations[msg->indexBuffer]);
-    bottomLevelAS.allocations.push_back(bridge.allocations[msg->vertexBuffer]);
 }
 
 void RaytracingBridge::procMsgCreateBottomLevelAS(Bridge& bridge)
@@ -93,28 +91,9 @@ void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)
 }
 
 template<typename T>
-static void createUploadBuffer(const Bridge& bridge, const std::vector<T>& vector, nvrhi::BufferHandle& buffer, ComPtr<D3D12MA::Allocation>& allocation)
+static void createUploadBuffer(const Bridge& bridge, const std::vector<T>& vector, nvrhi::BufferHandle& buffer)
 {
-    D3D12MA::ALLOCATION_DESC allocationDesc{};
-    allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-
-    const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vectorByteSize(vector));
-
-    bridge.device.allocator->CreateResource(
-        &allocationDesc,
-        &resourceDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        allocation.ReleaseAndGetAddressOf(),
-        IID_ID3D12Resource,
-        nullptr);
-
-    assert(allocation && allocation->GetResource());
-
-    buffer = bridge.device.nvrhi->createHandleForNativeBuffer(
-        nvrhi::ObjectTypes::D3D12_Resource,
-        allocation->GetResource(),
-        nvrhi::BufferDesc()
+    buffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(vectorByteSize(vector))
         .setStructStride((uint32_t)vectorByteStride(vector))
         .setCpuAccess(nvrhi::CpuAccessMode::Write));
@@ -288,8 +267,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     instanceDescs.clear();
 
-    createUploadBuffer(bridge, geometriesForGpu, geometryBuffer, geometryBufferAllocation);
-    createUploadBuffer(bridge, materialsForGpu, materialBuffer, materialBufferAllocation);
+    createUploadBuffer(bridge, geometriesForGpu, geometryBuffer);
+    createUploadBuffer(bridge, materialsForGpu, materialBuffer);
 
     if (!texture)
     {

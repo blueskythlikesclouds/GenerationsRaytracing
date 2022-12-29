@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+class MemoryAllocator;
+
 struct Device
 {
     struct
@@ -9,9 +11,9 @@ struct Device
     } d3d12;
 
     ComPtr<IDXGIFactory4> dxgiFactory;
-    nvrhi::DeviceHandle nvrhi;
 
-    ComPtr<D3D12MA::Allocator> allocator;
+    std::unique_ptr<MemoryAllocator> memoryAllocator;
+    nvrhi::DeviceHandle nvrhi;
 
     Device();
     ~Device();

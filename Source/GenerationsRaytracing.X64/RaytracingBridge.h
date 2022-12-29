@@ -28,7 +28,6 @@ struct BottomLevelAS
     std::vector<Geometry> geometries;
     nvrhi::rt::AccelStructHandle handle;
     std::vector<nvrhi::BufferHandle> buffers;
-    std::vector<ComPtr<D3D12MA::Allocation>> allocations;
 
     BottomLevelAS();
 };
@@ -42,10 +41,7 @@ struct RaytracingBridge
     nvrhi::BindingLayoutHandle textureBindlessLayout;
 
     nvrhi::BufferHandle materialBuffer;
-    ComPtr<D3D12MA::Allocation> materialBufferAllocation;
-
     nvrhi::BufferHandle geometryBuffer;
-    ComPtr<D3D12MA::Allocation> geometryBufferAllocation;
 
     nvrhi::TextureHandle texture;
     nvrhi::TextureHandle depth;

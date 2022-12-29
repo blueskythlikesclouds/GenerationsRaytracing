@@ -7,8 +7,7 @@
 
 Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
 {
-    commandList = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false));
-    commandListForCopy = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false));
+    commandList = device.nvrhi->createCommandList(nvrhi::CommandListParameters());
 
     vsConstantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setDebugName("VS Constants")
@@ -159,11 +158,11 @@ void Bridge::openCommandList()
 
 void Bridge::openCommandListForCopy()
 {
-    if (openedCommandListForCopy)
+    if (commandListForCopy != nullptr)
         return;
 
+    commandListForCopy = device.nvrhi->createCommandList(nvrhi::CommandListParameters().setEnableImmediateExecution(false));
     commandListForCopy->open();
-    openedCommandListForCopy = true;
 }
 
 void Bridge::closeAndExecuteCommandLists()
@@ -171,11 +170,9 @@ void Bridge::closeAndExecuteCommandLists()
     nvrhi::ICommandList* commandLists[] = { nullptr, nullptr };
     size_t count = 0;
 
-    if (openedCommandListForCopy)
+    if (commandListForCopy != nullptr)
     {
         commandListForCopy->close();
-        openedCommandListForCopy = false;
-
         commandLists[count++] = commandListForCopy.Get();
     }
 
@@ -190,10 +187,7 @@ void Bridge::closeAndExecuteCommandLists()
     if (count > 0)
     {
         device.nvrhi->executeCommandLists(commandLists, count);
-        device.nvrhi->waitForIdle();
-        device.nvrhi->runGarbageCollection();
-
-        dirtyFlags = DirtyFlags::All;
+        commandListForCopy = nullptr;
     }
 }
 
@@ -473,108 +467,31 @@ void Bridge::procMsgCreateTexture()
         .setUseClearValue(isRenderTargetOrDepthStencil));
 }
 
-static void createBuffer(
-    const Bridge& bridge,
-    size_t length,
-    D3D12_HEAP_TYPE heapType,
-    D3D12_RESOURCE_STATES initialState,
-    D3D12MA::Allocation** allocation)
-{
-    D3D12MA::ALLOCATION_DESC allocationDesc{};
-    allocationDesc.HeapType = heapType;
-
-    const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(length);
-
-    const HRESULT result = bridge.device.allocator->CreateResource(
-        &allocationDesc,
-        &resourceDesc,
-        initialState,
-        nullptr,
-        allocation,
-        IID_ID3D12Resource,
-        nullptr);
-
-#ifndef _DEBUG
-    if (result != S_OK)
-    {
-        char text[1024]{};
-        sprintf(text,
-            "Allocation Failed!\n"
-            "length: %d\n"
-            "heapType: %d\n"
-            "initialState: %d\n"
-            "HRESULT: %x", length, heapType, initialState, result);
-
-        MessageBoxA(nullptr, text, nullptr, MB_ICONERROR);
-    }
-#else
-    assert(result == S_OK && *allocation && (*allocation)->GetResource());
-#endif
-}
-
-static void createBuffer(
-    const Bridge& bridge,
-    size_t length,
-    nvrhi::Format format,
-    nvrhi::BufferHandle& buffer,
-    D3D12MA::Allocation** allocation,
-    bool isVertexBuffer,
-    bool isIndexBuffer,
-    bool isAccelStructBuildInput,
-    bool isCpuWrite)
-{
-    createBuffer(
-        bridge, 
-        length, 
-        isCpuWrite ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
-        isCpuWrite ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST,
-        allocation);
-
-    buffer = bridge.device.nvrhi->createHandleForNativeBuffer(nvrhi::ObjectTypes::D3D12_Resource,
-        (*allocation)->GetResource(),
-        nvrhi::BufferDesc()
-        .setByteSize(length)
-        .setFormat(format)
-        .setIsVertexBuffer(isVertexBuffer)
-        .setIsIndexBuffer(isIndexBuffer)
-        .setIsAccelStructBuildInput(isAccelStructBuildInput)
-        .setInitialState(nvrhi::ResourceStates::CopyDest)
-        .setKeepInitialState(!isCpuWrite)
-        .setCpuAccess(isCpuWrite ? nvrhi::CpuAccessMode::Write : nvrhi::CpuAccessMode::None)
-        .setCanHaveTypedViews(format != nvrhi::Format::UNKNOWN)
-        .setCanHaveRawViews(format == nvrhi::Format::UNKNOWN));
-}
-
 void Bridge::procMsgCreateVertexBuffer()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateVertexBuffer>();
 
-    createBuffer(
-        *this,
-        msg->length,
-        nvrhi::Format::UNKNOWN,
-        reinterpret_cast<nvrhi::BufferHandle&>(resources[msg->vertexBuffer]),
-        allocations[msg->vertexBuffer].ReleaseAndGetAddressOf(),
-        true,
-        false,
-        true,
-        false);
+    resources[msg->vertexBuffer] = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+        .setByteSize(msg->length)
+        .setCanHaveRawViews(true)
+        .setIsVertexBuffer(true)
+        .setIsAccelStructBuildInput(true)
+        .setInitialState(nvrhi::ResourceStates::CopyDest)
+        .setKeepInitialState(true));
 }
 
 void Bridge::procMsgCreateIndexBuffer()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateIndexBuffer>();
 
-    createBuffer(
-        *this,
-        msg->length,
-        Format::convert(msg->format),
-        reinterpret_cast<nvrhi::BufferHandle&>(resources[msg->indexBuffer]),
-        allocations[msg->indexBuffer].ReleaseAndGetAddressOf(),
-        false,
-        true,
-        true,
-        false);
+    resources[msg->indexBuffer] = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+        .setByteSize(msg->length)
+        .setFormat(Format::convert(msg->format))
+        .setCanHaveTypedViews(true)
+        .setIsIndexBuffer(true)
+        .setIsAccelStructBuildInput(true)
+        .setInitialState(nvrhi::ResourceStates::CopyDest)
+        .setKeepInitialState(true));
 }
 
 void Bridge::procMsgCreateRenderTarget()
@@ -605,8 +522,6 @@ void Bridge::procMsgSetRenderTarget()
             framebufferDesc.colorAttachments[0].texture,
             nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()), 
             DirtyFlags::FramebufferAndPipeline);
-
-        renderTargets[msg->index] = framebufferDesc.colorAttachments[msg->index].texture;
     }
     else
     {
@@ -616,8 +531,6 @@ void Bridge::procMsgSetRenderTarget()
             framebufferDesc.colorAttachments.pop_back();
             dirtyFlags |= DirtyFlags::FramebufferAndPipeline;
         }
-
-        renderTargets[msg->index] = nullptr;
     }
 }
 
@@ -629,8 +542,6 @@ void Bridge::procMsgSetDepthStencilSurface()
         framebufferDesc.depthAttachment.texture,
         nvrhi::checked_cast<nvrhi::ITexture*>(resources[msg->surface].Get()),
         DirtyFlags::FramebufferAndPipeline);
-
-    depthStencil = framebufferDesc.depthAttachment.texture;
 }
 
 void Bridge::procMsgClear()
@@ -860,10 +771,8 @@ void Bridge::procMsgSetTexture()
 
     assignAndUpdateDirtyFlags(
         textureBindingSetDesc.bindings[msg->stage], 
-        nvrhi::BindingSetItem::Texture_SRV(msg->stage, textures[msg->stage] = texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()) : nullTexture.Get()),
+        nvrhi::BindingSetItem::Texture_SRV(msg->stage, texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()) : nullTexture.Get()),
         DirtyFlags::Texture);
-
-    textureAllocations[msg->stage] = allocations[msg->texture];
 
     if (msg->stage == 7 || msg->stage == 13)
     {
@@ -988,16 +897,10 @@ void Bridge::procMsgDrawPrimitiveUP()
 
     if (!vertexBuffer)
     {
-        createBuffer(
-            *this,
-            msg->vertexStreamZeroSize,
-            nvrhi::Format::UNKNOWN,
-            vertexBuffer,
-            vertexBufferAllocations.emplace_back().GetAddressOf(),
-            true,
-            false,
-            false,
-            true);
+        vertexBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
+            .setByteSize(msg->vertexStreamZeroSize)
+            .setIsVertexBuffer(true)
+            .setCpuAccess(nvrhi::CpuAccessMode::Write));
 
         void* destCopy = device.nvrhi->mapBuffer(vertexBuffer, nvrhi::CpuAccessMode::Write);
         memcpy(destCopy, data, msg->vertexStreamZeroSize);
@@ -1152,9 +1055,6 @@ void Bridge::procMsgSetStreamSource()
     assignAndUpdateDirtyFlags(vertexBuffer.buffer, nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->streamData].Get()), DirtyFlags::VertexBuffer | DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexBuffer.offset, msg->offsetInBytes, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexStrides[msg->streamNumber], msg->stride, DirtyFlags::InputLayout);
-
-    streamSources[msg->streamNumber] = graphicsState.vertexBuffers[msg->streamNumber].buffer;
-    streamSourceAllocations[msg->streamNumber] = allocations[msg->streamData];
 }
 
 void Bridge::procMsgSetStreamSourceFreq()
@@ -1178,9 +1078,6 @@ void Bridge::procMsgSetIndices()
 
     if (indexBuffer.buffer)
         assignAndUpdateDirtyFlags(indexBuffer.format, indexBuffer.buffer->getDesc().format, DirtyFlags::GraphicsState);
-
-    indices = indexBuffer.buffer;
-    indicesAllocation = allocations[msg->indexData];
 }
 
 void Bridge::procMsgCreatePixelShader()
@@ -1231,19 +1128,13 @@ void Bridge::procMsgMakePicture()
 
     DirectX::LoadDDSTextureFromMemory(
         device.nvrhi,
-        device.allocator.Get(),
         (const uint8_t*)data,
         msg->size,
         std::addressof(texture),
-        allocations[msg->texture].ReleaseAndGetAddressOf(),
-        nullptr,
         subResources);
 
     if (!texture)
-    {
-        texture = nullTexture;
         return;
-    }
 
     openCommandListForCopy();
 
@@ -1364,25 +1255,29 @@ void Bridge::receiveMessages()
         closeAndExecuteCommandLists();
 
         if (shouldPresent)
-        {
             swapChain->Present(0, 0);
-            shouldPresent = false;
-        }
 
-        textureBindingSets.clear();
-        samplerBindingSets.clear();
-        vertexBuffers.clear();
-        vertexBufferAllocations.clear();
+        device.nvrhi->waitForIdle();
+        device.nvrhi->runGarbageCollection();
 
-        for (const auto resource : pendingReleases)
+        if (shouldPresent)
         {
-            vertexAttributeDescs.erase(resource);
-            raytracing.bottomLevelAccelStructs.erase(resource);
-            raytracing.materials.erase(resource);
-            resources.erase(resource);
-            allocations.erase(resource);
+            textureBindingSets.clear();
+            samplerBindingSets.clear();
+            vertexBuffers.clear();
+
+            for (const auto resource : pendingReleases)
+            {
+                vertexAttributeDescs.erase(resource);
+                raytracing.bottomLevelAccelStructs.erase(resource);
+                raytracing.materials.erase(resource);
+                resources.erase(resource);
+            }
+
+            pendingReleases.clear();
         }
 
-        pendingReleases.clear();
+        dirtyFlags = DirtyFlags::All;
+        shouldPresent = false;
     }
 }

@@ -38,22 +38,7 @@
 #include <memory>
 #include <vector>
 
-namespace nvrhi
-{
-    class IDevice;
-    class ITexture;
-
-    template <typename T>
-    class RefCountPtr;
-
-    typedef RefCountPtr<ITexture> TextureHandle;
-}
-
-namespace D3D12MA
-{
-    class Allocator;
-    class Allocation;
-}
+#include <nvrhi/nvrhi.h>
 
 namespace DirectX
 {
@@ -96,23 +81,17 @@ namespace DirectX
     // Standard version
     HRESULT __cdecl LoadDDSTextureFromMemory(
         _In_ nvrhi::IDevice* d3dDevice,
-        _In_ D3D12MA::Allocator* allocator,
         _In_reads_bytes_(ddsDataSize) const uint8_t* ddsData,
         size_t ddsDataSize,
         _Outptr_ nvrhi::TextureHandle* texture,
-        _Outptr_ D3D12MA::Allocation** allocation,
-        _Outptr_ ID3D12Resource** resource,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         size_t maxsize = 0,
         _Out_opt_ DDS_ALPHA_MODE* alphaMode = nullptr);
 
     HRESULT __cdecl LoadDDSTextureFromFile(
         _In_ nvrhi::IDevice* d3dDevice,
-        _In_ D3D12MA::Allocator* allocator,
         _In_z_ const wchar_t* szFileName,
         _Outptr_ nvrhi::TextureHandle* texture,
-        _Outptr_ D3D12MA::Allocation** allocation,
-        _Outptr_ ID3D12Resource** resource,
         std::unique_ptr<uint8_t[]>& ddsData,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         size_t maxsize = 0,
@@ -121,28 +100,22 @@ namespace DirectX
     // Extended version
     HRESULT __cdecl LoadDDSTextureFromMemoryEx(
         _In_ nvrhi::IDevice* d3dDevice,
-        _In_ D3D12MA::Allocator* allocator,
         _In_reads_bytes_(ddsDataSize) const uint8_t* ddsData,
         size_t ddsDataSize,
         size_t maxsize,
         D3D12_RESOURCE_FLAGS resFlags,
         DDS_LOADER_FLAGS loadFlags,
         _Outptr_ nvrhi::TextureHandle* texture,
-        _Outptr_ D3D12MA::Allocation** allocation,
-        _Outptr_ ID3D12Resource** resource,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         _Out_opt_ DDS_ALPHA_MODE* alphaMode = nullptr);
 
     HRESULT __cdecl LoadDDSTextureFromFileEx(
         _In_ nvrhi::IDevice* d3dDevice,
-        _In_ D3D12MA::Allocator* allocator,
         _In_z_ const wchar_t* szFileName,
         size_t maxsize,
         D3D12_RESOURCE_FLAGS resFlags,
         DDS_LOADER_FLAGS loadFlags,
         _Outptr_ nvrhi::TextureHandle* texture,
-        _Outptr_ D3D12MA::Allocation** allocation,
-        _Outptr_ ID3D12Resource** resource,
         std::unique_ptr<uint8_t[]>& ddsData,
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         _Out_opt_ DDS_ALPHA_MODE* alphaMode = nullptr);

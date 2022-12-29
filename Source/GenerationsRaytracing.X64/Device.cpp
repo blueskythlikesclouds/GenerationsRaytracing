@@ -34,6 +34,40 @@ public:
     }
 } messageCallback;
 
+class MemoryAllocator : public nvrhi::d3d12::IMemoryAllocator
+{
+protected:
+    ComPtr<D3D12MA::Allocator> allocator;
+
+public:
+    MemoryAllocator(ID3D12Device* device, IDXGIAdapter* dxgiAdapter)
+    {
+        D3D12MA::ALLOCATOR_DESC desc{};
+        desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
+        desc.pDevice = device;
+        desc.pAdapter = dxgiAdapter;
+
+        D3D12MA::CreateAllocator(&desc, allocator.GetAddressOf());
+    }
+
+    HRESULT createResource(const D3D12_HEAP_PROPERTIES* heapProperties, D3D12_HEAP_FLAGS heapFlags,
+        const D3D12_RESOURCE_DESC* desc, D3D12_RESOURCE_STATES initialResourceState,
+        const D3D12_CLEAR_VALUE* optimizedClearValue, const IID& riid, void** resource, IUnknown** allocation) override
+    {
+        D3D12MA::ALLOCATION_DESC allocationDesc{};
+        allocationDesc.HeapType = heapProperties->Type;
+
+        return allocator->CreateResource(
+            &allocationDesc,
+            desc,
+            initialResourceState,
+            optimizedClearValue,
+            reinterpret_cast<D3D12MA::Allocation**>(allocation),
+            riid,
+            resource);
+    }
+};
+
 Device::Device()
 {
 #ifdef _DEBUG
@@ -65,9 +99,9 @@ Device::Device()
     ComPtr<ID3D12InfoQueue> infoQueue;
     d3d12.device.As(&infoQueue);
 
-    infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-    infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-    infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, false);
+    //infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+    //infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+    //infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, false);
 
     // Disable messages we're aware of and okay with
     D3D12_MESSAGE_ID ids[] =
@@ -83,11 +117,13 @@ Device::Device()
 #endif
 
     d3d12.graphicsCommandQueue.Attach(createCommandQueue(d3d12.device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT));
+    memoryAllocator = std::make_unique<MemoryAllocator>(d3d12.device.Get(), dxgiAdapter.Get());
 
     nvrhi::d3d12::DeviceDesc deviceDesc;
-    deviceDesc.errorCB = &messageCallback;
     deviceDesc.pDevice = d3d12.device.Get();
     deviceDesc.pGraphicsCommandQueue = d3d12.graphicsCommandQueue.Get();
+    deviceDesc.messageCallback = &messageCallback;
+    deviceDesc.memoryAllocator = memoryAllocator.get();
 
     nvrhi = nvrhi::d3d12::createDevice(deviceDesc);
     assert(nvrhi);
@@ -96,13 +132,6 @@ Device::Device()
     nvrhi = nvrhi::validation::createValidationLayer(nvrhi);
     assert(nvrhi);
 #endif
-
-    D3D12MA::ALLOCATOR_DESC desc{};
-    desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
-    desc.pDevice = d3d12.device.Get();
-    desc.pAdapter = dxgiAdapter.Get();
-
-    D3D12MA::CreateAllocator(&desc, allocator.GetAddressOf());
 }
 
 Device::~Device()
