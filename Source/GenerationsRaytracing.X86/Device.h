@@ -22,6 +22,7 @@ public:
     DWORD samplerStates[16][14]{};
     RECT scissorRect{};
     ComPtr<VertexDeclaration> vertexDeclaration;
+    std::unordered_map<DWORD, size_t> fvfMap;
     DWORD fvf{};
     ComPtr<Shader> vertexShader;
     BOOL boolConstantsVS[16]{};

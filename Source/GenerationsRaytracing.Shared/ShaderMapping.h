@@ -69,5 +69,7 @@ struct ShaderMapping
             for (size_t i = 0; i < textureCount; i++)
                 shader.textures.push_back(readString(file));
         }
+
+        fclose(file);
     }
 };

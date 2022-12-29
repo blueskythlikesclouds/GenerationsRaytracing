@@ -1,6 +1,7 @@
 ﻿#include "Device.h"
 
 #include "Buffer.h"
+#include "Identifier.h"
 #include "Message.h"
 #include "MessageSender.h"
 #include "Shader.h"
@@ -522,8 +523,13 @@ HRESULT Device::SetFVF(DWORD FVF)
     vertexDeclaration = nullptr;
     fvf = FVF;
 
+    auto& vertexDeclaration = fvfMap[FVF];
+    if (!vertexDeclaration)
+        vertexDeclaration = getNextIdentifier();
+
     const auto msg = msgSender.start<MsgSetFVF>();
 
+    msg->vertexDeclaration = vertexDeclaration;
     msg->fvf = FVF;
 
     msgSender.finish();

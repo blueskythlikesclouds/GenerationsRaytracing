@@ -155,8 +155,6 @@ void Bridge::openCommandList()
 
     commandList->open();
     openedCommandList = true;
-
-    dirtyFlags = DirtyFlags::All;
 }
 
 void Bridge::openCommandListForCopy()
@@ -193,6 +191,9 @@ void Bridge::closeAndExecuteCommandLists()
     {
         device.nvrhi->executeCommandLists(commandLists, count);
         device.nvrhi->waitForIdle();
+        device.nvrhi->runGarbageCollection();
+
+        dirtyFlags = DirtyFlags::All;
     }
 }
 
@@ -340,7 +341,7 @@ void Bridge::procMsgSetFVF()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetFVF>();
 
-    auto& attributes = vertexAttributeDescs[msg->fvf];
+    auto& attributes = vertexAttributeDescs[msg->vertexDeclaration];
     if (attributes.empty())
     {
         uint32_t offset = 0;
@@ -376,7 +377,7 @@ void Bridge::procMsgSetFVF()
         }
     }
 
-    assignAndUpdateDirtyFlags(vertexDeclaration, msg->fvf, DirtyFlags::InputLayout);
+    assignAndUpdateDirtyFlags(vertexDeclaration, msg->vertexDeclaration, DirtyFlags::InputLayout);
     assignAndUpdateDirtyFlags(pipelineDesc.VS, fvfShader, DirtyFlags::FramebufferAndPipeline);
 
     if (!fvf)
@@ -1354,14 +1355,8 @@ void Bridge::processMessages()
     }
 }
 
-//#define SIZE_PROFILING
-
 void Bridge::receiveMessages()
 {
-#ifdef SIZE_PROFILING
-    FILE* file = fopen("SizeProfiling.txt", "w");
-#endif
-
     while (!shouldExit)
     {
         openCommandList();
@@ -1372,22 +1367,8 @@ void Bridge::receiveMessages()
         {
             swapChain->Present(0, 0);
             shouldPresent = false;
-
-#ifdef SIZE_PROFILING
-            fprintf(file, "resources: %lld\n", resources.size());
-            fprintf(file, "textureBindingSets: %lld\n", textureBindingSets.size());
-            fprintf(file, "samplers: %lld\n", samplers.size());
-            fprintf(file, "samplerBindingSets: %lld\n", samplerBindingSets.size());
-            fprintf(file, "framebuffers: %lld\n", framebuffers.size());
-            fprintf(file, "vertexAttributeDescs: %lld\n", vertexAttributeDescs.size());
-            fprintf(file, "inputLayouts: %lld\n", inputLayouts.size());
-            fprintf(file, "pipelines: %lld\n", pipelines.size());
-            fprintf(file, "vertexBuffers: %lld\n", vertexBuffers.size());
-            fputs("\n", file);
-#endif
         }
 
-        device.nvrhi->runGarbageCollection();
         textureBindingSets.clear();
         samplerBindingSets.clear();
         vertexBuffers.clear();
@@ -1404,8 +1385,4 @@ void Bridge::receiveMessages()
 
         pendingReleases.clear();
     }
-
-#ifdef SIZE_PROFILING
-    fclose(file);
-#endif
 }

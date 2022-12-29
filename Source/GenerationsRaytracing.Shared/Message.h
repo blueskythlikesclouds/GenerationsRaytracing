@@ -178,6 +178,7 @@ struct MsgSetVertexDeclaration
 struct MsgSetFVF
 {
     DEFINE_MSG_ID;
+    unsigned int vertexDeclaration;
     unsigned int fvf;
 };
 
