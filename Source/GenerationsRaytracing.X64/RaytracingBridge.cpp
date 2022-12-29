@@ -144,9 +144,6 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(3))
             .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(4)));
 
-        geometryDescriptorTable = bridge.device.nvrhi->createDescriptorTable(geometryBindlessLayout);
-        textureDescriptorTable = bridge.device.nvrhi->createDescriptorTable(textureBindlessLayout);
-
         linearRepeatSampler = bridge.device.nvrhi->createSampler(nvrhi::SamplerDesc()
             .setAllFilters(true)
             .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat));
@@ -172,6 +169,9 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
         pipeline = bridge.device.nvrhi->createRayTracingPipeline(pipelineDesc);
     }
+
+    geometryDescriptorTable = nullptr;
+    textureDescriptorTable = nullptr;
 
     std::vector<nvrhi::TextureHandle> textures = { bridge.nullTexture };
     std::unordered_map<unsigned int, uint32_t> textureMap = { { 0, 0 } };
@@ -209,6 +209,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         memcpy(materialForGpu.parameters, material.parameters, sizeof(material.parameters));
     }
 
+    textureDescriptorTable = bridge.device.nvrhi->createDescriptorTable(textureBindlessLayout);
     bridge.device.nvrhi->resizeDescriptorTable(textureDescriptorTable, (uint32_t)textures.size(), false);
 
     for (uint32_t i = 0; i < textures.size(); i++)
@@ -236,6 +237,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         }
     }
 
+    geometryDescriptorTable = bridge.device.nvrhi->createDescriptorTable(geometryBindlessLayout);
     bridge.device.nvrhi->resizeDescriptorTable(geometryDescriptorTable, (uint32_t)(geometriesForGpu.size() * 2), false);
 
     uint32_t descriptorIndex = 0;
