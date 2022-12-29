@@ -57,3 +57,18 @@ extern "C" __declspec(dllexport) void Init()
         &startupInfo,
         &processInformation);
 }
+
+#define ENSURE_DLL_NOT_LOADED(x) \
+    if (GetModuleHandle(TEXT(x ".dll")) != nullptr) \
+    { \
+        MessageBox(nullptr, TEXT(x " must be disabled for this mod to function properly."), TEXT("GenerationsRaytracing"), MB_ICONERROR); \
+        terminateProcess(GENERATIONS_RAYTRACING_X64); \
+        exit(-1); \
+    }
+
+extern "C" __declspec(dllexport) void PostInit()
+{
+    ENSURE_DLL_NOT_LOADED("BetterFxPipeline");
+    ENSURE_DLL_NOT_LOADED("GenerationsD3D9Ex");
+    ENSURE_DLL_NOT_LOADED("GenerationsD3D11");
+}
