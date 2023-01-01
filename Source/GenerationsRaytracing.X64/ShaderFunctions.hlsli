@@ -9,6 +9,11 @@ float3 GetPosition(in RayDesc ray, in Payload payload)
     return ray.Origin + ray.Direction * min(payload.T, g_CameraNearFarAspect.y);
 }
 
+float3 GetPreviousPosition(in RayDesc ray, in Payload payload)
+{
+    return mul(float4(GetPosition(ray, payload), 1.0), g_InstanceBuffer[payload.InstanceIndex].Delta).xyz;
+}
+
 float3 GetPosition()
 {
     return WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
@@ -26,6 +31,11 @@ float3 GetPixelPositionAndDepth(float3 position, float4x4 view, float4x4 project
 float3 GetCurrentPixelPositionAndDepth(float3 position)
 {
     return GetPixelPositionAndDepth(position, g_MtxView, g_MtxProjection);
+}
+
+float3 GetPreviousPixelPositionAndDepth(float3 position)
+{
+    return GetPixelPositionAndDepth(position, g_MtxPrevView, g_MtxPrevProjection);
 }
 
 uint InitializeRandom(uint val0, uint val1, uint backoff = 16)

@@ -315,7 +315,8 @@ struct MsgCreateBottomLevelAS
 struct MsgCreateInstance
 {
     DEFINE_MSG_ID;
-    float transform[12];
+    float transform[3][4];
+    float delta[4][4];
     unsigned int bottomLevelAS;
     unsigned int instanceMask;
 };

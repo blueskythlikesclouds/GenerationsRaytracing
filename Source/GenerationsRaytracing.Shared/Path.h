@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <Windows.h>
 #include <string>
 
 inline std::string getDirectoryPath(const std::string& path)
@@ -35,4 +36,11 @@ inline std::string getFileNameWithoutExtension(const std::string& path)
         fileName = fileName.substr(0, index);
 
     return fileName;
+}
+
+inline std::wstring multiByteToWideChar(const char* value)
+{
+    WCHAR wideChar[1024];
+    MultiByteToWideChar(CP_UTF8, 0, value, -1, wideChar, _countof(wideChar));
+    return std::wstring(wideChar);
 }

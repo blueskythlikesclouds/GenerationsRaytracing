@@ -13,6 +13,7 @@ struct Payload
     uint Random;
     uint Depth;
     float T;
+    uint InstanceIndex;
 };
 
 struct Attributes
@@ -48,13 +49,20 @@ struct Geometry
     uint PunchThrough;
 };
 
+struct Instance
+{
+    float4x4 Delta;
+};
+
 RaytracingAccelerationStructure g_BVH : register(t0);
 
 StructuredBuffer<Geometry> g_GeometryBuffer : register(t1);
 StructuredBuffer<Material> g_MaterialBuffer : register(t2);
+StructuredBuffer<Instance> g_InstanceBuffer : register(t3);
 
 RWTexture2D<float4> g_Texture : register(u0);
 RWTexture2D<float> g_Depth : register(u1);
+RWTexture2D<float2> g_MotionVector : register(u2);
 
 SamplerState g_LinearRepeatSampler : register(s0);
 

@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+struct Device;
+struct Upscaler;
 struct Bridge;
 
 struct Geometry
@@ -22,6 +24,11 @@ struct Material
     float parameters[16][4];
 };
 
+struct Instance
+{
+    float delta[4][4];
+};
+
 struct BottomLevelAS
 {
     nvrhi::rt::AccelStructDesc desc;
@@ -32,6 +39,17 @@ struct BottomLevelAS
     BottomLevelAS();
 };
 
+struct RTConstants
+{
+    float prevProj[4][4];
+    float prevView[4][4];
+
+    float jitterX = 0.0f;
+    float jitterY = 0.0f;
+
+    int currentFrame = 0;
+};
+
 struct RaytracingBridge
 {
     nvrhi::ShaderLibraryHandle shaderLibrary;
@@ -40,11 +58,15 @@ struct RaytracingBridge
     nvrhi::BindingLayoutHandle geometryBindlessLayout;
     nvrhi::BindingLayoutHandle textureBindlessLayout;
 
+    RTConstants rtConstants{};
+    nvrhi::BufferHandle rtConstantBuffer;
+
     nvrhi::BufferHandle materialBuffer;
     nvrhi::BufferHandle geometryBuffer;
+    nvrhi::BufferHandle instanceBuffer;
 
-    nvrhi::TextureHandle texture;
-    nvrhi::TextureHandle depth;
+    nvrhi::TextureHandle output;
+    std::unique_ptr<Upscaler> upscaler;
 
     nvrhi::DescriptorTableHandle geometryDescriptorTable;
     nvrhi::DescriptorTableHandle textureDescriptorTable;
@@ -56,9 +78,9 @@ struct RaytracingBridge
 
     std::unordered_map<unsigned int, Material> materials;
     std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
-    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
 
-    float prevProjView[8][4]{};
+    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
+    std::vector<Instance> instances;
 
     nvrhi::SamplerHandle pointClampSampler;
     nvrhi::BindingLayoutHandle copyBindingLayout;
@@ -69,6 +91,9 @@ struct RaytracingBridge
     nvrhi::GraphicsPipelineHandle copyPipeline;
     nvrhi::GraphicsState copyGraphicsState;
     nvrhi::DrawArguments copyDrawArguments;
+
+    RaytracingBridge(const Device& device, const std::string& directoryPath);
+    ~RaytracingBridge();
 
     void procMsgCreateGeometry(Bridge& bridge);
     void procMsgCreateBottomLevelAS(Bridge& bridge);

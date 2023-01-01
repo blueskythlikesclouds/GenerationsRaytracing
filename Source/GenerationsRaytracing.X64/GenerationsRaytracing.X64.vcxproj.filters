@@ -8,6 +8,7 @@
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Format.cpp" />
     <ClCompile Include="RaytracingBridge.cpp" />
+    <ClCompile Include="Upscaler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -18,6 +19,7 @@
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="Hash.h" />
     <ClInclude Include="RaytracingBridge.h" />
+    <ClInclude Include="Upscaler.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />

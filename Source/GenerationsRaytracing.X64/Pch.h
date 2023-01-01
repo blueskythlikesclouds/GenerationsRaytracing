@@ -31,4 +31,6 @@
 
 #include <Helpers.h>
 
+#include <nvsdk_ngx_helpers.h>
+
 using Microsoft::WRL::ComPtr;

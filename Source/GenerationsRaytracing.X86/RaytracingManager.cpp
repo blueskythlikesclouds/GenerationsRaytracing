@@ -230,7 +230,12 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
 
         for (size_t i = 0; i < 3; i++)
             for (size_t j = 0; j < 4; j++)
-                msg->transform[i * 4 + j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
+                msg->transform[i][j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
+
+        memcpy(
+            msg->delta, 
+            ((&singleElement->m_spInstanceInfo->m_Transform)[1] * singleElement->m_spInstanceInfo->m_Transform.inverse()).data(),
+            sizeof(msg->delta));
 
         msg->bottomLevelAS = blasId;
         msg->instanceMask = instanceMask;
@@ -313,7 +318,9 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
         for (size_t i = 0; i < 3; i++)
             for (size_t j = 0; j < 4; j++)
-                msg->transform[i * 4 + j] = (*instance->m_scpTransform)(i, j);
+                msg->transform[i][j] = (*instance->m_scpTransform)(i, j);
+
+        memcpy(msg->delta, hh::math::CMatrix::Identity().data(), sizeof(msg->delta));
 
         msg->bottomLevelAS = blasId;
         msg->instanceMask = INSTANCE_MASK_DEFAULT;

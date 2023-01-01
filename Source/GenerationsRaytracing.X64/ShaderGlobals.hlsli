@@ -57,4 +57,13 @@ cbuffer cbGlobalsPS : register(b1)
     float4 g_ForceAlphaColor : packoffset(c89);
 };
 
+cbuffer cbGlobalsRT : register(b2)
+{
+    row_major float4x4 g_MtxPrevProjection;
+    row_major float4x4 g_MtxPrevView;
+
+    float2 g_PixelJitter;
+    uint g_CurrentFrame;
+};
+
 #endif

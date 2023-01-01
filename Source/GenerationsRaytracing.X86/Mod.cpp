@@ -31,7 +31,7 @@ extern "C" __declspec(dllexport) void Init()
     if (findProcess(GENERATIONS_RAYTRACING_X64))
         return;
 
-    MessageBox(nullptr, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_OK);
+    //MessageBox(nullptr, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_OK);
 #else
     terminateProcess(GENERATIONS_RAYTRACING_X64);
 #endif

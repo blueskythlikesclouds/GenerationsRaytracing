@@ -522,6 +522,7 @@ public static class RaytracingShaderConverter
             stringBuilder.Append("""
                 payload.Color = omParams.oC0.rgb;
                 payload.T = RayTCurrent();
+                payload.InstanceIndex = InstanceIndex();
             }
 
 

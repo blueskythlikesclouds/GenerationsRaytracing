@@ -4,15 +4,23 @@
 #include "File.h"
 #include "Message.h"
 #include "ShaderMapping.h"
+#include "Upscaler.h"
 #include "Utilities.h"
 
-#include "CopyVS.h"
 #include "CopyPS.h"
+#include "CopyVS.h"
 
 BottomLevelAS::BottomLevelAS()
 {
     desc.setBuildFlags(nvrhi::rt::AccelStructBuildFlags::PreferFastTrace);
 }
+
+RaytracingBridge::RaytracingBridge(const Device& device, const std::string& directoryPath)
+    : upscaler(std::make_unique<Upscaler>(device, directoryPath))
+{
+}
+
+RaytracingBridge::~RaytracingBridge() = default;
 
 void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
 {
@@ -77,6 +85,10 @@ void RaytracingBridge::procMsgCreateInstance(Bridge& bridge)
     instanceDesc.instanceMask = msg->instanceMask;
     instanceDesc.bottomLevelAS = blas->second.handle;
     assert(instanceDesc.bottomLevelAS);
+
+    auto& instance = instances.emplace_back();
+    memcpy(instance.delta, msg->delta, sizeof(instance.delta));
+    memcpy(instance.delta, msg->delta, sizeof(instance.delta));
 }
 
 void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)
@@ -103,6 +115,28 @@ static void createUploadBuffer(const Bridge& bridge, const std::vector<T>& vecto
     bridge.device.nvrhi->unmapBuffer(buffer);
 }
 
+// https://github.com/DarioSamo/RT64/blob/main/src/rt64lib/private/rt64_common.h
+static float haltonSequence(int i, int b)
+{
+    float f = 1.0;
+    float r = 0.0;
+
+    while (i > 0)
+    {
+        f = f / float(b);
+        r = r + f * float(i % b);
+        i = i / b;
+    }
+
+    return r;
+}
+
+static void haltonJitter(int frame, int phases, float& jitterX, float& jitterY)
+{
+    jitterX = haltonSequence(frame % phases + 1, 2) - 0.5f;
+    jitterY = haltonSequence(frame % phases + 1, 3) - 0.5f;
+}
+
 void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 {
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgNotifySceneTraversed>();
@@ -125,11 +159,14 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .setVisibility(nvrhi::ShaderType::AllRayTracing)
             .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
             .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1))
+            .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2))
             .addItem(nvrhi::BindingLayoutItem::RayTracingAccelStruct(0))
             .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(1))
             .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(2))
+            .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(3))
             .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
             .addItem(nvrhi::BindingLayoutItem::Texture_UAV(1))
+            .addItem(nvrhi::BindingLayoutItem::Texture_UAV(2))
             .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
         geometryBindlessLayout = bridge.device.nvrhi->createBindlessLayout(nvrhi::BindlessLayoutDesc()
@@ -143,6 +180,12 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .setMaxCapacity(65336)
             .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(3))
             .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(4)));
+
+        rtConstantBuffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
+            .setByteSize(sizeof(RTConstants))
+            .setIsConstantBuffer(true)
+            .setIsVolatile(true)
+            .setMaxVersions(1));
 
         linearRepeatSampler = bridge.device.nvrhi->createSampler(nvrhi::SamplerDesc()
             .setAllFilters(true)
@@ -267,57 +310,47 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     bridge.commandList->buildTopLevelAccelStruct(topLevelAccelStruct, instanceDescs.data(), instanceDescs.size());
 
-    instanceDescs.clear();
-
     createUploadBuffer(bridge, geometriesForGpu, geometryBuffer);
     createUploadBuffer(bridge, materialsForGpu, materialBuffer);
+    createUploadBuffer(bridge, instances, instanceBuffer);
 
-    if (!texture)
+    instanceDescs.clear();
+    instances.clear();
+
+    if (!output)
     {
         auto textureDesc = colorAttachment->getDesc();
-        texture = bridge.device.nvrhi->createTexture(textureDesc
+        output = bridge.device.nvrhi->createTexture(textureDesc
             .setFormat(nvrhi::Format::RGBA32_FLOAT)
             .setIsRenderTarget(false)
             .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
             .setUseClearValue(false)
             .setIsUAV(true));
 
-        depth = bridge.device.nvrhi->createTexture(textureDesc
-            .setFormat(nvrhi::Format::R32_FLOAT));
-    }
-
-    bool changed = false;
-
-    for (size_t i = 0; i < 8; i++)
-    {
-        for (size_t j = 0; j < 4; j++)
-        {
-            changed = abs(prevProjView[i][j] - bridge.vsConstants.c[i][j]) > 0.001f;
-            if (changed)
-                break;
-        }
-
-        if (changed)
-            break;
-    }
-
-    if (changed)
-    {
-        memcpy(prevProjView, bridge.vsConstants.c, sizeof(prevProjView));
-        bridge.commandList->clearTextureFloat(texture, nvrhi::TextureSubresourceSet(), nvrhi::Color(0));
+        upscaler->validate(bridge, output);
     }
 
     bridge.vsConstants.writeBuffer(bridge.commandList, bridge.vsConstantBuffer);
     bridge.psConstants.writeBuffer(bridge.commandList, bridge.psConstantBuffer);
 
+    haltonJitter(rtConstants.currentFrame, 1024, rtConstants.jitterX, rtConstants.jitterY);
+    bridge.commandList->writeBuffer(rtConstantBuffer, &rtConstants, sizeof(rtConstants));
+
+    memcpy(rtConstants.prevProj, bridge.vsConstants.c[0], sizeof(rtConstants.prevProj));
+    memcpy(rtConstants.prevView, bridge.vsConstants.c[4], sizeof(rtConstants.prevView));
+    rtConstants.currentFrame += 1;
+
     auto bindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, bridge.vsConstantBuffer))
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, bridge.psConstantBuffer))
+        .addItem(nvrhi::BindingSetItem::ConstantBuffer(2, rtConstantBuffer))
         .addItem(nvrhi::BindingSetItem::RayTracingAccelStruct(0, topLevelAccelStruct))
         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, geometryBuffer))
         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, materialBuffer))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(0, texture))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(1, depth))
+        .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(3, instanceBuffer))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(0, upscaler->texture))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(1, upscaler->depth))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(2, upscaler->motionVector))
         .addItem(nvrhi::BindingSetItem::Sampler(0, linearRepeatSampler)), bindingLayout);
 
     bridge.commandList->setRayTracingState(nvrhi::rt::State()
@@ -327,8 +360,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         .addBindingSet(textureDescriptorTable));
 
     bridge.commandList->dispatchRays(nvrhi::rt::DispatchRaysArguments()
-        .setWidth(texture->getDesc().width)
-        .setHeight(texture->getDesc().height));
+        .setWidth(upscaler->width)
+        .setHeight(upscaler->height));
 
     if (!copyPipeline)
     {
@@ -343,8 +376,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
         copyBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
-            .addItem(nvrhi::BindingSetItem::Texture_SRV(0, texture))
-            .addItem(nvrhi::BindingSetItem::Texture_SRV(1, depth))
+            .addItem(nvrhi::BindingSetItem::Texture_SRV(0, output))
+            .addItem(nvrhi::BindingSetItem::Texture_SRV(1, upscaler->depth))
             .addItem(nvrhi::BindingSetItem::Sampler(0, pointClampSampler)), copyBindingLayout);
 
         copyVertexShader = bridge.device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), COPY_VS, sizeof(COPY_VS));
@@ -372,12 +405,13 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .setFramebuffer(copyFramebuffer)
             .setViewport(nvrhi::ViewportState()
                 .addViewportAndScissorRect(nvrhi::Viewport(
-                    (float)texture->getDesc().width,
-                    (float)texture->getDesc().height)));
+                    (float)output->getDesc().width,
+                    (float)output->getDesc().height)));
 
         copyDrawArguments.setVertexCount(6);
     }
 
+    upscaler->upscale(bridge, rtConstants.jitterX, rtConstants.jitterY);
     bridge.commandList->setGraphicsState(copyGraphicsState);
     bridge.commandList->draw(copyDrawArguments);
 }

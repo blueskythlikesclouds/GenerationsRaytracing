@@ -5,7 +5,10 @@
 #include "Hash.h"
 #include "Message.h"
 
-Bridge::Bridge(const std::string& directoryPath) : directoryPath(directoryPath)
+Bridge::Bridge(const std::string& directoryPath)
+    : directoryPath(directoryPath)
+    , device()
+    , raytracing(device, directoryPath)
 {
     commandList = device.nvrhi->createCommandList(nvrhi::CommandListParameters());
 
