@@ -1,0 +1,61 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33110.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GenerationsRaytracing.Tool", "GenerationsRaytracing.Tool\GenerationsRaytracing.Tool.csproj", "{3F1937EA-3449-4F9D-A3DB-1A1882620F3C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{27D2B595-8A25-4746-829A-20413D94B907}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Amicitia.IO", "..\Dependencies\Amicitia.IO\src\Amicitia.IO\Amicitia.IO.csproj", "{08E9B8A0-4EDB-4D45-9CC9-1DC6C53E38D5}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X86", "GenerationsRaytracing.X86\GenerationsRaytracing.X86.vcxproj", "{F300F7D5-EE2F-439A-A3B9-C08CA3744009}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X64", "GenerationsRaytracing.X64\GenerationsRaytracing.X64.vcxproj", "{23F4A718-1EE8-44F7-98A8-602E10051EC4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.Shared", "GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems", "{71F0CD88-E769-4407-B43E-17F652ACEBCB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.Dependencies", "GenerationsRaytracing.Dependencies\GenerationsRaytracing.Dependencies.vcxproj", "{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3F1937EA-3449-4F9D-A3DB-1A1882620F3C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3F1937EA-3449-4F9D-A3DB-1A1882620F3C}.Debug|x64.Build.0 = Debug|Any CPU
+		{3F1937EA-3449-4F9D-A3DB-1A1882620F3C}.Release|x64.ActiveCfg = Release|Any CPU
+		{3F1937EA-3449-4F9D-A3DB-1A1882620F3C}.Release|x64.Build.0 = Release|Any CPU
+		{08E9B8A0-4EDB-4D45-9CC9-1DC6C53E38D5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{08E9B8A0-4EDB-4D45-9CC9-1DC6C53E38D5}.Debug|x64.Build.0 = Debug|Any CPU
+		{08E9B8A0-4EDB-4D45-9CC9-1DC6C53E38D5}.Release|x64.ActiveCfg = Release|Any CPU
+		{08E9B8A0-4EDB-4D45-9CC9-1DC6C53E38D5}.Release|x64.Build.0 = Release|Any CPU
+		{F300F7D5-EE2F-439A-A3B9-C08CA3744009}.Debug|x64.ActiveCfg = Debug|Win32
+		{F300F7D5-EE2F-439A-A3B9-C08CA3744009}.Debug|x64.Build.0 = Debug|Win32
+		{F300F7D5-EE2F-439A-A3B9-C08CA3744009}.Release|x64.ActiveCfg = Release|Win32
+		{F300F7D5-EE2F-439A-A3B9-C08CA3744009}.Release|x64.Build.0 = Release|Win32
+		{23F4A718-1EE8-44F7-98A8-602E10051EC4}.Debug|x64.ActiveCfg = Debug|x64
+		{23F4A718-1EE8-44F7-98A8-602E10051EC4}.Debug|x64.Build.0 = Debug|x64
+		{23F4A718-1EE8-44F7-98A8-602E10051EC4}.Release|x64.ActiveCfg = Release|x64
+		{23F4A718-1EE8-44F7-98A8-602E10051EC4}.Release|x64.Build.0 = Release|x64
+		{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}.Debug|x64.ActiveCfg = Debug|x64
+		{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}.Debug|x64.Build.0 = Debug|x64
+		{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}.Release|x64.ActiveCfg = Release|x64
+		{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{08E9B8A0-4EDB-4D45-9CC9-1DC6C53E38D5} = {27D2B595-8A25-4746-829A-20413D94B907}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9FDEA5CC-43E1-4BCC-8DEF-36A8B7A7F146}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems*{23f4a718-1ee8-44f7-98a8-602e10051ec4}*SharedItemsImports = 4
+		GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems*{71f0cd88-e769-4407-b43e-17f652acebcb}*SharedItemsImports = 9
+		GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems*{f300f7d5-ee2f-439a-a3b9-c08ca3744009}*SharedItemsImports = 4
+	EndGlobalSection
+EndGlobal

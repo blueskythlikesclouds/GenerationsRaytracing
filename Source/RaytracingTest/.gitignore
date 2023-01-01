@@ -1,8 +1,0 @@
-ShaderAccumulatePS.h
-ShaderCopyLuminancePS.h
-ShaderCopyPS.h
-ShaderCopyVS.h
-ShaderLerpLuminancePS.h
-ShaderLibrary.hlsl
-ShaderMapping.bin
-ShaderToneMapPS.h

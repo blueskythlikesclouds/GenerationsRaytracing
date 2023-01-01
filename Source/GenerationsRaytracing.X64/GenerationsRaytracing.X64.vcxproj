@@ -35,7 +35,7 @@
     <ClInclude Include="RaytracingBridge.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\RaytracingTest.Dependencies\RaytracingTest.Dependencies.vcxproj">
+    <ProjectReference Include="..\GenerationsRaytracing.Dependencies\GenerationsRaytracing.Dependencies.vcxproj">
       <Project>{1907d42c-e4c4-4b7b-9b9c-f9482f02d24b}</Project>
     </ProjectReference>
   </ItemGroup>
