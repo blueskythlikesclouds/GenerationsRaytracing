@@ -1,6 +1,7 @@
 ﻿using GenerationsRaytracing.Tool.Resources;
 using GenerationsRaytracing.Tool.Shaders.Constants;
 using GenerationsRaytracing.Tool.Shaders.Instructions;
+using Vortice.Dxc;
 
 namespace GenerationsRaytracing.Tool.Shaders;
 
@@ -83,7 +84,7 @@ public class DefaultShaderConverter
         string disassembly;
         {
             ID3DBlob blob;
-            Compiler.Disassemble(function, functionSize, 0x50, null, out blob);
+            Disassembler.Disassemble(function, functionSize, 0x50, null, out blob);
             disassembly = Marshal.PtrToStringAnsi(blob.GetBufferPointer());
         }
 
@@ -467,19 +468,12 @@ public class DefaultShaderConverter
         return Compile(Convert(function, functionSize, out bool isPixelShader), isPixelShader);
     }
 
-    public static unsafe byte[] Compile(string translated, bool isPixelShader)
+    public static byte[] Compile(string translated, bool isPixelShader)
     {
-        ID3DBlob blob, errorBlob;
+        var result = DxcCompiler.Compile(translated, new[] { isPixelShader ? "-T ps_6_0" : "-T vs_6_0" });
 
-        int result = Compiler.Compile(translated, translated.Length, string.Empty, null, null, "main",
-            isPixelShader ? "ps_5_1" : "vs_5_1", 0, 0, out blob, out errorBlob);
-
-        if (result != 0 && errorBlob != null)
-            throw new Exception(Marshal.PtrToStringAnsi(errorBlob.GetBufferPointer()));
-
-        var bytes = new byte[blob.GetBufferSize()];
-        Marshal.Copy(blob.GetBufferPointer(), bytes, 0, blob.GetBufferSize());
-
-        return bytes;
+        return !result.HasOutput(DxcOutKind.Object)
+            ? throw new Exception(result.GetErrors())
+            : result.GetObjectBytecodeArray();
     }
 }

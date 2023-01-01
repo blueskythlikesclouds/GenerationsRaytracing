@@ -18,7 +18,7 @@ public static unsafe class ShaderParser
         string disassembly;
         {
             ID3DBlob blob;
-            Compiler.Disassemble(function, functionSize, 0x50, null, out blob);
+            Disassembler.Disassemble(function, functionSize, 0x50, null, out blob);
             disassembly = Marshal.PtrToStringAnsi(blob.GetBufferPointer());
         }
 

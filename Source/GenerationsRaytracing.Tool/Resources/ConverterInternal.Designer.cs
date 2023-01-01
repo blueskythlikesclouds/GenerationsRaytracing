@@ -36,7 +36,7 @@ namespace GenerationsRaytracing.Tool.Resources {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("RaytracingTest.Tool.Resources.ConverterInternal", typeof(ConverterInternal).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("GenerationsRaytracing.Tool.Resources.ConverterInternal", typeof(ConverterInternal).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
