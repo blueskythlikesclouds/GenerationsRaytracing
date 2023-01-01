@@ -10,7 +10,6 @@ struct Upscaler
 
     uint32_t width = 0;
     uint32_t height = 0;
-    float sharpness = 0.0f;
 
     nvrhi::TextureHandle texture;
     nvrhi::TextureHandle depth;

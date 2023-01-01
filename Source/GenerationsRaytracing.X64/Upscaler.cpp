@@ -35,7 +35,8 @@ void Upscaler::validate(const Bridge& bridge, nvrhi::ITexture* outputTexture)
     if (outputTexture == output)
         return;
 
-    unsigned _;
+    unsigned tmpUnsigned;
+    float tmpFloat;
 
     THROW_IF_FAILED(NGX_DLSS_GET_OPTIMAL_SETTINGS(
         parameters,
@@ -44,11 +45,11 @@ void Upscaler::validate(const Bridge& bridge, nvrhi::ITexture* outputTexture)
         NVSDK_NGX_PerfQuality_Value_MaxPerf,
         &width,
         &height,
-        &_,
-        &_,
-        &_,
-        &_,
-        &sharpness));
+        &tmpUnsigned,
+        &tmpUnsigned,
+        &tmpUnsigned,
+        &tmpUnsigned,
+        &tmpFloat));
 
     assert(width > 0 && height > 0);
 
@@ -60,8 +61,7 @@ void Upscaler::validate(const Bridge& bridge, nvrhi::ITexture* outputTexture)
     params.Feature.InPerfQualityValue = NVSDK_NGX_PerfQuality_Value_MaxPerf;
     params.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
-        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes |
-        NVSDK_NGX_DLSS_Feature_Flags_DoSharpening;
+        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
 
     auto commandList = bridge.device.nvrhi->createCommandList(nvrhi::CommandListParameters()
         .setEnableImmediateExecution(false));
@@ -116,7 +116,6 @@ void Upscaler::upscale(const Bridge& bridge, float jitterX, float jitterY) const
 
     params.Feature.pInColor = texture->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     params.Feature.pInOutput = output->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
-    params.Feature.InSharpness = sharpness;
     params.pInDepth = depth->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     params.pInMotionVectors = motionVector->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     params.InJitterOffsetX = -jitterX;
