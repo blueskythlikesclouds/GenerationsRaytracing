@@ -1,10 +1,10 @@
 ﻿#include "RaytracingBridge.h"
 
 #include "Bridge.h"
+#include "DLSS.h"
 #include "File.h"
 #include "Message.h"
 #include "ShaderMapping.h"
-#include "Upscaler.h"
 #include "Utilities.h"
 
 #include "CopyPS.h"
@@ -16,7 +16,7 @@ BottomLevelAS::BottomLevelAS()
 }
 
 RaytracingBridge::RaytracingBridge(const Device& device, const std::string& directoryPath)
-    : upscaler(std::make_unique<Upscaler>(device, directoryPath))
+    : upscaler(std::make_unique<DLSS>(device, directoryPath))
 {
 }
 
@@ -327,7 +327,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .setUseClearValue(false)
             .setIsUAV(true));
 
-        upscaler->validate(bridge, output);
+        upscaler->validate({ bridge, output });
     }
 
     bridge.vsConstants.writeBuffer(bridge.commandList, bridge.vsConstantBuffer);
@@ -411,7 +411,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         copyDrawArguments.setVertexCount(6);
     }
 
-    upscaler->upscale(bridge, rtConstants.jitterX, rtConstants.jitterY);
+    upscaler->evaluate({ bridge, rtConstants.jitterX, rtConstants.jitterY });
     bridge.commandList->setGraphicsState(copyGraphicsState);
     bridge.commandList->draw(copyDrawArguments);
 }

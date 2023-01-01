@@ -3,11 +3,27 @@
 struct Bridge;
 struct Device;
 
-struct Upscaler
+class Upscaler
 {
-    NVSDK_NGX_Parameter* parameters = nullptr;
-    NVSDK_NGX_Handle* feature = nullptr;
+public:
+    struct ValidationParams
+    {
+        const Bridge& bridge;
+        nvrhi::ITexture* output = nullptr;
+    };
 
+    struct EvaluationParams
+    {
+        const Bridge& bridge;
+        float jitterX = 0.0f;
+        float jitterY = 0.0f;
+    };
+
+protected:
+    virtual void validateImp(const ValidationParams& params) = 0;
+    virtual void evaluateImp(const EvaluationParams& params) const = 0;
+
+public:
     uint32_t width = 0;
     uint32_t height = 0;
 
@@ -16,9 +32,8 @@ struct Upscaler
     nvrhi::TextureHandle motionVector;
     nvrhi::TextureHandle output;
 
-    Upscaler(const Device& device, const std::string& directoryPath);
-    ~Upscaler();
+    virtual ~Upscaler() = default;
 
-    void validate(const Bridge& bridge, nvrhi::ITexture* outputTexture);
-    void upscale(const Bridge& bridge, float jitterX, float jitterY) const;
+    void validate(const ValidationParams& params);
+    void evaluate(const EvaluationParams& params) const;
 };

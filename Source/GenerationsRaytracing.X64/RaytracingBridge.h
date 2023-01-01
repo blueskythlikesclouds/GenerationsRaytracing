@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 struct Device;
-struct Upscaler;
+class Upscaler;
 struct Bridge;
 
 struct Geometry

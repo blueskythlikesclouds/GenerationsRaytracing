@@ -9,6 +9,7 @@
     <ClCompile Include="Format.cpp" />
     <ClCompile Include="RaytracingBridge.cpp" />
     <ClCompile Include="Upscaler.cpp" />
+    <ClCompile Include="DLSS.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -20,6 +21,7 @@
     <ClInclude Include="Hash.h" />
     <ClInclude Include="RaytracingBridge.h" />
     <ClInclude Include="Upscaler.h" />
+    <ClInclude Include="DLSS.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />

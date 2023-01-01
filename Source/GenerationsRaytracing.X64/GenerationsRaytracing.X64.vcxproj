@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Device.cpp" />
+    <ClCompile Include="DLSS.cpp" />
     <ClCompile Include="Upscaler.cpp" />
     <ClCompile Include="Format.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -25,6 +26,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConstantBuffer.h" />
+    <ClInclude Include="DLSS.h" />
     <ClInclude Include="Upscaler.h" />
     <ClInclude Include="Format.h" />
     <ClInclude Include="Hash.h" />
