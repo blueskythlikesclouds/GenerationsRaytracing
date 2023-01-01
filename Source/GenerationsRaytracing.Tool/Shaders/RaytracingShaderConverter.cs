@@ -103,7 +103,7 @@ public static class RaytracingShaderConverter
         }
     }
 
-    private static void WriteConstants(StringBuilder stringBuilder, string outName, Shader shader, ShaderMapping shaderMapping)
+    public static void WriteConstants(StringBuilder stringBuilder, string outName, Shader shader, ShaderMapping shaderMapping)
     {
         foreach (var constant in shader.Constants)
         {
@@ -112,7 +112,7 @@ public static class RaytracingShaderConverter
         }
     }
 
-    private static bool IsOutputColorClamp(Shader shader, Argument argument)
+    public static bool IsOutputColorClamp(Shader shader, Argument argument)
     {
         int register = int.Parse(argument.Token.AsSpan()[1..]);
 
@@ -134,17 +134,15 @@ public static class RaytracingShaderConverter
         return value == "4";
     }
 
-    private static void WriteShaderFunction(StringBuilder stringBuilder, string functionName, Shader shader, ShaderMapping shaderMapping)
+    public static void WriteShaderFunction(StringBuilder stringBuilder, Shader shader)
     {
         string inName = shader.Type == ShaderType.Pixel ? "ps" : "ia";
-        string outName = shader.Type == ShaderType.Pixel ? "om" : "vs";
-
         string inNameUpperCase = inName.ToUpperInvariant();
-        string outNameUpperCase = outName.ToUpperInvariant();
 
         var variableMap = new Dictionary<string, string>();
+        var swizzleMap = new Dictionary<string, int>();
 
-        stringBuilder.AppendFormat("struct {1}_{0}Params\n{{\n", inNameUpperCase, functionName);
+        stringBuilder.AppendFormat("struct {1}_{0}Params\n{{\n", inNameUpperCase, shader.Name);
 
         foreach (var (semantic, name) in shader.InSemantics)
         {
@@ -198,54 +196,48 @@ public static class RaytracingShaderConverter
                 for (int j = 0; j < constant.Size; j++)
                 {
                     string token = $"s{(constant.Register + j)}";
+                    string type = shader.Samplers[token];
                     string name = constant.Name;
 
                     if (j > 0)
                         name += $"{j}";
 
-                    stringBuilder.AppendFormat("\tTexture{0}<float4> {1};\n", shader.Samplers[token], name);
+                    stringBuilder.AppendFormat("\tTexture{0}<float4> {1};\n", type, name);
+
                     variableMap.Add(token, $"{inName}Params.{name}");
+                    swizzleMap.Add(token, type == "2D" ? 2 : 3);
                 }
-            }
-        }
-
-        stringBuilder.AppendLine("};\n");     
-        
-        stringBuilder.AppendFormat("struct {1}_{0}Params\n{{\n", outNameUpperCase, functionName);
-
-        if (shader.Type == ShaderType.Pixel)
-        {
-            stringBuilder.AppendLine("\tfloat4 oC0; // COLOR0");
-            stringBuilder.AppendLine("\tfloat4 oC1; // COLOR1");
-            stringBuilder.AppendLine("\tfloat4 oC2; // COLOR2");
-            stringBuilder.AppendLine("\tfloat4 oC3; // COLOR3");
-            stringBuilder.AppendLine("\tfloat oDepth; // DEPTH");
-
-            variableMap.Add("oC0", $"{outName}Params.oC0");
-            variableMap.Add("oC1", $"{outName}Params.oC1");
-            variableMap.Add("oC2", $"{outName}Params.oC2");
-            variableMap.Add("oC3", $"{outName}Params.oC3");
-            variableMap.Add("oDepth", $"{outName}Params.oDepth");
-        }
-        else
-        {
-            foreach (var (semantic, name) in shader.OutSemantics)
-            {
-                stringBuilder.AppendFormat("\tfloat4 {0}; // {1}\n", name, semantic);
-                variableMap.Add(name, $"{outName}Params.{name}");
             }
         }
 
         stringBuilder.AppendLine("};\n");
 
-        stringBuilder.AppendLine("template<bool AllowTraceRay>");
-        stringBuilder.AppendFormat("void {1}_{0}(inout Payload payload, inout float3 normal, inout {1}_{2}Params {3}Params, inout {1}_{4}Params {5}Params)\n{{\n",
-            shader.Type == ShaderType.Pixel ? "PS" : "VS",
-            functionName,
-            inNameUpperCase,
-            inName,
-            outNameUpperCase,
-            outName);
+        if (shader.Type == ShaderType.Vertex)
+        {
+            stringBuilder.AppendFormat("struct {0}_VSParams\n{{\n", shader.Name);
+
+            foreach (var (semantic, name) in shader.OutSemantics)
+            {
+                stringBuilder.AppendFormat("\tfloat4 {0}; // {1}\n", name, semantic);
+                variableMap.Add(name, $"vsParams.{name}");
+            }
+
+            stringBuilder.AppendLine("};\n");
+
+            stringBuilder.AppendLine("template<bool AllowTraceRay>");
+            stringBuilder.AppendFormat("void {0}_VS(inout Payload payload, inout float3 normal, inout {0}_IAParams iaParams, inout {0}_VSParams vsParams)\n{{\n", shader.Name);
+        }
+        else
+        {
+            variableMap.Add("oC0", "omParams.oC0");
+            variableMap.Add("oC1", "omParams.oC1");
+            variableMap.Add("oC2", "omParams.oC2");
+            variableMap.Add("oC3", "omParams.oC3");
+            variableMap.Add("oDepth", "omParams.oDepth");
+
+            stringBuilder.AppendLine("template<bool AllowTraceRay>");
+            stringBuilder.AppendFormat("void {0}_PS(inout Payload payload, inout float3 normal, inout {0}_PSParams psParams, inout OMParams omParams)\n{{\n", shader.Name);
+        }
 
         if (shader.Definitions.Count > 0)
         {
@@ -307,6 +299,10 @@ public static class RaytracingShaderConverter
                     }
                 }
 
+                if (shader.Type == ShaderType.Pixel && instruction.OpCode.StartsWith("texld") &&
+                    swizzleMap.TryGetValue(instruction.Arguments[2].Token, out int swizzleSize))
+                    instruction.Arguments[1].Swizzle.Resize(swizzleSize);
+
                 foreach (var argument in instruction.Arguments)
                 {
                     if (variableMap.TryGetValue(argument.Token, out string constantName))
@@ -332,7 +328,7 @@ public static class RaytracingShaderConverter
                         {
                             Console.Write(
                                 "Shader uses raytraced constants before dot product with global light: {0}",
-                                functionName);
+                                shader.Name);
 
                             if (tracedGlobalIllumination) Console.Write(", GI");
                             if (tracedReflection) Console.Write(", Reflection");
@@ -416,7 +412,7 @@ public static class RaytracingShaderConverter
 
         if (!seenDotProductWithGlobalLight && (tracedGlobalIllumination || tracedReflection || tracedRefraction))
         {
-            Console.Write("Shader uses raytraced constants despite not using global light: {0}", functionName);
+            Console.Write("Shader uses raytraced constants despite not using global light: {0}", shader.Name);
 
             if (tracedGlobalIllumination) Console.Write(", GI");
             if (tracedReflection) Console.Write(", Reflection");
@@ -428,7 +424,7 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendLine("}\n");
     }
 
-    private static void WriteRaytracingFunction(StringBuilder stringBuilder, string functionName, string shaderType, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    public static void WriteRaytracingFunction(StringBuilder stringBuilder, string functionName, string shaderType, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
         stringBuilder.AppendFormat("[shader(\"{0}\")]\n", shaderType);
         stringBuilder.AppendFormat("void {0}_{1}(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", functionName, shaderType);
@@ -437,7 +433,7 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendLine("\tMaterial material = GetMaterial();");
         stringBuilder.AppendLine("\tGeometry geometry = GetGeometry();");
 
-        stringBuilder.AppendFormat("\t{0}_IAParams iaParams = ({0}_IAParams)0;\n", functionName);
+        stringBuilder.AppendFormat("\t{0}_IAParams iaParams = ({0}_IAParams)0;\n", vertexShader.Name);
 
         foreach (var (semantic, name) in vertexShader.InSemantics)
         {
@@ -477,11 +473,11 @@ public static class RaytracingShaderConverter
 
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
 
-        stringBuilder.AppendFormat("\n\t{0}_VSParams vsParams = ({0}_VSParams)0;\n", functionName);
+        stringBuilder.AppendFormat("\n\t{0}_VSParams vsParams = ({0}_VSParams)0;\n", vertexShader.Name);
 
-        stringBuilder.AppendFormat("\t{0}_VS<{1}>(payload, vertex.Normal, iaParams, vsParams);\n\n", functionName, isClosestHit ? "true" : "false");
+        stringBuilder.AppendFormat("\t{0}_VS<{1}>(payload, vertex.Normal, iaParams, vsParams);\n\n", vertexShader.Name, isClosestHit ? "true" : "false");
 
-        stringBuilder.AppendFormat("\t{0}_PSParams psParams = ({0}_PSParams)0;\n", functionName);
+        stringBuilder.AppendFormat("\t{0}_PSParams psParams = ({0}_PSParams)0;\n", pixelShader.Name);
 
         foreach (var (semantic, name) in pixelShader.InSemantics)
         {
@@ -515,9 +511,9 @@ public static class RaytracingShaderConverter
             }
         }
 
-        stringBuilder.AppendFormat("\n\t{0}_OMParams omParams = ({0}_OMParams)0;\n", functionName);
+        stringBuilder.AppendLine("\n\tOMParams omParams = (OMParams)0;");
 
-        stringBuilder.AppendFormat("\t{0}_PS<{1}>(payload, vertex.Normal, psParams, omParams);\n\n", functionName, isClosestHit ? "true" : "false");
+        stringBuilder.AppendFormat("\t{0}_PS<{1}>(payload, vertex.Normal, psParams, omParams);\n\n", pixelShader.Name, isClosestHit ? "true" : "false");
 
         if (shaderType == "closesthit")
         {
@@ -550,12 +546,9 @@ public static class RaytracingShaderConverter
         }
     }
 
-    public static void WriteAllFunctions(StringBuilder stringBuilder, string functionName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    public static void WriteRaytracingFunctions(StringBuilder stringBuilder, string functionName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
         stringBuilder.AppendFormat("//\n// {0}\n//\n\n", functionName);
-
-        WriteShaderFunction(stringBuilder, functionName, vertexShader, shaderMapping);
-        WriteShaderFunction(stringBuilder, functionName, pixelShader, shaderMapping);
 
         WriteRaytracingFunction(stringBuilder, functionName, "closesthit", vertexShader, pixelShader, shaderMapping);
         WriteRaytracingFunction(stringBuilder, functionName, "anyhit", vertexShader, pixelShader, shaderMapping);
@@ -571,6 +564,14 @@ public static class RaytracingShaderConverter
 
             #include "ShaderLibrary.hlsli"
 
+            struct OMParams
+            {
+                float4 oC0;
+                float4 oC1;
+                float4 oC2;
+                float4 oC3;
+                float4 oDepth;
+            };
 
             """);
 

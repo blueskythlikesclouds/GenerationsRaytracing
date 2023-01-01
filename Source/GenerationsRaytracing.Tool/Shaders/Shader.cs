@@ -16,4 +16,5 @@ public class Shader
 
     public ShaderType Type { get; set; }
     public List<ShaderParameter> Parameters { get; set; }
+    public string Name { get; set; }
 }

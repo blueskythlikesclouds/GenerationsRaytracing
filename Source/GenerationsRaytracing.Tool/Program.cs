@@ -49,35 +49,72 @@ else
     archiveDatabase.Load(Path.Combine(args[0], "shader_r_add.ar.00"));
     
     var stringBuilder = RaytracingShaderConverter.BeginShaderConversion();
-    
-    using var shaderMappingWriter = new BinaryWriter(File.Create(Path.Combine(args[1], "ShaderMapping.bin")));
+
+    var vertexShaders = new Dictionary<string, (Shader Shader, ShaderData ShaderData)>();
+    var pixelShaders = new Dictionary<string, (Shader Shader, ShaderData ShaderData)>();
+    var shaderLists = new List<(string ShaderName, Shader VertexShader, Shader PixelShader, ShaderMapping ShaderMapping)>();
     
     foreach (var (databaseData, shaderListData) in archiveDatabase.GetMany<ShaderListData>("shader-list"))
     {
+        if (databaseData.Name.StartsWith("csd") || 
+            databaseData.Name.Contains("ShadowMap") ||
+            databaseData.Name.Contains("Font") ||
+            databaseData.Name.Contains("RenderBuffer"))
+            continue;
+
         var defaultPixelShaderPermutation = 
             shaderListData.PixelShaderPermutations.First(x => x.Name.Equals("default"));
     
         var noneVertexShaderPermutation =
             defaultPixelShaderPermutation.VertexShaderPermutations.First(x => x.Name.Equals("none"));
-    
-        var (_, vertexShaderData) = archiveDatabase.Get<ShaderData>(noneVertexShaderPermutation.ShaderName + "_ConstTexCoord.vertexshader");
-        var (_, pixelShaderData) = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoLight_NoGI_ConstTexCoord.pixelshader");
-    
-        var vertexShaderCodeData = archiveDatabase.Get(vertexShaderData.CodeName + ".wvu");
-        var pixelShaderCodeData = archiveDatabase.Get(pixelShaderData.CodeName + ".wpu");
-    
-        if (vertexShaderCodeData == null || pixelShaderCodeData == null)
+
+        string vertexShaderName = noneVertexShaderPermutation.ShaderName.Replace('@', '_');
+
+        if (!vertexShaders.TryGetValue(vertexShaderName, out var vertexShader))
         {
-            vertexShaderData = archiveDatabase.Get<ShaderData>(noneVertexShaderPermutation.ShaderName + ".vertexshader").Data;
-            pixelShaderData = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoLight_NoGI.pixelshader").Data;
-    
-            vertexShaderCodeData = archiveDatabase.Get(vertexShaderData.CodeName + ".wvu");
-            pixelShaderCodeData = archiveDatabase.Get(pixelShaderData.CodeName + ".wpu");
+            vertexShader.ShaderData = archiveDatabase.Get<ShaderData>(noneVertexShaderPermutation.ShaderName + "_ConstTexCoord.vertexshader").Data;
+            var vertexShaderCodeData = archiveDatabase.Get(vertexShader.ShaderData.CodeName + ".wvu");
+
+            if (vertexShaderCodeData == null)
+            {
+                vertexShader.ShaderData = archiveDatabase.Get<ShaderData>(noneVertexShaderPermutation.ShaderName + ".vertexshader").Data;
+                vertexShaderCodeData = archiveDatabase.Get(vertexShader.ShaderData.CodeName + ".wvu");
+            }
+
+            vertexShader.Shader = ShaderParser.Parse(vertexShaderCodeData.Data);
+            vertexShader.Shader.Name = vertexShaderName;
+
+            vertexShaders.Add(vertexShader.Shader.Name, vertexShader);
+
+            foreach (var constant in vertexShader.Shader.Constants.Where(x => x.Type == ConstantType.Float4))
+                vertexConstants[constant.Name] = constant.Register;
         }
-    
+
+        string pixelShaderName = defaultPixelShaderPermutation.ShaderName.Replace('@', '_');
+
+        if (!pixelShaders.TryGetValue(pixelShaderName, out var pixelShader))
+        {
+            pixelShader.ShaderData = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoLight_NoGI_ConstTexCoord.pixelshader").Data;
+            var pixelShaderCodeData = archiveDatabase.Get(pixelShader.ShaderData.CodeName + ".wpu");
+
+            if (pixelShaderCodeData == null)
+            {
+                pixelShader.ShaderData = archiveDatabase.Get<ShaderData>(defaultPixelShaderPermutation.ShaderName + "_NoLight_NoGI.pixelshader").Data;
+                pixelShaderCodeData = archiveDatabase.Get(pixelShader.ShaderData.CodeName + ".wpu");
+            }
+
+            pixelShader.Shader = ShaderParser.Parse(pixelShaderCodeData.Data);
+            pixelShader.Shader.Name = pixelShaderName;
+
+            pixelShaders.Add(pixelShader.Shader.Name, pixelShader);
+
+            foreach (var constant in pixelShader.Shader.Constants.Where(x => x.Type == ConstantType.Float4))
+                pixelConstants[constant.Name] = constant.Register;
+        }
+
         var shaderMapping = new ShaderMapping();
-    
-        foreach (string parameterName in vertexShaderData.ParameterNames)
+
+        foreach (string parameterName in vertexShader.ShaderData.ParameterNames)
         {
             var (_, parameterData) = archiveDatabase.Get<ShaderParameterData>(parameterName + ".vsparam");
             if (parameterName == "global")
@@ -93,8 +130,8 @@ else
                 shaderMapping.Float4VertexShaderParameters.AddRange(parameterData.Vectors);
             }
         }
-    
-        foreach (string parameterName in pixelShaderData.ParameterNames)
+
+        foreach (string parameterName in pixelShader.ShaderData.ParameterNames)
         {
             var (_, parameterData) = archiveDatabase.Get<ShaderParameterData>(parameterName + ".psparam");
             if (parameterName == "global")
@@ -111,44 +148,37 @@ else
                 shaderMapping.SamplerParameters.AddRange(parameterData.Samplers);
             }
         }
-    
-        var vertexShader = ShaderParser.Parse(vertexShaderCodeData.Data);
-        var pixelShader = ShaderParser.Parse(pixelShaderCodeData.Data);
 
-        foreach (var constant in vertexShader.Constants.Where(x => x.Type == ConstantType.Float4))
-            vertexConstants[constant.Name] = constant.Register;  
-        
-        foreach (var constant in pixelShader.Constants.Where(x => x.Type == ConstantType.Float4))
-            pixelConstants[constant.Name] = constant.Register;
+        shaderLists.Add((Path.GetFileNameWithoutExtension(databaseData.Name), vertexShader.Shader, pixelShader.Shader, shaderMapping));
+    }
+
+    foreach (var (_, vertexShader) in vertexShaders)
+        RaytracingShaderConverter.WriteShaderFunction(stringBuilder, vertexShader.Shader);  
     
-        string shaderName = Path.GetFileNameWithoutExtension(databaseData.Name);
+    foreach (var (_, pixelShader) in pixelShaders)
+        RaytracingShaderConverter.WriteShaderFunction(stringBuilder, pixelShader.Shader);
+
+    using var shaderMappingWriter = new BinaryWriter(File.Create(Path.Combine(args[1], "ShaderMapping.bin")));
+
+    foreach (var (shaderName, vertexShader, pixelShader, shaderMapping) in shaderLists)
+    {
         string raytracingFunctionName = shaderName.Replace('[', '_').Replace(']', '_');
-        RaytracingShaderConverter.WriteAllFunctions(stringBuilder, raytracingFunctionName, vertexShader, pixelShader, shaderMapping);
-    
-        foreach (var (name, index) in shaderMapping.Float4Indices.OrderBy(x => x.Value)) 
-            stringBuilder.AppendFormat("// {0}: {1}\n", name, index);
-    
-        stringBuilder.AppendLine();
-    
-        foreach (var (parameter, index) in shaderMapping.SamplerIndices.OrderBy(x => x.Value))
-            stringBuilder.AppendFormat("// {0}: {1}\n", parameter.Name, index);
-    
-        stringBuilder.AppendLine();
-    
+        RaytracingShaderConverter.WriteRaytracingFunctions(stringBuilder, raytracingFunctionName, vertexShader, pixelShader, shaderMapping);
+
         shaderMappingWriter.Write(shaderName);
         shaderMappingWriter.Write(raytracingFunctionName + "_closesthit");
         shaderMappingWriter.Write(raytracingFunctionName + "_anyhit");
-        shaderMappingWriter.Write(shaderMapping.Float4Indices.Count);
-    
-        foreach (var (name, _) in shaderMapping.Float4Indices.OrderBy(x => x.Value)) 
+        shaderMappingWriter.Write((byte)shaderMapping.Float4Indices.Count);
+
+        foreach (var (name, _) in shaderMapping.Float4Indices.OrderBy(x => x.Value))
             shaderMappingWriter.Write(name);
-    
-        shaderMappingWriter.Write(shaderMapping.SamplerIndices.Count);
-    
+
+        shaderMappingWriter.Write((byte)shaderMapping.SamplerIndices.Count);
+
         foreach (var (parameter, _) in shaderMapping.SamplerIndices.OrderBy(x => x.Value))
             shaderMappingWriter.Write(parameter.Name);
     }
-    
+
     File.WriteAllText(Path.Combine(args[1], "ShaderLibrary.hlsl"), stringBuilder.ToString());
 
     foreach (var (name, register) in vertexConstants.OrderBy(x => x.Value))

@@ -18,9 +18,9 @@ static std::string readString(FILE* file)
     return str;
 }
 
-static uint32_t readUint32(FILE* file)
+static uint32_t readUint8(FILE* file)
 {
-    uint32_t value = 0;
+    uint8_t value = 0;
     fread(&value, sizeof(value), 1, file);
     return value;
 }
@@ -57,13 +57,13 @@ struct ShaderMapping
             shader.closestHit = readString(file);
             shader.anyHit = readString(file);
 
-            const uint32_t parameterCount = readUint32(file);
+            const uint32_t parameterCount = readUint8(file);
 
             shader.parameters.reserve(parameterCount);
             for (size_t i = 0; i < parameterCount; i++)
                 shader.parameters.push_back(readString(file));
 
-            const uint32_t textureCount = readUint32(file);
+            const uint32_t textureCount = readUint8(file);
 
             shader.textures.reserve(textureCount);
             for (size_t i = 0; i < textureCount; i++)
