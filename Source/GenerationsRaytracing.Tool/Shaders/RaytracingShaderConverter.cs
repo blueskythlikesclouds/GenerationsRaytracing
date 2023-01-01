@@ -41,6 +41,10 @@ public static class RaytracingShaderConverter
             stringBuilder.AppendFormat("\t{0}.{1}[1] = float4(0, 1, 0, 0);\n", outName, constant.Name);
             stringBuilder.AppendFormat("\t{0}.{1}[2] = float4(0, 0, 1, 0);\n", outName, constant.Name);
         }
+        else if (constant.Name.Contains("sampEnv") || constant.Name.Contains("sampRef"))
+        {
+            stringBuilder.Append(";");
+        }
         else if (constant.Size <= 1)
         {
             stringBuilder.AppendFormat("\t{0}.{1} = ", outName, constant.Name);
@@ -152,7 +156,7 @@ public static class RaytracingShaderConverter
         {
             char token = 'c';
 
-            if (constant.Type == ConstantType.Sampler && constant.Name.StartsWith("g_"))
+            if (constant.Type == ConstantType.Sampler && (constant.Name.StartsWith("g_") || constant.Name.Contains("sampEnv") || constant.Name.Contains("sampRef")))
             {
                 constant.Type = ConstantType.Float4;
                 token = 's';
@@ -341,8 +345,8 @@ public static class RaytracingShaderConverter
 
                 if (shader.Type == ShaderType.Pixel &&
                     instruction.Arguments.Length == 3 &&
-                    instruction.Arguments[2].Token.Contains(".g_") &&
-                    instruction.Arguments[2].Token.Contains("Sampler"))
+                    ((instruction.Arguments[2].Token.Contains(".g_") && instruction.Arguments[2].Token.Contains("Sampler")) || 
+                     instruction.Arguments[2].Token.Contains("sampEnv") || instruction.Arguments[2].Token.Contains("sampRef")))
                 {
                     instruction.OpCode = "mov";
                     instruction.Arguments[1]  = instruction.Arguments[2];
@@ -373,7 +377,7 @@ public static class RaytracingShaderConverter
                             argument.Token = "float4(globalIllumination, 1.0)";
                         }
                     }
-                    else if (argument.Token.Contains("g_ReflectionMap"))
+                    else if (argument.Token.Contains("g_ReflectionMap") || argument.Token.Contains("sampEnv") || argument.Token.Contains("sampRef"))
                     {
                         if (!tracedReflection)
                         {
