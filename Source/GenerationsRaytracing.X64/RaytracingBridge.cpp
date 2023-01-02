@@ -329,6 +329,9 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     {
         for (auto& [blasId, blas] : instanceInfo)
         {
+            if (blas.geometries.empty())
+                continue;
+
             blas.index = (uint32_t)geometriesForGpu.size();
 
             for (size_t i = 0; i < blas.geometries.size(); i++)
