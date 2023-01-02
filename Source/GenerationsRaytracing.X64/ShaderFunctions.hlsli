@@ -85,7 +85,7 @@ float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNormal)
 
 float3 TraceGlobalIllumination(inout Payload payload, float3 normal)
 {
-    if (payload.Depth >= 4)
+    if (payload.Depth >= 3)
         return 0;
 
     RayDesc ray;
@@ -106,7 +106,7 @@ float3 TraceGlobalIllumination(inout Payload payload, float3 normal)
 
 float3 TraceReflection(inout Payload payload, float3 normal)
 {
-    if (payload.Depth >= 2)
+    if (payload.Depth >= 1)
         return 0;
 
     RayDesc ray;
@@ -127,7 +127,7 @@ float3 TraceReflection(inout Payload payload, float3 normal)
 
 float3 TraceRefraction(inout Payload payload, float3 normal)
 {
-    if (payload.Depth >= 2)
+    if (payload.Depth >= 1)
         return 0;
 
     RayDesc ray;

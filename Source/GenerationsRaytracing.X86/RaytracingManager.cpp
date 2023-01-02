@@ -195,7 +195,7 @@ static size_t createBottomLevelAS(T& model)
         for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
         {
             for (const auto& mesh : specialMeshGroup)
-                createGeometry(result.id, *mesh, false, false);
+                createGeometry(result.id, *mesh, true, false);
         }
     }
 
