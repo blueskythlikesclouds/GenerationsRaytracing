@@ -7,6 +7,7 @@ MessageSender::MessageSender()
     : cpuEvent(TEXT(EVENT_NAME_CPU), FALSE), gpuEvent(TEXT(EVENT_NAME_GPU), TRUE)
 {
     memoryMappedFileBuffer = memoryMappedFile.map();
+    buffer.reserve(MEMORY_MAPPED_FILE_SIZE);
 }
 
 MessageSender::~MessageSender()
@@ -30,12 +31,6 @@ void* MessageSender::start(size_t msgSize, size_t dataSize)
 
     if (buffer.size() + size > MEMORY_MAPPED_FILE_SIZE)
         commitAllMessages();
-
-    if (buffer.size() + size > buffer.capacity())
-    {
-        while (messagesInProgress)
-            ;
-    }
 
     const size_t position = buffer.size();
     buffer.resize(buffer.size() + size);
