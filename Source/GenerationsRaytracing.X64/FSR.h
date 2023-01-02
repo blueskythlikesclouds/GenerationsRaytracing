@@ -16,5 +16,6 @@ public:
     FSR(const Device& device);
     ~FSR();
 
+    void getJitterOffset(size_t currentFrame, float& jitterX, float& jitterY) override;
     uint32_t getJitterPhaseCount() override;
 };

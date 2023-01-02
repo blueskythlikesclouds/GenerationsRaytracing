@@ -3,6 +3,14 @@
 struct Bridge;
 struct Device;
 
+enum class QualityMode
+{
+    Quality,
+    Balanced,
+    Performance,
+    UltraPerformance
+};
+
 class Upscaler
 {
 public:
@@ -25,6 +33,7 @@ protected:
     virtual void evaluateImp(const EvaluationParams& params) = 0;
 
 public:
+    QualityMode qualityMode{};
     uint32_t width = 0;
     uint32_t height = 0;
 
@@ -48,12 +57,11 @@ public:
 
     nvrhi::TextureHandle output;
 
+    Upscaler();
     virtual ~Upscaler() = default;
 
-    virtual uint32_t getJitterPhaseCount()
-    {
-        return 64;
-    }
+    virtual void getJitterOffset(size_t currentFrame, float& jitterX, float& jitterY);
+    virtual uint32_t getJitterPhaseCount();
 
     void validate(const ValidationParams& params);
     void evaluate(const EvaluationParams& params);

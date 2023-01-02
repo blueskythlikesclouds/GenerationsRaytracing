@@ -19,6 +19,44 @@ nvrhi::ITexture* Upscaler::PingPongTexture::getPrevious(size_t frameIndex) const
     return (frameIndex & 1) == 0 ? pong : ping;
 }
 
+Upscaler::Upscaler()
+{
+    const INIReader reader("GenerationsRaytracing.ini");
+    qualityMode = (QualityMode)reader.GetInteger("Mod", "QualityMode", 0);
+}
+
+// https://github.com/DarioSamo/RT64/blob/main/src/rt64lib/private/rt64_common.h
+static float haltonSequence(int i, int b)
+{
+    float f = 1.0;
+    float r = 0.0;
+
+    while (i > 0)
+    {
+        f = f / float(b);
+        r = r + f * float(i % b);
+        i = i / b;
+    }
+
+    return r;
+}
+
+static void haltonJitter(int frame, int phases, float& jitterX, float& jitterY)
+{
+    jitterX = haltonSequence(frame % phases + 1, 2) - 0.5f;
+    jitterY = haltonSequence(frame % phases + 1, 3) - 0.5f;
+}
+
+void Upscaler::getJitterOffset(size_t currentFrame, float& jitterX, float& jitterY)
+{
+    haltonJitter((int)currentFrame, getJitterPhaseCount(), jitterX, jitterY);
+}
+
+uint32_t Upscaler::getJitterPhaseCount()
+{
+    return 64;
+}
+
 void Upscaler::validate(const ValidationParams& params)
 {
     if (params.output == output)

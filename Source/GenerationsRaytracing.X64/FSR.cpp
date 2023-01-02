@@ -21,7 +21,9 @@ void FSR::validateImp(const ValidationParams& params)
         &height, 
         params.output->getDesc().width, 
         params.output->getDesc().height,
-        FFX_FSR2_QUALITY_MODE_BALANCED));
+        qualityMode == QualityMode::Quality ? FFX_FSR2_QUALITY_MODE_QUALITY :
+        qualityMode == QualityMode::Balanced ? FFX_FSR2_QUALITY_MODE_BALANCED :
+        qualityMode == QualityMode::Performance ? FFX_FSR2_QUALITY_MODE_PERFORMANCE : FFX_FSR2_QUALITY_MODE_ULTRA_PERFORMANCE));
 
     contextDesc.flags = FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE | FFX_FSR2_ENABLE_AUTO_EXPOSURE;
     contextDesc.maxRenderSize.width = width;
@@ -60,7 +62,12 @@ FSR::~FSR()
     ffxFsr2ContextDestroy(&context);
 }
 
-FSR::FSR(const Device& device)
+void FSR::getJitterOffset(size_t currentFrame, float& jitterX, float& jitterY)
+{
+    ffxFsr2GetJitterOffset(&jitterX, &jitterY, (int32_t)currentFrame, (int32_t)getJitterPhaseCount());
+}
+
+FSR::FSR(const Device& device) : Upscaler()
 {
     const size_t scratchBufferSize = ffxFsr2GetScratchMemorySizeDX12();
     scratchBuffer = std::make_unique<uint8_t[]>(scratchBufferSize);

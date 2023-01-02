@@ -12,7 +12,7 @@ void RayGeneration()
     Payload payload = (Payload)0;
     payload.Random = InitializeRandom(index.x + index.y * dimensions.x, g_CurrentFrame);
 
-    float2 ndc = (index + g_PixelJitter + 0.5) / dimensions * 2.0 - 1.0;
+    float2 ndc = (index - g_PixelJitter + 0.5) / dimensions * 2.0 - 1.0;
 
     RayDesc ray;
     ray.Origin = g_EyePosition.xyz;

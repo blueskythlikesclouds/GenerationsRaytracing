@@ -24,7 +24,10 @@ void DLSS::validateImp(const ValidationParams& params)
         parameters,
         params.output->getDesc().width,
         params.output->getDesc().height,
-        NVSDK_NGX_PerfQuality_Value_MaxPerf,
+        qualityMode == QualityMode::Quality ? NVSDK_NGX_PerfQuality_Value_MaxQuality :
+        qualityMode == QualityMode::Balanced ? NVSDK_NGX_PerfQuality_Value_Balanced :
+        qualityMode == QualityMode::Performance ? NVSDK_NGX_PerfQuality_Value_MaxPerf :
+        qualityMode == QualityMode::UltraPerformance ? NVSDK_NGX_PerfQuality_Value_UltraPerformance : NVSDK_NGX_PerfQuality_Value_UltraQuality,
         &width,
         &height,
         &tmpUnsigned,
@@ -40,7 +43,6 @@ void DLSS::validateImp(const ValidationParams& params)
     dlssParams.Feature.InHeight = height;
     dlssParams.Feature.InTargetWidth = params.output->getDesc().width;
     dlssParams.Feature.InTargetHeight = params.output->getDesc().height;
-    dlssParams.Feature.InPerfQualityValue = NVSDK_NGX_PerfQuality_Value_MaxPerf;
     dlssParams.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
         NVSDK_NGX_DLSS_Feature_Flags_MVLowRes |
@@ -73,8 +75,8 @@ void DLSS::evaluateImp(const EvaluationParams& params)
     dlssParams.Feature.pInOutput = output->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     dlssParams.pInDepth = depth.getCurrent(params.currentFrame)->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     dlssParams.pInMotionVectors = motionVector->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
-    dlssParams.InJitterOffsetX = -params.jitterX;
-    dlssParams.InJitterOffsetY = -params.jitterY;
+    dlssParams.InJitterOffsetX = params.jitterX;
+    dlssParams.InJitterOffsetY = params.jitterY;
     dlssParams.InRenderSubrectDimensions.Width = width;
     dlssParams.InRenderSubrectDimensions.Height = height;
 
@@ -82,7 +84,7 @@ void DLSS::evaluateImp(const EvaluationParams& params)
     params.bridge.commandList->clearState();
 }
 
-DLSS::DLSS(const Device& device, const std::string& directoryPath)
+DLSS::DLSS(const Device& device, const std::string& directoryPath) : Upscaler()
 {
     constexpr char APPLICATION_ID[8] = "GensRT";
 
