@@ -93,19 +93,27 @@ void RaytracingBridge::procMsgCreateBottomLevelAS(Bridge& bridge)
 
     auto& blas = bottomLevelAccelStructs[msg->bottomLevelAS][msg->instanceInfo];
 
-    blas.handle = bridge.device.nvrhi->createAccelStruct(blas.desc
-        .setBuildFlags(msg->matrixNum > 0 ? nvrhi::rt::AccelStructBuildFlags::PreferFastBuild : nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
-
-    if (msg->matrixNum > 0)
+    if (!blas.geometries.empty())
     {
-        blas.matrixBuffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
-            .setByteSize(msg->matrixNum * 64)
-            .setStructStride(64)
-            .setCpuAccess(nvrhi::CpuAccessMode::Write));
+        blas.handle = bridge.device.nvrhi->createAccelStruct(blas.desc
+            .setBuildFlags(msg->matrixNum > 0 ? nvrhi::rt::AccelStructBuildFlags::PreferFastBuild : nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
 
-        void* memory = bridge.device.nvrhi->mapBuffer(blas.matrixBuffer, nvrhi::CpuAccessMode::Write);
-        memcpy(memory, data, msg->matrixNum * 64);
-        bridge.device.nvrhi->unmapBuffer(blas.matrixBuffer);
+        if (msg->matrixNum > 0)
+        {
+            blas.matrixBuffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
+                .setByteSize(msg->matrixNum * 64)
+                .setStructStride(64)
+                .setCpuAccess(nvrhi::CpuAccessMode::Write));
+
+            void* memory = bridge.device.nvrhi->mapBuffer(blas.matrixBuffer, nvrhi::CpuAccessMode::Write);
+            memcpy(memory, data, msg->matrixNum * 64);
+            bridge.device.nvrhi->unmapBuffer(blas.matrixBuffer);
+        }
+    }
+    else
+    {
+        blas.handle = nullptr;
+        blas.built = false;
     }
 }
 
@@ -330,53 +338,59 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         for (auto& [blasId, blas] : instanceInfo)
         {
             if (blas.geometries.empty())
-                continue;
-
-            blas.index = (uint32_t)geometriesForGpu.size();
-
-            for (size_t i = 0; i < blas.geometries.size(); i++)
             {
-                auto& geometry = blas.geometries[i];
-                auto& geometryForGpu = geometriesForGpu.emplace_back(geometry);
-                geometryForGpu.material = materialMap[geometry.material];
-
-                shaderTable->addHitGroup(materials[geometry.material].shader);
-
-                auto& skinnedGeometry = blas.skinnedGeometries[i];
-
-                if (!blas.built && skinnedGeometry.nodeIndices)
-                {
-                    auto& vertexBuffer = blas.desc.bottomLevelGeometries[i].geometryData.triangles.vertexBuffer;
-
-                    if (!skinnedGeometry.buffer)
-                    {
-                        auto desc = vertexBuffer->getDesc();
-                        skinnedGeometry.buffer = bridge.device.nvrhi->createBuffer(desc.setCanHaveUAVs(true));
-                    }
-
-                    bridge.commandList->writeBuffer(skinningConstantBuffer, &geometry, sizeof(Geometry));
-
-                    auto skinningBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
-                        .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, skinningConstantBuffer))
-                        .addItem(nvrhi::BindingSetItem::RawBuffer_SRV(0, vertexBuffer))
-                        .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(1, skinnedGeometry.nodeIndices))
-                        .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, blas.matrixBuffer))
-                        .addItem(nvrhi::BindingSetItem::RawBuffer_UAV(0, skinnedGeometry.buffer)), skinningBindingLayout);
-
-                    bridge.commandList->setComputeState(nvrhi::ComputeState()
-                        .setPipeline(skinningPipeline)
-                        .addBindingSet(skinningBindingSet));
-
-                    bridge.commandList->dispatch((geometry.vertexCount + 63) & ~63);
-
-                    vertexBuffer = skinnedGeometry.buffer;
-                }
+                blas.handle = nullptr;
+                blas.built = false;
             }
-
-            if (!blas.built)
+            else
             {
-                nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, blas.handle, blas.desc);
-                blas.built = true;
+
+                blas.index = (uint32_t)geometriesForGpu.size();
+
+                for (size_t i = 0; i < blas.geometries.size(); i++)
+                {
+                    auto& geometry = blas.geometries[i];
+                    auto& geometryForGpu = geometriesForGpu.emplace_back(geometry);
+                    geometryForGpu.material = materialMap[geometry.material];
+
+                    shaderTable->addHitGroup(materials[geometry.material].shader);
+
+                    auto& skinnedGeometry = blas.skinnedGeometries[i];
+
+                    if (!blas.built && skinnedGeometry.nodeIndices)
+                    {
+                        auto& vertexBuffer = blas.desc.bottomLevelGeometries[i].geometryData.triangles.vertexBuffer;
+
+                        if (!skinnedGeometry.buffer)
+                        {
+                            auto desc = vertexBuffer->getDesc();
+                            skinnedGeometry.buffer = bridge.device.nvrhi->createBuffer(desc.setCanHaveUAVs(true));
+                        }
+
+                        bridge.commandList->writeBuffer(skinningConstantBuffer, &geometry, sizeof(Geometry));
+
+                        auto skinningBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+                            .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, skinningConstantBuffer))
+                            .addItem(nvrhi::BindingSetItem::RawBuffer_SRV(0, vertexBuffer))
+                            .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(1, skinnedGeometry.nodeIndices))
+                            .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, blas.matrixBuffer))
+                            .addItem(nvrhi::BindingSetItem::RawBuffer_UAV(0, skinnedGeometry.buffer)), skinningBindingLayout);
+
+                        bridge.commandList->setComputeState(nvrhi::ComputeState()
+                            .setPipeline(skinningPipeline)
+                            .addBindingSet(skinningBindingSet));
+
+                        bridge.commandList->dispatch((geometry.vertexCount + 63) & ~63);
+
+                        vertexBuffer = skinnedGeometry.buffer;
+                    }
+                }
+
+                if (!blas.built)
+                {
+                    nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, blas.handle, blas.desc);
+                    blas.built = true;
+                }
             }
         }
     }
