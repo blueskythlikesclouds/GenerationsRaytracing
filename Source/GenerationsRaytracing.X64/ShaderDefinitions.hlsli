@@ -7,13 +7,17 @@
 
 #define Z_MAX 10000.0f
 
+#define HAS_GLOBAL_ILLUMINATION (1 << 0)
+#define HAS_REFLECTION          (1 << 1)
+#define HAS_REFRACTION          (1 << 2)
+
 struct Payload
 {
     float3 Color;
-    uint Random;
-    uint Depth;
     float T;
-    uint InstanceIndex;
+
+    uint Depth;
+    uint Random;
 };
 
 struct Attributes
@@ -23,6 +27,7 @@ struct Attributes
 
 struct Vertex
 {
+    float3 Position;
     float3 Normal;
     float3 Tangent;
     float3 Binormal;
@@ -34,6 +39,24 @@ struct Material
 {
     uint TextureIndices[16];
     float4 Parameters[16];
+};
+
+struct ShaderParams
+{
+    Vertex Vertex;
+    Material Material;
+
+    float3 GlobalIllumination;
+    float Shadow;
+    float3 Reflection;
+    float3 Refraction;
+
+    float4x4 Projection;
+    float4x4 InvProjection;
+    float4x4 View;
+
+    float3 EyePosition;
+    float3 EyeDirection;
 };
 
 struct Geometry
@@ -56,13 +79,20 @@ struct Instance
 
 RaytracingAccelerationStructure g_BVH : register(t0);
 
-StructuredBuffer<Geometry> g_GeometryBuffer : register(t1);
-StructuredBuffer<Material> g_MaterialBuffer : register(t2);
+StructuredBuffer<Material> g_MaterialBuffer : register(t1);
+StructuredBuffer<Geometry> g_GeometryBuffer : register(t2);
 StructuredBuffer<Instance> g_InstanceBuffer : register(t3);
 
-RWTexture2D<float4> g_Texture : register(u0);
+RWTexture2D<float4> g_Color : register(u0);
 RWTexture2D<float> g_Depth : register(u1);
 RWTexture2D<float2> g_MotionVector : register(u2);
+
+RWTexture2D<float3> g_Normal : register(u3);
+RWTexture2D<float4> g_GlobalIllumination : register(u4);
+
+Texture2D<float> g_PrevDepth : register(t4);
+Texture2D<float3> g_PrevNormal : register(t5);
+Texture2D<float4> g_PrevGlobalIllumination : register(t6);
 
 SamplerState g_LinearRepeatSampler : register(s0);
 
@@ -103,6 +133,8 @@ Vertex GetVertex(in Attributes attributes)
     uint3 colorOffsets = offsets + geometry.ColorOffset;
 
     Vertex vertex;
+
+    vertex.Position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
 
     vertex.Normal =
         asfloat(vertexBuffer.Load3(normalOffsets.x)) * uv.x +

@@ -9,6 +9,7 @@
 
 #include "CopyPS.h"
 #include "CopyVS.h"
+#include "FSR.h"
 
 BottomLevelAS::BottomLevelAS()
 {
@@ -16,7 +17,7 @@ BottomLevelAS::BottomLevelAS()
 }
 
 RaytracingBridge::RaytracingBridge(const Device& device, const std::string& directoryPath)
-    : upscaler(std::make_unique<DLSS>(device, directoryPath))
+    : upscaler(std::make_unique<FSR>(device))
 {
 }
 
@@ -161,12 +162,21 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1))
             .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2))
             .addItem(nvrhi::BindingLayoutItem::RayTracingAccelStruct(0))
+
             .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(1))
             .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(2))
             .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(3))
+
             .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
             .addItem(nvrhi::BindingLayoutItem::Texture_UAV(1))
             .addItem(nvrhi::BindingLayoutItem::Texture_UAV(2))
+            .addItem(nvrhi::BindingLayoutItem::Texture_UAV(3))
+            .addItem(nvrhi::BindingLayoutItem::Texture_UAV(4))
+
+            .addItem(nvrhi::BindingLayoutItem::Texture_SRV(4))
+            .addItem(nvrhi::BindingLayoutItem::Texture_SRV(5))
+            .addItem(nvrhi::BindingLayoutItem::Texture_SRV(6))
+
             .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
         geometryBindlessLayout = bridge.device.nvrhi->createBindlessLayout(nvrhi::BindlessLayoutDesc()
@@ -196,7 +206,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addBindingLayout(geometryBindlessLayout)
             .addBindingLayout(textureBindlessLayout)
             .addShader({ "", shaderLibrary->getShader("RayGeneration", nvrhi::ShaderType::RayGeneration) })
-            .addShader({ "", shaderLibrary->getShader("Miss", nvrhi::ShaderType::Miss) })
+            .addShader({ "", shaderLibrary->getShader("MissSkyBox", nvrhi::ShaderType::Miss) })
+            .addShader({ "", shaderLibrary->getShader("MissEnvironmentColor", nvrhi::ShaderType::Miss) })
             .setMaxRecursionDepth(8)
             .setMaxPayloadSize(32);
 
@@ -263,7 +274,9 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     shaderTable = pipeline->createShaderTable();
     shaderTable->setRayGenerationShader("RayGeneration");
-    shaderTable->addMissShader("Miss");
+
+    shaderTable->addMissShader("MissSkyBox");
+    shaderTable->addMissShader("MissEnvironmentColor");
 
     for (auto& [id, blas] : bottomLevelAccelStructs)
     {
@@ -321,7 +334,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     {
         auto textureDesc = colorAttachment->getDesc();
         output = bridge.device.nvrhi->createTexture(textureDesc
-            .setFormat(nvrhi::Format::RGBA32_FLOAT)
+            .setFormat(nvrhi::Format::RGBA16_FLOAT)
             .setIsRenderTarget(false)
             .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
             .setUseClearValue(false)
@@ -333,24 +346,32 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     bridge.vsConstants.writeBuffer(bridge.commandList, bridge.vsConstantBuffer);
     bridge.psConstants.writeBuffer(bridge.commandList, bridge.psConstantBuffer);
 
-    haltonJitter(rtConstants.currentFrame, 1024, rtConstants.jitterX, rtConstants.jitterY);
+    haltonJitter(rtConstants.currentFrame, upscaler->getJitterPhaseCount(), rtConstants.jitterX, rtConstants.jitterY);
     bridge.commandList->writeBuffer(rtConstantBuffer, &rtConstants, sizeof(rtConstants));
 
     memcpy(rtConstants.prevProj, bridge.vsConstants.c[0], sizeof(rtConstants.prevProj));
     memcpy(rtConstants.prevView, bridge.vsConstants.c[4], sizeof(rtConstants.prevView));
-    rtConstants.currentFrame += 1;
 
     auto bindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, bridge.vsConstantBuffer))
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, bridge.psConstantBuffer))
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(2, rtConstantBuffer))
+
         .addItem(nvrhi::BindingSetItem::RayTracingAccelStruct(0, topLevelAccelStruct))
-        .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, geometryBuffer))
-        .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, materialBuffer))
+        .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, materialBuffer))
+        .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, geometryBuffer))
         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(3, instanceBuffer))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(0, upscaler->texture))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(1, upscaler->depth))
+
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(0, upscaler->color))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(1, upscaler->depth.getCurrent(rtConstants.currentFrame)))
         .addItem(nvrhi::BindingSetItem::Texture_UAV(2, upscaler->motionVector))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(3, upscaler->normal.getCurrent(rtConstants.currentFrame)))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(4, upscaler->globalIllumination.getCurrent(rtConstants.currentFrame)))
+
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(4, upscaler->depth.getPrevious(rtConstants.currentFrame)))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(5, upscaler->normal.getPrevious(rtConstants.currentFrame)))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(6, upscaler->globalIllumination.getPrevious(rtConstants.currentFrame)))
+
         .addItem(nvrhi::BindingSetItem::Sampler(0, linearRepeatSampler)), bindingLayout);
 
     bridge.commandList->setRayTracingState(nvrhi::rt::State()
@@ -375,11 +396,6 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addItem(nvrhi::BindingLayoutItem::Texture_SRV(1))
             .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
-        copyBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
-            .addItem(nvrhi::BindingSetItem::Texture_SRV(0, output))
-            .addItem(nvrhi::BindingSetItem::Texture_SRV(1, upscaler->depth))
-            .addItem(nvrhi::BindingSetItem::Sampler(0, pointClampSampler)), copyBindingLayout);
-
         copyVertexShader = bridge.device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), COPY_VS, sizeof(COPY_VS));
         copyPixelShader = bridge.device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Pixel), COPY_PS, sizeof(COPY_PS));
 
@@ -399,19 +415,26 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
                     .setCullNone()))
             .addBindingLayout(copyBindingLayout), copyFramebuffer);
 
-        copyGraphicsState
-            .setPipeline(copyPipeline)
-            .addBindingSet(copyBindingSet)
-            .setFramebuffer(copyFramebuffer)
-            .setViewport(nvrhi::ViewportState()
-                .addViewportAndScissorRect(nvrhi::Viewport(
-                    (float)output->getDesc().width,
-                    (float)output->getDesc().height)));
-
         copyDrawArguments.setVertexCount(6);
     }
 
-    upscaler->evaluate({ bridge, rtConstants.jitterX, rtConstants.jitterY });
-    bridge.commandList->setGraphicsState(copyGraphicsState);
+    upscaler->evaluate({ bridge, (size_t)rtConstants.currentFrame, rtConstants.jitterX, rtConstants.jitterY });
+
+    auto copyBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, output))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(1, upscaler->depth.getCurrent(rtConstants.currentFrame)))
+        .addItem(nvrhi::BindingSetItem::Sampler(0, pointClampSampler)), copyBindingLayout);;
+
+    bridge.commandList->setGraphicsState(nvrhi::GraphicsState()
+        .setPipeline(copyPipeline)
+        .addBindingSet(copyBindingSet)
+        .setFramebuffer(copyFramebuffer)
+        .setViewport(nvrhi::ViewportState()
+            .addViewportAndScissorRect(nvrhi::Viewport(
+                (float)output->getDesc().width,
+                (float)output->getDesc().height))));
+
     bridge.commandList->draw(copyDrawArguments);
+
+    rtConstants.currentFrame += 1;
 }

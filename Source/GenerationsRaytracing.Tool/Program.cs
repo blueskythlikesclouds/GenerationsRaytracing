@@ -59,7 +59,8 @@ else
         if (databaseData.Name.StartsWith("csd") || 
             databaseData.Name.Contains("ShadowMap") ||
             databaseData.Name.Contains("Font") ||
-            databaseData.Name.Contains("RenderBuffer"))
+            databaseData.Name.Contains("RenderBuffer") ||
+            databaseData.Name.Contains("GrassInstance"))
             continue;
 
         var defaultPixelShaderPermutation = 

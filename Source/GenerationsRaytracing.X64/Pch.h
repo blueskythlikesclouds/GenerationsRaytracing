@@ -32,5 +32,7 @@
 #include <Helpers.h>
 
 #include <nvsdk_ngx_helpers.h>
+#include <ffx_fsr2.h>
+#include <dx12/ffx_fsr2_dx12.h>
 
 using Microsoft::WRL::ComPtr;

@@ -9,7 +9,7 @@ protected:
     NVSDK_NGX_Handle* feature = nullptr;
 
     void validateImp(const ValidationParams& params) override;
-    void evaluateImp(const EvaluationParams& params) const override;
+    void evaluateImp(const EvaluationParams& params) override;
 
 public:
     DLSS(const Device& device, const std::string& directoryPath);

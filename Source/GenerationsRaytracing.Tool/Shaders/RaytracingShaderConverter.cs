@@ -9,24 +9,24 @@ public static class RaytracingShaderConverter
     {
         if (constant.Name == "g_MtxProjection")
         {
-            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxProjection[0];\n", outName);
-            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxProjection[1];\n", outName);
-            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxProjection[2];\n", outName);
-            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[3] = payload.Depth > 0 ? float4(0, 0, 0, 1) : g_MtxProjection[3];\n", outName);
-        }      
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[0] = params.Projection[0];\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[1] = params.Projection[1];\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[2] = params.Projection[2];\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxProjection[3] = params.Projection[3];\n", outName);
+        }
         else if (constant.Name == "g_MtxInvProjection")
         {
-            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxInvProjection[0];\n", outName);
-            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxInvProjection[1];\n", outName);
-            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxInvProjection[2];\n", outName);
-            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[3] = payload.Depth > 0 ? float4(0, 0, -Z_MAX, 1) : g_MtxInvProjection[3];\n", outName);
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[0] = params.InvProjection[0];\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[1] = params.InvProjection[1];\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[2] = params.InvProjection[2];\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxInvProjection[3] = params.InvProjection[3];\n", outName);
         }
         else if (constant.Name == "g_MtxView")
         {
-            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxView[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxView[0];\n", outName);
-            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxView[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxView[1];\n", outName);
-            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxView[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxView[2];\n", outName);
-            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxView[3] = payload.Depth > 0 ? float4(0, 0, -RayTCurrent(), 1) : g_MtxView[3];\n", outName);
+            if (constant.Size >= 1) stringBuilder.AppendFormat("\t{0}.g_MtxView[0] = params.View[0];\n", outName);
+            if (constant.Size >= 2) stringBuilder.AppendFormat("\t{0}.g_MtxView[1] = params.View[1];\n", outName);
+            if (constant.Size >= 3) stringBuilder.AppendFormat("\t{0}.g_MtxView[2] = params.View[2];\n", outName);
+            if (constant.Size >= 4) stringBuilder.AppendFormat("\t{0}.g_MtxView[3] = params.View[3];\n", outName);
         }
         else if (constant.Size == 4)
         {
@@ -35,15 +35,10 @@ public static class RaytracingShaderConverter
             stringBuilder.AppendFormat("\t{0}.{1}[2] = float4(0, 0, 1, 0);\n", outName, constant.Name);
             stringBuilder.AppendFormat("\t{0}.{1}[3] = float4(0, 0, 0, 1);\n", outName, constant.Name);
         }
-        else if (constant.Name == "g_MtxPalette")
+        else if (constant.Name == "g_aLightField")
         {
-            stringBuilder.AppendFormat("\t{0}.{1}[0] = float4(1, 0, 0, 0);\n", outName, constant.Name);
-            stringBuilder.AppendFormat("\t{0}.{1}[1] = float4(0, 1, 0, 0);\n", outName, constant.Name);
-            stringBuilder.AppendFormat("\t{0}.{1}[2] = float4(0, 0, 1, 0);\n", outName, constant.Name);
-        }
-        else if (constant.Name.Contains("sampEnv") || constant.Name.Contains("sampRef"))
-        {
-            stringBuilder.Append(";");
+            for (int i = 0; i < constant.Size; i++)
+                stringBuilder.AppendFormat("\t{0}.g_aLightField[{1}] = float4(params.GlobalIllumination, params.Shadow);\n", outName, i);
         }
         else if (constant.Size <= 1)
         {
@@ -51,22 +46,22 @@ public static class RaytracingShaderConverter
 
             if (shaderMapping.CanMapFloat4(constant.Register, shaderType))
             {
-                stringBuilder.AppendFormat("material.Parameters[{0}]", shaderMapping.MapFloat4(constant.Register, shaderType));
+                stringBuilder.AppendFormat("params.Material.Parameters[{0}]", shaderMapping.MapFloat4(constant.Register, shaderType));
+            }
+            else if (constant.Name.Contains("sampEnv") || constant.Name.Contains("sampRef"))
+            {
+                stringBuilder.Append("float4(params.Reflection, 1.0)");
             }
             else
             {
                 switch (constant.Name)
                 {
                     case "g_EyePosition":
-                        stringBuilder.Append("payload.Depth > 0 ? float4(WorldRayOrigin(), 0) : g_EyePosition");
+                        stringBuilder.Append("float4(params.EyePosition, 0)");
                         break;
 
                     case "g_EyeDirection":
-                        stringBuilder.Append("payload.Depth > 0 ? float4(WorldRayDirection(), 0) : g_EyeDirection");
-                        break;
-
-                    case "g_ViewportSize":
-                        stringBuilder.Append("float4(DispatchRaysDimensions().xy, 1.0 / (float2)DispatchRaysDimensions().xy)");
+                        stringBuilder.Append("float4(params.EyeDirection, 0)");
                         break;
 
                     case "mrgGIAtlasParam":
@@ -83,12 +78,17 @@ public static class RaytracingShaderConverter
                         stringBuilder.Append("1");
                         break;
 
-                    case "mrgTexcoordOffset":
-                    case "mrgTexcoordIndex":
-                    case "g_aLightField":
                     case "g_FramebufferSampler":
+                        stringBuilder.Append("float4(params.Refraction, 1.0)");
+                        break;
+
                     case "g_ReflectionMapSampler":
                     case "g_ReflectionMapSampler2":
+                        stringBuilder.Append("float4(params.Reflection, 1.0)");
+                        break;
+
+                    case "mrgTexcoordOffset":
+                    case "mrgTexcoordIndex":
                     case "g_ShadowMapParams":
                         stringBuilder.Append("0");
                         break;
@@ -224,8 +224,7 @@ public static class RaytracingShaderConverter
 
             stringBuilder.AppendLine("};\n");
 
-            stringBuilder.AppendLine("template<bool AllowTraceRay>");
-            stringBuilder.AppendFormat("void {0}_VS(inout Payload payload, inout float3 normal, inout {0}_IAParams iaParams, inout {0}_VSParams vsParams)\n{{\n", shader.Name);
+            stringBuilder.AppendFormat("void {0}_VS(inout {0}_IAParams iaParams, inout {0}_VSParams vsParams)\n{{\n", shader.Name);
         }
         else
         {
@@ -235,8 +234,7 @@ public static class RaytracingShaderConverter
             variableMap.Add("oC3", "omParams.oC3");
             variableMap.Add("oDepth", "omParams.oDepth");
 
-            stringBuilder.AppendLine("template<bool AllowTraceRay>");
-            stringBuilder.AppendFormat("void {0}_PS(inout Payload payload, inout float3 normal, inout {0}_PSParams psParams, inout OMParams omParams)\n{{\n", shader.Name);
+            stringBuilder.AppendFormat("void {0}_PS(inout {0}_PSParams psParams, inout OMParams omParams, inout float3 normal)\n{{\n", shader.Name);
         }
 
         if (shader.Definitions.Count > 0)
@@ -274,12 +272,7 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendLine();
 
         int indent = 1;
-
         bool seenDotProductWithGlobalLight = false;
-        bool tracedGlobalIllumination = false;
-        bool tracedShadow = false;
-        bool tracedRefraction = false;
-        bool tracedReflection = false;
 
         foreach (var instruction in shader.Instructions)
         {
@@ -316,26 +309,14 @@ public static class RaytracingShaderConverter
                 {
                     var globalLightArgument = instruction.Arguments.FirstOrDefault(x => x.Token.Contains("mrgGlobalLight_Direction"));
 
-                    if (globalLightArgument != null)
+                    if (globalLightArgument != null && !seenDotProductWithGlobalLight)
                     {
-                        if (!seenDotProductWithGlobalLight)
-                        {
-                            stringBuilder.AppendFormat("\tnormal = ({0}).xyz;\n", instruction.Arguments[1] == globalLightArgument ? instruction.Arguments[2] : instruction.Arguments[1]);
-                            seenDotProductWithGlobalLight = true;
-                        }
+                        stringBuilder.AppendFormat("\tnormal = ({0}).xyz;\n",
+                            instruction.Arguments[1] == globalLightArgument
+                                ? instruction.Arguments[2]
+                                : instruction.Arguments[1]);
 
-                        if (tracedGlobalIllumination || tracedReflection || tracedRefraction)
-                        {
-                            Console.Write(
-                                "Shader uses raytraced constants before dot product with global light: {0}",
-                                shader.Name);
-
-                            if (tracedGlobalIllumination) Console.Write(", GI");
-                            if (tracedReflection) Console.Write(", Reflection");
-                            if (tracedRefraction) Console.Write(", Refraction");
-
-                            Console.WriteLine();
-                        }
+                        seenDotProductWithGlobalLight = true;
                     }
                 }
 
@@ -346,53 +327,6 @@ public static class RaytracingShaderConverter
                 {
                     instruction.OpCode = "mov";
                     instruction.Arguments[1]  = instruction.Arguments[2];
-                }
-
-                foreach (var argument in instruction.Arguments)
-                {
-                    if (argument.Token.Contains("g_aLightField"))
-                    {
-                        if (argument.Swizzle.GetSwizzle(0) == Swizzle.W)
-                        {
-                            if (!tracedShadow)
-                            {
-                                stringBuilder.AppendLine("\tfloat shadow = AllowTraceRay ? TraceShadow(payload.Random) : 1;");
-                                tracedShadow = true;
-                            }
-
-                            argument.Token = "(shadow.xxxx)";
-                        }
-                        else
-                        {
-                            if (!tracedGlobalIllumination)
-                            {
-                                stringBuilder.AppendLine("\tfloat3 globalIllumination = AllowTraceRay ? TraceGlobalIllumination(payload, normal) : 0;");
-                                tracedGlobalIllumination = true;
-                            }
-
-                            argument.Token = "float4(globalIllumination, 1.0)";
-                        }
-                    }
-                    else if (argument.Token.Contains("g_ReflectionMap") || argument.Token.Contains("sampEnv") || argument.Token.Contains("sampRef"))
-                    {
-                        if (!tracedReflection)
-                        {
-                            stringBuilder.AppendLine("\tfloat3 reflection = AllowTraceRay ? TraceReflection(payload, normal) : 0;");
-                            tracedReflection = true;
-                        }
-
-                        argument.Token = "float4(reflection, 1.0)";
-                    }
-                    else if (argument.Token.Contains("g_FramebufferSampler"))
-                    {
-                        if (!tracedRefraction)
-                        {
-                            stringBuilder.AppendLine("\tfloat3 refraction = AllowTraceRay ? TraceRefraction(payload, normal) : 0;");
-                            tracedRefraction = true;
-                        }
-
-                        argument.Token = "float4(refraction, 1.0)";
-                    }
                 }
             }
 
@@ -410,28 +344,12 @@ public static class RaytracingShaderConverter
             if (instrLine.Contains('{')) ++indent;
         }
 
-        if (!seenDotProductWithGlobalLight && (tracedGlobalIllumination || tracedReflection || tracedRefraction))
-        {
-            Console.Write("Shader uses raytraced constants despite not using global light: {0}", shader.Name);
-
-            if (tracedGlobalIllumination) Console.Write(", GI");
-            if (tracedReflection) Console.Write(", Reflection");
-            if (tracedRefraction) Console.Write(", Refraction");
-
-            Console.WriteLine();
-        }
-
         stringBuilder.AppendLine("}\n");
     }
 
-    public static void WriteRaytracingFunction(StringBuilder stringBuilder, string functionName, string shaderType, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    public static void WriteRaytracingFunction(StringBuilder stringBuilder, string shaderName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
-        stringBuilder.AppendFormat("[shader(\"{0}\")]\n", shaderType);
-        stringBuilder.AppendFormat("void {0}_{1}(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", functionName, shaderType);
-
-        stringBuilder.AppendLine("\tVertex vertex = GetVertex(attributes);");
-        stringBuilder.AppendLine("\tMaterial material = GetMaterial();");
-        stringBuilder.AppendLine("\tGeometry geometry = GetGeometry();");
+        stringBuilder.AppendFormat("OMParams {0}(in ShaderParams params, inout float3 normal)\n{{\n", shaderName);
 
         stringBuilder.AppendFormat("\t{0}_IAParams iaParams = ({0}_IAParams)0;\n", vertexShader.Name);
 
@@ -440,19 +358,19 @@ public static class RaytracingShaderConverter
             switch (semantic)
             {
                 case "POSITION":
-                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(GetPosition(), 1.0);\n", name);
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(params.Vertex.Position, 1.0);\n", name);
                     break;
 
                 case "NORMAL":
-                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(vertex.Normal, 0.0);\n", name);
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(params.Vertex.Normal, 0.0);\n", name);
                     break;
 
                 case "TANGENT":
-                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(vertex.Tangent, 0.0);\n", name);
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(params.Vertex.Tangent, 0.0);\n", name);
                     break;
 
                 case "BINORMAL":
-                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(vertex.Binormal, 0.0);\n", name);
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(params.Vertex.Binormal, 0.0);\n", name);
                     break;
 
                 case "TEXCOORD":
@@ -460,22 +378,20 @@ public static class RaytracingShaderConverter
                 case "TEXCOORD1":
                 case "TEXCOORD2":
                 case "TEXCOORD3":
-                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(vertex.TexCoord, 0.0, 0.0);\n", name);
+                    stringBuilder.AppendFormat("\tiaParams.{0} = float4(params.Vertex.TexCoord, 0.0, 0.0);\n", name);
                     break;
 
                 case "COLOR":
-                    stringBuilder.AppendFormat("\tiaParams.{0} = vertex.Color;\n", name);
+                    stringBuilder.AppendFormat("\tiaParams.{0} = params.Vertex.Color;\n", name);
                     break;
             }
         }
-
-        bool isClosestHit = shaderType == "closesthit";
 
         WriteConstants(stringBuilder, "iaParams", vertexShader, shaderMapping);
 
         stringBuilder.AppendFormat("\n\t{0}_VSParams vsParams = ({0}_VSParams)0;\n", vertexShader.Name);
 
-        stringBuilder.AppendFormat("\t{0}_VS<{1}>(payload, vertex.Normal, iaParams, vsParams);\n\n", vertexShader.Name, isClosestHit ? "true" : "false");
+        stringBuilder.AppendFormat("\t{0}_VS(iaParams, vsParams);\n\n", vertexShader.Name);
 
         stringBuilder.AppendFormat("\t{0}_PSParams psParams = ({0}_PSParams)0;\n", pixelShader.Name);
 
@@ -504,7 +420,7 @@ public static class RaytracingShaderConverter
                 if (i > 0)
                     name += $"{i}";
 
-                stringBuilder.AppendFormat("\tpsParams.{0} = g_BindlessTexture{1}[NonUniformResourceIndex(material.TextureIndices[{2}])];\n",
+                stringBuilder.AppendFormat("\tpsParams.{0} = g_BindlessTexture{1}[NonUniformResourceIndex(params.Material.TextureIndices[{2}])];\n",
                     name,
                     pixelShader.Samplers[token],
                     shaderMapping.CanMapSampler(register) ? shaderMapping.MapSampler(register) : 0);
@@ -513,45 +429,90 @@ public static class RaytracingShaderConverter
 
         stringBuilder.AppendLine("\n\tOMParams omParams = (OMParams)0;");
 
-        stringBuilder.AppendFormat("\t{0}_PS<{1}>(payload, vertex.Normal, psParams, omParams);\n\n", pixelShader.Name, isClosestHit ? "true" : "false");
-
-        if (shaderType == "closesthit")
-        {
-            stringBuilder.Append("""
-                payload.Color = omParams.oC0.rgb;
-                payload.T = RayTCurrent();
-                payload.InstanceIndex = InstanceIndex();
-            }
-
-
-            """);
-        }
-        else if (shaderType == "anyhit")
-        {
-            stringBuilder.Append(""" 
-                if (geometry.PunchThrough != 0)
-                {
-                    if (omParams.oC0.w < 0.5)
-                        IgnoreHit();
-                }
-                else 
-                {
-                    if (omParams.oC0.w < NextRandom(payload.Random))
-                        IgnoreHit();
-                }
-            }
-
-
-            """);
-        }
+        stringBuilder.AppendFormat("\t{0}_PS(psParams, omParams, normal);\n\treturn omParams;\n}}\n\n", pixelShader.Name);
     }
 
-    public static void WriteRaytracingFunctions(StringBuilder stringBuilder, string functionName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    public static void WriteRaytracingFunctions(StringBuilder stringBuilder, string shaderName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
-        stringBuilder.AppendFormat("//\n// {0}\n//\n\n", functionName);
+        WriteRaytracingFunction(stringBuilder, shaderName, vertexShader, pixelShader, shaderMapping);
 
-        WriteRaytracingFunction(stringBuilder, functionName, "closesthit", vertexShader, pixelShader, shaderMapping);
-        WriteRaytracingFunction(stringBuilder, functionName, "anyhit", vertexShader, pixelShader, shaderMapping);
+        bool hasGlobalIllumination = vertexShader.Constants.Any(x => x.Name == "g_aLightField") ||
+                                     pixelShader.Constants.Any(x => x.Name == "g_aLightField");
+
+        bool hasReflection = pixelShader.Constants.Any(x =>
+            x.Name.StartsWith("g_ReflectionMap") ||
+            x.Name.Contains("sampEnv") ||
+            x.Name.Contains("sampRef"));
+
+        bool hasRefraction = pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler");
+
+        //
+        // Closest hit
+        //
+        stringBuilder.AppendLine("[shader(\"closesthit\")]");
+        stringBuilder.AppendFormat("void {0}_closesthit(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", shaderName);
+
+        stringBuilder.AppendLine("\tShaderParams params = (ShaderParams)0;");
+        stringBuilder.AppendLine("\tparams.Vertex = GetVertex(attributes);");
+        stringBuilder.AppendLine("\tparams.Material = GetMaterial();\n");
+
+        stringBuilder.Append("""
+                params.Projection[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxProjection[0];
+                params.Projection[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxProjection[1];
+                params.Projection[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxProjection[2];
+                params.Projection[3] = payload.Depth > 0 ? float4(0, 0, 0, 1) : g_MtxProjection[3];
+                params.InvProjection[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxInvProjection[0];
+                params.InvProjection[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxInvProjection[1];
+                params.InvProjection[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxInvProjection[2];
+                params.InvProjection[3] = payload.Depth > 0 ? float4(0, 0, -Z_MAX, 1) : g_MtxInvProjection[3];
+                params.View[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxView[0];
+                params.View[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxView[1];
+                params.View[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxView[2];
+                params.View[3] = payload.Depth > 0 ? float4(0, 0, -RayTCurrent(), 1) : g_MtxView[3];
+                params.EyePosition = payload.Depth > 0 ? WorldRayOrigin() : g_EyePosition.xyz;
+                params.EyeDirection = payload.Depth > 0 ? WorldRayDirection() : g_EyeDirection.xyz;
+
+
+            """);
+
+        stringBuilder.AppendLine("\tfloat3 normal = params.Vertex.Normal;");
+        stringBuilder.AppendFormat("\t{0}(params, normal);\n", shaderName);
+
+        if (hasGlobalIllumination)
+        {
+            stringBuilder.AppendLine("\n\tparams.GlobalIllumination = TraceGlobalIlluminationWithReProjection(payload, params.Vertex.Position, normal);");
+            stringBuilder.AppendLine("\tparams.Shadow = dot(normal, -mrgGlobalLight_Direction.xyz) > 0.0 ? TraceShadow(payload.Random) : 0.0;");
+        }
+
+        if (hasReflection)
+            stringBuilder.AppendLine("\n\tparams.Reflection = TraceReflection(payload, normal);");  
+        
+        if (hasRefraction)
+            stringBuilder.AppendLine("\n\tparams.Refraction = TraceRefraction(payload, normal);");
+
+        stringBuilder.AppendFormat("\n\tpayload.Color = {0}(params, normal).oC0.rgb;\n", shaderName);
+        stringBuilder.AppendLine("\tpayload.T = RayTCurrent();");
+        stringBuilder.AppendLine("}\n");
+
+        // 
+        // Any hit
+        //
+        stringBuilder.AppendLine("[shader(\"anyhit\")]");
+        stringBuilder.AppendFormat("void {0}_anyhit(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", shaderName);
+
+        stringBuilder.AppendLine("\tShaderParams params = (ShaderParams)0;");
+        stringBuilder.AppendLine("\tparams.Vertex = GetVertex(attributes);");
+        stringBuilder.AppendLine("\tparams.Material = GetMaterial();");
+
+        stringBuilder.AppendFormat("\tOMParams omParams = {0}(params, params.Vertex.Normal);\n\n", shaderName);
+
+        stringBuilder.Append("""   
+                if (omParams.oC0.w < (GetGeometry().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
+                    IgnoreHit();
+            }
+
+
+            """);
     }
 
     public static StringBuilder BeginShaderConversion()
@@ -572,6 +533,7 @@ public static class RaytracingShaderConverter
                 float4 oC3;
                 float4 oDepth;
             };
+
 
             """);
 

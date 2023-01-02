@@ -84,12 +84,10 @@ struct RaytracingBridge
 
     nvrhi::SamplerHandle pointClampSampler;
     nvrhi::BindingLayoutHandle copyBindingLayout;
-    nvrhi::BindingSetHandle copyBindingSet;
     nvrhi::ShaderHandle copyVertexShader;
     nvrhi::ShaderHandle copyPixelShader;
     nvrhi::FramebufferHandle copyFramebuffer;
     nvrhi::GraphicsPipelineHandle copyPipeline;
-    nvrhi::GraphicsState copyGraphicsState;
     nvrhi::DrawArguments copyDrawArguments;
 
     RaytracingBridge(const Device& device, const std::string& directoryPath);

@@ -14,6 +14,7 @@
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DLSS.cpp" />
+    <ClCompile Include="FSR.cpp" />
     <ClCompile Include="Upscaler.cpp" />
     <ClCompile Include="Format.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -27,6 +28,7 @@
   <ItemGroup>
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="DLSS.h" />
+    <ClInclude Include="FSR.h" />
     <ClInclude Include="Upscaler.h" />
     <ClInclude Include="Format.h" />
     <ClInclude Include="Hash.h" />
@@ -162,13 +164,13 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies\DLSS\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies\DLSS\include;..\..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;detours.lib;syelog.lib;nvsdk_ngx_d_dbg.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\Dependencies\Detours\lib\x64;..\..\Dependencies\DLSS\lib\Windows_x86_64\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;detours.lib;syelog.lib;nvsdk_ngx_d_dbg.lib;%(AdditionalDependencies);ffx_fsr2_api_dx12_x64d.lib;ffx_fsr2_api_x64d.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\Dependencies\Detours\lib\x64;..\..\Dependencies\DLSS\lib\Windows_x86_64\x86_64;..\..\Dependencies\FidelityFX-FSR2\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -183,7 +185,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies\DLSS\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies\DLSS\include;..\..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <StringPooling>true</StringPooling>
       <AdditionalOptions>/Ob3 %(AdditionalOptions)</AdditionalOptions>
@@ -196,8 +198,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;detours.lib;syelog.lib;nvsdk_ngx_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\Dependencies\Detours\lib\x64;..\..\Dependencies\DLSS\lib\Windows_x86_64\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;detours.lib;syelog.lib;nvsdk_ngx_d.lib;%(AdditionalDependencies);ffx_fsr2_api_dx12_x64.lib;ffx_fsr2_api_x64.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\Dependencies\Detours\lib\x64;..\..\Dependencies\DLSS\lib\Windows_x86_64\x86_64;..\..\Dependencies\FidelityFX-FSR2\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

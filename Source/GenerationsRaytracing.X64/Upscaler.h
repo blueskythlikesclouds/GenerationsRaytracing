@@ -15,25 +15,46 @@ public:
     struct EvaluationParams
     {
         const Bridge& bridge;
+        size_t currentFrame = 0;
         float jitterX = 0.0f;
         float jitterY = 0.0f;
     };
 
 protected:
     virtual void validateImp(const ValidationParams& params) = 0;
-    virtual void evaluateImp(const EvaluationParams& params) const = 0;
+    virtual void evaluateImp(const EvaluationParams& params) = 0;
 
 public:
     uint32_t width = 0;
     uint32_t height = 0;
 
-    nvrhi::TextureHandle texture;
-    nvrhi::TextureHandle depth;
+    struct PingPongTexture
+    {
+        nvrhi::TextureHandle ping;
+        nvrhi::TextureHandle pong;
+
+        void create(nvrhi::IDevice* device, const nvrhi::TextureDesc& desc);
+
+        nvrhi::ITexture* getCurrent(size_t frameIndex) const;
+        nvrhi::ITexture* getPrevious(size_t frameIndex) const;
+    };
+
+    nvrhi::TextureHandle color;
+    PingPongTexture depth;
     nvrhi::TextureHandle motionVector;
+
+    PingPongTexture normal;
+    PingPongTexture globalIllumination;
+
     nvrhi::TextureHandle output;
 
     virtual ~Upscaler() = default;
 
+    virtual uint32_t getJitterPhaseCount()
+    {
+        return 64;
+    }
+
     void validate(const ValidationParams& params);
-    void evaluate(const EvaluationParams& params) const;
+    void evaluate(const EvaluationParams& params);
 };

@@ -43,7 +43,8 @@ void DLSS::validateImp(const ValidationParams& params)
     dlssParams.Feature.InPerfQualityValue = NVSDK_NGX_PerfQuality_Value_MaxPerf;
     dlssParams.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
-        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
+        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes |
+        NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
 
     auto commandList = params.bridge.device.nvrhi->createCommandList(nvrhi::CommandListParameters()
         .setEnableImmediateExecution(false));
@@ -64,13 +65,13 @@ void DLSS::validateImp(const ValidationParams& params)
     params.bridge.device.nvrhi->waitForIdle();
 }
 
-void DLSS::evaluateImp(const EvaluationParams& params) const
+void DLSS::evaluateImp(const EvaluationParams& params)
 {
     NVSDK_NGX_D3D12_DLSS_Eval_Params dlssParams{};
 
-    dlssParams.Feature.pInColor = texture->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
+    dlssParams.Feature.pInColor = color->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     dlssParams.Feature.pInOutput = output->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
-    dlssParams.pInDepth = depth->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
+    dlssParams.pInDepth = depth.getCurrent(params.currentFrame)->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     dlssParams.pInMotionVectors = motionVector->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     dlssParams.InJitterOffsetX = -params.jitterX;
     dlssParams.InJitterOffsetY = -params.jitterY;

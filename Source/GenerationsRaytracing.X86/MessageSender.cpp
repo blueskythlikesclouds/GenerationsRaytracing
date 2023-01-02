@@ -19,14 +19,14 @@ MessageSender::~MessageSender()
 
 void* MessageSender::start(size_t msgSize, size_t dataSize)
 {
-    std::lock_guard lock(criticalSection);
-
     msgSize = MSG_ALIGN(msgSize);
     dataSize = MSG_ALIGN(dataSize);
 
     const size_t size = msgSize + dataSize;
     
     assert(size <= MEMORY_MAPPED_FILE_SIZE);
+
+    std::lock_guard lock(criticalSection);
 
     if (buffer.size() + size > MEMORY_MAPPED_FILE_SIZE)
         commitAllMessages();

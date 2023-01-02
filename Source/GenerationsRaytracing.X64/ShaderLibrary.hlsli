@@ -25,26 +25,26 @@ void RayGeneration()
     float3 curPixelPosAndDepth = GetCurrentPixelPositionAndDepth(GetPosition(ray, payload));
     float3 prevPixelPosAndDepth = GetPreviousPixelPositionAndDepth(GetPreviousPosition(ray, payload));
 
-    g_Texture[index] = float4(payload.Color, 1.0);
+    g_Color[index] = float4(payload.Color, 1.0);
     g_Depth[index] = payload.T == FLT_MAX ? 1.0 : curPixelPosAndDepth.z;
     g_MotionVector[index] = prevPixelPosAndDepth.xy - curPixelPosAndDepth.xy;
 }
 
 [shader("miss")]
-void Miss(inout Payload payload : SV_RayPayload)
+void MissSkyBox(inout Payload payload : SV_RayPayload)
 {
-    if (payload.Depth != 0xFF)
-    {
-        RayDesc ray;
-        ray.Origin = 0.0;
-        ray.Direction = WorldRayDirection();
-        ray.TMin = 0.001f;
-        ray.TMax = Z_MAX;
+    RayDesc ray = (RayDesc)0;
+    ray.Direction = WorldRayDirection();
+    ray.TMax = Z_MAX;
+    TraceRay(g_BVH, 0, 2, 0, 1, 1, ray, payload);
 
-        payload.Depth = 0xFF;
-        TraceRay(g_BVH, 0, 2, 0, 1, 0, ray, payload);
-    }
+    payload.T = FLT_MAX;
+}
 
+[shader("miss")]
+void MissEnvironmentColor(inout Payload payload : SV_RayPayload)
+{
+    payload.Color = 0.5;
     payload.T = FLT_MAX;
 }
 

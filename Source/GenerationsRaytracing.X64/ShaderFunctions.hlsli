@@ -11,7 +11,7 @@ float3 GetPosition(in RayDesc ray, in Payload payload)
 
 float3 GetPreviousPosition(in RayDesc ray, in Payload payload)
 {
-    return mul(float4(GetPosition(ray, payload), 1.0), g_InstanceBuffer[payload.InstanceIndex].Delta).xyz;
+    return GetPosition(ray, payload); // TODO
 }
 
 float3 GetPosition()
@@ -170,10 +170,37 @@ float TraceShadow(inout uint random)
     ray.TMax = Z_MAX;
 
     Payload payload = (Payload)0;
-    payload.Depth = 0xFF;
-    TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 0, ray, payload);
+    TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 1, ray, payload);
 
     return payload.T == FLT_MAX ? 1.0 : 0.0;
+}
+
+float3 TraceGlobalIlluminationWithReProjection(inout Payload payload, in float3 position, in float3 normal)
+{
+    float3 globalIllumination = TraceGlobalIllumination(payload, normal);
+
+    if (payload.Depth == 0)
+    {
+        uint2 index = DispatchRaysIndex().xy;
+        float2 prevIndex = GetPreviousPixelPositionAndDepth(position).xy;
+
+        float prevDepth = g_PrevDepth.Load(int3(prevIndex, 0));
+        float3 prevNormal = g_PrevNormal.Load(int3(prevIndex, 0));
+        float4 prevGlobalIllumination = g_PrevGlobalIllumination.Load(int3(prevIndex, 0));
+
+        float depth = GetCurrentPixelPositionAndDepth(position).z;
+
+        float factor = exp(abs(depth - prevDepth) / -0.01) * saturate(dot(prevNormal, normal)) * prevGlobalIllumination.a;
+        factor *= all(prevIndex >= 0.0) && all(prevIndex < DispatchRaysDimensions().xy) ? 1.0 : 0.0;
+        factor += 1.0;
+
+        globalIllumination = lerp(prevGlobalIllumination.rgb, globalIllumination, 1.0 / factor);
+
+        g_GlobalIllumination[index] = float4(globalIllumination, factor);
+        g_Normal[index] = normal;
+    }
+
+    return globalIllumination;
 }
 
 #endif
