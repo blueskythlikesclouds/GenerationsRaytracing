@@ -285,6 +285,7 @@ struct MsgCreateGeometry
 {
     DEFINE_MSG_ID;
     unsigned int bottomLevelAS;
+    unsigned int instanceInfo;
     bool opaque;
     bool punchThrough;
     unsigned int vertexBuffer;
@@ -310,6 +311,7 @@ struct MsgCreateBottomLevelAS
 {
     DEFINE_MSG_ID;
     unsigned int bottomLevelAS;
+    unsigned int instanceInfo;
     unsigned int matrixNum;
 };
 
@@ -322,6 +324,7 @@ struct MsgCreateInstance
     float transform[3][4];
     float delta[4][4];
     unsigned int bottomLevelAS;
+    unsigned int instanceInfo;
     unsigned int instanceMask;
 };
 

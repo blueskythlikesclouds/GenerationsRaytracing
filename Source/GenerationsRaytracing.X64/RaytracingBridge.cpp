@@ -29,7 +29,7 @@ void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateGeometry>();
     const void* data = bridge.msgReceiver.getDataAndMoveNext(msg->nodeNum);
 
-    auto& bottomLevelAS = bottomLevelAccelStructs[msg->bottomLevelAS];
+    auto& bottomLevelAS = bottomLevelAccelStructs[msg->bottomLevelAS][msg->instanceInfo];
     if (bottomLevelAS.handle)
         bottomLevelAS = {};
 
@@ -91,7 +91,7 @@ void RaytracingBridge::procMsgCreateBottomLevelAS(Bridge& bridge)
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateBottomLevelAS>();
     const void* data = bridge.msgReceiver.getDataAndMoveNext(msg->matrixNum * 64);
 
-    auto& blas = bottomLevelAccelStructs[msg->bottomLevelAS];
+    auto& blas = bottomLevelAccelStructs[msg->bottomLevelAS][msg->instanceInfo];
 
     blas.handle = bridge.device.nvrhi->createAccelStruct(blas.desc
         .setBuildFlags(msg->matrixNum > 0 ? nvrhi::rt::AccelStructBuildFlags::PreferFastBuild : nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
@@ -117,6 +117,7 @@ void RaytracingBridge::procMsgCreateInstance(Bridge& bridge)
     memcpy(instance.transform, msg->transform, sizeof(instance.transform));
     memcpy(instance.delta, msg->delta, sizeof(instance.delta));
     instance.bottomLevelAS = msg->bottomLevelAS;
+    instance.instanceInfo = msg->instanceInfo;
     instance.instanceMask = msg->instanceMask;
 }
 
@@ -315,53 +316,56 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     shaderTable->addMissShader("MissSkyBox");
     shaderTable->addMissShader("MissEnvironmentColor");
 
-    for (auto& [id, blas] : bottomLevelAccelStructs)
+    for (auto& [instanceId, instanceInfo] : bottomLevelAccelStructs)
     {
-        blas.index = (uint32_t)geometriesForGpu.size();
-
-        for (size_t i = 0; i < blas.geometries.size(); i++)
+        for (auto& [blasId, blas] : instanceInfo)
         {
-            auto& geometry = blas.geometries[i];
-            auto& geometryForGpu = geometriesForGpu.emplace_back(geometry);
-            geometryForGpu.material = materialMap[geometry.material];
+            blas.index = (uint32_t)geometriesForGpu.size();
 
-            shaderTable->addHitGroup(materials[geometry.material].shader);
-
-            auto& skinnedGeometry = blas.skinnedGeometries[i];
-
-            if (!blas.built && skinnedGeometry.nodeIndices)
+            for (size_t i = 0; i < blas.geometries.size(); i++)
             {
-                auto& vertexBuffer = blas.desc.bottomLevelGeometries[i].geometryData.triangles.vertexBuffer;
+                auto& geometry = blas.geometries[i];
+                auto& geometryForGpu = geometriesForGpu.emplace_back(geometry);
+                geometryForGpu.material = materialMap[geometry.material];
 
-                if (!skinnedGeometry.buffer)
+                shaderTable->addHitGroup(materials[geometry.material].shader);
+
+                auto& skinnedGeometry = blas.skinnedGeometries[i];
+
+                if (!blas.built && skinnedGeometry.nodeIndices)
                 {
-                    auto desc = vertexBuffer->getDesc();
-                    skinnedGeometry.buffer = bridge.device.nvrhi->createBuffer(desc.setCanHaveUAVs(true));
+                    auto& vertexBuffer = blas.desc.bottomLevelGeometries[i].geometryData.triangles.vertexBuffer;
+
+                    if (!skinnedGeometry.buffer)
+                    {
+                        auto desc = vertexBuffer->getDesc();
+                        skinnedGeometry.buffer = bridge.device.nvrhi->createBuffer(desc.setCanHaveUAVs(true));
+                    }
+
+                    bridge.commandList->writeBuffer(skinningConstantBuffer, &geometry, sizeof(Geometry));
+
+                    auto skinningBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+                        .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, skinningConstantBuffer))
+                        .addItem(nvrhi::BindingSetItem::RawBuffer_SRV(0, vertexBuffer))
+                        .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(1, skinnedGeometry.nodeIndices))
+                        .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, blas.matrixBuffer))
+                        .addItem(nvrhi::BindingSetItem::RawBuffer_UAV(0, skinnedGeometry.buffer)), skinningBindingLayout);
+
+                    bridge.commandList->setComputeState(nvrhi::ComputeState()
+                        .setPipeline(skinningPipeline)
+                        .addBindingSet(skinningBindingSet));
+
+                    bridge.commandList->dispatch((geometry.vertexCount + 63) & ~63);
+
+                    vertexBuffer = skinnedGeometry.buffer;
                 }
-
-                bridge.commandList->writeBuffer(skinningConstantBuffer, &geometry, sizeof(Geometry));
-
-                auto skinningBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
-                    .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, skinningConstantBuffer))
-                    .addItem(nvrhi::BindingSetItem::RawBuffer_SRV(0, vertexBuffer))
-                    .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(1, skinnedGeometry.nodeIndices))
-                    .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, blas.matrixBuffer))
-                    .addItem(nvrhi::BindingSetItem::RawBuffer_UAV(0, skinnedGeometry.buffer)), skinningBindingLayout);
-
-                bridge.commandList->setComputeState(nvrhi::ComputeState()
-                    .setPipeline(skinningPipeline)
-                    .addBindingSet(skinningBindingSet));
-
-                bridge.commandList->dispatch((geometry.vertexCount + 63) & ~63);
-
-                vertexBuffer = skinnedGeometry.buffer;
             }
-        }
 
-        if (!blas.built)
-        {
-            nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, blas.handle, blas.desc);
-            blas.built = true;
+            if (!blas.built)
+            {
+                nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, blas.handle, blas.desc);
+                blas.built = true;
+            }
         }
     }
 
@@ -370,18 +374,21 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     uint32_t descriptorIndex = 0;
 
-    for (auto& [id, blas] : bottomLevelAccelStructs)
+    for (auto& [instanceId, instanceInfo] : bottomLevelAccelStructs)
     {
-        for (size_t i = 0; i < blas.geometries.size(); i++)
+        for (auto& [blasId, blas] : instanceInfo)
         {
-            auto& geometry = blas.desc.bottomLevelGeometries[i];
-            auto& skinnedGeometry = blas.skinnedGeometries[i];
+            for (size_t i = 0; i < blas.geometries.size(); i++)
+            {
+                auto& geometry = blas.desc.bottomLevelGeometries[i];
+                auto& skinnedGeometry = blas.skinnedGeometries[i];
 
-            bridge.device.nvrhi->writeDescriptorTable(geometryDescriptorTable,
-                nvrhi::BindingSetItem::TypedBuffer_SRV(descriptorIndex++, geometry.geometryData.triangles.indexBuffer));
+                bridge.device.nvrhi->writeDescriptorTable(geometryDescriptorTable,
+                    nvrhi::BindingSetItem::TypedBuffer_SRV(descriptorIndex++, geometry.geometryData.triangles.indexBuffer));
 
-            bridge.device.nvrhi->writeDescriptorTable(geometryDescriptorTable,
-                nvrhi::BindingSetItem::RawBuffer_SRV(descriptorIndex++, skinnedGeometry.buffer ? skinnedGeometry.buffer.Get() : geometry.geometryData.triangles.vertexBuffer));
+                bridge.device.nvrhi->writeDescriptorTable(geometryDescriptorTable,
+                    nvrhi::BindingSetItem::RawBuffer_SRV(descriptorIndex++, skinnedGeometry.buffer ? skinnedGeometry.buffer.Get() : geometry.geometryData.triangles.vertexBuffer));
+            }
         }
     }
 
@@ -390,7 +397,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     for (auto& instance : instances)
     {
-        auto& blas = bottomLevelAccelStructs[instance.bottomLevelAS];
+        auto& blas = bottomLevelAccelStructs[instance.bottomLevelAS][instance.instanceInfo];
         if (!blas.handle)
             continue;
 

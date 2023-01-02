@@ -38,6 +38,7 @@ struct Instance
     float transform[3][4];
     float delta[4][4];
     unsigned int bottomLevelAS;
+    unsigned int instanceInfo;
     unsigned int instanceMask;
 };
 
@@ -91,7 +92,7 @@ struct RaytracingBridge
     nvrhi::rt::ShaderTableHandle shaderTable;
 
     std::unordered_map<unsigned int, Material> materials;
-    std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
+    std::unordered_map<unsigned int, std::unordered_map<unsigned int, BottomLevelAS>> bottomLevelAccelStructs;
     std::vector<Instance> instances;
 
     nvrhi::ShaderHandle skinningShader;
