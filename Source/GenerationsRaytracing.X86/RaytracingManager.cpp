@@ -232,20 +232,23 @@ static void createBottomLevelAS(T& model, size_t blasId, size_t instanceInfo, bo
         createGeometry(blasId, instanceInfo, *mesh, false, true, isSkeletalModel);
 }
 
-static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModelData)
+static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModel)
 {
-    const auto result = searchDatabaseData(terrainModelData);
+    const auto result = searchDatabaseData(terrainModel);
 
     if (!result.shouldCreate)
         return result.id;
 
-    createBottomLevelAS(terrainModelData, result.id, NULL, false);
+    group.run([&terrainModel, result]
+    {
+        createBottomLevelAS(terrainModel, result.id, NULL, false);
 
-    const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
-    msg->bottomLevelAS = result.id;
-    msg->instanceInfo = 0;
-    msg->matrixNum = 0;
-    msgSender.finish();
+        const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
+        msg->bottomLevelAS = result.id;
+        msg->instanceInfo = 0;
+        msg->matrixNum = 0;
+        msgSender.finish();
+     });
 
     return result.id;
 }
@@ -258,19 +261,22 @@ static std::pair<size_t, size_t> createBottomLevelAS(const hh::mr::CSingleElemen
 
     if (result.shouldCreate || isSkeletalModel)
     {
-        createBottomLevelAS(*singleElement.m_spModel, result.id, instanceInfo, isSkeletalModel);
+        group.run([&singleElement, result, instanceInfo, isSkeletalModel] 
+        {
+            createBottomLevelAS(*singleElement.m_spModel, result.id, instanceInfo, isSkeletalModel);
 
-        const size_t matrixNum = isSkeletalModel ? singleElement.m_spModel->m_NodeNum : 0;
+            const size_t matrixNum = isSkeletalModel ? singleElement.m_spModel->m_NodeNum : 0;
 
-        const auto msg = msgSender.start<MsgCreateBottomLevelAS>(matrixNum * 64);
-        msg->bottomLevelAS = result.id;
-        msg->instanceInfo = instanceInfo;
-        msg->matrixNum = matrixNum;
+            const auto msg = msgSender.start<MsgCreateBottomLevelAS>(matrixNum * 64);
+            msg->bottomLevelAS = result.id;
+            msg->instanceInfo = instanceInfo;
+            msg->matrixNum = matrixNum;
 
-        if (isSkeletalModel)
-            memcpy(MSG_DATA_PTR(msg), singleElement.m_spInstanceInfo->m_spAnimationPose->GetMatrixList(), matrixNum * 64);
+            if (isSkeletalModel)
+                memcpy(MSG_DATA_PTR(msg), singleElement.m_spInstanceInfo->m_spAnimationPose->GetMatrixList(), matrixNum * 64);
 
-        msgSender.finish();
+            msgSender.finish();
+        });
     }
 
     return std::make_pair(result.id, instanceInfo);
@@ -568,6 +574,25 @@ HOOK(void, __fastcall, DestructTerrainInstanceInfo, 0x717090, hh::mr::CTerrainIn
     originalDestructTerrainInstanceInfo(This);
 }
 
+HOOK(void, __fastcall, DestructSingleElement, 0x701850, hh::mr::CSingleElement* This)
+{
+    if (This->m_spModel != nullptr && This->m_spInstanceInfo != nullptr)
+    {
+        std::lock_guard lock(identifierMutex);
+
+        const auto pair = identifierMap.find(This->m_spModel.get());
+        if (pair != identifierMap.end())
+        {
+            const auto msg = msgSender.start<MsgReleaseInstanceInfo>();
+            msg->bottomLevelAS = pair->second;
+            msg->instanceInfo = (unsigned int)This->m_spInstanceInfo.get();
+            msgSender.finish();
+        }
+    }
+
+    originalDestructSingleElement(This);
+}
+
 void RaytracingManager::init()
 {
     shaderMapping.load("ShaderMapping.bin");
@@ -592,4 +617,6 @@ void RaytracingManager::init()
 
     INSTALL_HOOK(DestructMesh); // Garbage collection
     INSTALL_HOOK(DestructTerrainInstanceInfo); // Garbage collection
+
+    INSTALL_HOOK(DestructSingleElement); // Garbage collection
 }

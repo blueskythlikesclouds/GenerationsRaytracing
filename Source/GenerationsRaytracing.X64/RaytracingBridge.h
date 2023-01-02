@@ -115,5 +115,6 @@ struct RaytracingBridge
     void procMsgCreateBottomLevelAS(Bridge& bridge);
     void procMsgCreateInstance(Bridge& bridge);
     void procMsgCreateMaterial(Bridge& bridge);
+    void procMsgReleaseInstanceInfo(Bridge& bridge);
     void procMsgNotifySceneTraversed(Bridge& bridge);
 };

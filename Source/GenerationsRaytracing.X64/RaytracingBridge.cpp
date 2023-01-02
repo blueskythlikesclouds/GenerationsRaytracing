@@ -132,6 +132,15 @@ void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)
     memcpy(material.parameters, msg->parameters, sizeof(msg->parameters));
 }
 
+void RaytracingBridge::procMsgReleaseInstanceInfo(Bridge& bridge)
+{
+    const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgReleaseInstanceInfo>();
+
+    const auto blas = bottomLevelAccelStructs.find(msg->bottomLevelAS);
+    if (blas != bottomLevelAccelStructs.end())
+        blas->second.erase(msg->instanceInfo);
+}
+
 template<typename T>
 static void createUploadBuffer(const Bridge& bridge, const std::vector<T>& vector, nvrhi::BufferHandle& buffer)
 {

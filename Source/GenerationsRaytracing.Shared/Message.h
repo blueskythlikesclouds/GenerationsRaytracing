@@ -350,5 +350,12 @@ struct MsgExit
 struct MsgReleaseResource
 {
     DEFINE_MSG_ID;
-    int resource;
+    unsigned int resource;
+};
+
+struct MsgReleaseInstanceInfo
+{
+    DEFINE_MSG_ID;
+    unsigned int bottomLevelAS;
+    unsigned int instanceInfo;
 };
