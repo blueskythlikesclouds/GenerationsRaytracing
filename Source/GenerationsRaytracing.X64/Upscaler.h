@@ -5,6 +5,7 @@ struct Device;
 
 enum class QualityMode
 {
+    Native,
     Quality,
     Balanced,
     Performance,

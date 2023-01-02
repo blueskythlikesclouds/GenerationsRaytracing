@@ -17,26 +17,34 @@
 
 void DLSS::validateImp(const ValidationParams& params)
 {
-    unsigned tmpUnsigned;
-    float tmpFloat;
+    if (qualityMode == QualityMode::Native)
+    {
+        width = params.output->getDesc().width;
+        height = params.output->getDesc().height;
+    }
+    else
+    {
+        unsigned tmpUnsigned;
+        float tmpFloat;
 
-    THROW_IF_FAILED(NGX_DLSS_GET_OPTIMAL_SETTINGS(
-        parameters,
-        params.output->getDesc().width,
-        params.output->getDesc().height,
-        qualityMode == QualityMode::Quality ? NVSDK_NGX_PerfQuality_Value_MaxQuality :
-        qualityMode == QualityMode::Balanced ? NVSDK_NGX_PerfQuality_Value_Balanced :
-        qualityMode == QualityMode::Performance ? NVSDK_NGX_PerfQuality_Value_MaxPerf :
-        qualityMode == QualityMode::UltraPerformance ? NVSDK_NGX_PerfQuality_Value_UltraPerformance : NVSDK_NGX_PerfQuality_Value_UltraQuality,
-        &width,
-        &height,
-        &tmpUnsigned,
-        &tmpUnsigned,
-        &tmpUnsigned,
-        &tmpUnsigned,
-        &tmpFloat));
+        THROW_IF_FAILED(NGX_DLSS_GET_OPTIMAL_SETTINGS(
+            parameters,
+            params.output->getDesc().width,
+            params.output->getDesc().height,
+            qualityMode == QualityMode::Quality ? NVSDK_NGX_PerfQuality_Value_MaxQuality :
+            qualityMode == QualityMode::Balanced ? NVSDK_NGX_PerfQuality_Value_Balanced :
+            qualityMode == QualityMode::Performance ? NVSDK_NGX_PerfQuality_Value_MaxPerf :
+            qualityMode == QualityMode::UltraPerformance ? NVSDK_NGX_PerfQuality_Value_UltraPerformance : NVSDK_NGX_PerfQuality_Value_UltraQuality,
+            &width,
+            &height,
+            &tmpUnsigned,
+            &tmpUnsigned,
+            &tmpUnsigned,
+            &tmpUnsigned,
+            &tmpFloat));
 
-    assert(width > 0 && height > 0);
+        assert(width > 0 && height > 0);
+    }
 
     NVSDK_NGX_DLSS_Create_Params dlssParams{};
     dlssParams.Feature.InWidth = width;

@@ -16,14 +16,22 @@
 
 void FSR::validateImp(const ValidationParams& params)
 {
-    THROW_IF_FAILED(ffxFsr2GetRenderResolutionFromQualityMode(
-        &width, 
-        &height, 
-        params.output->getDesc().width, 
-        params.output->getDesc().height,
-        qualityMode == QualityMode::Quality ? FFX_FSR2_QUALITY_MODE_QUALITY :
-        qualityMode == QualityMode::Balanced ? FFX_FSR2_QUALITY_MODE_BALANCED :
-        qualityMode == QualityMode::Performance ? FFX_FSR2_QUALITY_MODE_PERFORMANCE : FFX_FSR2_QUALITY_MODE_ULTRA_PERFORMANCE));
+    if (qualityMode == QualityMode::Native)
+    {
+        width = params.output->getDesc().width;
+        height = params.output->getDesc().height;
+    }
+    else
+    {
+        THROW_IF_FAILED(ffxFsr2GetRenderResolutionFromQualityMode(
+            &width,
+            &height,
+            params.output->getDesc().width,
+            params.output->getDesc().height,
+            qualityMode == QualityMode::Quality ? FFX_FSR2_QUALITY_MODE_QUALITY :
+            qualityMode == QualityMode::Balanced ? FFX_FSR2_QUALITY_MODE_BALANCED :
+            qualityMode == QualityMode::Performance ? FFX_FSR2_QUALITY_MODE_PERFORMANCE : FFX_FSR2_QUALITY_MODE_ULTRA_PERFORMANCE));
+    }
 
     contextDesc.flags = FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE | FFX_FSR2_ENABLE_AUTO_EXPOSURE;
     contextDesc.maxRenderSize.width = width;
