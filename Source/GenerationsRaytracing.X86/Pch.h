@@ -17,6 +17,8 @@
 #include <Helpers.h>
 #include <INIReader.h>
 
+#include <oneapi/tbb.h>
+
 #pragma warning(push, 0)
 
 #include <hedgelib/models/hl_hh_model.h>

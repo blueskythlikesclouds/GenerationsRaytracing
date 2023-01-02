@@ -26,7 +26,10 @@ struct Material
 
 struct Instance
 {
+    float transform[3][4];
     float delta[4][4];
+    unsigned int bottomLevelAS;
+    unsigned int instanceMask;
 };
 
 struct BottomLevelAS
@@ -35,6 +38,7 @@ struct BottomLevelAS
     std::vector<Geometry> geometries;
     nvrhi::rt::AccelStructHandle handle;
     std::vector<nvrhi::BufferHandle> buffers;
+    uint32_t index = 0;
 
     BottomLevelAS();
 };
@@ -78,8 +82,6 @@ struct RaytracingBridge
 
     std::unordered_map<unsigned int, Material> materials;
     std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
-
-    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
     std::vector<Instance> instances;
 
     nvrhi::SamplerHandle pointClampSampler;

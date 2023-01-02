@@ -81,20 +81,11 @@ void RaytracingBridge::procMsgCreateInstance(Bridge& bridge)
 {
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateInstance>();
 
-    const auto blas = bottomLevelAccelStructs.find(msg->bottomLevelAS);
-    if (blas == bottomLevelAccelStructs.end())
-        return;
-
-    auto& instanceDesc = instanceDescs.emplace_back();
-
-    memcpy(instanceDesc.transform, msg->transform, sizeof(instanceDesc.transform));
-    instanceDesc.instanceMask = msg->instanceMask;
-    instanceDesc.bottomLevelAS = blas->second.handle;
-    assert(instanceDesc.bottomLevelAS);
-
     auto& instance = instances.emplace_back();
+    memcpy(instance.transform, msg->transform, sizeof(instance.transform));
     memcpy(instance.delta, msg->delta, sizeof(instance.delta));
-    memcpy(instance.delta, msg->delta, sizeof(instance.delta));
+    instance.bottomLevelAS = msg->bottomLevelAS;
+    instance.instanceMask = msg->instanceMask;
 }
 
 void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)
@@ -125,7 +116,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 {
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgNotifySceneTraversed>();
 
-    if (instanceDescs.empty())
+    if (instances.empty())
         return;
 
     auto& colorAttachment = bridge.framebufferDesc.colorAttachments[0].texture;
@@ -253,7 +244,6 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         bridge.device.nvrhi->writeDescriptorTable(textureDescriptorTable, nvrhi::BindingSetItem::Texture_SRV(i, textures[i]));
 
     std::vector<Geometry> geometriesForGpu;
-    std::unordered_map<nvrhi::rt::IAccelStruct*, uint32_t> blasMap;
 
     shaderTable = pipeline->createShaderTable();
     shaderTable->setRayGenerationShader("RayGeneration");
@@ -263,9 +253,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     for (auto& [id, blas] : bottomLevelAccelStructs)
     {
-        const size_t index = geometriesForGpu.size();
-
-        blasMap[blas.handle] = (uint32_t)index;
+        blas.index = (uint32_t)geometriesForGpu.size();
 
         for (auto& geometry : blas.geometries)
         {
@@ -293,10 +281,20 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         }
     }
 
-    for (auto& instance : instanceDescs)
+    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
+
+    for (auto& instance : instances)
     {
-        instance.instanceID = blasMap[instance.bottomLevelAS];
-        instance.instanceContributionToHitGroupIndex = instance.instanceID;
+        auto& blas = bottomLevelAccelStructs[instance.bottomLevelAS];
+        if (!blas.handle)
+            continue;
+
+        auto& desc = instanceDescs.emplace_back();
+        memcpy(desc.transform, instance.transform, sizeof(desc.transform));
+        desc.instanceID = blas.index;
+        desc.instanceMask = instance.instanceMask;
+        desc.instanceContributionToHitGroupIndex = blas.index;
+        desc.bottomLevelAS = blas.handle;
     }
 
     auto topLevelAccelStruct = bridge.device.nvrhi->createAccelStruct(nvrhi::rt::AccelStructDesc()
@@ -310,7 +308,6 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     createUploadBuffer(bridge, materialsForGpu, materialBuffer);
     createUploadBuffer(bridge, instances, instanceBuffer);
 
-    instanceDescs.clear();
     instances.clear();
 
     if (!output)

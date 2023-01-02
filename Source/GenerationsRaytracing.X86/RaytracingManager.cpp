@@ -8,10 +8,15 @@
 #include "Texture.h"
 #include "VertexDeclaration.h"
 
-static CriticalSection criticalSection;
+static tbb::task_group group;
+
+static CriticalSection identifierMutex;
+static CriticalSection instanceMutex;
+static CriticalSection indexMutex;
+
 static ShaderMapping shaderMapping;
 
-static std::unordered_map<const hh::db::CDatabaseData*, size_t> identifierMap;
+static std::unordered_map<hh::db::CDatabaseData*, size_t> identifierMap;
 
 static std::unordered_set<hh::mr::CTerrainInstanceInfoData*> instanceSet;
 static std::unordered_map<const hh::mr::CMeshData*, std::pair<ComPtr<Buffer>, size_t>> indexMap;
@@ -34,7 +39,7 @@ struct SearchResult
 
 static SearchResult searchDatabaseData(hh::db::CDatabaseData& databaseData)
 {
-    std::lock_guard lock(criticalSection);
+    std::lock_guard lock(identifierMutex);
 
     SearchResult result{};
 
@@ -55,57 +60,63 @@ static SearchResult searchDatabaseData(hh::db::CDatabaseData& databaseData)
     return result;
 }
 
+static void createMaterial(hh::mr::CMaterialData& material, size_t id)
+{
+    group.run([&material, id]
+    {
+        const auto& shader = shaderMapping.shaders[
+            material.m_spShaderListData ? material.m_spShaderListData->m_TypeAndName.c_str() + sizeof("Mirage.shader-list") : "SysError"];
+
+        const auto msg = msgSender.start<MsgCreateMaterial>();
+
+        msg->material = id;
+
+        strcpy(msg->shader, !shader.name.empty() ? shader.name.c_str() : "SysError");
+        memset(msg->textures, 0, sizeof(msg->textures));
+        memset(msg->parameters, 0, sizeof(msg->parameters));
+
+        std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
+
+        for (const auto& texture : material.m_spTexsetData->m_TextureList)
+        {
+            const size_t target = counts[texture->m_Type.m_pSymbolNode];
+            size_t current = 0;
+
+            for (size_t i = 0; i < shader.textures.size(); i++)
+            {
+                if (shader.textures[i] == texture->m_Type.GetValue() && (current++) == target)
+                {
+                    msg->textures[i] = texture->m_spPictureData && texture->m_spPictureData->m_pD3DTexture ?
+                        reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id : NULL;
+
+                    ++counts[texture->m_Type.m_pSymbolNode];
+                    break;
+                }
+            }
+        }
+
+        for (const auto& parameter : material.m_Float4Params)
+        {
+            for (size_t i = 0; i < shader.parameters.size(); i++)
+            {
+                if (shader.parameters[i] == parameter->m_Name.GetValue())
+                {
+                    memcpy(msg->parameters[i], parameter->m_spValue.get(), sizeof(msg->parameters[i]));
+                    break;
+                }
+            }
+        }
+
+        msgSender.finish();
+    });
+}
+
 static size_t createMaterial(hh::mr::CMaterialData& material)
 {
     const auto result = searchDatabaseData(material);
 
-    if (!result.shouldCreate)
-        return result.id;
-
-    const auto& shader = shaderMapping.shaders[
-        material.m_spShaderListData ? material.m_spShaderListData->m_TypeAndName.c_str() + sizeof("Mirage.shader-list") : "SysError"];
-
-    const auto msg = msgSender.start<MsgCreateMaterial>();
-
-    msg->material = result.id;
-
-    strcpy(msg->shader, !shader.name.empty() ? shader.name.c_str() : "SysError");
-    memset(msg->textures, 0, sizeof(msg->textures));
-    memset(msg->parameters, 0, sizeof(msg->parameters));
-
-    std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
-
-    for (const auto& texture : material.m_spTexsetData->m_TextureList)
-    {
-        const size_t target = counts[texture->m_Type.m_pSymbolNode];
-        size_t current = 0;
-
-        for (size_t i = 0; i < shader.textures.size(); i++)
-        {
-            if (shader.textures[i] == texture->m_Type.GetValue() && (current++) == target)
-            {
-                msg->textures[i] = texture->m_spPictureData && texture->m_spPictureData->m_pD3DTexture ?
-                    reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id : NULL;
-
-                ++counts[texture->m_Type.m_pSymbolNode];
-                break;
-            }
-        }
-    }
-
-    for (const auto& parameter : material.m_Float4Params)
-    {
-        for (size_t i = 0; i < shader.parameters.size(); i++)
-        {
-            if (shader.parameters[i] == parameter->m_Name.GetValue())
-            {
-                memcpy(msg->parameters[i], parameter->m_spValue.get(), sizeof(msg->parameters[i]));
-                break;
-            }
-        }
-    }
-
-    msgSender.finish();
+    if (result.shouldCreate)
+        createMaterial(material, result.id);
 
     return result.id;
 }
@@ -117,9 +128,9 @@ static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, b
 
     const size_t materialId = createMaterial(*mesh.m_spMaterial);
 
-    criticalSection.lock();
+    indexMutex.lock();
     auto& indexBuffer = indexMap[&mesh];
-    criticalSection.unlock();
+    indexMutex.unlock();
 
     if (!indexBuffer.first)
         return;
@@ -174,84 +185,94 @@ static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, b
 }
 
 template<typename T>
+static void createBottomLevelAS(T& model, size_t id)
+{
+    group.run([&model, id]
+    {
+        for (const auto& meshGroup : model.m_NodeGroupModels)
+        {
+            for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
+                createGeometry(id, *mesh, true, false);
+
+            for (const auto& mesh : meshGroup->m_TransparentMeshes) 
+                createGeometry(id, *mesh, false, false);
+
+            for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
+                createGeometry(id, *mesh, false, true);
+
+            for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
+            {
+                for (const auto& mesh : specialMeshGroup)
+                    createGeometry(id, *mesh, true, false);
+            }
+        }
+
+        for (const auto& mesh : model.m_OpaqueMeshes) 
+            createGeometry(id, *mesh, true, false);
+
+        for (const auto& mesh : model.m_TransparentMeshes) 
+            createGeometry(id, *mesh, false, false);
+
+        for (const auto& mesh : model.m_PunchThroughMeshes) 
+            createGeometry(id, *mesh, false, true);
+
+        const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
+        msg->bottomLevelAS = id;
+        msgSender.finish(); 
+    });
+}
+
+template<typename T>
 static size_t createBottomLevelAS(T& model)
 {
     const auto result = searchDatabaseData(model);
 
-    if (!result.shouldCreate)
-        return result.id;
-
-    for (const auto& meshGroup : model.m_NodeGroupModels)
-    {
-        for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
-            createGeometry(result.id, *mesh, true, false);
-
-        for (const auto& mesh : meshGroup->m_TransparentMeshes) 
-            createGeometry(result.id, *mesh, false, false);
-
-        for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
-            createGeometry(result.id, *mesh, false, true);
-
-        for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
-        {
-            for (const auto& mesh : specialMeshGroup)
-                createGeometry(result.id, *mesh, true, false);
-        }
-    }
-
-    for (const auto& mesh : model.m_OpaqueMeshes) 
-        createGeometry(result.id, *mesh, true, false);
-
-    for (const auto& mesh : model.m_TransparentMeshes) 
-        createGeometry(result.id, *mesh, false, false);
-
-    for (const auto& mesh : model.m_PunchThroughMeshes) 
-        createGeometry(result.id, *mesh, false, true);
-
-    const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
-    msg->bottomLevelAS = result.id;
-    msgSender.finish();
+    if (result.shouldCreate)
+        createBottomLevelAS(model, result.id);
 
     return result.id;
 }
 
 static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
 {
-    if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
+    group.run([renderable, instanceMask]
     {
-        if (!singleElement->m_spModel->IsMadeAll() || 
-            strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_board_HD") ||
-            strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_spin_HD"))
-            return;
+        if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
+        {
+            if (!singleElement->m_spModel->IsMadeAll() ||
+                strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_board_HD") ||
+                strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_spin_HD"))
+                return;
 
-        const size_t blasId = createBottomLevelAS(*singleElement->m_spModel);
+            const size_t blasId = createBottomLevelAS(*singleElement->m_spModel);
 
-        const auto msg = msgSender.start<MsgCreateInstance>();
+            const auto msg = msgSender.start<MsgCreateInstance>();
 
-        for (size_t i = 0; i < 3; i++)
-            for (size_t j = 0; j < 4; j++)
-                msg->transform[i][j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
+            for (size_t i = 0; i < 3; i++)
+                for (size_t j = 0; j < 4; j++)
+                    msg->transform[i][j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
 
-        memcpy(
-            msg->delta, 
-            ((&singleElement->m_spInstanceInfo->m_Transform)[1] * singleElement->m_spInstanceInfo->m_Transform.inverse()).data(),
-            sizeof(msg->delta));
+            memcpy(
+                msg->delta,
+                ((&singleElement->m_spInstanceInfo->m_Transform)[1] * singleElement->m_spInstanceInfo->m_Transform.inverse()).data(),
+                sizeof(msg->delta));
 
-        msg->bottomLevelAS = blasId;
-        msg->instanceMask = instanceMask;
+            msg->bottomLevelAS = blasId;
+            msg->instanceMask = instanceMask;
 
-        msgSender.finish();
-    }
-    else if (auto bundle = dynamic_cast<const hh::mr::CBundle*>(renderable))
-    {
-        for (const auto& it : bundle->m_RenderableList)
-            traverse(it.get(), instanceMask);
-    }
-    else if (auto optimalBundle = dynamic_cast<const hh::mr::COptimalBundle*>(renderable))
-    {
-        for (const auto it : optimalBundle->m_RenderableList)
-            traverse(it, instanceMask);
-    }
+            msgSender.finish();
+        }
+        else if (auto bundle = dynamic_cast<const hh::mr::CBundle*>(renderable))
+        {
+            for (const auto& it : bundle->m_RenderableList)
+                traverse(it.get(), instanceMask);
+        }
+        else if (auto optimalBundle = dynamic_cast<const hh::mr::COptimalBundle*>(renderable))
+        {
+            for (const auto it : optimalBundle->m_RenderableList)
+                traverse(it, instanceMask);
+        }
+    });
 }
 
 static FUNCTION_PTR(void, __cdecl, SceneRender, 0x652110, void* A1);
@@ -305,28 +326,33 @@ static void __cdecl SceneRender_Raytracing(void* A1)
         traverse(pair->second.get(), symbol.m_pSymbolNode == symbols[0].m_pSymbolNode ? INSTANCE_MASK_SKY : INSTANCE_MASK_DEFAULT);
     }
 
-    std::lock_guard lock(criticalSection);
+    std::lock_guard lock(instanceMutex);
 
     for (const auto instance : instanceSet)
     {
-        if (!instance->IsMadeAll() || !instance->m_spTerrainModel)
-            continue;
+        group.run([instance]
+        {
+            if (!instance->IsMadeAll() || !instance->m_spTerrainModel)
+                return;
 
-        const size_t blasId = createBottomLevelAS(*instance->m_spTerrainModel);
+            size_t blasId = createBottomLevelAS(*instance->m_spTerrainModel);
 
-        const auto msg = msgSender.start<MsgCreateInstance>();
+            const auto msg = msgSender.start<MsgCreateInstance>();
 
-        for (size_t i = 0; i < 3; i++)
-            for (size_t j = 0; j < 4; j++)
-                msg->transform[i][j] = (*instance->m_scpTransform)(i, j);
+            for (size_t i = 0; i < 3; i++)
+                for (size_t j = 0; j < 4; j++)
+                    msg->transform[i][j] = (*instance->m_scpTransform)(i, j);
 
-        memcpy(msg->delta, hh::math::CMatrix::Identity().data(), sizeof(msg->delta));
+            memcpy(msg->delta, hh::math::CMatrix::Identity().data(), sizeof(msg->delta));
 
-        msg->bottomLevelAS = blasId;
-        msg->instanceMask = INSTANCE_MASK_DEFAULT;
+            msg->bottomLevelAS = blasId;
+            msg->instanceMask = INSTANCE_MASK_DEFAULT;
 
-        msgSender.finish();
+            msgSender.finish();
+        });
     }
+
+    group.wait();
 
     msgSender.oneShot<MsgNotifySceneTraversed>();
 }
@@ -403,7 +429,7 @@ static void convertToTriangles(const hh::mr::CMeshData& mesh, hl::hh::mirage::ra
 
     msgSender.finish();
 
-    std::lock_guard lock(criticalSection);
+    std::lock_guard lock(indexMutex);
     indexMap[&mesh] = std::make_pair(std::move(buffer), indices.size());
 }
 
@@ -439,7 +465,7 @@ HOOK(void, __cdecl, MakeTerrainInstanceInfo, 0x734D90,
     const auto instance = hh::mr::CMirageDatabaseWrapper(database.get())
         .GetTerrainInstanceInfoData(name);
 
-    std::lock_guard lock(criticalSection);
+    std::lock_guard lock(instanceMutex);
     instanceSet.insert(instance.get());
 }
 
@@ -453,7 +479,9 @@ HOOK(void, __fastcall, DestructDatabaseData, 0x6993B0, hh::db::CDatabaseData* Th
 {
     if (isMadeForBridge(*This))
     {
-        std::lock_guard lock(criticalSection);
+        group.wait();
+
+        std::lock_guard lock(identifierMutex);
         const auto pair = identifierMap.find(This);
 
         if (pair != identifierMap.end())
@@ -472,7 +500,7 @@ HOOK(void, __fastcall, DestructDatabaseData, 0x6993B0, hh::db::CDatabaseData* Th
 HOOK(void, __fastcall, DestructMesh, 0x7227A0, hh::mr::CMeshData* This)
 {
     {
-        std::lock_guard lock(criticalSection);
+        std::lock_guard lock(indexMutex);
         indexMap.erase(This);
     }
 
@@ -482,7 +510,7 @@ HOOK(void, __fastcall, DestructMesh, 0x7227A0, hh::mr::CMeshData* This)
 HOOK(void, __fastcall, DestructTerrainInstanceInfo, 0x717090, hh::mr::CTerrainInstanceInfoData* This)
 {
     {
-        std::lock_guard lock(criticalSection);
+        std::lock_guard lock(instanceMutex);
         instanceSet.erase(This);
     }
 
