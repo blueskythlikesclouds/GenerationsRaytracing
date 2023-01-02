@@ -6,6 +6,7 @@ struct Bridge;
 
 struct Geometry
 {
+    uint32_t vertexCount;
     uint32_t vertexStride;
     uint32_t normalOffset;
     uint32_t tangentOffset;
@@ -13,8 +14,16 @@ struct Geometry
     uint32_t texCoordOffset;
     uint32_t colorOffset;
     uint32_t colorFormat;
+    uint32_t blendWeightOffset;
+    uint32_t blendIndicesOffset;
     uint32_t material;
     uint32_t punchThrough;
+};
+
+struct SkinnedGeometry
+{
+    nvrhi::BufferHandle buffer;
+    nvrhi::BufferHandle nodeIndices;
 };
 
 struct Material
@@ -36,11 +45,12 @@ struct BottomLevelAS
 {
     nvrhi::rt::AccelStructDesc desc;
     std::vector<Geometry> geometries;
+    std::vector<SkinnedGeometry> skinnedGeometries;
     nvrhi::rt::AccelStructHandle handle;
     std::vector<nvrhi::BufferHandle> buffers;
+    nvrhi::BufferHandle matrixBuffer;
     uint32_t index = 0;
-
-    BottomLevelAS();
+    bool built = false;
 };
 
 struct RTConstants
@@ -83,6 +93,11 @@ struct RaytracingBridge
     std::unordered_map<unsigned int, Material> materials;
     std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
     std::vector<Instance> instances;
+
+    nvrhi::ShaderHandle skinningShader;
+    nvrhi::BindingLayoutHandle skinningBindingLayout;
+    nvrhi::BufferHandle skinningConstantBuffer;
+    nvrhi::ComputePipelineHandle skinningPipeline;
 
     nvrhi::SamplerHandle pointClampSampler;
     nvrhi::BindingLayoutHandle copyBindingLayout;

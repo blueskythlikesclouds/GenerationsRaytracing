@@ -61,6 +61,7 @@ struct ShaderParams
 
 struct Geometry
 {
+    uint VertexCount;
     uint VertexStride;
     uint NormalOffset;
     uint TangentOffset;
@@ -68,6 +69,8 @@ struct Geometry
     uint TexCoordOffset;
     uint ColorOffset;
     uint ColorFormat;
+    uint BlendWeightOffset;
+    uint BlendIndicesOffset;
     uint MaterialIndex;
     uint PunchThrough;
 };
@@ -76,6 +79,8 @@ struct Instance
 {
     float4x4 Delta;
 };
+
+#ifndef SHADER_DEFINITIONS_NO_BINDING_LAYOUT
 
 RaytracingAccelerationStructure g_BVH : register(t0);
 
@@ -187,5 +192,7 @@ Geometry GetGeometry()
 {
     return g_GeometryBuffer[InstanceID() + GeometryIndex()];
 }
+
+#endif
 
 #endif

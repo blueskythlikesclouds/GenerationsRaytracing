@@ -121,7 +121,7 @@ static size_t createMaterial(hh::mr::CMaterialData& material)
     return result.id;
 }
 
-static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, bool opaque, bool punchThrough)
+static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, bool opaque, bool punchThrough, bool isSkeletalModel)
 {
     if (mesh.m_VertexNum == 0 || mesh.m_IndexNum <= 2)
         return;
@@ -135,7 +135,9 @@ static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, b
     if (!indexBuffer.first)
         return;
 
-    const auto msg = msgSender.start<MsgCreateGeometry>();
+    const size_t nodeNum = isSkeletalModel ? mesh.m_NodeNum : 0;
+
+    const auto msg = msgSender.start<MsgCreateGeometry>(nodeNum);
 
     msg->bottomLevelAS = blasId;
     msg->opaque = opaque;
@@ -174,6 +176,14 @@ static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, b
             msg->colorOffset = element.Offset;
             msg->colorFormat = element.Type != D3DDECLTYPE_FLOAT4;
             break;
+
+        case D3DDECLUSAGE_BLENDWEIGHT:
+            msg->blendWeightOffset = element.Offset;
+            break;
+
+        case D3DDECLUSAGE_BLENDINDICES:
+            msg->blendIndicesOffset = element.Offset;
+            break;
         }
     }
 
@@ -181,54 +191,85 @@ static void createGeometry(const size_t blasId, const hh::mr::CMeshData& mesh, b
 
     assert(mesh.m_pD3DVertexBuffer && indexBuffer.first);
 
+    msg->nodeNum = nodeNum;
+    memcpy(MSG_DATA_PTR(msg), mesh.m_pNodeIndices, nodeNum);
+
     msgSender.finish();
 }
 
 template<typename T>
-static void createBottomLevelAS(T& model, size_t id)
+static void createBottomLevelAS(T& model, size_t id, bool isSkeletalModel)
 {
-    group.run([&model, id]
+    for (const auto& meshGroup : model.m_NodeGroupModels)
     {
-        for (const auto& meshGroup : model.m_NodeGroupModels)
+        if (!meshGroup->m_Visible)
+            continue;
+    
+        for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
+            createGeometry(id, *mesh, true, false, isSkeletalModel);
+    
+        for (const auto& mesh : meshGroup->m_TransparentMeshes) 
+            createGeometry(id, *mesh, false, false, isSkeletalModel);
+    
+        for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
+            createGeometry(id, *mesh, false, true, isSkeletalModel);
+    
+        for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
         {
-            for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
-                createGeometry(id, *mesh, true, false);
-
-            for (const auto& mesh : meshGroup->m_TransparentMeshes) 
-                createGeometry(id, *mesh, false, false);
-
-            for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
-                createGeometry(id, *mesh, false, true);
-
-            for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
-            {
-                for (const auto& mesh : specialMeshGroup)
-                    createGeometry(id, *mesh, true, false);
-            }
+            for (const auto& mesh : specialMeshGroup)
+                createGeometry(id, *mesh, true, false, isSkeletalModel);
         }
-
-        for (const auto& mesh : model.m_OpaqueMeshes) 
-            createGeometry(id, *mesh, true, false);
-
-        for (const auto& mesh : model.m_TransparentMeshes) 
-            createGeometry(id, *mesh, false, false);
-
-        for (const auto& mesh : model.m_PunchThroughMeshes) 
-            createGeometry(id, *mesh, false, true);
-
-        const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
-        msg->bottomLevelAS = id;
-        msgSender.finish(); 
-    });
+    }
+    
+    for (const auto& mesh : model.m_OpaqueMeshes) 
+        createGeometry(id, *mesh, true, false, isSkeletalModel);
+    
+    for (const auto& mesh : model.m_TransparentMeshes) 
+        createGeometry(id, *mesh, false, false, isSkeletalModel);
+    
+    for (const auto& mesh : model.m_PunchThroughMeshes) 
+        createGeometry(id, *mesh, false, true, isSkeletalModel);
 }
 
-template<typename T>
-static size_t createBottomLevelAS(T& model)
+static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModelData)
 {
-    const auto result = searchDatabaseData(model);
+    const auto result = searchDatabaseData(terrainModelData);
 
-    if (result.shouldCreate)
-        createBottomLevelAS(model, result.id);
+    if (!result.shouldCreate)
+        return result.id;
+
+    createBottomLevelAS(terrainModelData, result.id, false);
+
+    const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
+    msg->bottomLevelAS = result.id;
+    msg->matrixNum = 0;
+    msgSender.finish();
+
+    return result.id;
+}
+
+static size_t createBottomLevelAS(const hh::mr::CSingleElement& singleElement)
+{
+    const auto result = searchDatabaseData(*singleElement.m_spModel);
+
+    const bool isSkeletalModel = 
+        singleElement.m_spInstanceInfo->m_spAnimationPose != nullptr && singleElement.m_spModel->m_NodeNum > 1;
+
+    if (!result.shouldCreate && !isSkeletalModel)
+        return result.id;
+
+    createBottomLevelAS(*singleElement.m_spModel, result.id, isSkeletalModel);
+
+    const size_t matrixNum = isSkeletalModel ? singleElement.m_spModel->m_NodeNum : 0;
+
+    const auto msg = msgSender.start<MsgCreateBottomLevelAS>(matrixNum * 64);
+    msg->bottomLevelAS = result.id;
+    msg->matrixNum = matrixNum;
+
+    if (isSkeletalModel)
+        memcpy(MSG_DATA_PTR(msg), singleElement.m_spInstanceInfo->m_spAnimationPose->GetMatrixList(), matrixNum * 64);
+
+    msgSender.finish();
 
     return result.id;
 }
@@ -244,18 +285,13 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
                 strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_spin_HD"))
                 return;
 
-            const size_t blasId = createBottomLevelAS(*singleElement->m_spModel);
+            const size_t blasId = createBottomLevelAS(*singleElement);
 
             const auto msg = msgSender.start<MsgCreateInstance>();
 
             for (size_t i = 0; i < 3; i++)
                 for (size_t j = 0; j < 4; j++)
                     msg->transform[i][j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
-
-            memcpy(
-                msg->delta,
-                ((&singleElement->m_spInstanceInfo->m_Transform)[1] * singleElement->m_spInstanceInfo->m_Transform.inverse()).data(),
-                sizeof(msg->delta));
 
             msg->bottomLevelAS = blasId;
             msg->instanceMask = instanceMask;

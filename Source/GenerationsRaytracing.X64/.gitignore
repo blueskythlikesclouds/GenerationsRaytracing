@@ -3,3 +3,4 @@ CopyVS.h
 FVF.h
 ShaderLibrary.hlsl
 ShaderMapping.bin
+Skinning.h

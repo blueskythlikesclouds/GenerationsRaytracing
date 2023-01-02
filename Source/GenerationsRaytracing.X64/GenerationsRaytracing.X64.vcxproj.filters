@@ -36,6 +36,7 @@
     <FxCompile Include="CopyVS.hlsl" />
     <FxCompile Include="CopyPS.hlsl" />
     <FxCompile Include="FVF.hlsl" />
+    <FxCompile Include="Skinning.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="ShaderMapping.bin" />

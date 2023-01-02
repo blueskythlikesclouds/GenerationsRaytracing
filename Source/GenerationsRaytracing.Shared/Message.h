@@ -300,13 +300,17 @@ struct MsgCreateGeometry
     unsigned int texCoordOffset;
     unsigned int colorOffset;
     unsigned int colorFormat;
+    unsigned int blendWeightOffset;
+    unsigned int blendIndicesOffset;
     unsigned int material;
+    unsigned int nodeNum;
 };
 
 struct MsgCreateBottomLevelAS
 {
     DEFINE_MSG_ID;
     unsigned int bottomLevelAS;
+    unsigned int matrixNum;
 };
 
 #define INSTANCE_MASK_DEFAULT 1
