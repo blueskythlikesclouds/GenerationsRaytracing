@@ -201,8 +201,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     geometryDescriptorTable = nullptr;
     textureDescriptorTable = nullptr;
 
-    std::vector<nvrhi::TextureHandle> textures = { bridge.nullTexture };
-    std::unordered_map<unsigned int, uint32_t> textureMap = { { 0, 0 } };
+    static std::vector<nvrhi::TextureHandle> textures;
+    static std::unordered_map<unsigned int, uint32_t> textureMap;
 
     struct MaterialForGpu
     {
@@ -210,8 +210,16 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         float parameters[16][4]{};
     };
 
-    std::vector<MaterialForGpu> materialsForGpu;
-    std::unordered_map<unsigned int, uint32_t> materialMap;
+    static std::vector<MaterialForGpu> materialsForGpu;
+    static std::unordered_map<unsigned int, uint32_t> materialMap;
+
+    textures.clear();
+    textureMap.clear();
+    materialsForGpu.clear();
+    materialMap.clear();
+
+    textures.push_back(bridge.nullTexture);
+    textureMap.insert(std::make_pair(0u, 0u));
 
     for (auto& [id, material] : materials)
     {
@@ -243,7 +251,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     for (uint32_t i = 0; i < textures.size(); i++)
         bridge.device.nvrhi->writeDescriptorTable(textureDescriptorTable, nvrhi::BindingSetItem::Texture_SRV(i, textures[i]));
 
-    std::vector<Geometry> geometriesForGpu;
+    static std::vector<Geometry> geometriesForGpu;
+    geometriesForGpu.clear();
 
     shaderTable = pipeline->createShaderTable();
     shaderTable->setRayGenerationShader("RayGeneration");
@@ -281,7 +290,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         }
     }
 
-    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
+    static std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
+    instanceDescs.clear();
 
     for (auto& instance : instances)
     {
