@@ -313,6 +313,17 @@ static void __cdecl SceneRender_Raytracing(void* A1)
         renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(219, skyParam, 1);
     }
 
+    identifierMutex.lock();
+
+    tbb::parallel_for_each(identifierMap.begin(), identifierMap.end(), [](const auto& pair)
+    {
+        auto material = dynamic_cast<hh::mr::CMaterialData*>(pair.first);
+        if (material)
+            createMaterial(*material, pair.second);
+    });
+
+    identifierMutex.unlock();
+
     auto& renderScene = world->m_pMember->m_spRenderScene;
 
     const hh::base::CStringSymbol symbols[] = {"Sky", "Object", "Object_Overlay", "Player"};

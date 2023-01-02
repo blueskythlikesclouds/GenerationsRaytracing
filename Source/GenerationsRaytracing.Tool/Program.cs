@@ -39,6 +39,7 @@ else
         "power_gloss_level",
         "mrgLuminanceRange",
         "mrgFresnelParam",
+        "mrgTexcoordOffset"
     };
 
     var vertexConstants = new Dictionary<string, int>();

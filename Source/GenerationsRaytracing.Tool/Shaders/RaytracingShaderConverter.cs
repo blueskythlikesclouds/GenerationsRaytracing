@@ -40,6 +40,15 @@ public static class RaytracingShaderConverter
             for (int i = 0; i < constant.Size; i++)
                 stringBuilder.AppendFormat("\t{0}.g_aLightField[{1}] = float4(params.GlobalIllumination, params.Shadow);\n", outName, i);
         }
+        else if (constant.Name == "mrgTexcoordOffset" && shaderMapping.CanMapFloat4(constant.Register, shaderType))
+        {
+            stringBuilder.AppendFormat("\t{0}.mrgTexcoordOffset", outName);
+
+            if (constant.Size >= 2)
+                stringBuilder.Append("[0]");
+
+            stringBuilder.AppendFormat(" = params.Material.Parameters[{0}];\n", shaderMapping.MapFloat4(constant.Register, shaderType));
+        }
         else if (constant.Size <= 1)
         {
             stringBuilder.AppendFormat("\t{0}.{1} = ", outName, constant.Name);
