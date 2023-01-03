@@ -30,13 +30,16 @@ struct ShaderMapping
     struct Shader
     {
         std::string name;
-        std::string closestHit;
+        std::string primaryClosestHit;
+        std::string secondaryClosestHit;
         std::string anyHit;
+        std::string callable;
         std::vector<std::string> parameters;
         std::vector<std::string> textures;
     };
 
-    std::unordered_map<std::string, Shader> shaders;
+    std::vector<Shader> shaders;
+    std::unordered_map<std::string, size_t> indices;
 
     void load(const std::string& filePath)
     {
@@ -49,13 +52,16 @@ struct ShaderMapping
 
         while (ftell(file) < fileSize)
         {
-            std::string name = readString(file);
+            Shader& shader = shaders.emplace_back();
+            shader.name = readString(file);
 
-            Shader& shader = shaders[name];
+            std::string str = readString(file);
+            const std::string& base = str.empty() ? shader.name : str;
 
-            shader.name = std::move(name);
-            shader.closestHit = readString(file);
-            shader.anyHit = readString(file);
+            shader.primaryClosestHit = base + "_primary_closesthit";
+            shader.secondaryClosestHit = base + "_secondary_closesthit";
+            shader.anyHit = base + "_anyhit";
+            shader.callable = base + "_callable";
 
             const uint32_t parameterCount = readUint8(file);
 
@@ -68,6 +74,8 @@ struct ShaderMapping
             shader.textures.reserve(textureCount);
             for (size_t i = 0; i < textureCount; i++)
                 shader.textures.push_back(readString(file));
+
+            indices[shader.name] = indices.size();
         }
 
         fclose(file);

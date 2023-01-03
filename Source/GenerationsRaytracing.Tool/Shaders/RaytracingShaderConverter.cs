@@ -356,7 +356,7 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendLine("}\n");
     }
 
-    public static void WriteRaytracingFunction(StringBuilder stringBuilder, string shaderName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    public static void WriteRaytracingFunction(StringBuilder stringBuilder, string shaderName, uint shaderIndex, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
         stringBuilder.AppendFormat("OMParams {0}(in ShaderParams params, inout float3 normal)\n{{\n", shaderName);
 
@@ -441,87 +441,129 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendFormat("\t{0}_PS(psParams, omParams, normal);\n\treturn omParams;\n}}\n\n", pixelShader.Name);
     }
 
-    public static void WriteRaytracingFunctions(StringBuilder stringBuilder, string shaderName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    public static void WriteRaytracingFunctions(StringBuilder stringBuilder, string shaderName, ushort shaderIndex, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
-        WriteRaytracingFunction(stringBuilder, shaderName, vertexShader, pixelShader, shaderMapping);
+        WriteRaytracingFunction(stringBuilder, shaderName, shaderIndex, vertexShader, pixelShader, shaderMapping);
 
-        bool hasGlobalIllumination = vertexShader.Constants.Any(x => x.Name == "g_aLightField") ||
-                                     pixelShader.Constants.Any(x => x.Name == "g_aLightField");
+        var shaderFlags = new List<string>(3);
 
-        bool hasReflection = pixelShader.Constants.Any(x =>
-            x.Name.StartsWith("g_ReflectionMap") ||
-            x.Name.Contains("sampEnv") ||
-            x.Name.Contains("sampRef"));
-
-        bool hasRefraction = pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler");
-
-        //
-        // Closest hit
-        //
-        stringBuilder.AppendLine("[shader(\"closesthit\")]");
-        stringBuilder.AppendFormat("void {0}_closesthit(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", shaderName);
-
-        stringBuilder.AppendLine("\tShaderParams params = (ShaderParams)0;");
-        stringBuilder.AppendLine("\tparams.Vertex = GetVertex(attributes);");
-        stringBuilder.AppendLine("\tparams.Material = GetMaterial();\n");
-
-        stringBuilder.Append("""
-                params.Projection[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxProjection[0];
-                params.Projection[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxProjection[1];
-                params.Projection[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxProjection[2];
-                params.Projection[3] = payload.Depth > 0 ? float4(0, 0, 0, 1) : g_MtxProjection[3];
-                params.InvProjection[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxInvProjection[0];
-                params.InvProjection[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxInvProjection[1];
-                params.InvProjection[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxInvProjection[2];
-                params.InvProjection[3] = payload.Depth > 0 ? float4(0, 0, -Z_MAX, 1) : g_MtxInvProjection[3];
-                params.View[0] = payload.Depth > 0 ? float4(1, 0, 0, 0) : g_MtxView[0];
-                params.View[1] = payload.Depth > 0 ? float4(0, 1, 0, 0) : g_MtxView[1];
-                params.View[2] = payload.Depth > 0 ? float4(0, 0, 0, 0) : g_MtxView[2];
-                params.View[3] = payload.Depth > 0 ? float4(0, 0, -RayTCurrent(), 1) : g_MtxView[3];
-                params.EyePosition = payload.Depth > 0 ? WorldRayOrigin() : g_EyePosition.xyz;
-                params.EyeDirection = payload.Depth > 0 ? WorldRayDirection() : g_EyeDirection.xyz;
-
-
-            """);
-
-        stringBuilder.AppendLine("\tfloat3 normal = params.Vertex.Normal;");
-        stringBuilder.AppendFormat("\t{0}(params, normal);\n", shaderName);
-
-        if (hasGlobalIllumination)
+        if (vertexShader.Constants.Any(x => x.Name == "g_aLightField") ||
+            pixelShader.Constants.Any(x => x.Name == "g_aLightField"))
         {
-            stringBuilder.AppendLine("\n\tparams.GlobalIllumination = TraceGlobalIlluminationWithReProjection(payload, params.Vertex.Position, normal);");
-            stringBuilder.AppendLine("\tparams.Shadow = dot(normal, -mrgGlobalLight_Direction.xyz) > 0.0 ? TraceShadow(payload.Random) : 0.0;");
+            shaderFlags.Add("HAS_GLOBAL_ILLUMINATION");
         }
 
-        if (hasReflection)
-            stringBuilder.AppendLine("\n\tparams.Reflection = TraceReflection(payload, normal);");  
+        if (pixelShader.Constants.Any(x =>
+                x.Name.StartsWith("g_ReflectionMap") ||
+                x.Name.Contains("sampEnv") ||
+                x.Name.Contains("sampRef")))
+        {
+            shaderFlags.Add("HAS_REFLECTION");
+        }
+
+        if (pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler"))
+        {
+            shaderFlags.Add("HAS_REFRACTION");
+        }
         
-        if (hasRefraction)
-            stringBuilder.AppendLine("\n\tparams.Refraction = TraceRefraction(payload, normal);");
+        if (shaderFlags.Count == 0)
+            shaderFlags.Add("0");
 
-        stringBuilder.AppendFormat("\n\tpayload.Color = {0}(params, normal).oC0.rgb;\n", shaderName);
-        stringBuilder.AppendLine("\tpayload.T = RayTCurrent();");
-        stringBuilder.AppendLine("}\n");
+        stringBuilder.Append(""" 
+            [shader("closesthit")]
+            void SHADERNAME_primary_closesthit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_IntersectionAttributes)
+            {
+            	ShaderParams params = (ShaderParams)0;
+            
+                params.Vertex = GetVertex(attributes);
+                params.Material = GetMaterial();
 
-        // 
-        // Any hit
-        //
-        stringBuilder.AppendLine("[shader(\"anyhit\")]");
-        stringBuilder.AppendFormat("void {0}_anyhit(inout Payload payload : SV_RayPayload, Attributes attributes : SV_IntersectionAttributes)\n{{\n", shaderName);
+                SHADERNAME(params, params.Vertex.Normal);
 
-        stringBuilder.AppendLine("\tShaderParams params = (ShaderParams)0;");
-        stringBuilder.AppendLine("\tparams.Vertex = GetVertex(attributes);");
-        stringBuilder.AppendLine("\tparams.Material = GetMaterial();");
+                float3 curPixelPosAndDepth = GetCurrentPixelPositionAndDepth(params.Vertex.Position);
+                float3 prevPixelPosAndDepth = GetPreviousPixelPositionAndDepth(params.Vertex.Position);
 
-        stringBuilder.AppendFormat("\tOMParams omParams = {0}(params, params.Vertex.Normal);\n\n", shaderName);
+                uint2 index = DispatchRaysIndex().xy;
+                g_Position[index] = float4(params.Vertex.Position, 0.0);
+                g_Depth[index] = curPixelPosAndDepth.z;
+                g_MotionVector[index] = prevPixelPosAndDepth.xy - curPixelPosAndDepth.xy;
+                g_Normal[index] = float4(params.Vertex.Normal, 0.0);
+                g_TexCoord[index] = params.Vertex.TexCoord;
+                g_Color[index] = params.Vertex.Color;
+                g_Shader[index] = uint4(SHADERINDEX, SHADERFLAGS, GetGeometry().MaterialIndex, 0);
+            } 
 
-        stringBuilder.Append("""   
-                if (omParams.oC0.w < (GetGeometry().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
+            [shader("closesthit")]
+            void SHADERNAME_secondary_closesthit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_IntersectionAttributes)
+            { 
+            	ShaderParams params = (ShaderParams)0;
+
+                params.Vertex = GetVertex(attributes);
+                params.Material = GetMaterial();
+
+                params.Projection[0] = float4(1, 0, 0, 0);
+                params.Projection[1] = float4(0, 1, 0, 0);
+                params.Projection[2] = float4(0, 0, 0, 0);
+                params.Projection[3] = float4(0, 0, 0, 1);
+                params.InvProjection[0] = float4(1, 0, 0, 0);
+                params.InvProjection[1] = float4(0, 1, 0, 0);
+                params.InvProjection[2] = float4(0, 0, 0, 0);
+                params.InvProjection[3] = float4(0, 0, -Z_MAX, 1);
+                params.View[0] = float4(1, 0, 0, 0);
+                params.View[1] = float4(0, 1, 0, 0);
+                params.View[2] = float4(0, 0, 0, 0);
+                params.View[3] = float4(0, 0, -RayTCurrent(), 1);
+                params.EyePosition = WorldRayOrigin();
+                params.EyeDirection = WorldRayDirection();
+
+                payload.Color = SHADERNAME(params, params.Vertex.Normal).oC0.rgb;
+                payload.T = RayTCurrent();
+            }
+
+            [shader("anyhit")]
+            void SHADERNAME_anyhit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_IntersectionAttributes)
+            {
+                ShaderParams params = (ShaderParams)0;
+
+                params.Vertex = GetVertex(attributes);
+                params.Material = GetMaterial();
+                
+                if (SHADERNAME(params, params.Vertex.Normal).oC0.w < (GetGeometry().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
                     IgnoreHit();
             }
 
+            [shader("callable")]
+            void SHADERNAME_callable(inout CallableParams callableParams)
+            {  
+                uint2 index = DispatchRaysIndex().xy;
 
-            """);
+                ShaderParams params = (ShaderParams)0;
+
+                params.Vertex.Position = g_Position[index].xyz;
+                params.Vertex.Normal = g_Normal[index].xyz;
+                params.Vertex.TexCoord = g_TexCoord[index];
+                params.Vertex.Color = g_Color[index];
+                params.Material = g_MaterialBuffer[callableParams.MaterialIndex];
+
+                params.GlobalIllumination = g_GlobalIllumination[index].rgb;
+                params.Shadow = g_Shadow[index];
+                params.Reflection = g_Reflection[index].rgb;
+                params.Refraction = g_Refraction[index].rgb;
+
+                params.Projection = g_MtxProjection;
+                params.InvProjection = g_MtxInvProjection;
+                params.View = g_MtxView;
+                params.EyePosition = g_EyePosition.xyz;
+                params.EyeDirection = g_EyeDirection.xyz; 
+
+                g_Composite[index] = float4(SHADERNAME(params, params.Vertex.Normal).oC0.rgb, 1.0);
+            }
+
+
+            """
+            .Replace("SHADERNAME", shaderName)
+            .Replace("SHADERINDEX", $"{shaderIndex}")
+            .Replace("SHADERFLAGS", string.Join(" | ", shaderFlags)));
     }
 
     public static StringBuilder BeginShaderConversion()
@@ -532,7 +574,7 @@ public static class RaytracingShaderConverter
             #define _rep(x, y) for (int i##y = 0; i##y < x; ++i##y)
             #define rep(x) _rep(x, __LINE__)
 
-            #include "ShaderLibrary.hlsli"
+            #include "ShaderFunctions.hlsli"
 
             struct OMParams
             {

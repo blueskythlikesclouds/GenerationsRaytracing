@@ -1,8 +1,10 @@
 ﻿#pragma once
 
+#include "ShaderMapping.h"
+
 struct Material
 {
-    char shader[256]{};
+    size_t shader = 0;
 
     struct GPU
     {

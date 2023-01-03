@@ -71,20 +71,28 @@ void Upscaler::validate(const ValidationParams& params)
         .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
         .setKeepInitialState(true);
 
-    color = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_FLOAT));
-    depth.create(params.bridge.device.nvrhi, textureDesc.setFormat(nvrhi::Format::R32_FLOAT));  
+    position = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA32_FLOAT));
+    depth = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::R32_FLOAT));
     motionVector = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG16_FLOAT));
+    normal = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_SNORM));
+    texCoord = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG16_FLOAT));
+    color = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA8_UNORM));
+    shader = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_UINT));
 
-    normal.create(params.bridge.device.nvrhi, textureDesc.setFormat(nvrhi::Format::RGBA8_SNORM));
-    globalIllumination.create(params.bridge.device.nvrhi, textureDesc.setFormat(nvrhi::Format::RGBA32_FLOAT));
+    globalIllumination = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_FLOAT));
+    shadow = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::R8_UNORM));
+    reflection = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_FLOAT));
+    refraction = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_FLOAT));
+
+    composite = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA32_FLOAT));
 
     output = params.output;
 }
 
 void Upscaler::evaluate(const EvaluationParams& params)
 {
-    params.bridge.commandList->setTextureState(color, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
-    params.bridge.commandList->setTextureState(depth.getCurrent(params.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
+    params.bridge.commandList->setTextureState(composite, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
+    params.bridge.commandList->setTextureState(depth, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
     params.bridge.commandList->setTextureState(motionVector, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
     params.bridge.commandList->setTextureState(output, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     params.bridge.commandList->commitBarriers();

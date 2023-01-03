@@ -11,19 +11,17 @@
 #define HAS_REFLECTION          (1 << 1)
 #define HAS_REFRACTION          (1 << 2)
 
-struct Payload
-{
-    float3 Color;
-    float T;
+#define INSTANCE_MASK_DEFAULT   1
+#define INSTANCE_MASK_SKY       2
 
-    uint Depth;
-    uint Random;
-};
+#define CLOSEST_HIT_PRIMARY     0
+#define CLOSEST_HIT_SECONDARY   1
+#define CLOSEST_HIT_NUM         2
 
-struct Attributes
-{
-    float2 BarycentricCoords;
-};
+#define MISS_PRIMARY            0
+#define MISS_PRIMARY_SKY        1
+#define MISS_SECONDARY          2
+#define MISS_SECONDARY_SKY      3
 
 struct Vertex
 {
@@ -75,6 +73,11 @@ struct Geometry
     uint PunchThrough;
 };
 
+struct CallableParams
+{
+    uint MaterialIndex;
+};
+
 #ifndef SHADER_DEFINITIONS_NO_BINDING_LAYOUT
 
 RaytracingAccelerationStructure g_BVH : register(t0);
@@ -82,16 +85,20 @@ RaytracingAccelerationStructure g_BVH : register(t0);
 StructuredBuffer<Material> g_MaterialBuffer : register(t1);
 StructuredBuffer<Geometry> g_GeometryBuffer : register(t2);
 
-RWTexture2D<float4> g_Color : register(u0);
+RWTexture2D<float4> g_Position : register(u0);
 RWTexture2D<float> g_Depth : register(u1);
 RWTexture2D<float2> g_MotionVector : register(u2);
+RWTexture2D<float4> g_Normal : register(u3);
+RWTexture2D<float2> g_TexCoord : register(u4);
+RWTexture2D<float4> g_Color : register(u5);
+RWTexture2D<uint4> g_Shader : register(u6);
 
-RWTexture2D<float3> g_Normal : register(u3);
-RWTexture2D<float4> g_GlobalIllumination : register(u4);
+RWTexture2D<float4> g_GlobalIllumination : register(u7);
+RWTexture2D<float> g_Shadow : register(u8);
+RWTexture2D<float4> g_Reflection : register(u9);
+RWTexture2D<float4> g_Refraction : register(u10);
 
-Texture2D<float> g_PrevDepth : register(t4);
-Texture2D<float3> g_PrevNormal : register(t5);
-Texture2D<float4> g_PrevGlobalIllumination : register(t6);
+RWTexture2D<float4> g_Composite : register(u11);
 
 SamplerState g_LinearRepeatSampler : register(s0);
 
@@ -110,9 +117,9 @@ float4 DecodeColor(uint color)
         ((color >> 24) & 0xFF) / 255.0);
 }
 
-Vertex GetVertex(in Attributes attributes)
+Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
 {
-    float3 uv = float3(1.0 - attributes.BarycentricCoords.x - attributes.BarycentricCoords.y, attributes.BarycentricCoords.x, attributes.BarycentricCoords.y);
+    float3 uv = float3(1.0 - attributes.barycentrics.x - attributes.barycentrics.y, attributes.barycentrics.x, attributes.barycentrics.y);
     uint index = InstanceID() + GeometryIndex();
 
     Geometry geometry = g_GeometryBuffer[index];

@@ -65,45 +65,53 @@ static void createMaterial(hh::mr::CMaterialData& material, size_t id)
 {
     group.run([&material, id]
     {
-        const auto& shader = shaderMapping.shaders[
-            material.m_spShaderListData ? material.m_spShaderListData->m_TypeAndName.c_str() + sizeof("Mirage.shader-list") : "SysError"];
-
         const auto msg = msgSender.start<MsgCreateMaterial>();
 
         msg->material = id;
 
-        strcpy(msg->shader, !shader.name.empty() ? shader.name.c_str() : "SysError");
+        memset(msg->shader, 0, sizeof(msg->shader));
         memset(msg->textures, 0, sizeof(msg->textures));
         memset(msg->parameters, 0, sizeof(msg->parameters));
 
-        std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
-
-        for (const auto& texture : material.m_spTexsetData->m_TextureList)
+        if (material.m_spShaderListData != nullptr)
         {
-            const size_t target = counts[texture->m_Type.m_pSymbolNode];
-            size_t current = 0;
+            const auto pair = shaderMapping.indices.find(material.m_spShaderListData->m_TypeAndName.c_str() + sizeof("Mirage.shader-list"));
 
-            for (size_t i = 0; i < shader.textures.size(); i++)
+            if (pair != shaderMapping.indices.end())
             {
-                if (shader.textures[i] == texture->m_Type.GetValue() && (current++) == target)
-                {
-                    msg->textures[i] = texture->m_spPictureData && texture->m_spPictureData->m_pD3DTexture ?
-                        reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id : NULL;
+                const auto& shader = shaderMapping.shaders[pair->second];
+                strcpy(msg->shader, shader.name.c_str());
 
-                    ++counts[texture->m_Type.m_pSymbolNode];
-                    break;
+                std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
+
+                for (const auto& texture : material.m_spTexsetData->m_TextureList)
+                {
+                    const size_t target = counts[texture->m_Type.m_pSymbolNode];
+                    size_t current = 0;
+
+                    for (size_t i = 0; i < shader.textures.size(); i++)
+                    {
+                        if (shader.textures[i] == texture->m_Type.GetValue() && (current++) == target)
+                        {
+                            msg->textures[i] = texture->m_spPictureData && texture->m_spPictureData->m_pD3DTexture ?
+                                reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id : NULL;
+
+                            ++counts[texture->m_Type.m_pSymbolNode];
+                            break;
+                        }
+                    }
                 }
-            }
-        }
 
-        for (const auto& parameter : material.m_Float4Params)
-        {
-            for (size_t i = 0; i < shader.parameters.size(); i++)
-            {
-                if (shader.parameters[i] == parameter->m_Name.GetValue())
+                for (const auto& parameter : material.m_Float4Params)
                 {
-                    memcpy(msg->parameters[i], parameter->m_spValue.get(), sizeof(msg->parameters[i]));
-                    break;
+                    for (size_t i = 0; i < shader.parameters.size(); i++)
+                    {
+                        if (shader.parameters[i] == parameter->m_Name.GetValue())
+                        {
+                            memcpy(msg->parameters[i], parameter->m_spValue.get(), sizeof(msg->parameters[i]));
+                            break;
+                        }
+                    }
                 }
             }
         }

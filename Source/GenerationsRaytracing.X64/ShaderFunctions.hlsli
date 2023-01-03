@@ -4,20 +4,14 @@
 #include "ShaderDefinitions.hlsli"
 #include "ShaderGlobals.hlsli"
 
-float3 GetPosition(in RayDesc ray, in Payload payload)
+struct Payload
 {
-    return ray.Origin + ray.Direction * min(payload.T, g_CameraNearFarAspect.y);
-}
+    float3 Color;
+    float T;
 
-float3 GetPreviousPosition(in RayDesc ray, in Payload payload)
-{
-    return GetPosition(ray, payload); // TODO
-}
-
-float3 GetPosition()
-{
-    return WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-}
+    uint Depth;
+    uint Random;
+};
 
 float3 GetPixelPositionAndDepth(float3 position, float4x4 view, float4x4 projection)
 {
@@ -83,70 +77,45 @@ float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNormal)
     return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
 }
 
-float3 TraceGlobalIllumination(inout Payload payload, float3 normal)
+float3 TraceColor(float3 origin, float3 direction)
 {
-    if (payload.Depth >= 3)
-        return 0;
-
     RayDesc ray;
-    ray.Origin = GetPosition();
-    ray.Direction = normalize(GetCosHemisphereSample(payload.Random, normal));
+    ray.Origin = origin;
+    ray.Direction = direction;
     ray.TMin = 0.001f;
     ray.TMax = Z_MAX;
 
-    Payload payload1 = (Payload)0;
-    payload1.Random = payload.Random;
-    payload1.Depth = payload.Depth + 1;
+    Payload payload = (Payload)0;
 
-    TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
+    TraceRay(
+        g_BVH, 
+        0, 
+        INSTANCE_MASK_DEFAULT, 
+        CLOSEST_HIT_SECONDARY, 
+        CLOSEST_HIT_NUM,
+        MISS_SECONDARY_SKY, 
+        ray, 
+        payload);
 
-    payload.Random = payload1.Random;
-    return min(payload1.Color, 4.0);
+    return min(payload.Color, 4.0);
 }
 
-float3 TraceReflection(inout Payload payload, float3 normal)
+float3 TraceGlobalIllumination(float3 origin, float3 normal, inout uint random)
 {
-    if (payload.Depth >= 1)
-        return 0;
-
-    RayDesc ray;
-    ray.Origin = GetPosition();
-    ray.Direction = normalize(reflect(WorldRayDirection(), normal));
-    ray.TMin = 0.001f;
-    ray.TMax = Z_MAX;
-
-    Payload payload1 = (Payload)0;
-    payload1.Random = payload.Random;
-    payload1.Depth = payload.Depth + 1;
-
-    TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
-
-    payload.Random = payload1.Random;
-    return min(payload1.Color, 4.0);
+    return TraceColor(origin, normalize(GetCosHemisphereSample(random, normal)));
 }
 
-float3 TraceRefraction(inout Payload payload, float3 normal)
+float3 TraceReflection(float3 origin, float3 normal, float3 view)
 {
-    if (payload.Depth >= 1)
-        return 0;
-
-    RayDesc ray;
-    ray.Origin = GetPosition();
-    ray.Direction = normalize(refract(WorldRayDirection(), normal, 1.0 / 1.333));
-    ray.TMin = 0.001f;
-    ray.TMax = Z_MAX;
-
-    Payload payload1 = (Payload)0;
-    payload1.Random = payload.Random;
-    payload1.Depth = payload.Depth + 1;
-
-    TraceRay(g_BVH, 0, 1, 0, 1, 0, ray, payload1);
-
-    payload.Random = payload1.Random;
-    return min(payload1.Color, 4.0);
+    return TraceColor(origin, normalize(reflect(view, normal)));
 }
 
-float TraceShadow(inout uint random)
+float3 TraceRefraction(float3 origin, float3 normal, float3 view)
+{
+    return TraceColor(origin, normalize(refract(view, normal, 1.0 / 1.333)));
+}
+
+float TraceShadow(float3 origin, inout uint random)
 {
     float3 normal = -mrgGlobalLight_Direction.xyz;
     float3 binormal = GetPerpendicularVector(normal);
@@ -164,43 +133,24 @@ float TraceShadow(inout uint random)
     direction.z = sqrt(1.0 - saturate(dot(direction.xy, direction.xy)));
 
     RayDesc ray;
-    ray.Origin = GetPosition();
+    ray.Origin = origin;
     ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
     ray.TMin = 0.01f;
     ray.TMax = Z_MAX;
 
     Payload payload = (Payload)0;
-    TraceRay(g_BVH, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 1, 0, 1, 1, ray, payload);
+
+    TraceRay(
+        g_BVH, 
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 
+        INSTANCE_MASK_DEFAULT, 
+        CLOSEST_HIT_SECONDARY, 
+        CLOSEST_HIT_NUM, 
+        MISS_SECONDARY, 
+        ray,
+        payload);
 
     return payload.T == FLT_MAX ? 1.0 : 0.0;
-}
-
-float3 TraceGlobalIlluminationWithReProjection(inout Payload payload, in float3 position, in float3 normal)
-{
-    float3 globalIllumination = TraceGlobalIllumination(payload, normal);
-
-    if (payload.Depth == 0)
-    {
-        uint2 index = DispatchRaysIndex().xy;
-        float2 prevIndex = GetPreviousPixelPositionAndDepth(position).xy;
-
-        float prevDepth = g_PrevDepth.Load(int3(prevIndex, 0));
-        float3 prevNormal = g_PrevNormal.Load(int3(prevIndex, 0));
-        float4 prevGlobalIllumination = g_PrevGlobalIllumination.Load(int3(prevIndex, 0));
-
-        float depth = GetCurrentPixelPositionAndDepth(position).z;
-
-        float factor = exp(abs(depth - prevDepth) / -0.01) * saturate(dot(prevNormal, normal)) * prevGlobalIllumination.a;
-        factor *= all(prevIndex >= 0.0) && all(prevIndex < DispatchRaysDimensions().xy) ? 1.0 : 0.0;
-        factor += 1.0;
-
-        globalIllumination = lerp(prevGlobalIllumination.rgb, globalIllumination, 1.0 / factor);
-
-        g_GlobalIllumination[index] = float4(globalIllumination, factor);
-        g_Normal[index] = normal;
-    }
-
-    return globalIllumination;
 }
 
 #endif

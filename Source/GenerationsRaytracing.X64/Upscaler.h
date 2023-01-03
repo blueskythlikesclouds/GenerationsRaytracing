@@ -49,12 +49,20 @@ public:
         nvrhi::ITexture* getPrevious(size_t frameIndex) const;
     };
 
-    nvrhi::TextureHandle color;
-    PingPongTexture depth;
+    nvrhi::TextureHandle position;
+    nvrhi::TextureHandle depth;
     nvrhi::TextureHandle motionVector;
+    nvrhi::TextureHandle normal;
+    nvrhi::TextureHandle texCoord;
+    nvrhi::TextureHandle color;
+    nvrhi::TextureHandle shader;
 
-    PingPongTexture normal;
-    PingPongTexture globalIllumination;
+    nvrhi::TextureHandle globalIllumination;
+    nvrhi::TextureHandle shadow;
+    nvrhi::TextureHandle reflection;
+    nvrhi::TextureHandle refraction;
+
+    nvrhi::TextureHandle composite;
 
     nvrhi::TextureHandle output;
 
