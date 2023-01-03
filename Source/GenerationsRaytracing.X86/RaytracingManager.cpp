@@ -285,6 +285,9 @@ static std::pair<size_t, size_t> createBottomLevelAS(const hh::mr::CSingleElemen
 
 static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
 {
+    if (!renderable->m_Enabled)
+        return;
+
     group.run([renderable, instanceMask]
     {
         if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
