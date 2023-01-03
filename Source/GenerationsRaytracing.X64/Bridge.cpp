@@ -1301,7 +1301,7 @@ void Bridge::receiveMessages()
             {
                 const auto blasPair = raytracing.bottomLevelAccelStructs.find(resourcePair.first);
                 if (blasPair != raytracing.bottomLevelAccelStructs.end())
-                    blasPair->second.erase(resourcePair.second);
+                    blasPair->second.instances.erase(resourcePair.second);
             }
 
             raytracing.pendingReleases.clear();

@@ -26,9 +26,12 @@
     <ClCompile Include="RaytracingBridge.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BottomLevelAS.h" />
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="DLSS.h" />
     <ClInclude Include="FSR.h" />
+    <ClInclude Include="Instance.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="Upscaler.h" />
     <ClInclude Include="Format.h" />
     <ClInclude Include="Hash.h" />

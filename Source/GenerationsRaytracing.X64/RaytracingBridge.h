@@ -1,58 +1,12 @@
 ﻿#pragma once
 
-struct Device;
+#include "BottomLevelAS.h"
+#include "Instance.h"
+#include "Material.h"
+
 class Upscaler;
+struct Device;
 struct Bridge;
-
-struct Geometry
-{
-    uint32_t vertexCount;
-    uint32_t vertexStride;
-    uint32_t normalOffset;
-    uint32_t tangentOffset;
-    uint32_t binormalOffset;
-    uint32_t texCoordOffset;
-    uint32_t colorOffset;
-    uint32_t colorFormat;
-    uint32_t blendWeightOffset;
-    uint32_t blendIndicesOffset;
-    uint32_t material;
-    uint32_t punchThrough;
-};
-
-struct SkinnedGeometry
-{
-    nvrhi::BufferHandle buffer;
-    nvrhi::BufferHandle nodeIndices;
-};
-
-struct Material
-{
-    char shader[256];
-    uint32_t textures[16]{};
-    float parameters[16][4];
-};
-
-struct Instance
-{
-    float transform[3][4];
-    float delta[4][4];
-    unsigned int bottomLevelAS;
-    unsigned int instanceInfo;
-    unsigned int instanceMask;
-};
-
-struct BottomLevelAS
-{
-    nvrhi::rt::AccelStructDesc desc;
-    std::vector<Geometry> geometries;
-    std::vector<SkinnedGeometry> skinnedGeometries;
-    nvrhi::rt::AccelStructHandle handle;
-    std::vector<nvrhi::BufferHandle> buffers;
-    nvrhi::BufferHandle matrixBuffer;
-    uint32_t index = 0;
-    bool built = false;
-};
 
 struct RTConstants
 {
@@ -91,7 +45,7 @@ struct RaytracingBridge
     nvrhi::rt::ShaderTableHandle shaderTable;
 
     std::unordered_map<unsigned int, Material> materials;
-    std::unordered_map<unsigned int, std::unordered_map<unsigned int, BottomLevelAS>> bottomLevelAccelStructs;
+    std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
     std::vector<Instance> instances;
 
     nvrhi::ShaderHandle skinningShader;

@@ -24,6 +24,9 @@
     <ClInclude Include="Upscaler.h" />
     <ClInclude Include="DLSS.h" />
     <ClInclude Include="FSR.h" />
+    <ClInclude Include="BottomLevelAS.h" />
+    <ClInclude Include="Material.h" />
+    <ClInclude Include="Instance.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />

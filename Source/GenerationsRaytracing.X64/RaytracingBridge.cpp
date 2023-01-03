@@ -29,12 +29,13 @@ void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateGeometry>();
     const void* data = bridge.msgReceiver.getDataAndMoveNext(msg->nodeNum);
 
-    auto& bottomLevelAS = bottomLevelAccelStructs[msg->bottomLevelAS][msg->instanceInfo];
+    auto& blas = bottomLevelAccelStructs[msg->bottomLevelAS];
+    auto& blasInstance = blas.instances[msg->instanceInfo];
 
-    if (bottomLevelAS.handle)
-        bottomLevelAS = {};
-
-    auto& geometryDesc = bottomLevelAS.desc.bottomLevelGeometries.emplace_back();
+    auto& geometryDesc =
+        blasInstance.desc.bottomLevelGeometries.size() > blasInstance.curGeometryIndex ?
+        blasInstance.desc.bottomLevelGeometries[blasInstance.curGeometryIndex] :
+        blasInstance.desc.bottomLevelGeometries.emplace_back();
 
     if (msg->opaque)
         geometryDesc.flags = nvrhi::rt::GeometryFlags::Opaque;
@@ -54,66 +55,104 @@ void RaytracingBridge::procMsgCreateGeometry(Bridge& bridge)
     triangles.vertexCount = msg->vertexCount;
     triangles.vertexStride = msg->vertexStride;
 
-    auto& geometry = bottomLevelAS.geometries.emplace_back();
-    geometry.vertexCount = msg->vertexCount;
-    geometry.vertexStride = msg->vertexStride;
-    geometry.normalOffset = msg->normalOffset;
-    geometry.tangentOffset = msg->tangentOffset;
-    geometry.binormalOffset = msg->binormalOffset;
-    geometry.texCoordOffset = msg->texCoordOffset;
-    geometry.colorOffset = msg->colorOffset;
-    geometry.colorFormat = msg->colorFormat;
-    geometry.blendWeightOffset = msg->blendWeightOffset;
-    geometry.blendIndicesOffset = msg->blendIndicesOffset;
-    geometry.material = msg->material;
-    geometry.punchThrough = msg->punchThrough;
+    auto& geometry =
+        blasInstance.geometries.size() > blasInstance.curGeometryIndex ?
+        blasInstance.geometries[blasInstance.curGeometryIndex] :
+        blasInstance.geometries.emplace_back();
 
-    auto& skinnedGeometry = bottomLevelAS.skinnedGeometries.emplace_back();
+    geometry.gpu.vertexCount = msg->vertexCount;
+    geometry.gpu.vertexStride = msg->vertexStride;
+    geometry.gpu.normalOffset = msg->normalOffset;
+    geometry.gpu.tangentOffset = msg->tangentOffset;
+    geometry.gpu.binormalOffset = msg->binormalOffset;
+    geometry.gpu.texCoordOffset = msg->texCoordOffset;
+    geometry.gpu.colorOffset = msg->colorOffset;
+    geometry.gpu.colorFormat = msg->colorFormat;
+    geometry.gpu.blendWeightOffset = msg->blendWeightOffset;
+    geometry.gpu.blendIndicesOffset = msg->blendIndicesOffset;
+    geometry.gpu.material = msg->material;
+    geometry.gpu.punchThrough = msg->punchThrough;
+
+    if (geometry.vertexBuffer != triangles.vertexBuffer ||
+        geometry.indexBuffer != triangles.indexBuffer)
+    {
+        geometry.skinningBuffer = nullptr;
+        blasInstance.handle = nullptr;
+    }
+
+    geometry.vertexBuffer = triangles.vertexBuffer;
+    geometry.indexBuffer = triangles.indexBuffer;
 
     if (msg->nodeNum > 0)
     {
-        skinnedGeometry.nodeIndices = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
-            .setByteSize(msg->nodeNum)
-            .setFormat(nvrhi::Format::R8_UINT)
-            .setCanHaveTypedViews(true)
-            .setCpuAccess(nvrhi::CpuAccessMode::Write));
+        auto& nodeIndicesBuffer = blas.nodeIndicesBuffers[XXH64(data, msg->nodeNum, 0)];
+        if (!nodeIndicesBuffer)
+        {
+            nodeIndicesBuffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
+                .setByteSize(msg->nodeNum)
+                .setFormat(nvrhi::Format::R8_UINT)
+                .setCanHaveTypedViews(true)
+                .setInitialState(nvrhi::ResourceStates::CopyDest)
+                .setKeepInitialState(true));
 
-        void* memory = bridge.device.nvrhi->mapBuffer(skinnedGeometry.nodeIndices, nvrhi::CpuAccessMode::Write);
-        memcpy(memory, data, msg->nodeNum);
-        bridge.device.nvrhi->unmapBuffer(skinnedGeometry.nodeIndices);
+            bridge.openCommandListForCopy();
+            bridge.commandListForCopy->writeBuffer(nodeIndicesBuffer, data, msg->nodeNum);
+            bridge.commandList->setPermanentBufferState(nodeIndicesBuffer, nvrhi::ResourceStates::ShaderResource);
+        }
+
+        geometry.nodeIndicesBuffer = nodeIndicesBuffer;
+    }
+    else
+    {
+        geometry.nodeIndicesBuffer = nullptr;
     }
 
-    bottomLevelAS.buffers.push_back(triangles.indexBuffer);
-    bottomLevelAS.buffers.push_back(triangles.vertexBuffer);
+    blasInstance.curGeometryIndex += 1;
 }
 
 void RaytracingBridge::procMsgCreateBottomLevelAS(Bridge& bridge)
 {
     const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgCreateBottomLevelAS>();
-    const void* data = bridge.msgReceiver.getDataAndMoveNext(msg->matrixNum * 64);
+
+    const size_t matrixByteSize = msg->matrixNum * 64;
+    const void* data = bridge.msgReceiver.getDataAndMoveNext(matrixByteSize);
 
     const auto blasPair = bottomLevelAccelStructs.find(msg->bottomLevelAS);
     if (blasPair == bottomLevelAccelStructs.end())
         return;
 
-    const auto instancePair = blasPair->second.find(msg->instanceInfo);
-    if (instancePair == blasPair->second.end())
+    const auto instancePair = blasPair->second.instances.find(msg->instanceInfo);
+    if (instancePair == blasPair->second.instances.end())
         return;
-
-    instancePair->second.handle = bridge.device.nvrhi->createAccelStruct(instancePair->second.desc
-        .setBuildFlags(msg->matrixNum > 0 ? nvrhi::rt::AccelStructBuildFlags::PreferFastBuild : nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
 
     if (msg->matrixNum > 0)
     {
-        instancePair->second.matrixBuffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
-            .setByteSize(msg->matrixNum * 64)
-            .setStructStride(64)
-            .setCpuAccess(nvrhi::CpuAccessMode::Write));
+        if (instancePair->second.matrixBuffer == nullptr ||
+            instancePair->second.matrixBuffer->getDesc().byteSize != matrixByteSize)
+        {
+            instancePair->second.matrixBuffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
+                .setByteSize(matrixByteSize)
+                .setStructStride(64)
+                .setCpuAccess(nvrhi::CpuAccessMode::Write));
 
-        void* memory = bridge.device.nvrhi->mapBuffer(instancePair->second.matrixBuffer, nvrhi::CpuAccessMode::Write);
-        memcpy(memory, data, msg->matrixNum * 64);
-        bridge.device.nvrhi->unmapBuffer(instancePair->second.matrixBuffer);
+            instancePair->second.matrixHash = 0;
+        }
+
+        const XXH64_hash_t matrixHash = XXH64(data, matrixByteSize, 0);
+        if (matrixHash != instancePair->second.matrixHash)
+        {
+            void* memory = bridge.device.nvrhi->mapBuffer(instancePair->second.matrixBuffer, nvrhi::CpuAccessMode::Write);
+            memcpy(memory, data, matrixByteSize);
+            bridge.device.nvrhi->unmapBuffer(instancePair->second.matrixBuffer);
+
+            instancePair->second.handle = nullptr;
+            instancePair->second.matrixHash = matrixHash;
+        }
     }
+
+    instancePair->second.desc.bottomLevelGeometries.resize(instancePair->second.curGeometryIndex);
+    instancePair->second.geometries.resize(instancePair->second.curGeometryIndex);
+    instancePair->second.curGeometryIndex = 0;
 }
 
 void RaytracingBridge::procMsgCreateInstance(Bridge& bridge)
@@ -122,7 +161,6 @@ void RaytracingBridge::procMsgCreateInstance(Bridge& bridge)
 
     auto& instance = instances.emplace_back();
     memcpy(instance.transform, msg->transform, sizeof(instance.transform));
-    memcpy(instance.delta, msg->delta, sizeof(instance.delta));
     instance.bottomLevelAS = msg->bottomLevelAS;
     instance.instanceInfo = msg->instanceInfo;
     instance.instanceMask = msg->instanceMask;
@@ -135,8 +173,8 @@ void RaytracingBridge::procMsgCreateMaterial(Bridge& bridge)
     auto& material = materials[msg->material];
 
     strcpy(material.shader, msg->shader);
-    memcpy(material.textures, msg->textures, sizeof(msg->textures));
-    memcpy(material.parameters, msg->parameters, sizeof(msg->parameters));
+    memcpy(material.gpu.textures, msg->textures, sizeof(msg->textures));
+    memcpy(material.gpu.parameters, msg->parameters, sizeof(msg->parameters));
 }
 
 void RaytracingBridge::procMsgReleaseInstanceInfo(Bridge& bridge)
@@ -256,7 +294,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addItem(nvrhi::BindingLayoutItem::RawBuffer_UAV(0)));
 
         skinningConstantBuffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
-            .setByteSize(sizeof(Geometry))
+            .setByteSize(sizeof(BottomLevelAS::Geometry::GPU))
             .setIsConstantBuffer(true)
             .setIsVolatile(true)
             .setMaxVersions(1));
@@ -278,12 +316,12 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         float parameters[16][4]{};
     };
 
-    static std::vector<MaterialForGpu> materialsForGpu;
+    static std::vector<MaterialForGpu> gpuMaterials;
     static std::unordered_map<unsigned int, uint32_t> materialMap;
 
     textures.clear();
     textureMap.clear();
-    materialsForGpu.clear();
+    gpuMaterials.clear();
     materialMap.clear();
 
     textures.push_back(bridge.nullTexture);
@@ -291,26 +329,26 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
     for (auto& [id, material] : materials)
     {
-        materialMap[id] = (uint32_t)materialsForGpu.size();
+        materialMap[id] = (uint32_t)gpuMaterials.size();
 
-        auto& materialForGpu = materialsForGpu.emplace_back();
+        auto& gpuMaterial = gpuMaterials.emplace_back();
         for (size_t i = 0; i < 16; i++)
         {
-            if (!material.textures[i])
+            if (!material.gpu.textures[i])
                 continue;
 
-            const auto pair = textureMap.find(material.textures[i]);
+            const auto pair = textureMap.find(material.gpu.textures[i]);
             if (pair == textureMap.end())
             {
-                materialForGpu.textureIndices[i] = (uint32_t)textures.size();
-                const auto texPair = bridge.resources.find(material.textures[i]);
+                gpuMaterial.textureIndices[i] = (uint32_t)textures.size();
+                const auto texPair = bridge.resources.find(material.gpu.textures[i]);
                 textures.push_back(texPair != bridge.resources.end() ? nvrhi::checked_cast<nvrhi::ITexture*>(texPair->second.Get()) : bridge.nullTexture.Get());
             }
             else
-                materialForGpu.textureIndices[i] = pair->second;
+                gpuMaterial.textureIndices[i] = pair->second;
         }
 
-        memcpy(materialForGpu.parameters, material.parameters, sizeof(material.parameters));
+        memcpy(gpuMaterial.parameters, material.gpu.parameters, sizeof(material.gpu.parameters));
     }
 
     textureDescriptorTable = bridge.device.nvrhi->createDescriptorTable(textureBindlessLayout);
@@ -319,8 +357,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     for (uint32_t i = 0; i < textures.size(); i++)
         bridge.device.nvrhi->writeDescriptorTable(textureDescriptorTable, nvrhi::BindingSetItem::Texture_SRV(i, textures[i]));
 
-    static std::vector<Geometry> geometriesForGpu;
-    geometriesForGpu.clear();
+    static std::vector<BottomLevelAS::Geometry::GPU> gpuGeometries;
+    gpuGeometries.clear();
 
     shaderTable = pipeline->createShaderTable();
     shaderTable->setRayGenerationShader("RayGeneration");
@@ -328,76 +366,68 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     shaderTable->addMissShader("MissSkyBox");
     shaderTable->addMissShader("MissEnvironmentColor");
 
-    for (auto& [instanceId, instanceInfo] : bottomLevelAccelStructs)
+    for (auto& [id, blas] : bottomLevelAccelStructs)
     {
-        for (auto it = instanceInfo.begin(); it != instanceInfo.end();)
+        for (auto it = blas.instances.begin(); it != blas.instances.end();)
         {
             if (it->second.geometries.empty())
             {
-                it = instanceInfo.erase(it);
+                it = blas.instances.erase(it);
                 continue;
             }
 
-            if (!it->second.handle)
-            {
-                ++it;
-                continue;
-            }
-
-            it->second.index = (uint32_t)geometriesForGpu.size();
+            it->second.indexInBuffer = (uint32_t)gpuGeometries.size();
 
             for (size_t i = 0; i < it->second.geometries.size(); i++)
             {
                 auto& geometry = it->second.geometries[i];
-                auto& geometryForGpu = geometriesForGpu.emplace_back(geometry);
+                auto& gpuGeometry = gpuGeometries.emplace_back(geometry.gpu);
 
-                const auto materialPair = materialMap.find(geometry.material);
+                const auto materialPair = materialMap.find(geometry.gpu.material);
                 if (materialPair != materialMap.end())
                 {
-                    geometryForGpu.material = materialPair->second;
-                    shaderTable->addHitGroup(materials[geometry.material].shader);
+                    gpuGeometry.material = materialPair->second;
+                    shaderTable->addHitGroup(materials[geometry.gpu.material].shader);
                 }
                 else
                 {
-                    geometryForGpu.material = 0;
+                    gpuGeometry.material = 0;
                     shaderTable->addHitGroup("SysError");
                 }
 
-                auto& skinnedGeometry = it->second.skinnedGeometries[i];
-
-                if (!it->second.built && skinnedGeometry.nodeIndices)
+                if (it->second.handle == nullptr && geometry.nodeIndicesBuffer != nullptr)
                 {
-                    auto& vertexBuffer = it->second.desc.bottomLevelGeometries[i].geometryData.triangles.vertexBuffer;
-
-                    if (!skinnedGeometry.buffer)
+                    if (geometry.skinningBuffer == nullptr)
                     {
-                        auto desc = vertexBuffer->getDesc();
-                        skinnedGeometry.buffer = bridge.device.nvrhi->createBuffer(desc.setCanHaveUAVs(true));
+                        auto desc = geometry.vertexBuffer->getDesc();
+                        geometry.skinningBuffer = bridge.device.nvrhi->createBuffer(desc.setCanHaveUAVs(true));
                     }
 
-                    bridge.commandList->writeBuffer(skinningConstantBuffer, &geometry, sizeof(Geometry));
+                    bridge.commandList->writeBuffer(skinningConstantBuffer, &geometry.gpu, sizeof(BottomLevelAS::Geometry::GPU));
 
                     auto skinningBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
                         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, skinningConstantBuffer))
-                        .addItem(nvrhi::BindingSetItem::RawBuffer_SRV(0, vertexBuffer))
-                        .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(1, skinnedGeometry.nodeIndices))
+                        .addItem(nvrhi::BindingSetItem::RawBuffer_SRV(0, geometry.vertexBuffer))
+                        .addItem(nvrhi::BindingSetItem::TypedBuffer_SRV(1, geometry.nodeIndicesBuffer))
                         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, it->second.matrixBuffer))
-                        .addItem(nvrhi::BindingSetItem::RawBuffer_UAV(0, skinnedGeometry.buffer)), skinningBindingLayout);
+                        .addItem(nvrhi::BindingSetItem::RawBuffer_UAV(0, geometry.skinningBuffer)), skinningBindingLayout);
 
                     bridge.commandList->setComputeState(nvrhi::ComputeState()
                         .setPipeline(skinningPipeline)
                         .addBindingSet(skinningBindingSet));
 
-                    bridge.commandList->dispatch((geometry.vertexCount + 63) / 64);
+                    bridge.commandList->dispatch((geometry.gpu.vertexCount + 63) / 64);
 
-                    vertexBuffer = skinnedGeometry.buffer;
+                    it->second.desc.bottomLevelGeometries[i].geometryData.triangles.vertexBuffer = geometry.skinningBuffer;
                 }
             }
 
-            if (!it->second.built)
+            if (it->second.handle == nullptr)
             {
+                it->second.handle = bridge.device.nvrhi->createAccelStruct(it->second.desc
+                    .setBuildFlags(it->second.matrixBuffer != nullptr ? nvrhi::rt::AccelStructBuildFlags::PreferFastBuild : nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
+
                 nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, it->second.handle, it->second.desc);
-                it->second.built = true;
             }
 
             ++it;
@@ -405,24 +435,21 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     }
 
     geometryDescriptorTable = bridge.device.nvrhi->createDescriptorTable(geometryBindlessLayout);
-    bridge.device.nvrhi->resizeDescriptorTable(geometryDescriptorTable, (uint32_t)(geometriesForGpu.size() * 2), false);
+    bridge.device.nvrhi->resizeDescriptorTable(geometryDescriptorTable, (uint32_t)(gpuGeometries.size() * 2), false);
 
     uint32_t descriptorIndex = 0;
 
-    for (auto& [instanceId, instanceInfo] : bottomLevelAccelStructs)
+    for (auto& [blasId, blas] : bottomLevelAccelStructs)
     {
-        for (auto& [blasId, blas] : instanceInfo)
+        for (auto& [instanceId, instance] : blas.instances)
         {
-            for (size_t i = 0; i < blas.geometries.size(); i++)
+            for (auto& geometry : instance.geometries)
             {
-                auto& geometry = blas.desc.bottomLevelGeometries[i];
-                auto& skinnedGeometry = blas.skinnedGeometries[i];
+                bridge.device.nvrhi->writeDescriptorTable(geometryDescriptorTable,
+                    nvrhi::BindingSetItem::TypedBuffer_SRV(descriptorIndex++, geometry.indexBuffer));
 
                 bridge.device.nvrhi->writeDescriptorTable(geometryDescriptorTable,
-                    nvrhi::BindingSetItem::TypedBuffer_SRV(descriptorIndex++, geometry.geometryData.triangles.indexBuffer));
-
-                bridge.device.nvrhi->writeDescriptorTable(geometryDescriptorTable,
-                    nvrhi::BindingSetItem::RawBuffer_SRV(descriptorIndex++, skinnedGeometry.buffer ? skinnedGeometry.buffer.Get() : geometry.geometryData.triangles.vertexBuffer));
+                    nvrhi::BindingSetItem::RawBuffer_SRV(descriptorIndex++, geometry.skinningBuffer != nullptr ? geometry.skinningBuffer : geometry.vertexBuffer));
             }
         }
     }
@@ -436,15 +463,15 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         if (blasPair == bottomLevelAccelStructs.end())
             continue;
 
-        const auto instancePair = blasPair->second.find(instance.instanceInfo);
-        if (instancePair == blasPair->second.end())
+        const auto instancePair = blasPair->second.instances.find(instance.instanceInfo);
+        if (instancePair == blasPair->second.instances.end())
             continue;
 
         auto& desc = instanceDescs.emplace_back();
         memcpy(desc.transform, instance.transform, sizeof(desc.transform));
-        desc.instanceID = instancePair->second.index;
+        desc.instanceID = instancePair->second.indexInBuffer;
         desc.instanceMask = instance.instanceMask;
-        desc.instanceContributionToHitGroupIndex = instancePair->second.index;
+        desc.instanceContributionToHitGroupIndex = instancePair->second.indexInBuffer;
         desc.bottomLevelAS = instancePair->second.handle;
     }
 
@@ -480,8 +507,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     memcpy(rtConstants.prevProj, bridge.vsConstants.c[0], sizeof(rtConstants.prevProj));
     memcpy(rtConstants.prevView, bridge.vsConstants.c[4], sizeof(rtConstants.prevView));
 
-    createUploadBuffer(bridge, geometriesForGpu, geometryBuffer);
-    createUploadBuffer(bridge, materialsForGpu, materialBuffer);
+    createUploadBuffer(bridge, gpuGeometries, geometryBuffer);
+    createUploadBuffer(bridge, gpuMaterials, materialBuffer);
 
     auto bindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, bridge.vsConstantBuffer))
