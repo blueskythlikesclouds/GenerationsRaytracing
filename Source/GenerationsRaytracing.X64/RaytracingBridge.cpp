@@ -388,7 +388,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
                         .setPipeline(skinningPipeline)
                         .addBindingSet(skinningBindingSet));
 
-                    bridge.commandList->dispatch((geometry.vertexCount + 63) & ~63);
+                    bridge.commandList->dispatch((geometry.vertexCount + 63) / 64);
 
                     vertexBuffer = skinnedGeometry.buffer;
                 }
