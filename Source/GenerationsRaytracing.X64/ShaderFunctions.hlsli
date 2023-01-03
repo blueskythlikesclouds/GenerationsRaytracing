@@ -192,7 +192,7 @@ float3 TraceGlobalIlluminationWithReProjection(inout Payload payload, in float3 
 
         float factor = exp(abs(depth - prevDepth) / -0.01) * saturate(dot(prevNormal, normal)) * prevGlobalIllumination.a;
         factor *= all(prevIndex >= 0.0) && all(prevIndex < DispatchRaysDimensions().xy) ? 1.0 : 0.0;
-        factor = min(64.0, factor + 1.0);
+        factor += 1.0;
 
         globalIllumination = lerp(prevGlobalIllumination.rgb, globalIllumination, 1.0 / factor);
 

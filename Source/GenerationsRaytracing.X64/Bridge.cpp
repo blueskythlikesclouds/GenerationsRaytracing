@@ -511,7 +511,12 @@ void Bridge::procMsgSetRenderTarget()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetRenderTarget>();
     assert(msg->index == 0);
-    const auto& texture = msg->surface == swapChainSurface ? swapChainTextures[swapChain->GetCurrentBackBufferIndex()] : resources[msg->surface];
+
+    const auto pair = resources.find(msg->surface);
+
+    const auto texture = msg->surface == swapChainSurface ? 
+        swapChainTextures[swapChain->GetCurrentBackBufferIndex()].Get() :
+        pair != resources.end() ? pair->second.Get() : nullptr;
 
     if (texture)
     {
@@ -523,7 +528,7 @@ void Bridge::procMsgSetRenderTarget()
 
         assignAndUpdateDirtyFlags(
             framebufferDesc.colorAttachments[0].texture,
-            nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()), 
+            nvrhi::checked_cast<nvrhi::ITexture*>(texture), 
             DirtyFlags::FramebufferAndPipeline);
     }
     else
@@ -541,9 +546,11 @@ void Bridge::procMsgSetDepthStencilSurface()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetDepthStencilSurface>();
 
+    const auto pair = resources.find(msg->surface);
+
     assignAndUpdateDirtyFlags(
         framebufferDesc.depthAttachment.texture,
-        nvrhi::checked_cast<nvrhi::ITexture*>(resources[msg->surface].Get()),
+        pair != resources.end() ? nvrhi::checked_cast<nvrhi::ITexture*>(pair->second.Get()) : nullptr,
         DirtyFlags::FramebufferAndPipeline);
 }
 
@@ -770,11 +777,13 @@ void Bridge::procMsgSetRenderState()
 void Bridge::procMsgSetTexture()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetTexture>();
-    const auto& texture = resources[msg->texture];
+
+    const auto pair = resources.find(msg->texture);
+    const auto texture = pair != resources.end() ? pair->second.Get() : nullptr;
 
     assignAndUpdateDirtyFlags(
         textureBindingSetDesc.bindings[msg->stage], 
-        nvrhi::BindingSetItem::Texture_SRV(msg->stage, texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture.Get()) : nullTexture.Get()),
+        nvrhi::BindingSetItem::Texture_SRV(msg->stage, texture ? nvrhi::checked_cast<nvrhi::ITexture*>(texture) : nullTexture.Get()),
         DirtyFlags::Texture);
 
     if (msg->stage == 7 || msg->stage == 13)
@@ -1017,9 +1026,12 @@ void Bridge::procMsgCreateVertexShader()
 void Bridge::procMsgSetVertexShader()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetVertexShader>();
-    const auto& shader = resources[msg->shader];
+
+    const auto pair = resources.find(msg->shader);
+    const auto shader = pair != resources.end() ? pair->second.Get() : nullptr;
+
     if (shader)
-        assignAndUpdateDirtyFlags(pipelineDesc.VS, nvrhi::checked_cast<nvrhi::IShader*>(shader.Get()), DirtyFlags::FramebufferAndPipeline);
+        assignAndUpdateDirtyFlags(pipelineDesc.VS, nvrhi::checked_cast<nvrhi::IShader*>(shader), DirtyFlags::FramebufferAndPipeline);
 }
 
 void Bridge::procMsgSetVertexShaderConstantF()
@@ -1053,9 +1065,10 @@ void Bridge::procMsgSetStreamSource()
     }
 
     auto& vertexBuffer = graphicsState.vertexBuffers[msg->streamNumber];
+    const auto pair = resources.find(msg->streamData);
 
     assignAndUpdateDirtyFlags(vertexBuffer.slot, msg->streamNumber, DirtyFlags::GraphicsState);
-    assignAndUpdateDirtyFlags(vertexBuffer.buffer, nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->streamData].Get()), DirtyFlags::VertexBuffer | DirtyFlags::GraphicsState);
+    assignAndUpdateDirtyFlags(vertexBuffer.buffer, pair != resources.end() ? nvrhi::checked_cast<nvrhi::IBuffer*>(pair->second.Get()) : nullptr, DirtyFlags::VertexBuffer | DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexBuffer.offset, msg->offsetInBytes, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(vertexStrides[msg->streamNumber], msg->stride, DirtyFlags::InputLayout);
 }
@@ -1076,7 +1089,9 @@ void Bridge::procMsgSetIndices()
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetIndices>();
     auto& indexBuffer = graphicsState.indexBuffer;
 
-    assignAndUpdateDirtyFlags(indexBuffer.buffer, nvrhi::checked_cast<nvrhi::IBuffer*>(resources[msg->indexData].Get()), DirtyFlags::GraphicsState);
+    const auto pair = resources.find(msg->indexData);
+
+    assignAndUpdateDirtyFlags(indexBuffer.buffer, pair != resources.end() ? nvrhi::checked_cast<nvrhi::IBuffer*>(pair->second.Get()) : nullptr, DirtyFlags::GraphicsState);
     assignAndUpdateDirtyFlags(indexBuffer.offset, 0, DirtyFlags::GraphicsState);
 
     if (indexBuffer.buffer)
@@ -1098,7 +1113,9 @@ void Bridge::procMsgCreatePixelShader()
 void Bridge::procMsgSetPixelShader()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetPixelShader>();
-    assignAndUpdateDirtyFlags(pipelineDesc.PS, nvrhi::checked_cast<nvrhi::IShader*>(resources[msg->shader].Get()), DirtyFlags::FramebufferAndPipeline);
+
+    const auto pair = resources.find(msg->shader);
+    assignAndUpdateDirtyFlags(pipelineDesc.PS, pair != resources.end() ? nvrhi::checked_cast<nvrhi::IShader*>(pair->second.Get()) : nullptr, DirtyFlags::FramebufferAndPipeline);
 }
 
 void Bridge::procMsgSetPixelShaderConstantF()
@@ -1279,6 +1296,15 @@ void Bridge::receiveMessages()
             }
 
             pendingReleases.clear();
+
+            for (const auto& resourcePair : raytracing.pendingReleases)
+            {
+                const auto blasPair = raytracing.bottomLevelAccelStructs.find(resourcePair.first);
+                if (blasPair != raytracing.bottomLevelAccelStructs.end())
+                    blasPair->second.erase(resourcePair.second);
+            }
+
+            raytracing.pendingReleases.clear();
         }
 
         dirtyFlags = DirtyFlags::All;

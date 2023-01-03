@@ -75,18 +75,12 @@ struct Geometry
     uint PunchThrough;
 };
 
-struct Instance
-{
-    float4x4 Delta;
-};
-
 #ifndef SHADER_DEFINITIONS_NO_BINDING_LAYOUT
 
 RaytracingAccelerationStructure g_BVH : register(t0);
 
 StructuredBuffer<Material> g_MaterialBuffer : register(t1);
 StructuredBuffer<Geometry> g_GeometryBuffer : register(t2);
-StructuredBuffer<Instance> g_InstanceBuffer : register(t3);
 
 RWTexture2D<float4> g_Color : register(u0);
 RWTexture2D<float> g_Depth : register(u1);

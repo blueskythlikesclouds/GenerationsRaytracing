@@ -78,7 +78,6 @@ struct RaytracingBridge
 
     nvrhi::BufferHandle materialBuffer;
     nvrhi::BufferHandle geometryBuffer;
-    nvrhi::BufferHandle instanceBuffer;
 
     nvrhi::TextureHandle output;
     std::unique_ptr<Upscaler> upscaler;
@@ -107,6 +106,8 @@ struct RaytracingBridge
     nvrhi::FramebufferHandle copyFramebuffer;
     nvrhi::GraphicsPipelineHandle copyPipeline;
     nvrhi::DrawArguments copyDrawArguments;
+
+    std::vector<std::pair<unsigned int, unsigned int>> pendingReleases;
 
     RaytracingBridge(const Device& device, const std::string& directoryPath);
     ~RaytracingBridge();

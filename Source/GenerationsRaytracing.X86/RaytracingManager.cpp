@@ -42,10 +42,11 @@ static SearchResult searchDatabaseData(hh::db::CDatabaseData& databaseData)
     std::lock_guard lock(identifierMutex);
 
     SearchResult result{};
+    const auto pair = identifierMap.find(&databaseData);
 
-    if (isMadeForBridge(databaseData))
+    if (isMadeForBridge(databaseData) && pair != identifierMap.end())
     {
-        result.id = identifierMap[&databaseData];
+        result.id = pair->second;
         result.shouldCreate = false;
     }
     else
@@ -539,15 +540,15 @@ HOOK(void, __fastcall, DestructDatabaseData, 0x6993B0, hh::db::CDatabaseData* Th
         group.wait();
 
         std::lock_guard lock(identifierMutex);
-        const auto pair = identifierMap.find(This);
+        const auto idPair = identifierMap.find(This);
 
-        if (pair != identifierMap.end())
+        if (idPair != identifierMap.end())
         {
-            identifierMap.erase(pair);
-
             const auto msg = msgSender.start<MsgReleaseResource>();
-            msg->resource = pair->second;
+            msg->resource = idPair->second;
             msgSender.finish();
+
+            identifierMap.erase(idPair);
         }
     }
 
@@ -579,12 +580,12 @@ HOOK(void, __fastcall, DestructSingleElement, 0x701850, hh::mr::CSingleElement* 
     if (This->m_spModel != nullptr && This->m_spInstanceInfo != nullptr)
     {
         std::lock_guard lock(identifierMutex);
+        const auto idPair = identifierMap.find(This->m_spModel.get());
 
-        const auto pair = identifierMap.find(This->m_spModel.get());
-        if (pair != identifierMap.end())
+        if (idPair != identifierMap.end())
         {
             const auto msg = msgSender.start<MsgReleaseInstanceInfo>();
-            msg->bottomLevelAS = pair->second;
+            msg->bottomLevelAS = idPair->second;
             msg->instanceInfo = (unsigned int)This->m_spInstanceInfo.get();
             msgSender.finish();
         }
