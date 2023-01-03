@@ -289,9 +289,7 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
     {
         if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
         {
-            if (!singleElement->m_spModel->IsMadeAll() ||
-                strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_board_HD") ||
-                strstr(singleElement->m_spModel->m_TypeAndName.c_str(), "chr_Sonic_spin_HD"))
+            if (!singleElement->m_spModel->IsMadeAll() || (singleElement->m_spInstanceInfo->m_Flags & hh::mr::eInstanceInfoFlags_Invisible) != 0)
                 return;
 
             const auto idPair = createBottomLevelAS(*singleElement);
