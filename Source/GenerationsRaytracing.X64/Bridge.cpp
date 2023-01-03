@@ -1244,7 +1244,7 @@ void Bridge::processMessages()
         case MsgCreateMaterial::ID:            raytracing.procMsgCreateMaterial(*this); break;
         case MsgExit::ID:                      procMsgExit(); break;
         case MsgReleaseResource::ID:           procMsgReleaseResource(); break;
-        case MsgReleaseInstanceInfo::ID:       raytracing.procMsgReleaseInstanceInfo(*this);
+        case MsgReleaseInstanceInfo::ID:       raytracing.procMsgReleaseInstanceInfo(*this); break;
         default:                               assert(0 && "Unknown message type"); break;
         }
     }
