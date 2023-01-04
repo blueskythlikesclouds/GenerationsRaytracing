@@ -33,7 +33,7 @@ void FSR::validateImp(const ValidationParams& params)
             qualityMode == QualityMode::Performance ? FFX_FSR2_QUALITY_MODE_PERFORMANCE : FFX_FSR2_QUALITY_MODE_ULTRA_PERFORMANCE));
     }
 
-    contextDesc.flags = FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE | FFX_FSR2_ENABLE_AUTO_EXPOSURE;
+    contextDesc.flags = FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
     contextDesc.maxRenderSize.width = width;
     contextDesc.maxRenderSize.height = height;
     contextDesc.displaySize.width = params.output->getDesc().width;

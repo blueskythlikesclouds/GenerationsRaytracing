@@ -53,8 +53,7 @@ void DLSS::validateImp(const ValidationParams& params)
     dlssParams.Feature.InTargetHeight = params.output->getDesc().height;
     dlssParams.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
-        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes |
-        NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
 
     auto commandList = params.bridge.device.nvrhi->createCommandList(nvrhi::CommandListParameters()
         .setEnableImmediateExecution(false));
