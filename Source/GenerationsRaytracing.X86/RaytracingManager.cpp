@@ -436,8 +436,6 @@ static void __cdecl SceneRender_Raytracing(void* A1)
                 }
             }
 
-            memcpy(msg->prevTransform, instance->m_scpTransform.get(), sizeof(msg->prevTransform));
-
             msg->bottomLevelAS = blasId;
             msg->instanceInfo = 0;
             msg->instanceMask = INSTANCE_MASK_DEFAULT;
