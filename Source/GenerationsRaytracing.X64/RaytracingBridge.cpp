@@ -606,22 +606,34 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         .setWidth(upscaler->width)
         .setHeight(upscaler->height);
 
-    static constexpr const char* rayGenerationShaders[] =
-    {
-        "PrimaryRayGeneration",
-        "GlobalIlluminationRayGeneration",
-        "ShadowRayGeneration",
-        "ReflectionRayGeneration",
-        "RefractionRayGeneration",
-        "CompositeRayGeneration"
-    };
-
-    for (auto& rayGenerationShader : rayGenerationShaders)
+    auto dispatchRays = [&](const char* rayGenerationShader)
     {
         shaderTable->setRayGenerationShader(rayGenerationShader);
         bridge.commandList->setRayTracingState(raytracingState);
         bridge.commandList->dispatchRays(dispatchRaysArgs);
-    }
+    };
+
+    dispatchRays("PrimaryRayGeneration");
+
+    bridge.commandList->setTextureState(upscaler->position, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->depth, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->motionVector, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->normal, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->texCoord, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->color, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->shader, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+
+    dispatchRays("GlobalIlluminationRayGeneration");
+    dispatchRays("ShadowRayGeneration");
+    dispatchRays("ReflectionRayGeneration");
+    dispatchRays("RefractionRayGeneration");
+
+    bridge.commandList->setTextureState(upscaler->globalIllumination, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->shadow, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->reflection, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->reflection, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+
+    dispatchRays("CompositeRayGeneration");
 
     if (!copyPipeline)
     {
