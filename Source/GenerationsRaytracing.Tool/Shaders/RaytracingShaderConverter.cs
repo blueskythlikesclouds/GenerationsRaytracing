@@ -447,25 +447,20 @@ public static class RaytracingShaderConverter
 
         var shaderFlags = new List<string>(3);
 
-        if (vertexShader.Constants.Any(x => x.Name == "g_aLightField") ||
-            pixelShader.Constants.Any(x => x.Name == "g_aLightField"))
-        {
-            shaderFlags.Add("HAS_GLOBAL_ILLUMINATION");
-        }
+        bool hasGlobalIllumination = vertexShader.Constants.Any(x => x.Name == "g_aLightField") ||
+                                     pixelShader.Constants.Any(x => x.Name == "g_aLightField");
 
-        if (pixelShader.Constants.Any(x =>
-                x.Name.StartsWith("g_ReflectionMap") ||
-                x.Name.Contains("sampEnv") ||
-                x.Name.Contains("sampRef")))
-        {
-            shaderFlags.Add("HAS_REFLECTION");
-        }
+        bool hasReflection = pixelShader.Constants.Any(x =>
+            x.Name.StartsWith("g_ReflectionMap") ||
+            x.Name.Contains("sampEnv") ||
+            x.Name.Contains("sampRef"));
 
-        if (pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler"))
-        {
-            shaderFlags.Add("HAS_REFRACTION");
-        }
-        
+        bool hasRefraction = pixelShader.Constants.Any(x => x.Name == "g_FramebufferSampler");
+
+        if (hasGlobalIllumination) shaderFlags.Add("HAS_GLOBAL_ILLUMINATION");
+        if (hasReflection) shaderFlags.Add("HAS_REFLECTION");
+        if (hasRefraction) shaderFlags.Add("HAS_REFRACTION");
+
         if (shaderFlags.Count == 0)
             shaderFlags.Add("0");
 
@@ -500,6 +495,19 @@ public static class RaytracingShaderConverter
 
                 params.Vertex = GetVertex(attributes);
                 params.Material = GetMaterial();
+
+                #if HASGLOBALILLUMINATION
+                    params.GlobalIllumination = TraceGlobalIllumination(params.Vertex.Position, params.Vertex.Normal, payload.Random, payload.Depth);
+                    params.Shadow = TraceShadow(params.Vertex.Position, payload.Random);
+                #endif
+
+                #if HASREFLECTION
+                    params.Reflection = TraceReflection(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth);
+                #endif
+
+                #if HASREFRACTION
+                    params.Refraction = TraceRefraction(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth);
+                #endif
 
                 params.Projection[0] = float4(1, 0, 0, 0);
                 params.Projection[1] = float4(0, 1, 0, 0);
@@ -563,7 +571,10 @@ public static class RaytracingShaderConverter
             """
             .Replace("SHADERNAME", shaderName)
             .Replace("SHADERINDEX", $"{shaderIndex}")
-            .Replace("SHADERFLAGS", string.Join(" | ", shaderFlags)));
+            .Replace("SHADERFLAGS", string.Join(" | ", shaderFlags))
+            .Replace("HASGLOBALILLUMINATION", hasGlobalIllumination ? "1" : "0")
+            .Replace("HASREFLECTION", hasReflection ? "1" : "0")
+            .Replace("HASREFRACTION", hasRefraction ? "1" : "0"));
     }
 
     public static StringBuilder BeginShaderConversion()

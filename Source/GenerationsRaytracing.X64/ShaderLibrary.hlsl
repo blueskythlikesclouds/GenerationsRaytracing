@@ -39,7 +39,11 @@ void GlobalIlluminationRayGeneration()
         return;
 
     uint random = InitializeRandom(dimensions.x * index.y + index.x, g_CurrentFrame);
-    g_GlobalIllumination[index] = float4(TraceGlobalIllumination(g_Position[index].xyz, g_Normal[index].xyz, random), 1.0);
+    g_GlobalIllumination[index] = float4(TraceGlobalIllumination(
+        g_Position[index].xyz, 
+        g_Normal[index].xyz, 
+        random, 
+        MAX_RECURSION_DEPTH - 3), 1.0);
 }
 
 [shader("raygeneration")]
@@ -62,8 +66,14 @@ void ReflectionRayGeneration()
     uint2 index = DispatchRaysIndex().xy;
     uint4 shader = g_Shader[index];
 
-    if (shader.y & HAS_REFLECTION)
-        g_Reflection[index] = float4(TraceReflection(g_Position[index].xyz, g_Normal[index].xyz, normalize(g_Position[index].xyz - g_EyePosition.xyz)), 1.0);
+    if ((shader.y & HAS_REFLECTION) == 0)
+        return;
+
+    g_Reflection[index] = float4(TraceReflection(
+        g_Position[index].xyz, 
+        g_Normal[index].xyz, 
+        normalize(g_Position[index].xyz - g_EyePosition.xyz), 
+        MAX_RECURSION_DEPTH - 2), 1.0);
 }
 
 [shader("raygeneration")]
@@ -72,8 +82,14 @@ void RefractionRayGeneration()
     uint2 index = DispatchRaysIndex().xy;
     uint4 shader = g_Shader[index];
 
-    if (shader.y & HAS_REFRACTION)
-        g_Refraction[index] = float4(TraceRefraction(g_Position[index].xyz, g_Normal[index].xyz, normalize(g_Position[index].xyz - g_EyePosition.xyz)), 1.0);
+    if ((shader.y & HAS_REFRACTION) == 0)
+        return;
+
+    g_Refraction[index] = float4(TraceRefraction(
+        g_Position[index].xyz, 
+        g_Normal[index].xyz, 
+        normalize(g_Position[index].xyz - g_EyePosition.xyz), 
+        MAX_RECURSION_DEPTH - 2), 1.0);
 }
 
 [shader("raygeneration")]

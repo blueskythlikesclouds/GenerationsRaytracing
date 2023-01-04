@@ -4,6 +4,8 @@
 #include "ShaderDefinitions.hlsli"
 #include "ShaderGlobals.hlsli"
 
+#define MAX_RECURSION_DEPTH 8
+
 struct Payload
 {
     float3 Color;
@@ -77,8 +79,11 @@ float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNormal)
     return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
 }
 
-float3 TraceColor(float3 origin, float3 direction)
+float3 TraceColor(float3 origin, float3 direction, uint depth)
 {
+    if (depth >= MAX_RECURSION_DEPTH)
+        return 0;
+
     RayDesc ray;
     ray.Origin = origin;
     ray.Direction = direction;
@@ -86,6 +91,7 @@ float3 TraceColor(float3 origin, float3 direction)
     ray.TMax = Z_MAX;
 
     Payload payload = (Payload)0;
+    payload.Depth = depth + 1;
 
     TraceRay(
         g_BVH, 
@@ -100,19 +106,19 @@ float3 TraceColor(float3 origin, float3 direction)
     return min(payload.Color, 4.0);
 }
 
-float3 TraceGlobalIllumination(float3 origin, float3 normal, inout uint random)
+float3 TraceGlobalIllumination(float3 origin, float3 normal, inout uint random, uint depth)
 {
-    return TraceColor(origin, normalize(GetCosHemisphereSample(random, normal)));
+    return TraceColor(origin, normalize(GetCosHemisphereSample(random, normal)), depth);
 }
 
-float3 TraceReflection(float3 origin, float3 normal, float3 view)
+float3 TraceReflection(float3 origin, float3 normal, float3 view, uint depth)
 {
-    return TraceColor(origin, normalize(reflect(view, normal)));
+    return TraceColor(origin, normalize(reflect(view, normal)), depth);
 }
 
-float3 TraceRefraction(float3 origin, float3 normal, float3 view)
+float3 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth)
 {
-    return TraceColor(origin, normalize(refract(view, normal, 1.0 / 1.333)));
+    return TraceColor(origin, normalize(refract(view, normal, 1.0 / 1.333)), depth);
 }
 
 float TraceShadow(float3 origin, inout uint random)

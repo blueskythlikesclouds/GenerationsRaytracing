@@ -96,8 +96,8 @@ RaytracingBridge::RaytracingBridge(const Device& device, const std::string& dire
         .addShader({ "MissSecondary", shaderLibrary->getShader("MissSecondary", nvrhi::ShaderType::Miss) })
         .addShader({ "MissSecondarySky", shaderLibrary->getShader("MissSecondarySky", nvrhi::ShaderType::Miss) })
 
-        .setMaxRecursionDepth(8)
-        .setMaxPayloadSize(32);
+        .setMaxRecursionDepth(4)
+        .setMaxPayloadSize(24);
 
     for (auto& shader : shaderMapping.shaders)
     {
