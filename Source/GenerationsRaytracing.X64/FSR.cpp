@@ -48,7 +48,7 @@ void FSR::evaluateImp(const EvaluationParams& params)
     FfxFsr2DispatchDescription desc{};
     desc.commandList = ffxGetCommandListDX12(params.bridge.commandList->getNativeObject(nvrhi::ObjectTypes::D3D12_GraphicsCommandList));
     desc.color = ffxGetResourceDX12(&context, composite->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource), L"composite");
-    desc.depth = ffxGetResourceDX12(&context, depth->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource), L"depth");
+    desc.depth = ffxGetResourceDX12(&context, depth.getCurrent(params.currentFrame)->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource), L"depth");
     desc.motionVectors = ffxGetResourceDX12(&context, motionVector->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource), L"motionVector");
     desc.output = ffxGetResourceDX12(&context, output->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource), L"output", FFX_RESOURCE_STATE_UNORDERED_ACCESS);
     desc.jitterOffset.x = params.jitterX;

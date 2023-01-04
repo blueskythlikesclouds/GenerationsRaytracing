@@ -11,6 +11,7 @@
     <ClCompile Include="Upscaler.cpp" />
     <ClCompile Include="DLSS.cpp" />
     <ClCompile Include="FSR.cpp" />
+    <ClCompile Include="BlueNoise.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -27,6 +28,7 @@
     <ClInclude Include="BottomLevelAS.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Instance.h" />
+    <ClInclude Include="BlueNoise.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />

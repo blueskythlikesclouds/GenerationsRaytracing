@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BlueNoise.cpp" />
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DLSS.cpp" />
@@ -26,6 +27,7 @@
     <ClCompile Include="RaytracingBridge.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BlueNoise.h" />
     <ClInclude Include="BottomLevelAS.h" />
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="DLSS.h" />

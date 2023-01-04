@@ -50,14 +50,14 @@ public:
     };
 
     nvrhi::TextureHandle position;
-    nvrhi::TextureHandle depth;
+    PingPongTexture depth;
     nvrhi::TextureHandle motionVector;
-    nvrhi::TextureHandle normal;
+    PingPongTexture normal;
     nvrhi::TextureHandle texCoord;
     nvrhi::TextureHandle color;
     nvrhi::TextureHandle shader;
 
-    nvrhi::TextureHandle globalIllumination;
+    PingPongTexture globalIllumination;
     nvrhi::TextureHandle shadow;
     nvrhi::TextureHandle reflection;
     nvrhi::TextureHandle refraction;
