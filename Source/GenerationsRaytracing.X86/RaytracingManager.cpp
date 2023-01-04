@@ -13,6 +13,7 @@ static tbb::task_group group;
 static CriticalSection identifierMutex;
 static CriticalSection instanceMutex;
 static CriticalSection indexMutex;
+static CriticalSection matrixMutex;
 
 static ShaderMapping shaderMapping;
 
@@ -20,6 +21,8 @@ static std::unordered_map<hh::db::CDatabaseData*, size_t> identifierMap;
 
 static std::unordered_set<hh::mr::CTerrainInstanceInfoData*> instanceSet;
 static std::unordered_map<const hh::mr::CMeshData*, std::pair<ComPtr<Buffer>, size_t>> indexMap;
+
+static std::unordered_map<const void*, hh::math::CMatrix> prevMatrixMap;
 
 static bool isMadeForBridge(const hh::db::CDatabaseData& databaseData)
 {
@@ -301,15 +304,34 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
         if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
         {
             if (!singleElement->m_spModel->IsMadeAll() || (singleElement->m_spInstanceInfo->m_Flags & hh::mr::eInstanceInfoFlags_Invisible) != 0)
+            {
+                std::lock_guard lock(matrixMutex);
+                prevMatrixMap.erase(singleElement);
+
                 return;
+            }
 
             const auto idPair = createBottomLevelAS(*singleElement);
 
             const auto msg = msgSender.start<MsgCreateInstance>();
+            {
+                std::lock_guard lock(matrixMutex);
 
-            for (size_t i = 0; i < 3; i++)
-                for (size_t j = 0; j < 4; j++)
-                    msg->transform[i][j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
+                const auto matrixPair = prevMatrixMap.find(singleElement);
+
+                for (size_t i = 0; i < 3; i++)
+                {
+                    for (size_t j = 0; j < 4; j++)
+                    {
+                        msg->transform[i][j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
+
+                        msg->prevTransform[i][j] = matrixPair == prevMatrixMap.end() ? 
+                            singleElement->m_spInstanceInfo->m_Transform(i, j) : matrixPair->second(i, j);
+                    }
+                }
+
+                prevMatrixMap[singleElement] = singleElement->m_spInstanceInfo->m_Transform;
+            }
 
             msg->bottomLevelAS = idPair.first;
             msg->instanceInfo = idPair.second;
@@ -406,10 +428,15 @@ static void __cdecl SceneRender_Raytracing(void* A1)
             const auto msg = msgSender.start<MsgCreateInstance>();
 
             for (size_t i = 0; i < 3; i++)
+            {
                 for (size_t j = 0; j < 4; j++)
+                {
                     msg->transform[i][j] = (*instance->m_scpTransform)(i, j);
+                    msg->prevTransform[i][j] = (*instance->m_scpTransform)(i, j);
+                }
+            }
 
-            memcpy(msg->delta, hh::math::CMatrix::Identity().data(), sizeof(msg->delta));
+            memcpy(msg->prevTransform, instance->m_scpTransform.get(), sizeof(msg->prevTransform));
 
             msg->bottomLevelAS = blasId;
             msg->instanceInfo = 0;
@@ -588,15 +615,22 @@ HOOK(void, __fastcall, DestructSingleElement, 0x701850, hh::mr::CSingleElement* 
 {
     if (This->m_spModel != nullptr && This->m_spInstanceInfo != nullptr)
     {
-        std::lock_guard lock(identifierMutex);
-        const auto idPair = identifierMap.find(This->m_spModel.get());
-
-        if (idPair != identifierMap.end())
         {
-            const auto msg = msgSender.start<MsgReleaseInstanceInfo>();
-            msg->bottomLevelAS = idPair->second;
-            msg->instanceInfo = (unsigned int)This->m_spInstanceInfo.get();
-            msgSender.finish();
+            std::lock_guard lock(identifierMutex);
+            const auto idPair = identifierMap.find(This->m_spModel.get());
+
+            if (idPair != identifierMap.end())
+            {
+                const auto msg = msgSender.start<MsgReleaseInstanceInfo>();
+                msg->bottomLevelAS = idPair->second;
+                msg->instanceInfo = (unsigned int)This->m_spInstanceInfo.get();
+                msgSender.finish();
+            }
+        }
+
+        {
+            std::lock_guard lock(matrixMutex);
+            prevMatrixMap.erase(This);
         }
     }
 

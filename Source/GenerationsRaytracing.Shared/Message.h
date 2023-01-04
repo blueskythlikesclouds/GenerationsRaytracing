@@ -322,7 +322,7 @@ struct MsgCreateInstance
 {
     DEFINE_MSG_ID;
     float transform[3][4];
-    float delta[4][4];
+    float prevTransform[3][4];
     unsigned int bottomLevelAS;
     unsigned int instanceInfo;
     unsigned int instanceMask;

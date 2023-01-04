@@ -26,6 +26,7 @@
 struct Vertex
 {
     float3 Position;
+    float3 PrevPosition;
     float3 Normal;
     float3 Tangent;
     float3 Binormal;
@@ -37,6 +38,27 @@ struct Material
 {
     uint TextureIndices[16];
     float4 Parameters[16];
+};
+
+struct Geometry
+{
+    uint VertexCount;
+    uint VertexStride;
+    uint NormalOffset;
+    uint TangentOffset;
+    uint BinormalOffset;
+    uint TexCoordOffset;
+    uint ColorOffset;
+    uint ColorFormat;
+    uint BlendWeightOffset;
+    uint BlendIndicesOffset;
+    uint MaterialIndex;
+    uint PunchThrough;
+};
+
+struct Instance
+{
+    row_major float3x4 PrevTransform;
 };
 
 struct ShaderParams
@@ -57,22 +79,6 @@ struct ShaderParams
     float3 EyeDirection;
 };
 
-struct Geometry
-{
-    uint VertexCount;
-    uint VertexStride;
-    uint NormalOffset;
-    uint TangentOffset;
-    uint BinormalOffset;
-    uint TexCoordOffset;
-    uint ColorOffset;
-    uint ColorFormat;
-    uint BlendWeightOffset;
-    uint BlendIndicesOffset;
-    uint MaterialIndex;
-    uint PunchThrough;
-};
-
 struct CallableParams
 {
     uint MaterialIndex;
@@ -84,6 +90,7 @@ RaytracingAccelerationStructure g_BVH : register(t0);
 
 StructuredBuffer<Material> g_MaterialBuffer : register(t1);
 StructuredBuffer<Geometry> g_GeometryBuffer : register(t2);
+StructuredBuffer<Instance> g_InstanceBuffer : register(t3);
 
 RWTexture2D<float4> g_Position : register(u0);
 RWTexture2D<float> g_Depth : register(u1);
@@ -123,8 +130,10 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
     uint index = InstanceID() + GeometryIndex();
 
     Geometry geometry = g_GeometryBuffer[index];
-    Buffer<uint> indexBuffer = g_BindlessIndexBuffer[index * 2 + 0];
-    ByteAddressBuffer vertexBuffer = g_BindlessVertexBuffer[index * 2 + 1];
+
+    Buffer<uint> indexBuffer = g_BindlessIndexBuffer[index * 3 + 0];
+    ByteAddressBuffer vertexBuffer = g_BindlessVertexBuffer[index * 3 + 1];
+    ByteAddressBuffer prevVertexBuffer = g_BindlessVertexBuffer[index * 3 + 2];
 
     uint3 indices;
     indices.x = indexBuffer[PrimitiveIndex() * 3 + 0];
@@ -141,6 +150,11 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
     Vertex vertex;
 
     vertex.Position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+
+    vertex.PrevPosition = 
+        asfloat(prevVertexBuffer.Load3(offsets.x)) * uv.x +
+        asfloat(prevVertexBuffer.Load3(offsets.y)) * uv.y +
+        asfloat(prevVertexBuffer.Load3(offsets.z)) * uv.z;
 
     vertex.Normal =
         asfloat(vertexBuffer.Load3(normalOffsets.x)) * uv.x +
@@ -177,9 +191,10 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
             asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
     }
 
-    vertex.Normal = mul(ObjectToWorld3x4(), float4(vertex.Normal, 0)).xyz;
-    vertex.Tangent = mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0)).xyz;
-    vertex.Binormal = mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0)).xyz;
+    vertex.PrevPosition = mul(g_InstanceBuffer[InstanceIndex()].PrevTransform, float4(vertex.PrevPosition, 1.0)).xyz;
+    vertex.Normal = mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz;
+    vertex.Tangent = mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz;
+    vertex.Binormal = mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz;
 
     return vertex;
 }

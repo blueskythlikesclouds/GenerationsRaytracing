@@ -481,7 +481,7 @@ public static class RaytracingShaderConverter
                 SHADERNAME(params, params.Vertex.Normal);
 
                 float3 curPixelPosAndDepth = GetCurrentPixelPositionAndDepth(params.Vertex.Position);
-                float3 prevPixelPosAndDepth = GetPreviousPixelPositionAndDepth(params.Vertex.Position);
+                float3 prevPixelPosAndDepth = GetPreviousPixelPositionAndDepth(params.Vertex.PrevPosition);
 
                 uint2 index = DispatchRaysIndex().xy;
                 g_Position[index] = float4(params.Vertex.Position, 0.0);

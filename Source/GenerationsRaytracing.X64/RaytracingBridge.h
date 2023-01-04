@@ -34,6 +34,7 @@ struct RaytracingBridge
 
     nvrhi::BufferHandle materialBuffer;
     nvrhi::BufferHandle geometryBuffer;
+    nvrhi::BufferHandle instanceBuffer;
 
     nvrhi::TextureHandle output;
     std::unique_ptr<Upscaler> upscaler;

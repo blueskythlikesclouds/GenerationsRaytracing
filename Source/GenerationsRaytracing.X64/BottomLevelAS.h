@@ -23,6 +23,7 @@ struct BottomLevelAS
         nvrhi::BufferHandle vertexBuffer;
         nvrhi::BufferHandle indexBuffer;
         nvrhi::BufferHandle skinningBuffer;
+        nvrhi::BufferHandle prevSkinningBuffer;
         nvrhi::BufferHandle nodeIndicesBuffer;
     };
 
