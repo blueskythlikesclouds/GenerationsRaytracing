@@ -481,7 +481,9 @@ public static class RaytracingShaderConverter
                 uint2 index = DispatchRaysIndex().xy;
                 g_Position[index] = float4(params.Vertex.Position, 0.0);
                 g_Depth[index] = curPixelPosAndDepth.z;
-                g_MotionVector[index] = prevPixelPosAndDepth.xy - curPixelPosAndDepth.xy;
+                g_Z[index] = mul(float4(params.Vertex.Position, 1.0), g_MtxView).z;
+                g_MotionVector2D[index] = prevPixelPosAndDepth.xy - curPixelPosAndDepth.xy;
+                g_MotionVector3D[index] = float4(params.Vertex.PrevPosition - params.Vertex.Position, 0.0);
                 g_Normal[index] = float4(params.Vertex.Normal, 0.0);
                 g_TexCoord[index] = params.Vertex.TexCoord;
                 g_Color[index] = params.Vertex.Color;
@@ -497,16 +499,16 @@ public static class RaytracingShaderConverter
                 params.Material = GetMaterial();
 
                 #if HASGLOBALILLUMINATION
-                    params.GlobalIllumination = TraceGlobalIllumination(params.Vertex.Position, params.Vertex.Normal, payload.Random, payload.Depth);
-                    params.Shadow = TraceShadow(params.Vertex.Position, payload.Random);
+                    params.GlobalIllumination = TraceGlobalIllumination(params.Vertex.Position, params.Vertex.Normal, payload.Random, payload.Depth).rgb;
+                    params.Shadow = TraceShadow(params.Vertex.Position, payload.Random).x;
                 #endif
 
                 #if HASREFLECTION
-                    params.Reflection = TraceReflection(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth);
+                    params.Reflection = TraceReflection(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth).rgb;
                 #endif
 
                 #if HASREFRACTION
-                    params.Refraction = TraceRefraction(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth);
+                    params.Refraction = TraceRefraction(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth).rgb;
                 #endif
 
                 params.Projection[0] = float4(1, 0, 0, 0);
@@ -553,8 +555,8 @@ public static class RaytracingShaderConverter
                 params.Vertex.Color = g_Color[index];
                 params.Material = g_MaterialBuffer[callableParams.MaterialIndex];
 
-                params.GlobalIllumination = g_GlobalIllumination[index].rgb;
-                params.Shadow = g_Shadow[index];
+                params.GlobalIllumination = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(g_DenoisedGlobalIllumination[index]).rgb;
+                params.Shadow = SIGMA_BackEnd_UnpackShadow(g_DenoisedShadow[index]);
                 params.Reflection = g_Reflection[index].rgb;
                 params.Refraction = g_Refraction[index].rgb;
 

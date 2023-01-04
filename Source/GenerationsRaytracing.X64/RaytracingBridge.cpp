@@ -41,6 +41,7 @@ RaytracingBridge::RaytracingBridge(const Device& device, const std::string& dire
         .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(1))
         .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(2))
         .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(3))
+        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(4))
 
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(1))
@@ -54,11 +55,10 @@ RaytracingBridge::RaytracingBridge(const Device& device, const std::string& dire
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(9))
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(10))
         .addItem(nvrhi::BindingLayoutItem::Texture_UAV(11))
-
-        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(4))
-        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(5))
-        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(6))
-        .addItem(nvrhi::BindingLayoutItem::Texture_SRV(7))
+        .addItem(nvrhi::BindingLayoutItem::Texture_UAV(12))
+        .addItem(nvrhi::BindingLayoutItem::Texture_UAV(13))
+        .addItem(nvrhi::BindingLayoutItem::Texture_UAV(14))
+        .addItem(nvrhi::BindingLayoutItem::Texture_UAV(15))
 
         .addItem(nvrhi::BindingLayoutItem::Sampler(0)));
 
@@ -560,7 +560,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .setUseClearValue(false)
             .setIsUAV(true));
 
-        upscaler->validate({ bridge, output });
+        upscaler->init({ bridge, output });
+        denoiser.init(bridge, *this);
     }
 
     bridge.vsConstants.writeBuffer(bridge.commandList, bridge.vsConstantBuffer);
@@ -603,24 +604,24 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, materialBuffer))
         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(2, geometryBuffer))
         .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(3, instanceBuffer))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(4, blueNoise))
 
         .addItem(nvrhi::BindingSetItem::Texture_UAV(0, upscaler->position))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(1, upscaler->depth.getCurrent(rtConstants.currentFrame)))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(2, upscaler->motionVector))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(3, upscaler->normal.getCurrent(rtConstants.currentFrame)))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(4, upscaler->texCoord))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(5, upscaler->color))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(6, upscaler->shader))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(7, upscaler->globalIllumination.getCurrent(rtConstants.currentFrame)))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(8, upscaler->shadow))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(9, upscaler->reflection))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(10, upscaler->refraction))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(11, upscaler->composite))
-
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(4, blueNoise))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(5, upscaler->depth.getPrevious(rtConstants.currentFrame)))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(6, upscaler->normal.getPrevious(rtConstants.currentFrame)))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(7, upscaler->globalIllumination.getPrevious(rtConstants.currentFrame)))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(1, upscaler->depth))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(2, upscaler->z))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(3, upscaler->motionVector2D))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(4, upscaler->motionVector3D))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(5, upscaler->normal))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(6, upscaler->texCoord))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(7, upscaler->color))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(8, upscaler->shader))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(9, upscaler->noisyGlobalIllumination))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(10, upscaler->denoisedGlobalIllumination))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(11, upscaler->noisyShadow))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(12, upscaler->denoisedShadow))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(13, upscaler->reflection))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(14, upscaler->refraction))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(15, upscaler->composite))
 
         .addItem(nvrhi::BindingSetItem::Sampler(0, linearRepeatSampler)), bindingLayout);
 
@@ -644,9 +645,11 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     dispatchRays("PrimaryRayGeneration");
 
     bridge.commandList->setTextureState(upscaler->position, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
-    bridge.commandList->setTextureState(upscaler->depth.getCurrent(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
-    bridge.commandList->setTextureState(upscaler->motionVector, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
-    bridge.commandList->setTextureState(upscaler->normal.getCurrent(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->depth, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->z, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->motionVector2D, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->motionVector3D, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->normal, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->texCoord, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->color, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->shader, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
@@ -656,8 +659,13 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     dispatchRays("ReflectionRayGeneration");
     dispatchRays("RefractionRayGeneration");
 
-    bridge.commandList->setTextureState(upscaler->globalIllumination.getCurrent(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
-    bridge.commandList->setTextureState(upscaler->shadow, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->noisyGlobalIllumination, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->noisyShadow, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+
+    denoiser.eval(bridge, *this);
+
+    bridge.commandList->setTextureState(upscaler->denoisedGlobalIllumination, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->denoisedShadow, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->reflection, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->reflection, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
 
@@ -682,11 +690,11 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addBindingLayout(copyBindingLayout), copyFramebuffer);
     }
 
-    upscaler->evaluate({ bridge, (size_t)rtConstants.currentFrame, rtConstants.jitterX, rtConstants.jitterY });
+    upscaler->eval({ bridge, (size_t)rtConstants.currentFrame, rtConstants.jitterX, rtConstants.jitterY });
 
     auto copyBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
         .addItem(nvrhi::BindingSetItem::Texture_SRV(0, output))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(1, upscaler->depth.getCurrent(rtConstants.currentFrame)))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(1, upscaler->depth))
         .addItem(nvrhi::BindingSetItem::Sampler(0, pointClampSampler)), copyBindingLayout);;
 
     bridge.commandList->setGraphicsState(nvrhi::GraphicsState()

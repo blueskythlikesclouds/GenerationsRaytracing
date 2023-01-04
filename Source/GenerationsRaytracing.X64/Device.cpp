@@ -119,19 +119,32 @@ Device::Device()
     d3d12.graphicsCommandQueue.Attach(createCommandQueue(d3d12.device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT));
     memoryAllocator = std::make_unique<MemoryAllocator>(d3d12.device.Get(), dxgiAdapter.Get());
 
-    nvrhi::d3d12::DeviceDesc deviceDesc;
-    deviceDesc.pDevice = d3d12.device.Get();
-    deviceDesc.pGraphicsCommandQueue = d3d12.graphicsCommandQueue.Get();
-    deviceDesc.messageCallback = &messageCallback;
-    deviceDesc.memoryAllocator = memoryAllocator.get();
+    nvrhi::d3d12::DeviceDesc nvrhiDeviceDesc;
+    nvrhiDeviceDesc.pDevice = d3d12.device.Get();
+    nvrhiDeviceDesc.pGraphicsCommandQueue = d3d12.graphicsCommandQueue.Get();
+    nvrhiDeviceDesc.messageCallback = &messageCallback;
+    nvrhiDeviceDesc.memoryAllocator = memoryAllocator.get();
 
-    nvrhi = nvrhi::d3d12::createDevice(deviceDesc);
+    nvrhi = nvrhi::d3d12::createDevice(nvrhiDeviceDesc);
     assert(nvrhi);
 
 #ifdef _DEBUG
     nvrhi = nvrhi::validation::createValidationLayer(nvrhi);
     assert(nvrhi);
 #endif
+
+    nri::DeviceCreationD3D12Desc nriDeviceDesc{};
+    nriDeviceDesc.d3d12Device = d3d12.device.Get();
+    nriDeviceDesc.d3d12PhysicalAdapter = dxgiAdapter.Get();
+    nriDeviceDesc.d3d12GraphicsQueue = d3d12.graphicsCommandQueue.Get();
+#ifdef _DEBUG
+    nriDeviceDesc.enableNRIValidation = true;
+#endif
+
+    NRI_THROW_IF_FAILED(nri::CreateDeviceFromD3D12Device(nriDeviceDesc, nriDevice));
+    NRI_THROW_IF_FAILED(nri::GetInterface(*nriDevice, NRI_INTERFACE(nri::CoreInterface), &static_cast<nri::CoreInterface&>(nriInterface)));
+    NRI_THROW_IF_FAILED(nri::GetInterface(*nriDevice, NRI_INTERFACE(nri::HelperInterface), &static_cast<nri::HelperInterface&>(nriInterface)));
+    NRI_THROW_IF_FAILED(nri::GetInterface(*nriDevice, NRI_INTERFACE(nri::WrapperD3D12Interface), &static_cast<nri::WrapperD3D12Interface&>(nriInterface)));
 }
 
 Device::~Device()

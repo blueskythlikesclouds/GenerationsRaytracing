@@ -32,8 +32,16 @@
 #include <Helpers.h>
 
 #include <nvsdk_ngx_helpers.h>
+
 #include <ffx_fsr2.h>
 #include <dx12/ffx_fsr2_dx12.h>
+
+#include <NRD.h>
+#include <NRI.h>
+#include <NRIDescs.h>
+#include <Extensions/NRIHelper.h>
+#include <Extensions/NRIWrapperD3D12.h>
+#include <NRDIntegration.h>
 
 #include <INIReader.h>
 

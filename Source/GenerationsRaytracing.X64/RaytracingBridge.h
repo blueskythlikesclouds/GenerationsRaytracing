@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "BottomLevelAS.h"
+#include "Denoiser.h"
 #include "Instance.h"
 #include "Material.h"
 
@@ -39,6 +40,7 @@ struct RaytracingBridge
 
     nvrhi::TextureHandle output;
     std::unique_ptr<Upscaler> upscaler;
+    Denoiser denoiser;
 
     nvrhi::DescriptorTableHandle geometryDescriptorTable;
     nvrhi::DescriptorTableHandle textureDescriptorTable;

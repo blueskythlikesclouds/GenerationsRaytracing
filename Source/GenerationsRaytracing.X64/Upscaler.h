@@ -15,13 +15,13 @@ enum class QualityMode
 class Upscaler
 {
 public:
-    struct ValidationParams
+    struct InitParams
     {
         const Bridge& bridge;
         nvrhi::ITexture* output = nullptr;
     };
 
-    struct EvaluationParams
+    struct EvalParams
     {
         const Bridge& bridge;
         size_t currentFrame = 0;
@@ -30,8 +30,8 @@ public:
     };
 
 protected:
-    virtual void validateImp(const ValidationParams& params) = 0;
-    virtual void evaluateImp(const EvaluationParams& params) = 0;
+    virtual void validateImp(const InitParams& params) = 0;
+    virtual void evaluateImp(const EvalParams& params) = 0;
 
 public:
     QualityMode qualityMode{};
@@ -50,15 +50,21 @@ public:
     };
 
     nvrhi::TextureHandle position;
-    PingPongTexture depth;
-    nvrhi::TextureHandle motionVector;
-    PingPongTexture normal;
+    nvrhi::TextureHandle depth;
+    nvrhi::TextureHandle z;
+    nvrhi::TextureHandle motionVector2D;
+    nvrhi::TextureHandle motionVector3D;
+    nvrhi::TextureHandle normal;
     nvrhi::TextureHandle texCoord;
     nvrhi::TextureHandle color;
     nvrhi::TextureHandle shader;
 
-    PingPongTexture globalIllumination;
-    nvrhi::TextureHandle shadow;
+    nvrhi::TextureHandle noisyGlobalIllumination;
+    nvrhi::TextureHandle denoisedGlobalIllumination;
+
+    nvrhi::TextureHandle noisyShadow;
+    nvrhi::TextureHandle denoisedShadow;
+
     nvrhi::TextureHandle reflection;
     nvrhi::TextureHandle refraction;
 
@@ -72,6 +78,6 @@ public:
     virtual void getJitterOffset(size_t currentFrame, float& jitterX, float& jitterY);
     virtual uint32_t getJitterPhaseCount();
 
-    void validate(const ValidationParams& params);
-    void evaluate(const EvaluationParams& params);
+    void init(const InitParams& params);
+    void eval(const EvalParams& params);
 };

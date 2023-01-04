@@ -94,18 +94,24 @@ StructuredBuffer<Instance> g_InstanceBuffer : register(t3);
 
 RWTexture2D<float4> g_Position : register(u0);
 RWTexture2D<float> g_Depth : register(u1);
-RWTexture2D<float2> g_MotionVector : register(u2);
-RWTexture2D<float4> g_Normal : register(u3);
-RWTexture2D<float2> g_TexCoord : register(u4);
-RWTexture2D<float4> g_Color : register(u5);
-RWTexture2D<uint4> g_Shader : register(u6);
+RWTexture2D<float> g_Z : register(u2);
+RWTexture2D<float2> g_MotionVector2D : register(u3);
+RWTexture2D<float4> g_MotionVector3D : register(u4);
+RWTexture2D<float4> g_Normal : register(u5);
+RWTexture2D<float2> g_TexCoord : register(u6);
+RWTexture2D<float4> g_Color : register(u7);
+RWTexture2D<uint4> g_Shader : register(u8);
 
-RWTexture2D<float4> g_GlobalIllumination : register(u7);
-RWTexture2D<float> g_Shadow : register(u8);
-RWTexture2D<float4> g_Reflection : register(u9);
-RWTexture2D<float4> g_Refraction : register(u10);
+RWTexture2D<float4> g_NoisyGlobalIllumination : register(u9);
+RWTexture2D<float4> g_DenoisedGlobalIllumination : register(u10);
 
-RWTexture2D<float4> g_Composite : register(u11);
+RWTexture2D<float2> g_NoisyShadow : register(u11);
+RWTexture2D<float> g_DenoisedShadow : register(u12);
+
+RWTexture2D<float4> g_Reflection : register(u13);
+RWTexture2D<float4> g_Refraction : register(u14);
+
+RWTexture2D<float4> g_Composite : register(u15);
 
 SamplerState g_LinearRepeatSampler : register(s0);
 

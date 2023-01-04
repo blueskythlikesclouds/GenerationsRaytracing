@@ -8,8 +8,8 @@ protected:
     NVSDK_NGX_Parameter* parameters = nullptr;
     NVSDK_NGX_Handle* feature = nullptr;
 
-    void validateImp(const ValidationParams& params) override;
-    void evaluateImp(const EvaluationParams& params) override;
+    void validateImp(const InitParams& params) override;
+    void evaluateImp(const EvalParams& params) override;
 
 public:
     DLSS(const Device& device, const std::string& directoryPath);

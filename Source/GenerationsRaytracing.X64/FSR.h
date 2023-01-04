@@ -9,8 +9,8 @@ protected:
     FfxFsr2ContextDescription contextDesc{};
     FfxFsr2Context context{};
 
-    void validateImp(const ValidationParams& params) override;
-    void evaluateImp(const EvaluationParams& params) override;
+    void validateImp(const InitParams& params) override;
+    void evaluateImp(const EvalParams& params) override;
 
 public:
     FSR(const Device& device);
