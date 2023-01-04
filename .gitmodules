@@ -22,9 +22,3 @@
 [submodule "Dependencies/D3D12MemoryAllocator"]
 	path = Dependencies/D3D12MemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-[submodule "Dependencies/RayTracingDenoiser"]
-	path = Dependencies/RayTracingDenoiser
-	url = https://github.com/NVIDIAGameWorks/RayTracingDenoiser
-[submodule "Dependencies/NRI"]
-	path = Dependencies/NRI
-	url = https://github.com/NVIDIAGameWorks/NRI.git

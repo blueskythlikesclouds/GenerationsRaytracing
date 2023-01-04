@@ -15,7 +15,7 @@
         } \
     } while (0)
 
-void DLSS::validateImp(const InitParams& params)
+void DLSS::validateImp(const ValidationParams& params)
 {
     if (qualityMode == QualityMode::Native)
     {
@@ -74,14 +74,14 @@ void DLSS::validateImp(const InitParams& params)
     params.bridge.device.nvrhi->waitForIdle();
 }
 
-void DLSS::evaluateImp(const EvalParams& params)
+void DLSS::evaluateImp(const EvaluationParams& params)
 {
     NVSDK_NGX_D3D12_DLSS_Eval_Params dlssParams{};
 
     dlssParams.Feature.pInColor = composite->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     dlssParams.Feature.pInOutput = output->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
-    dlssParams.pInDepth = depth->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
-    dlssParams.pInMotionVectors = motionVector2D->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
+    dlssParams.pInDepth = depth.getCurrent(params.currentFrame)->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
+    dlssParams.pInMotionVectors = motionVector->getNativeObject(nvrhi::ObjectTypes::D3D12_Resource);
     dlssParams.InJitterOffsetX = params.jitterX;
     dlssParams.InJitterOffsetY = params.jitterY;
     dlssParams.InRenderSubrectDimensions.Width = width;

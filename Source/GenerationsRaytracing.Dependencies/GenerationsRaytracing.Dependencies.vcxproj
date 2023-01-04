@@ -625,23 +625,6 @@
     </ClCompile>
     <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Dependencies\NRI\_Compiler\NRI.vcxproj">
-      <Project>{e36f918a-3478-360a-909f-1ee4abe823a8}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Dependencies\NRI\_Compiler\NRI_Shared.vcxproj">
-      <Project>{3d208755-eeb4-3230-9912-f8f9ac82f782}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Dependencies\NRI\_Compiler\NRI_Validation.vcxproj">
-      <Project>{29160f74-5e4c-3434-a74e-82efb0efc9ac}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Dependencies\RayTracingDenoiser\_Compiler\NRD.vcxproj">
-      <Project>{cffe7530-b132-3c87-adba-2c03f5e2218c}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Dependencies\RayTracingDenoiser\_Compiler\NRD_Shaders.vcxproj">
-      <Project>{745317fc-c733-33b4-8b7e-69ff80db9b39}</Project>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

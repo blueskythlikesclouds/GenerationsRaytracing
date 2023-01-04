@@ -1,6 +1,9 @@
 #include "ShaderFunctions.hlsli"
 
 Texture2D<float4> g_BlueNoise : register(t4);
+Texture2D<float> g_PrevDepth : register(t5);
+Texture2D<float4> g_PrevNormal : register(t6);
+Texture2D<float4> g_PrevGlobalIllumination : register(t7);
 
 float3 GetCosHemisphereSampleBlueNoise(float3 hitNormal)
 {
@@ -51,15 +54,21 @@ void GlobalIlluminationRayGeneration()
 
     uint4 shader = g_Shader[index];
     if ((shader.y & HAS_GLOBAL_ILLUMINATION) == 0)
-    {
-        g_NoisyGlobalIllumination[index] = 0.0;
         return;
-    }
 
-    float4 globalIllumination = TraceColor(g_Position[index].xyz, GetCosHemisphereSampleBlueNoise(g_Normal[index].xyz), MAX_RECURSION_DEPTH - 3);
-    float normHitDist = REBLUR_FrontEnd_GetNormHitDist(min(globalIllumination.w, NRD_FP16_MAX), g_Z[index], float4(3.0, 0.1, 20.0, -25.0));
+    float3 globalIllumination = TraceColor(
+        g_Position[index].xyz,
+        GetCosHemisphereSampleBlueNoise(g_Normal[index].xyz),
+        MAX_RECURSION_DEPTH - 3);
 
-    g_NoisyGlobalIllumination[index] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(globalIllumination.rgb, normHitDist);
+    int2 prevIndex = round(index + g_MotionVector[index]);
+    float prevDepth = g_PrevDepth.Load(int3(prevIndex, 0));
+    float3 prevNormal = g_PrevNormal.Load(int3(prevIndex, 0)).xyz;
+    float4 prevGlobalIllumination = g_PrevGlobalIllumination.Load(int3(prevIndex, 0));
+
+    float factor = exp(abs(g_Depth[index] - prevDepth) / -0.01) * saturate(dot(prevNormal, g_Normal[index].xyz)) * prevGlobalIllumination.a + 1.0;
+
+    g_GlobalIllumination[index] = float4(lerp(prevGlobalIllumination.rgb, globalIllumination, 1.0 / factor), factor);
 }
 
 [shader("raygeneration")]
@@ -70,15 +79,10 @@ void ShadowRayGeneration()
 
     uint4 shader = g_Shader[index];
     if ((shader.y & HAS_GLOBAL_ILLUMINATION) == 0)
-    {
-        g_NoisyShadow[index] = 0.0;
         return;
-    }
 
     uint random = InitializeRandom(dimensions.x * index.y + index.x, g_CurrentFrame);
-    float2 shadow = TraceShadow(g_Position[index].xyz, random);
-
-    g_NoisyShadow[index] = SIGMA_FrontEnd_PackShadow(g_Z[index], min(shadow.y, NRD_FP16_MAX), 0.01);
+    g_Shadow[index] = TraceShadow(g_Position[index].xyz, random);
 }
 
 [shader("raygeneration")]
@@ -90,11 +94,11 @@ void ReflectionRayGeneration()
     if ((shader.y & HAS_REFLECTION) == 0)
         return;
 
-    g_Reflection[index] = TraceReflection(
+    g_Reflection[index] = float4(TraceReflection(
         g_Position[index].xyz, 
         g_Normal[index].xyz, 
         normalize(g_Position[index].xyz - g_EyePosition.xyz), 
-        MAX_RECURSION_DEPTH - 2);
+        MAX_RECURSION_DEPTH - 2), 1.0);
 }
 
 [shader("raygeneration")]
@@ -106,11 +110,11 @@ void RefractionRayGeneration()
     if ((shader.y & HAS_REFRACTION) == 0)
         return;
 
-    g_Refraction[index] = TraceRefraction(
+    g_Refraction[index] = float4(TraceRefraction(
         g_Position[index].xyz, 
         g_Normal[index].xyz, 
         normalize(g_Position[index].xyz - g_EyePosition.xyz), 
-        MAX_RECURSION_DEPTH - 2);
+        MAX_RECURSION_DEPTH - 2), 1.0);
 }
 
 [shader("raygeneration")]

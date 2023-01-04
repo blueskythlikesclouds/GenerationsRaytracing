@@ -17,16 +17,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.Share
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.Dependencies", "GenerationsRaytracing.Dependencies\GenerationsRaytracing.Dependencies.vcxproj", "{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NRD", "..\Dependencies\RayTracingDenoiser\_Compiler\NRD.vcxproj", "{CFFE7530-B132-3C87-ADBA-2C03F5E2218C}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NRD_Shaders", "..\Dependencies\RayTracingDenoiser\_Compiler\NRD_Shaders.vcxproj", "{745317FC-C733-33B4-8B7E-69FF80DB9B39}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NRI", "..\Dependencies\NRI\_Compiler\NRI.vcxproj", "{E36F918A-3478-360A-909F-1EE4ABE823A8}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NRI_Shared", "..\Dependencies\NRI\_Compiler\NRI_Shared.vcxproj", "{3D208755-EEB4-3230-9912-F8F9AC82F782}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NRI_Validation", "..\Dependencies\NRI\_Compiler\NRI_Validation.vcxproj", "{29160F74-5E4C-3434-A74E-82EFB0EFC9AC}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -53,37 +43,12 @@ Global
 		{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}.Debug|x64.Build.0 = Debug|x64
 		{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}.Release|x64.ActiveCfg = Release|x64
 		{1907D42C-E4C4-4B7B-9B9C-F9482F02D24B}.Release|x64.Build.0 = Release|x64
-		{CFFE7530-B132-3C87-ADBA-2C03F5E2218C}.Debug|x64.ActiveCfg = Debug|x64
-		{CFFE7530-B132-3C87-ADBA-2C03F5E2218C}.Debug|x64.Build.0 = Debug|x64
-		{CFFE7530-B132-3C87-ADBA-2C03F5E2218C}.Release|x64.ActiveCfg = Release|x64
-		{CFFE7530-B132-3C87-ADBA-2C03F5E2218C}.Release|x64.Build.0 = Release|x64
-		{745317FC-C733-33B4-8B7E-69FF80DB9B39}.Debug|x64.ActiveCfg = Debug|x64
-		{745317FC-C733-33B4-8B7E-69FF80DB9B39}.Debug|x64.Build.0 = Debug|x64
-		{745317FC-C733-33B4-8B7E-69FF80DB9B39}.Release|x64.ActiveCfg = Release|x64
-		{745317FC-C733-33B4-8B7E-69FF80DB9B39}.Release|x64.Build.0 = Release|x64
-		{E36F918A-3478-360A-909F-1EE4ABE823A8}.Debug|x64.ActiveCfg = Debug|x64
-		{E36F918A-3478-360A-909F-1EE4ABE823A8}.Debug|x64.Build.0 = Debug|x64
-		{E36F918A-3478-360A-909F-1EE4ABE823A8}.Release|x64.ActiveCfg = Release|x64
-		{E36F918A-3478-360A-909F-1EE4ABE823A8}.Release|x64.Build.0 = Release|x64
-		{3D208755-EEB4-3230-9912-F8F9AC82F782}.Debug|x64.ActiveCfg = Debug|x64
-		{3D208755-EEB4-3230-9912-F8F9AC82F782}.Debug|x64.Build.0 = Debug|x64
-		{3D208755-EEB4-3230-9912-F8F9AC82F782}.Release|x64.ActiveCfg = Release|x64
-		{3D208755-EEB4-3230-9912-F8F9AC82F782}.Release|x64.Build.0 = Release|x64
-		{29160F74-5E4C-3434-A74E-82EFB0EFC9AC}.Debug|x64.ActiveCfg = Debug|x64
-		{29160F74-5E4C-3434-A74E-82EFB0EFC9AC}.Debug|x64.Build.0 = Debug|x64
-		{29160F74-5E4C-3434-A74E-82EFB0EFC9AC}.Release|x64.ActiveCfg = Release|x64
-		{29160F74-5E4C-3434-A74E-82EFB0EFC9AC}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{08E9B8A0-4EDB-4D45-9CC9-1DC6C53E38D5} = {27D2B595-8A25-4746-829A-20413D94B907}
-		{CFFE7530-B132-3C87-ADBA-2C03F5E2218C} = {27D2B595-8A25-4746-829A-20413D94B907}
-		{745317FC-C733-33B4-8B7E-69FF80DB9B39} = {27D2B595-8A25-4746-829A-20413D94B907}
-		{E36F918A-3478-360A-909F-1EE4ABE823A8} = {27D2B595-8A25-4746-829A-20413D94B907}
-		{3D208755-EEB4-3230-9912-F8F9AC82F782} = {27D2B595-8A25-4746-829A-20413D94B907}
-		{29160F74-5E4C-3434-A74E-82EFB0EFC9AC} = {27D2B595-8A25-4746-829A-20413D94B907}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9FDEA5CC-43E1-4BCC-8DEF-36A8B7A7F146}

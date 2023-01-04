@@ -1192,7 +1192,7 @@ void Bridge::procMsgWriteBuffer()
     commandListForCopy->writeBuffer(
         buffer,
         data,
-        std::min<uint64_t>(msg->size, buffer->getDesc().byteSize));
+        min(msg->size, buffer->getDesc().byteSize));
 }
 
 void Bridge::procMsgWriteTexture()

@@ -4,10 +4,6 @@
 #include "ShaderDefinitions.hlsli"
 #include "ShaderGlobals.hlsli"
 
-#define NRD_HEADER_ONLY
-#include "../../Dependencies/RayTracingDenoiser/Shaders/Include/NRDEncoding.hlsli"
-#include "../../Dependencies/RayTracingDenoiser/Shaders/Include/NRD.hlsli"
-
 #define MAX_RECURSION_DEPTH 8
 
 struct Payload
@@ -83,7 +79,7 @@ float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNormal)
     return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
 }
 
-float4 TraceColor(float3 origin, float3 direction, uint depth)
+float3 TraceColor(float3 origin, float3 direction, uint depth)
 {
     if (depth >= MAX_RECURSION_DEPTH)
         return 0;
@@ -107,25 +103,25 @@ float4 TraceColor(float3 origin, float3 direction, uint depth)
         ray, 
         payload);
 
-    return float4(min(payload.Color, 4.0), payload.T);
+    return min(payload.Color, 4.0);
 }
 
-float4 TraceGlobalIllumination(float3 origin, float3 normal, inout uint random, uint depth)
+float3 TraceGlobalIllumination(float3 origin, float3 normal, inout uint random, uint depth)
 {
     return TraceColor(origin, normalize(GetCosHemisphereSample(random, normal)), depth);
 }
 
-float4 TraceReflection(float3 origin, float3 normal, float3 view, uint depth)
+float3 TraceReflection(float3 origin, float3 normal, float3 view, uint depth)
 {
     return TraceColor(origin, normalize(reflect(view, normal)), depth);
 }
 
-float4 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth)
+float3 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth)
 {
     return TraceColor(origin, normalize(refract(view, normal, 1.0 / 1.333)), depth);
 }
 
-float2 TraceShadow(float3 origin, inout uint random)
+float TraceShadow(float3 origin, inout uint random)
 {
     float3 normal = -mrgGlobalLight_Direction.xyz;
     float3 binormal = GetPerpendicularVector(normal);
@@ -160,7 +156,7 @@ float2 TraceShadow(float3 origin, inout uint random)
         ray,
         payload);
 
-    return float2(payload.T == FLT_MAX ? 1.0 : 0.0, payload.T);
+    return payload.T == FLT_MAX ? 1.0 : 0.0;
 }
 
 #endif

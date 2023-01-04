@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClCompile Include="BlueNoise.cpp" />
     <ClCompile Include="Bridge.cpp" />
-    <ClCompile Include="Denoiser.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DLSS.cpp" />
     <ClCompile Include="FSR.cpp" />
@@ -31,7 +30,6 @@
     <ClInclude Include="BlueNoise.h" />
     <ClInclude Include="BottomLevelAS.h" />
     <ClInclude Include="ConstantBuffer.h" />
-    <ClInclude Include="Denoiser.h" />
     <ClInclude Include="DLSS.h" />
     <ClInclude Include="FSR.h" />
     <ClInclude Include="Instance.h" />
@@ -193,13 +191,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;NOMINMAX</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies\DLSS\include;..\..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;..\..\Dependencies\RayTracingDenoiser\Include;..\..\Dependencies\RayTracingDenoiser\Integration;..\..\Dependencies\NRI\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies\DLSS\include;..\..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -214,13 +212,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;XXH_INLINE_ALL;XXH_VECTOR=XXH_AVX2;NOMINMAX</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;XXH_INLINE_ALL;XXH_VECTOR=XXH_AVX2</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies\DLSS\include;..\..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;..\..\Dependencies\RayTracingDenoiser\Include;..\..\Dependencies\RayTracingDenoiser\Integration;..\..\Dependencies\NRI\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies\nvrhi\include;..\..\Dependencies\DDSTextureLoader;..\..\Dependencies\xxHash;..\..\Dependencies\Detours\include;..\..\Dependencies;..\..\Dependencies\D3D12MemoryAllocator\include;..\..\Dependencies\DLSS\include;..\..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <StringPooling>true</StringPooling>
       <AdditionalOptions>/Ob3 %(AdditionalOptions)</AdditionalOptions>

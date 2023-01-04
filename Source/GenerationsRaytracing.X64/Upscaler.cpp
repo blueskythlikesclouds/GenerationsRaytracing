@@ -57,7 +57,7 @@ uint32_t Upscaler::getJitterPhaseCount()
     return 64;
 }
 
-void Upscaler::init(const InitParams& params)
+void Upscaler::validate(const ValidationParams& params)
 {
     if (params.output == output)
         return;
@@ -72,21 +72,15 @@ void Upscaler::init(const InitParams& params)
         .setKeepInitialState(true);
 
     position = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA32_FLOAT));
-    depth = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::R32_FLOAT));
-    z = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::R32_FLOAT));
-    motionVector2D = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG16_FLOAT));
-    motionVector3D = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA32_FLOAT));
-    normal = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_SNORM));
+    depth.create(params.bridge.device.nvrhi, textureDesc.setFormat(nvrhi::Format::R32_FLOAT));
+    motionVector = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG16_FLOAT));
+    normal.create(params.bridge.device.nvrhi, textureDesc.setFormat(nvrhi::Format::RGBA16_SNORM));
     texCoord = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG16_FLOAT));
     color = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA8_UNORM));
     shader = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_UINT));
 
-    noisyGlobalIllumination = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_FLOAT));
-    denoisedGlobalIllumination = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_FLOAT));
-
-    noisyShadow = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG16_FLOAT));
-    denoisedShadow = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::R16_FLOAT));
-
+    globalIllumination.create(params.bridge.device.nvrhi, textureDesc.setFormat(nvrhi::Format::RGBA32_FLOAT));
+    shadow = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::R8_UNORM));
     reflection = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_FLOAT));
     refraction = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_FLOAT));
 
@@ -95,11 +89,11 @@ void Upscaler::init(const InitParams& params)
     output = params.output;
 }
 
-void Upscaler::eval(const EvalParams& params)
+void Upscaler::evaluate(const EvaluationParams& params)
 {
     params.bridge.commandList->setTextureState(composite, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
-    params.bridge.commandList->setTextureState(depth, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
-    params.bridge.commandList->setTextureState(motionVector2D, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
+    params.bridge.commandList->setTextureState(depth.getCurrent(params.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
+    params.bridge.commandList->setTextureState(motionVector, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::ShaderResource);
     params.bridge.commandList->setTextureState(output, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     params.bridge.commandList->commitBarriers();
 
