@@ -29,7 +29,6 @@ struct ShaderMapping
 {
     struct Shader
     {
-        std::string name;
         std::string primaryClosestHit;
         std::string secondaryClosestHit;
         std::string anyHit;
@@ -52,11 +51,11 @@ struct ShaderMapping
 
         while (ftell(file) < fileSize)
         {
-            Shader& shader = shaders.emplace_back();
-            shader.name = readString(file);
+            std::string base = readString(file);
+            if (base.empty())
+                break;
 
-            std::string str = readString(file);
-            const std::string& base = str.empty() ? shader.name : str;
+            Shader& shader = shaders.emplace_back();
 
             shader.primaryClosestHit = base + "_primary_closesthit";
             shader.secondaryClosestHit = base + "_secondary_closesthit";
@@ -74,8 +73,15 @@ struct ShaderMapping
             shader.textures.reserve(textureCount);
             for (size_t i = 0; i < textureCount; i++)
                 shader.textures.push_back(readString(file));
+        }
 
-            indices[shader.name] = indices.size();
+        while (ftell(file) < fileSize)
+        {
+            std::string name = readString(file);
+            if (name.empty())
+                break;
+
+            indices[std::move(name)] = readUint8(file);
         }
 
         fclose(file);

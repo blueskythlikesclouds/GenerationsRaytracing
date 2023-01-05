@@ -83,7 +83,7 @@ static void createMaterial(hh::mr::CMaterialData& material, size_t id)
             if (pair != shaderMapping.indices.end())
             {
                 const auto& shader = shaderMapping.shaders[pair->second];
-                strcpy(msg->shader, shader.name.c_str());
+                strcpy(msg->shader, pair->first.c_str());
 
                 std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
 

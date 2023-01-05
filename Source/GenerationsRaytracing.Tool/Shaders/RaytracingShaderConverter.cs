@@ -356,7 +356,7 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendLine("}\n");
     }
 
-    public static void WriteRaytracingFunction(StringBuilder stringBuilder, string shaderName, uint shaderIndex, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    public static void WriteRaytracingFunction(StringBuilder stringBuilder, string shaderName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
         stringBuilder.AppendFormat("OMParams {0}(in ShaderParams params, inout float3 normal)\n{{\n", shaderName);
 
@@ -441,9 +441,9 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendFormat("\t{0}_PS(psParams, omParams, normal);\n\treturn omParams;\n}}\n\n", pixelShader.Name);
     }
 
-    public static void WriteRaytracingFunctions(StringBuilder stringBuilder, string shaderName, ushort shaderIndex, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
+    public static void WriteRaytracingFunctions(StringBuilder stringBuilder, string shaderName, int shaderIndex, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
-        WriteRaytracingFunction(stringBuilder, shaderName, shaderIndex, vertexShader, pixelShader, shaderMapping);
+        WriteRaytracingFunction(stringBuilder, shaderName, vertexShader, pixelShader, shaderMapping);
 
         var shaderFlags = new List<string>(3);
 
