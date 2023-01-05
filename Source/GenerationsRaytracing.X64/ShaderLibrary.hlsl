@@ -122,7 +122,11 @@ void RefractionRayGeneration()
 [shader("raygeneration")]
 void CompositeRayGeneration()
 {
-    uint4 shader = g_Shader[DispatchRaysIndex().xy];
+    uint2 index = DispatchRaysIndex().xy;
+    uint4 shader = g_Shader[index];
+
+    if (all(shader == 0))
+        return;
 
     CallableParams callableParams = (CallableParams)0;
     callableParams.MaterialIndex = shader.z;
@@ -156,6 +160,7 @@ void MissPrimarySky(inout Payload payload : SV_RayPayload)
 [shader("miss")]
 void MissSecondary(inout Payload payload : SV_RayPayload)
 {
+    payload.Color = float3(179, 153, 128) / 255.0;
     payload.T = FLT_MAX;
 }
 

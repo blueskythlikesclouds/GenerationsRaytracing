@@ -641,6 +641,15 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         bridge.commandList->dispatchRays(dispatchRaysArgs);
     };
 
+    bridge.commandList->clearTextureFloat(upscaler->depth.getCurrent(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::Color(1));
+    bridge.commandList->clearTextureFloat(upscaler->motionVector, nvrhi::TextureSubresourceSet(), nvrhi::Color(0));
+    bridge.commandList->clearTextureUInt(upscaler->shader, nvrhi::TextureSubresourceSet(), 0);
+    bridge.commandList->clearTextureFloat(upscaler->composite, nvrhi::TextureSubresourceSet(), nvrhi::Color(1));
+
+    bridge.commandList->setTextureState(upscaler->depth.getCurrent(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->shader, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->shader, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+
     dispatchRays("PrimaryRayGeneration");
 
     bridge.commandList->setTextureState(upscaler->position, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
@@ -660,6 +669,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     bridge.commandList->setTextureState(upscaler->shadow, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->reflection, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->reflection, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->composite, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
 
     dispatchRays("CompositeRayGeneration");
 
