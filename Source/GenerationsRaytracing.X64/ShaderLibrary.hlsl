@@ -44,7 +44,12 @@ void GlobalIlluminationRayGeneration()
     float3 direction = GetCosHemisphereSample(normal);
     uint random = InitializeRandom(dimensions.x * index.y + index.x, g_CurrentFrame);
 
-    float3 globalIllumination = TraceColor(position, direction, MAX_RECURSION_DEPTH - 3, random);
+    float3 globalIllumination = TraceColor(
+        position, 
+        direction, 
+        MAX_RECURSION_DEPTH - 3, 
+        random, 
+        g_HasEnvironmentColor ? MISS_SECONDARY : MISS_SECONDARY_SKY);
 
     int2 prevIndex = round(index + g_MotionVector[index]);
 
@@ -160,7 +165,7 @@ void MissPrimarySky(inout Payload payload : SV_RayPayload)
 [shader("miss")]
 void MissSecondary(inout Payload payload : SV_RayPayload)
 {
-    payload.Color = float3(179, 153, 128) / 255.0;
+    payload.Color = g_EnvironmentColor;
     payload.T = FLT_MAX;
 }
 

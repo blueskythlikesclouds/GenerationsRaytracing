@@ -5,6 +5,7 @@
 #include "CopyPS.h"
 #include "CopyVS.h"
 #include "DLSS.h"
+#include "EnvironmentColor.h"
 #include "File.h"
 #include "FSR.h"
 #include "Message.h"
@@ -567,6 +568,8 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     bridge.psConstants.writeBuffer(bridge.commandList, bridge.psConstantBuffer);
 
     upscaler->getJitterOffset(rtConstants.currentFrame, rtConstants.jitterX, rtConstants.jitterY);
+    rtConstants.hasEnvironmentColor = EnvironmentColor::get(bridge, rtConstants.environmentColor) ? 1u : 0u;
+
     bridge.commandList->writeBuffer(rtConstantBuffer, &rtConstants, sizeof(rtConstants));
 
     memcpy(rtConstants.prevProj, bridge.vsConstants.c[0], sizeof(rtConstants.prevProj));

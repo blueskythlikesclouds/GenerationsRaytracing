@@ -89,7 +89,7 @@ float3 GetCosHemisphereSample(float3 normal)
     return GetCosHemisphereSample(normal, g_BlueNoise.Load(int3(index, 0) % 512).xy);
 }
 
-float3 TraceColor(float3 origin, float3 direction, uint depth, inout uint random)
+float3 TraceColor(float3 origin, float3 direction, uint depth, inout uint random, uint missShader)
 {
     if (depth >= MAX_RECURSION_DEPTH)
         return 0;
@@ -111,7 +111,7 @@ float3 TraceColor(float3 origin, float3 direction, uint depth, inout uint random
         INSTANCE_MASK_DEFAULT, 
         CLOSEST_HIT_SECONDARY, 
         CLOSEST_HIT_NUM,
-        MISS_SECONDARY_SKY, 
+        missShader, 
         ray, 
         payload);
 
@@ -120,17 +120,32 @@ float3 TraceColor(float3 origin, float3 direction, uint depth, inout uint random
 
 float3 TraceGlobalIllumination(float3 origin, float3 normal, uint depth, inout uint random)
 {
-    return TraceColor(origin, GetCosHemisphereSample(normal, random), depth, random);
+    return TraceColor(
+        origin, 
+        GetCosHemisphereSample(normal, random), 
+        depth, 
+        random, 
+        g_HasEnvironmentColor ? MISS_SECONDARY : MISS_SECONDARY_SKY);
 }
 
 float3 TraceReflection(float3 origin, float3 normal, float3 view, uint depth, inout uint random)
 {
-    return TraceColor(origin, reflect(view, normal), depth, random);
+    return TraceColor(
+        origin, 
+        reflect(view, normal), 
+        depth, 
+        random, 
+        MISS_SECONDARY_SKY);
 }
 
 float3 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth, inout uint random)
 {
-    return TraceColor(origin, refract(view, normal, 1.0 / 1.333), depth, random);
+    return TraceColor(
+        origin, 
+        refract(view, normal, 1.0 / 1.333), 
+        depth, 
+        random, 
+        MISS_SECONDARY_SKY);
 }
 
 float TraceShadow(float3 origin, inout uint random)

@@ -10,13 +10,16 @@ struct Bridge;
 
 struct RTConstants
 {
-    float prevProj[4][4];
-    float prevView[4][4];
+    float prevProj[4][4]{};
+    float prevView[4][4]{};
 
     float jitterX = 0.0f;
     float jitterY = 0.0f;
-
     int currentFrame = 0;
+    uint32_t padding = 0;
+
+    float environmentColor[3]{};
+    uint32_t hasEnvironmentColor = false;
 };
 
 struct RaytracingBridge

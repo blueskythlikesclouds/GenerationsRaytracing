@@ -64,6 +64,10 @@ cbuffer cbGlobalsRT : register(b2)
 
     float2 g_PixelJitter;
     uint g_CurrentFrame;
+
+    float3 g_EnvironmentColor;
+    bool g_HasEnvironmentColor;
+
 };
 
 #endif

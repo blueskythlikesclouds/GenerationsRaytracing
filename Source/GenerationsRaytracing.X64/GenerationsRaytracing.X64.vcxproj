@@ -15,6 +15,7 @@
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DLSS.cpp" />
+    <ClCompile Include="EnvironmentColor.cpp" />
     <ClCompile Include="FSR.cpp" />
     <ClCompile Include="Upscaler.cpp" />
     <ClCompile Include="Format.cpp" />
@@ -31,6 +32,7 @@
     <ClInclude Include="BottomLevelAS.h" />
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="DLSS.h" />
+    <ClInclude Include="EnvironmentColor.h" />
     <ClInclude Include="FSR.h" />
     <ClInclude Include="Instance.h" />
     <ClInclude Include="Material.h" />

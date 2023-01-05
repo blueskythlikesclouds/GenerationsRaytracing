@@ -12,6 +12,7 @@
     <ClCompile Include="DLSS.cpp" />
     <ClCompile Include="FSR.cpp" />
     <ClCompile Include="BlueNoise.cpp" />
+    <ClCompile Include="EnvironmentColor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -29,6 +30,7 @@
     <ClInclude Include="Material.h" />
     <ClInclude Include="Instance.h" />
     <ClInclude Include="BlueNoise.h" />
+    <ClInclude Include="EnvironmentColor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />
