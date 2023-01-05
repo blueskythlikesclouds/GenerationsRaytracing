@@ -107,6 +107,11 @@ RWTexture2D<float4> g_Refraction : register(u10);
 
 RWTexture2D<float4> g_Composite : register(u11);
 
+Texture2D<float4> g_BlueNoise : register(t4);
+Texture2D<float> g_PrevDepth : register(t5);
+Texture2D<float4> g_PrevNormal : register(t6);
+Texture2D<float4> g_PrevGlobalIllumination : register(t7);
+
 SamplerState g_LinearRepeatSampler : register(s0);
 
 Buffer<uint> g_BindlessIndexBuffer[] : register(t0, space1);
@@ -192,9 +197,9 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
     }
 
     vertex.PrevPosition = mul(g_InstanceBuffer[InstanceIndex()].PrevTransform, float4(vertex.PrevPosition, 1.0)).xyz;
-    vertex.Normal = mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz;
-    vertex.Tangent = mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz;
-    vertex.Binormal = mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz;
+    vertex.Normal = normalize(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
+    vertex.Tangent = normalize(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
+    vertex.Binormal = normalize(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
 
     return vertex;
 }

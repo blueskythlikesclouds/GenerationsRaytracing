@@ -1,23 +1,5 @@
 #include "ShaderFunctions.hlsli"
 
-Texture2D<float4> g_BlueNoise : register(t4);
-Texture2D<float> g_PrevDepth : register(t5);
-Texture2D<float4> g_PrevNormal : register(t6);
-Texture2D<float4> g_PrevGlobalIllumination : register(t7);
-
-float3 GetCosHemisphereSampleBlueNoise(float3 hitNormal)
-{
-    float2 index = DispatchRaysIndex().xy + float2(17, 31) * g_CurrentFrame;
-    float2 randomValue = g_BlueNoise.Load(int3(index, 0) % 512).xy;
-
-    float3 bitangent = GetPerpendicularVector(hitNormal);
-    float3 tangent = cross(bitangent, hitNormal);
-    float r = sqrt(randomValue.x);
-    float phi = 2.0f * 3.14159265f * randomValue.y;
-
-    return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
-}
-
 [shader("raygeneration")]
 void PrimaryRayGeneration()
 {
@@ -56,19 +38,29 @@ void GlobalIlluminationRayGeneration()
     if ((shader.y & HAS_GLOBAL_ILLUMINATION) == 0)
         return;
 
-    float3 globalIllumination = TraceColor(
-        g_Position[index].xyz,
-        GetCosHemisphereSampleBlueNoise(g_Normal[index].xyz),
-        MAX_RECURSION_DEPTH - 3);
+    float3 position = g_Position[index].xyz;
+    float depth = g_Depth[index];
+    float3 normal = normalize(g_Normal[index].xyz);
+    float3 direction = GetCosHemisphereSample(normal);
+    uint random = InitializeRandom(dimensions.x * index.y + index.x, g_CurrentFrame);
+
+    float3 globalIllumination = TraceColor(position, direction, MAX_RECURSION_DEPTH - 3, random);
 
     int2 prevIndex = round(index + g_MotionVector[index]);
+
     float prevDepth = g_PrevDepth.Load(int3(prevIndex, 0));
     float3 prevNormal = g_PrevNormal.Load(int3(prevIndex, 0)).xyz;
     float4 prevGlobalIllumination = g_PrevGlobalIllumination.Load(int3(prevIndex, 0));
 
-    float factor = exp(abs(g_Depth[index] - prevDepth) / -0.01) * saturate(dot(prevNormal, g_Normal[index].xyz)) * prevGlobalIllumination.a + 1.0;
+    float factor = abs(depth - prevDepth);
+    factor = exp(factor / -0.01);
+    factor *= saturate(dot(prevNormal, normal));
+    factor *= prevGlobalIllumination.a;
+    factor += 1.0;
 
-    g_GlobalIllumination[index] = float4(lerp(prevGlobalIllumination.rgb, globalIllumination, 1.0 / factor), factor);
+    globalIllumination = lerp(prevGlobalIllumination.rgb, globalIllumination, 1.0 / factor);
+
+    g_GlobalIllumination[index] = float4(globalIllumination, factor);
 }
 
 [shader("raygeneration")]
@@ -89,32 +81,42 @@ void ShadowRayGeneration()
 void ReflectionRayGeneration()
 {
     uint2 index = DispatchRaysIndex().xy;
+    uint2 dimensions = DispatchRaysDimensions().xy;
+
     uint4 shader = g_Shader[index];
 
     if ((shader.y & HAS_REFLECTION) == 0)
         return;
 
-    g_Reflection[index] = float4(TraceReflection(
-        g_Position[index].xyz, 
-        g_Normal[index].xyz, 
-        normalize(g_Position[index].xyz - g_EyePosition.xyz), 
-        MAX_RECURSION_DEPTH - 2), 1.0);
+    float3 position = g_Position[index].xyz;
+    float3 normal = normalize(g_Normal[index].xyz);
+    float3 view = normalize(position - g_EyePosition.xyz);
+    uint random = InitializeRandom(dimensions.x * index.y + index.x, g_CurrentFrame);
+
+    float3 reflection = TraceReflection(position, normal, view, MAX_RECURSION_DEPTH - 2, random);
+
+    g_Reflection[index] = float4(reflection, 1.0);
 }
 
 [shader("raygeneration")]
 void RefractionRayGeneration()
 {
     uint2 index = DispatchRaysIndex().xy;
+    uint2 dimensions = DispatchRaysDimensions().xy;
+
     uint4 shader = g_Shader[index];
 
     if ((shader.y & HAS_REFRACTION) == 0)
         return;
 
-    g_Refraction[index] = float4(TraceRefraction(
-        g_Position[index].xyz, 
-        g_Normal[index].xyz, 
-        normalize(g_Position[index].xyz - g_EyePosition.xyz), 
-        MAX_RECURSION_DEPTH - 2), 1.0);
+    float3 position = g_Position[index].xyz;
+    float3 normal = normalize(g_Normal[index].xyz);
+    float3 view = normalize(position - g_EyePosition.xyz);
+    uint random = InitializeRandom(dimensions.x * index.y + index.x, g_CurrentFrame);
+
+    float3 refraction = TraceRefraction(position, normal, view, MAX_RECURSION_DEPTH - 2, random);
+
+    g_Reflection[index] = float4(refraction, 1.0);
 }
 
 [shader("raygeneration")]

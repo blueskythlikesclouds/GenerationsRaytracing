@@ -67,31 +67,43 @@ float3 GetPerpendicularVector(float3 u)
     return cross(u, float3(xm, ym, zm));
 }
 
-float3 GetCosHemisphereSample(inout uint randSeed, float3 hitNormal)
+float3 GetCosHemisphereSample(float3 normal, float2 random)
 {
-    float2 randomValue = float2(NextRandom(randSeed), NextRandom(randSeed));
+    float3 binormal = GetPerpendicularVector(normal);
+    float3 tangent = cross(binormal, normal);
 
-    float3 bitangent = GetPerpendicularVector(hitNormal);
-    float3 tangent = cross(bitangent, hitNormal);
-    float r = sqrt(randomValue.x);
-    float phi = 2.0f * 3.14159265f * randomValue.y;
+    float radius = sqrt(random.x);
+    float angle = 2.0 * 3.14159265 * random.y;
 
-    return tangent * (r * cos(phi).x) + bitangent * (r * sin(phi)) + hitNormal.xyz * sqrt(max(0.0, 1.0f - randomValue.x));
+    return tangent * (radius * cos(angle)) + binormal * (radius * sin(angle)) + normal * sqrt(max(0.0, 1.0 - random.x));
 }
 
-float3 TraceColor(float3 origin, float3 direction, uint depth)
+float3 GetCosHemisphereSample(float3 normal, inout uint random)
+{
+    return GetCosHemisphereSample(normal, float2(NextRandom(random), NextRandom(random)));
+}
+
+float3 GetCosHemisphereSample(float3 normal)
+{
+    float2 index = DispatchRaysIndex().xy + float2(17, 31) * g_CurrentFrame;
+    return GetCosHemisphereSample(normal, g_BlueNoise.Load(int3(index, 0) % 512).xy);
+}
+
+float3 TraceColor(float3 origin, float3 direction, uint depth, inout uint random)
 {
     if (depth >= MAX_RECURSION_DEPTH)
         return 0;
 
     RayDesc ray;
     ray.Origin = origin;
-    ray.Direction = direction;
+    ray.Direction = normalize(direction);
     ray.TMin = 0.001f;
     ray.TMax = Z_MAX;
 
     Payload payload = (Payload)0;
+
     payload.Depth = depth + 1;
+    payload.Random = random;
 
     TraceRay(
         g_BVH, 
@@ -106,19 +118,19 @@ float3 TraceColor(float3 origin, float3 direction, uint depth)
     return min(payload.Color, 4.0);
 }
 
-float3 TraceGlobalIllumination(float3 origin, float3 normal, inout uint random, uint depth)
+float3 TraceGlobalIllumination(float3 origin, float3 normal, uint depth, inout uint random)
 {
-    return TraceColor(origin, normalize(GetCosHemisphereSample(random, normal)), depth);
+    return TraceColor(origin, GetCosHemisphereSample(normal, random), depth, random);
 }
 
-float3 TraceReflection(float3 origin, float3 normal, float3 view, uint depth)
+float3 TraceReflection(float3 origin, float3 normal, float3 view, uint depth, inout uint random)
 {
-    return TraceColor(origin, normalize(reflect(view, normal)), depth);
+    return TraceColor(origin, reflect(view, normal), depth, random);
 }
 
-float3 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth)
+float3 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth, inout uint random)
 {
-    return TraceColor(origin, normalize(refract(view, normal, 1.0 / 1.333)), depth);
+    return TraceColor(origin, refract(view, normal, 1.0 / 1.333), depth, random);
 }
 
 float TraceShadow(float3 origin, inout uint random)

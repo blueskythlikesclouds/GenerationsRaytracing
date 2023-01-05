@@ -473,7 +473,8 @@ public static class RaytracingShaderConverter
                 params.Vertex = GetVertex(attributes);
                 params.Material = GetMaterial();
 
-                SHADERNAME(params, params.Vertex.Normal);
+                float3 normal = params.Vertex.Normal;
+                SHADERNAME(params, normal);
 
                 float3 curPixelPosAndDepth = GetCurrentPixelPositionAndDepth(params.Vertex.Position);
                 float3 prevPixelPosAndDepth = GetPreviousPixelPositionAndDepth(params.Vertex.PrevPosition);
@@ -497,16 +498,16 @@ public static class RaytracingShaderConverter
                 params.Material = GetMaterial();
 
                 #if HASGLOBALILLUMINATION
-                    params.GlobalIllumination = TraceGlobalIllumination(params.Vertex.Position, params.Vertex.Normal, payload.Random, payload.Depth);
+                    params.GlobalIllumination = TraceGlobalIllumination(params.Vertex.Position, params.Vertex.Normal, payload.Depth, payload.Random);
                     params.Shadow = TraceShadow(params.Vertex.Position, payload.Random);
                 #endif
 
                 #if HASREFLECTION
-                    params.Reflection = TraceReflection(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth);
+                    params.Reflection = TraceReflection(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth, payload.Random);
                 #endif
 
                 #if HASREFRACTION
-                    params.Refraction = TraceRefraction(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth);
+                    params.Refraction = TraceRefraction(params.Vertex.Position, params.Vertex.Normal, WorldRayDirection(), payload.Depth, payload.Random);
                 #endif
 
                 params.Projection[0] = float4(1, 0, 0, 0);
@@ -524,7 +525,9 @@ public static class RaytracingShaderConverter
                 params.EyePosition = WorldRayOrigin();
                 params.EyeDirection = WorldRayDirection();
 
-                payload.Color = SHADERNAME(params, params.Vertex.Normal).oC0.rgb;
+                float3 normal = params.Vertex.Normal;
+
+                payload.Color = SHADERNAME(params, normal).oC0.rgb;
                 payload.T = RayTCurrent();
             }
 
@@ -536,7 +539,9 @@ public static class RaytracingShaderConverter
                 params.Vertex = GetVertex(attributes);
                 params.Material = GetMaterial();
                 
-                if (SHADERNAME(params, params.Vertex.Normal).oC0.w < (GetGeometry().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
+                float3 normal = params.Vertex.Normal;
+
+                if (SHADERNAME(params, normal).oC0.w < (GetGeometry().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
                     IgnoreHit();
             }
 
@@ -564,7 +569,9 @@ public static class RaytracingShaderConverter
                 params.EyePosition = g_EyePosition.xyz;
                 params.EyeDirection = g_EyeDirection.xyz; 
 
-                g_Composite[index] = float4(SHADERNAME(params, params.Vertex.Normal).oC0.rgb, 1.0);
+                float3 normal = params.Vertex.Normal;
+
+                g_Composite[index] = float4(SHADERNAME(params, normal).oC0.rgb, 1.0);
             }
 
 
