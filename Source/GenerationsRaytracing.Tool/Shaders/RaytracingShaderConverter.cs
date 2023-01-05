@@ -243,6 +243,7 @@ public static class RaytracingShaderConverter
             variableMap.Add("oC3", "omParams.oC3");
             variableMap.Add("oDepth", "omParams.oDepth");
 
+            stringBuilder.AppendLine("template<bool AllowNormalMap>");
             stringBuilder.AppendFormat("void {0}_PS(inout {0}_PSParams psParams, inout OMParams omParams, inout float3 normal)\n{{\n", shader.Name);
         }
 
@@ -343,12 +344,23 @@ public static class RaytracingShaderConverter
 
             if (instrLine.Contains('}')) --indent;
 
-            for (int j = 0; j < indent; j++)
-                stringBuilder.Append("\t");
+            for (int j = 0; j < indent; j++) stringBuilder.Append("\t");
 
             instrLine = instrLine.Replace("][", " + ");
 
-            stringBuilder.AppendFormat("{0}\n", instrLine);
+            if (instrLine.Contains("sampNrm"))
+            {
+                stringBuilder.Append("if (AllowNormalMap) ");
+                stringBuilder.AppendLine(instrLine);
+
+                for (int j = 0; j < indent; j++) stringBuilder.Append("\t");
+
+                stringBuilder.AppendFormat("else {0} = float4(0.5, 0.5, 1.0, 1.0);\n", instruction.Arguments[0]);
+            }
+            else
+            {
+                stringBuilder.AppendFormat("{0}\n", instrLine);
+            }
 
             if (instrLine.Contains('{')) ++indent;
         }
@@ -358,6 +370,7 @@ public static class RaytracingShaderConverter
 
     public static void WriteRaytracingFunction(StringBuilder stringBuilder, string shaderName, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
     {
+        stringBuilder.AppendLine("template<bool AllowNormalMap>");
         stringBuilder.AppendFormat("OMParams {0}(in ShaderParams params, inout float3 normal)\n{{\n", shaderName);
 
         stringBuilder.AppendFormat("\t{0}_IAParams iaParams = ({0}_IAParams)0;\n", vertexShader.Name);
@@ -438,7 +451,7 @@ public static class RaytracingShaderConverter
 
         stringBuilder.AppendLine("\n\tOMParams omParams = (OMParams)0;");
 
-        stringBuilder.AppendFormat("\t{0}_PS(psParams, omParams, normal);\n\treturn omParams;\n}}\n\n", pixelShader.Name);
+        stringBuilder.AppendFormat("\t{0}_PS<AllowNormalMap>(psParams, omParams, normal);\n\treturn omParams;\n}}\n\n", pixelShader.Name);
     }
 
     public static void WriteRaytracingFunctions(StringBuilder stringBuilder, string shaderName, int shaderIndex, Shader vertexShader, Shader pixelShader, ShaderMapping shaderMapping)
@@ -474,7 +487,7 @@ public static class RaytracingShaderConverter
                 params.Material = GetMaterial();
 
                 float3 normal = params.Vertex.Normal;
-                SHADERNAME(params, normal);
+                SHADERNAME<true>(params, normal);
 
                 float3 curPixelPosAndDepth = GetCurrentPixelPositionAndDepth(params.Vertex.Position);
                 float3 prevPixelPosAndDepth = GetPreviousPixelPositionAndDepth(params.Vertex.PrevPosition);
@@ -527,7 +540,7 @@ public static class RaytracingShaderConverter
 
                 float3 normal = params.Vertex.Normal;
 
-                payload.Color = SHADERNAME(params, normal).oC0.rgb;
+                payload.Color = SHADERNAME<true>(params, normal).oC0.rgb;
                 payload.T = RayTCurrent();
             }
 
@@ -541,7 +554,7 @@ public static class RaytracingShaderConverter
                 
                 float3 normal = params.Vertex.Normal;
 
-                if (SHADERNAME(params, normal).oC0.w < (GetGeometry().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
+                if (SHADERNAME<false>(params, normal).oC0.w < (GetGeometry().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
                     IgnoreHit();
             }
 
@@ -571,7 +584,7 @@ public static class RaytracingShaderConverter
 
                 float3 normal = params.Vertex.Normal;
 
-                g_Composite[index] = float4(SHADERNAME(params, normal).oC0.rgb, 1.0);
+                g_Composite[index] = float4(SHADERNAME<false>(params, normal).oC0.rgb, 1.0);
             }
 
 
