@@ -75,7 +75,7 @@ void Upscaler::validate(const ValidationParams& params)
     depth.create(params.bridge.device.nvrhi, textureDesc.setFormat(nvrhi::Format::R32_FLOAT));
     motionVector = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG16_FLOAT));
     normal.create(params.bridge.device.nvrhi, textureDesc.setFormat(nvrhi::Format::RGBA16_SNORM));
-    texCoord = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG16_FLOAT));
+    texCoord = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RG32_FLOAT));
     color = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA8_UNORM));
     shader = params.bridge.device.nvrhi->createTexture(textureDesc.setFormat(nvrhi::Format::RGBA16_UINT));
 
