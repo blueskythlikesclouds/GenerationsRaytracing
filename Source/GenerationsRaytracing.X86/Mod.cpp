@@ -5,8 +5,6 @@
 
 constexpr LPCTSTR GENERATIONS_RAYTRACING_X64 = TEXT("GenerationsRaytracing.X64.exe");
 
-MemoryMappedFile memoryMappedFile;
-
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
     if (reason == DLL_PROCESS_DETACH)
@@ -71,4 +69,5 @@ extern "C" __declspec(dllexport) void PostInit()
     ENSURE_DLL_NOT_LOADED("BetterFxPipeline");
     ENSURE_DLL_NOT_LOADED("GenerationsD3D9Ex");
     ENSURE_DLL_NOT_LOADED("GenerationsD3D11");
+    ENSURE_DLL_NOT_LOADED("GenerationsParameterEditor");
 }
