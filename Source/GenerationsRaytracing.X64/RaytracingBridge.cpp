@@ -121,11 +121,6 @@ RaytracingBridge::RaytracingBridge(const Device& device, const std::string& dire
 
     shaderTable = pipeline->createShaderTable();
 
-    shaderTable->addMissShader("MissPrimary");
-    shaderTable->addMissShader("MissPrimarySky");
-    shaderTable->addMissShader("MissSecondary");
-    shaderTable->addMissShader("MissSecondarySky");
-
     for (auto& shader : shaderMapping.shaders)
         shaderTable->addCallableShader(shader.callable.c_str());
 
@@ -406,6 +401,15 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         bridge.device.nvrhi->writeDescriptorTable(textureDescriptorTable, nvrhi::BindingSetItem::Texture_SRV(i, textures[i]));
 
     shaderTable->clearHitShaders();
+    shaderTable->clearMissShaders();
+
+    const bool hasEnvironmentColor = EnvironmentColor::get(bridge, rtConstants.environmentColor);
+
+    shaderTable->addMissShader("MissPrimary"); // MISS
+    shaderTable->addMissShader("MissPrimarySky"); // MISS_SKY
+    shaderTable->addMissShader(hasEnvironmentColor ? "MissSecondary" : "MissSecondarySky"); // MISS_GLOBAL_ILLUMINATION
+    shaderTable->addMissShader("MissSecondary"); // MISS_SHADOW
+    shaderTable->addMissShader("MissSecondarySky"); // MISS_REFLECTION_REFRACTION
 
     static std::vector<BottomLevelAS::Geometry::GPU> gpuGeometries;
     gpuGeometries.clear();
@@ -568,7 +572,6 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     bridge.psConstants.writeBuffer(bridge.commandList, bridge.psConstantBuffer);
 
     upscaler->getJitterOffset(rtConstants.currentFrame, rtConstants.jitterX, rtConstants.jitterY);
-    rtConstants.hasEnvironmentColor = EnvironmentColor::get(bridge, rtConstants.environmentColor) ? 1u : 0u;
 
     bridge.commandList->writeBuffer(rtConstantBuffer, &rtConstants, sizeof(rtConstants));
 

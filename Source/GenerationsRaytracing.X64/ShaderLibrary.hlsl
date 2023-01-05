@@ -23,7 +23,7 @@ void PrimaryRayGeneration()
         INSTANCE_MASK_DEFAULT, 
         CLOSEST_HIT_PRIMARY, 
         CLOSEST_HIT_NUM, 
-        MISS_PRIMARY_SKY, 
+        MISS_SKY, 
         ray, 
         payload);
 }
@@ -49,7 +49,7 @@ void GlobalIlluminationRayGeneration()
         direction, 
         MAX_RECURSION_DEPTH - 3, 
         random, 
-        g_HasEnvironmentColor ? MISS_SECONDARY : MISS_SECONDARY_SKY);
+        MISS_GLOBAL_ILLUMINATION);
 
     int2 prevIndex = round(index + g_MotionVector[index]);
 
@@ -157,7 +157,7 @@ void MissPrimarySky(inout Payload payload : SV_RayPayload)
         INSTANCE_MASK_SKY,
         CLOSEST_HIT_PRIMARY,
         CLOSEST_HIT_NUM,
-        MISS_PRIMARY,
+        MISS,
         ray,
         payload);
 }
@@ -182,7 +182,7 @@ void MissSecondarySky(inout Payload payload : SV_RayPayload)
         INSTANCE_MASK_SKY, 
         CLOSEST_HIT_SECONDARY, 
         CLOSEST_HIT_NUM, 
-        MISS_SECONDARY, 
+        MISS, 
         ray, 
         payload);
 

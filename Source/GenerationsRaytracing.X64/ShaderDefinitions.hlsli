@@ -7,21 +7,22 @@
 
 #define Z_MAX 10000.0f
 
-#define HAS_GLOBAL_ILLUMINATION (1 << 0)
-#define HAS_REFLECTION          (1 << 1)
-#define HAS_REFRACTION          (1 << 2)
+#define HAS_GLOBAL_ILLUMINATION    (1 << 0)
+#define HAS_REFLECTION             (1 << 1)
+#define HAS_REFRACTION             (1 << 2)
 
-#define INSTANCE_MASK_DEFAULT   1
-#define INSTANCE_MASK_SKY       2
+#define INSTANCE_MASK_DEFAULT      1
+#define INSTANCE_MASK_SKY          2
 
-#define CLOSEST_HIT_PRIMARY     0
-#define CLOSEST_HIT_SECONDARY   1
-#define CLOSEST_HIT_NUM         2
+#define CLOSEST_HIT_PRIMARY        0
+#define CLOSEST_HIT_SECONDARY      1
+#define CLOSEST_HIT_NUM            2
 
-#define MISS_PRIMARY            0
-#define MISS_PRIMARY_SKY        1
-#define MISS_SECONDARY          2
-#define MISS_SECONDARY_SKY      3
+#define MISS                       0
+#define MISS_SKY                   1
+#define MISS_GLOBAL_ILLUMINATION   2
+#define MISS_SHADOW                3
+#define MISS_REFLECTION_REFRACTION 4
 
 struct Vertex
 {

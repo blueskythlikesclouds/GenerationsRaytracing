@@ -4,15 +4,15 @@
 
 static const std::unordered_map<XXH64_hash_t, std::array<uint8_t, 3>> ENVIRONMENT_COLORS =
 {
-    { 0x3ce52f71f53a0333, { 0, 0, 0 } }, // ActD_Africa
-    { 0xa2106d5402d979d7, { 0, 0, 0 } }, // ActD_Beach
-    { 0x817a829098cf2f6c, { 0, 0, 0 } }, // ActD_China
-    { 0x334ddc94268b6d, { 0, 0, 0 } }, // ActD_EU, ActD_SubEU_04
-    { 0x4819bbf1ed1b4092, { 0, 0, 0 } }, // ActD_MykonosAct1
-    { 0x12f6c7fdafa98428, { 0, 0, 0 } }, // ActD_MykonosAct2
-    { 0xf4db322c7ea87c9a, { 0, 0, 0 } }, // ActD_NY
-    { 0x1eb7f67273cecaa, { 0, 0, 0 } }, // ActD_Petra
-    { 0xf1bc7a919097a961, { 0, 0, 0 } }, // ActD_Snow
+    { 0x3ce52f71f53a0333, { 208, 250, 244 } }, // ActD_Africa
+    { 0xa2106d5402d979d7, { 149, 150, 198 } }, // ActD_Beach
+    { 0x817a829098cf2f6c, { 117, 163, 193 } }, // ActD_China
+    { 0x334ddc94268b6d, { 255, 255, 255 } }, // ActD_EU, ActD_SubEU_04
+    { 0x4819bbf1ed1b4092, { 62, 76, 179 } }, // ActD_MykonosAct1
+    { 0x12f6c7fdafa98428, { 99, 99, 198 } }, // ActD_MykonosAct2
+    { 0xf4db322c7ea87c9a, { 213, 250, 255 } }, // ActD_NY
+    { 0x1eb7f67273cecaa, { 106, 138, 149 } }, // ActD_Petra
+    { 0xf1bc7a919097a961, { 128, 167, 255 } }, // ActD_Snow
     { 0x15cac74bd472f4b1, { 0, 0, 0 } }, // ActD_SubAfrica_01
     { 0x645c135b015f5c51, { 0, 0, 0 } }, // ActD_SubAfrica_02
     { 0x4bc8c6b374ef7dc, { 0, 0, 0 } }, // ActD_SubAfrica_03
@@ -75,6 +75,7 @@ static const std::unordered_map<XXH64_hash_t, std::array<uint8_t, 3>> ENVIRONMEN
     { 0x38ce5a5b25b24596, { 0, 0, 0 } }, // Event_temple
     { 0xeb5c0e38aab9b282, { 0, 0, 0 } }, // ExStageTails1
     { 0x304c2eb9550248dc, { 0, 0, 0 } }, // ExStageTails2
+    { 0x7ca14cdc575ce805, { 179, 153, 128 } }, // Title
     { 0x15f8f352b5d4bf90, { 0, 0, 0 } }, // Town_Africa
     { 0x52666cacba8a4e74, { 0, 0, 0 } }, // Town_AfricaETF
     { 0x41adb4f67aac7fc2, { 0, 0, 0 } }, // Town_AfricaETF_Night, Town_Africa_Night
@@ -107,31 +108,31 @@ static const std::unordered_map<XXH64_hash_t, std::array<uint8_t, 3>> ENVIRONMEN
     { 0xc91c3fe744b30065, { 0, 0, 0 } }, // Town_SouthEastAsiaETF
     { 0xc479ad58cdf397aa, { 0, 0, 0 } }, // Town_SouthEastAsiaETF_Night, Town_SouthEastAsia_Night
     { 0xdea040012b6e6dee, { 56, 96, 116 } }, // bde
-    { 0xb267227486fec93, { 0, 0, 0 } }, // blb
+    { 0xb267227486fec93, { 71, 71, 71 } }, // blb
     { 0xa0fd611c40e85bee, { 33, 1, 10 } }, // bms
-    { 0x7dac5b26699920d, { 0, 0, 0 } }, // bne
-    { 0xdfee19606fc49127, { 0, 0, 0 } }, // bpc
-    { 0x7b6eb97f99818eb6, { 0, 0, 0 } }, // bsd
-    { 0x87f6cecb05549bfd, { 0, 0, 0 } }, // bsl
+    { 0x7dac5b26699920d, { 239, 134, 113 } }, // bne
+    { 0xdfee19606fc49127, { 65, 101, 132 } }, // bpc
+    { 0x7b6eb97f99818eb6, { 16, 30, 43 } }, // bsd
+    { 0x87f6cecb05549bfd, { 153, 93, 77 } }, // bsl
     { 0xa72a03b46543d1b8, { 38, 27, 84 } }, // cnz100
     { 0xac3c2e9c794443bb, { 62, 18, 15 } }, // cpz100
-    { 0xcdb2f1065b8e9656, { 40, 42, 105 } }, // cpz200
-    { 0xbb6a4511aeae905e, { 0, 0, 0 } }, // csc100
-    { 0xb0c02ec7639c752a, { 0, 0, 0 } }, // csc200
+    { 0xcdb2f1065b8e9656, { 48, 49, 107 } }, // cpz200
+    { 0xbb6a4511aeae905e, { 117, 64, 34 } }, // csc100
+    { 0xb0c02ec7639c752a, { 117, 63, 36 } }, // csc200
     { 0x7cef91a4098b129e, { 76, 124, 204 } }, // cte100, cte200
     { 0xcf00294b5bbe04ac, { 71, 82, 144 } }, // cte102
-    { 0xdf306f2de74ea5fb, { 0, 0, 0 } }, // euc100
-    { 0x590df41aad9bc6b7, { 0, 0, 0 } }, // euc200
-    { 0xa630b72f3269025b, { 0, 0, 0 } }, // euc204
-    { 0x57517a95b60d0b8d, { 0, 0, 0 } }, // evt041
-    { 0x94231efaa6d6521b, { 0, 0, 0 } }, // evt121, pam000, pam001
-    { 0x63eac110710bbd42, { 0, 0, 0 } }, // fig000
-    { 0xab24577085d0036a, { 206, 205, 217 } }, // ghz100
+    { 0xdf306f2de74ea5fb, { 234, 239, 244 } }, // euc100
+    { 0x590df41aad9bc6b7, { 218, 229, 250 } }, // euc200
+    { 0xa630b72f3269025b, { 189, 165, 218 } }, // euc204
+    { 0x57517a95b60d0b8d, { 23, 27, 34 } }, // evt041
+    { 0x94231efaa6d6521b, { 137, 246, 255 } }, // evt121, pam000, pam001
+    { 0x63eac110710bbd42, { 255, 255, 166 } }, // fig000
+    { 0xab24577085d0036a, { 200, 191, 231 } }, // ghz100
     { 0x308f8335b0308380, { 59, 73, 179 } }, // ghz103
     { 0xb7a2ddeb23d3f789, { 0, 58, 105 } }, // ghz104
-    { 0xb281a7ad61dbf60b, { 144, 191, 255 } }, // ghz200
-    { 0xb42e0967e6fc9bac, { 0, 0, 0 } }, // pla100, pla200, pla205
-    { 0xed11fd7b4d29de26, { 0, 0, 0 } }, // pla204
+    { 0xb281a7ad61dbf60b, { 135, 181, 237 } }, // ghz200
+    { 0xb42e0967e6fc9bac, { 136, 206, 223 } }, // pla100, pla200, pla205
+    { 0xed11fd7b4d29de26, { 77, 88, 117 } }, // pla204
     { 0xc59175a5f51dd8bd, { 11, 14, 93 } }, // sph100
     { 0x61fabe09c63f8293, { 76, 88, 179 } }, // sph101
     { 0x7a16b76d55221a78, { 0, 20, 116 } }, // sph200
@@ -139,10 +140,10 @@ static const std::unordered_map<XXH64_hash_t, std::array<uint8_t, 3>> ENVIRONMEN
     { 0x75db373553a02a01, { 62, 29, 24 } }, // ssh103
     { 0x4e15efedfbab15ec, { 135, 178, 233 } }, // ssh200
     { 0x30415167ec9b86ff, { 13, 10, 45 } }, // ssh201
-    { 0x65cc4d5ab937b17a, { 0, 0, 0 } }, // ssh205
+    { 0x65cc4d5ab937b17a, { 128, 169, 23 } }, // ssh205
     { 0x616a84fd9878922e, { 123, 211, 228 } }, // ssz100
     { 0x5e1cd647968bdbda, { 50, 51, 93 } }, // ssz103
-    { 0x9abdca7d29f70486, { 135, 228, 249 } }, // ssz200
+    { 0x9abdca7d29f70486, { 123, 203, 217 } }, // ssz200
 };
 
 bool EnvironmentColor::get(const Bridge& bridge, float* result)

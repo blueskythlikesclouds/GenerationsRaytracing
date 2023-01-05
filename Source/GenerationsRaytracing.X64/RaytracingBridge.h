@@ -16,10 +16,9 @@ struct RTConstants
     float jitterX = 0.0f;
     float jitterY = 0.0f;
     int currentFrame = 0;
-    uint32_t padding = 0;
+    uint8_t padding0[4];
 
     float environmentColor[3]{};
-    uint32_t hasEnvironmentColor = false;
 };
 
 struct RaytracingBridge
