@@ -483,7 +483,7 @@ public static class RaytracingShaderConverter
                 g_Position[index] = float4(params.Vertex.Position, 0.0);
                 g_Depth[index] = curPixelPosAndDepth.z;
                 g_MotionVector[index] = prevPixelPosAndDepth.xy - curPixelPosAndDepth.xy;
-                g_Normal[index] = float4(params.Vertex.Normal, 0.0);
+                g_Normal[index] = float4(normal, 0.0);
                 g_TexCoord[index] = params.Vertex.TexCoord;
                 g_Color[index] = params.Vertex.Color;
                 g_Shader[index] = uint4(SHADERINDEX, SHADERFLAGS, GetGeometry().MaterialIndex, 0);

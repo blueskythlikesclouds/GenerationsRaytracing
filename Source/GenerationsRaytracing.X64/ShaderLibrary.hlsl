@@ -116,7 +116,7 @@ void RefractionRayGeneration()
 
     float3 refraction = TraceRefraction(position, normal, view, MAX_RECURSION_DEPTH - 2, random);
 
-    g_Reflection[index] = float4(refraction, 1.0);
+    g_Refraction[index] = float4(refraction, 1.0);
 }
 
 [shader("raygeneration")]
