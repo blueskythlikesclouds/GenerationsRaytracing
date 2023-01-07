@@ -5,6 +5,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "ShaderMapping.h"
+#include "Stage.h"
 #include "Texture.h"
 #include "VertexDeclaration.h"
 
@@ -366,10 +367,18 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     if (!world)
         return;
 
+    if (Sonic::CInputState::GetInstance()->GetPadState().IsTapped(Sonic::eKeyState_Y))
+    {
+        static size_t index = 0;
+        Stage::setStage(index++);
+    }
+
+    bool resetAccumulation = Stage::setSceneEffect();
+
+    hh::mr::CRenderingDevice* renderingDevice = **(hh::mr::CRenderingDevice***)((char*)A1 + 16);
+
     // Set sky parameters
     {
-        hh::mr::CRenderingDevice* renderingDevice = **(hh::mr::CRenderingDevice***)((char*)A1 + 16);
-
         const float backGroundScale[] = 
         {
             *(float*)0x1A489F0,
@@ -390,6 +399,24 @@ static void __cdecl SceneRender_Raytracing(void* A1)
         renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(219, skyParam, 1);
     }
 
+    static boost::shared_ptr<hh::mr::CLightData> light;
+    const boost::shared_ptr<hh::mr::CLightData> prevLight = light;
+
+    // Set light parameters
+    if (Stage::light != nullptr && Stage::light->IsMadeAll())
+    {
+        light = Stage::light;
+
+        renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(183, light->m_Direction.data(), 1);
+        renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(184, light->m_Color.data(), 1);
+        renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(185, light->m_Color.data(), 1);
+
+        renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(10, light->m_Direction.data(), 1);
+        renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(36, light->m_Color.data(), 1);
+        renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(37, light->m_Color.data(), 1);
+    }
+    resetAccumulation |= light != prevLight;
+
     identifierMutex.lock();
 
     tbb::parallel_for_each(identifierMap.begin(), identifierMap.end(), [](const auto& pair)
@@ -405,14 +432,26 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     const hh::base::CStringSymbol symbols[] = {"Sky", "Object", "Object_Overlay", "Player"};
 
-    for (const auto symbol : symbols)
+    for (size_t i = Stage::sky != nullptr && Stage::sky->IsMadeAll()  ? 1u : 0u; i < _countof(symbols); i++)
     {
-        const auto pair = renderScene->m_BundleMap.find(symbol);
+        const auto pair = renderScene->m_BundleMap.find(symbols[i]);
         if (pair == renderScene->m_BundleMap.end())
             continue;
 
-        traverse(pair->second.get(), symbol.m_pSymbolNode == symbols[0].m_pSymbolNode ? INSTANCE_MASK_SKY : INSTANCE_MASK_DEFAULT);
+        traverse(pair->second.get(), i == 0 ? INSTANCE_MASK_SKY : INSTANCE_MASK_DEFAULT);
     }
+
+    static boost::shared_ptr<hh::mr::CSingleElement> singleElement;
+    const boost::shared_ptr<hh::mr::CSingleElement> prevSingleElement = singleElement;
+
+    if (Stage::sky != nullptr && Stage::sky->IsMadeAll())
+    {
+        if (!singleElement || singleElement->m_spModel != Stage::sky)
+            singleElement = boost::make_shared<hh::mr::CSingleElement>(Stage::sky);
+
+        traverse(singleElement.get(), INSTANCE_MASK_SKY);
+    }
+    resetAccumulation |= singleElement != prevSingleElement;
 
     std::lock_guard lock(instanceMutex);
 
@@ -446,7 +485,9 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     group.wait();
 
-    msgSender.oneShot<MsgNotifySceneTraversed>();
+    auto msg = msgSender.start<MsgNotifySceneTraversed>();
+    msg->resetAccumulation = resetAccumulation ? 1 : 0;
+    msgSender.finish();
 }
 
 static void convertToTriangles(const hh::mr::CMeshData& mesh, hl::hh::mirage::raw_mesh* data)

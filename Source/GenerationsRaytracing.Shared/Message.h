@@ -331,6 +331,7 @@ struct MsgCreateInstance
 struct MsgNotifySceneTraversed
 {
     DEFINE_MSG_ID;
+    unsigned int resetAccumulation;
 };
 
 struct MsgCreateMaterial

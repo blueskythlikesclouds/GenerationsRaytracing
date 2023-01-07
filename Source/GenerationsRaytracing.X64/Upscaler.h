@@ -27,6 +27,7 @@ public:
         size_t currentFrame = 0;
         float jitterX = 0.0f;
         float jitterY = 0.0f;
+        bool resetAccumulation = false;
     };
 
 protected:

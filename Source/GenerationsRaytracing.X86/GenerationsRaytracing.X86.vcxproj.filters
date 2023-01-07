@@ -19,6 +19,7 @@
     <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="RaytracingManager.cpp" />
     <ClCompile Include="Identifier.cpp" />
+    <ClCompile Include="Stage.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -38,5 +39,6 @@
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="RaytracingManager.h" />
     <ClInclude Include="Identifier.h" />
+    <ClInclude Include="Stage.h" />
   </ItemGroup>
 </Project>

@@ -652,6 +652,9 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     bridge.commandList->clearTextureUInt(upscaler->shader, nvrhi::TextureSubresourceSet(), 0);
     bridge.commandList->clearTextureFloat(upscaler->composite, nvrhi::TextureSubresourceSet(), nvrhi::Color(1));
 
+    if (msg->resetAccumulation != 0)
+        bridge.commandList->clearTextureFloat(upscaler->globalIllumination.getPrevious(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::Color(0));
+
     bridge.commandList->setTextureState(upscaler->depth.getCurrent(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->motionVector, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->shader, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
@@ -698,7 +701,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
             .addBindingLayout(copyBindingLayout), copyFramebuffer);
     }
 
-    upscaler->evaluate({ bridge, (size_t)rtConstants.currentFrame, rtConstants.jitterX, rtConstants.jitterY });
+    upscaler->evaluate({ bridge, (size_t)rtConstants.currentFrame, rtConstants.jitterX, rtConstants.jitterY, msg->resetAccumulation ? true : false });
 
     auto copyBindingSet = bridge.device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
         .addItem(nvrhi::BindingSetItem::Texture_SRV(0, output))

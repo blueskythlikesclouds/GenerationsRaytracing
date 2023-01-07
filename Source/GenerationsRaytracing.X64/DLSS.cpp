@@ -86,6 +86,7 @@ void DLSS::evaluateImp(const EvaluationParams& params)
     dlssParams.InJitterOffsetY = params.jitterY;
     dlssParams.InRenderSubrectDimensions.Width = width;
     dlssParams.InRenderSubrectDimensions.Height = height;
+    dlssParams.InReset = params.resetAccumulation ? 1 : 0;
 
     THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSS_EXT(params.bridge.commandList->getNativeObject(nvrhi::ObjectTypes::D3D12_GraphicsCommandList), feature, parameters, &dlssParams));
     params.bridge.commandList->clearState();

@@ -57,6 +57,7 @@ void FSR::evaluateImp(const EvaluationParams& params)
     desc.renderSize.width = width;
     desc.renderSize.height = height;
     desc.frameTimeDelta = params.bridge.psConstants.c[68][0] * 1000.0f;
+    desc.reset = params.resetAccumulation;
     desc.cameraNear = params.bridge.psConstants.c[25][0];
     desc.cameraFar = params.bridge.psConstants.c[25][1];
     desc.cameraFovAngleVertical = 1.0f / params.bridge.vsConstants.c[0][0];
