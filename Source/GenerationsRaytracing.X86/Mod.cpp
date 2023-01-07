@@ -69,5 +69,4 @@ extern "C" __declspec(dllexport) void PostInit()
     ENSURE_DLL_NOT_LOADED("BetterFxPipeline");
     ENSURE_DLL_NOT_LOADED("GenerationsD3D9Ex");
     ENSURE_DLL_NOT_LOADED("GenerationsD3D11");
-    ENSURE_DLL_NOT_LOADED("GenerationsParameterEditor");
 }

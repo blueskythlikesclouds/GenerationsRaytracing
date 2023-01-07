@@ -5,7 +5,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "ShaderMapping.h"
-#include "Stage.h"
+#include "Params.h"
 #include "Texture.h"
 #include "VertexDeclaration.h"
 
@@ -367,13 +367,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     if (!world)
         return;
 
-    if (Sonic::CInputState::GetInstance()->GetPadState().IsTapped(Sonic::eKeyState_Y))
-    {
-        static size_t index = 0;
-        Stage::setStage(index++);
-    }
-
-    bool resetAccumulation = Stage::setSceneEffect();
+    bool resetAccumulation = Params::update();
 
     hh::mr::CRenderingDevice* renderingDevice = **(hh::mr::CRenderingDevice***)((char*)A1 + 16);
 
@@ -403,9 +397,9 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     const boost::shared_ptr<hh::mr::CLightData> prevLight = light;
 
     // Set light parameters
-    if (Stage::light != nullptr && Stage::light->IsMadeAll())
+    if (Params::light != nullptr && Params::light->IsMadeAll())
     {
-        light = Stage::light;
+        light = Params::light;
 
         renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(183, light->m_Direction.data(), 1);
         renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(184, light->m_Color.data(), 1);
@@ -432,7 +426,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     const hh::base::CStringSymbol symbols[] = {"Sky", "Object", "Object_Overlay", "Player"};
 
-    for (size_t i = Stage::sky != nullptr && Stage::sky->IsMadeAll()  ? 1u : 0u; i < _countof(symbols); i++)
+    for (size_t i = Params::sky != nullptr && Params::sky->IsMadeAll()  ? 1u : 0u; i < _countof(symbols); i++)
     {
         const auto pair = renderScene->m_BundleMap.find(symbols[i]);
         if (pair == renderScene->m_BundleMap.end())
@@ -444,10 +438,10 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     static boost::shared_ptr<hh::mr::CSingleElement> singleElement;
     const boost::shared_ptr<hh::mr::CSingleElement> prevSingleElement = singleElement;
 
-    if (Stage::sky != nullptr && Stage::sky->IsMadeAll())
+    if (Params::sky != nullptr && Params::sky->IsMadeAll())
     {
-        if (!singleElement || singleElement->m_spModel != Stage::sky)
-            singleElement = boost::make_shared<hh::mr::CSingleElement>(Stage::sky);
+        if (!singleElement || singleElement->m_spModel != Params::sky)
+            singleElement = boost::make_shared<hh::mr::CSingleElement>(Params::sky);
 
         traverse(singleElement.get(), INSTANCE_MASK_SKY);
     }

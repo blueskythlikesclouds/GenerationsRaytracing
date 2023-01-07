@@ -9,6 +9,7 @@
 #include "MessageSender.h"
 #include "RaytracingManager.h"
 #include "Texture.h"
+#include "ArchiveTree.h"
 
 HOOK(void, __cdecl, LoadPictureData, 0x743DE0,
     hh::mr::CPictureData* pPictureData, const uint8_t* pData, size_t length, hh::mr::CRenderingInfrastructure* pRenderingInfrastructure)
@@ -179,5 +180,6 @@ void Patches::init()
     // Patch SFD decode function to copy data when it's valid.
     WRITE_JUMP(0x1059130, sfdDecodeTrampoline);
 
+    ArchiveTree::init();
     RaytracingManager::init();
 }
