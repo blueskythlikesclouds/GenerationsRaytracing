@@ -1,6 +1,5 @@
 ﻿//#define TRACE_MAX_CONSTANT
 
-using GenerationsRaytracing.Tool.Resources;
 using GenerationsRaytracing.Tool.Shaders.Constants;
 using GenerationsRaytracing.Tool.Shaders.Instructions;
 using Vortice.Dxc;
@@ -59,16 +58,6 @@ public class DefaultShaderConverter
                 hash == 602606931u || hash == 781526840u);
     }
 
-    // Color correction shader needs to be recompiled as
-    // the floating point accuracy in D3D9 doesn't match with D3D11.
-    public static unsafe bool IsColorCorrectionShader(void* function, int functionSize)
-    {
-        uint hash;
-
-        return functionSize == 1280 &&
-               ((hash = GetHashCode(function, functionSize)) == 1114391076u || hash == 2621835860u);
-    }
-
     public static unsafe string Convert(byte[] function, out bool isPixelShader)
     {
         fixed (byte* ptr = function)
@@ -83,12 +72,6 @@ public class DefaultShaderConverter
 
     public static unsafe string Convert(void* function, int functionSize, out bool isPixelShader)
     {
-        if (IsColorCorrectionShader(function, functionSize))
-        {
-            isPixelShader = true;
-            return ConverterInternal.ColorCorrection;
-        }
-
         string disassembly;
         {
             ID3DBlob blob;
