@@ -455,6 +455,9 @@ public class DefaultShaderConverter
 
             instrLine = instrLine.Replace("][", " + ");
 
+            if (instrLine.Contains("g_MtxPalette"))
+                instrLine = instrLine.Replace("[", "[min(74, ").Replace("]", ")]");
+
             stringBuilder.AppendFormat("{0}\n", instrLine);
 
             if (instrLine.Contains('{')) ++indent;
