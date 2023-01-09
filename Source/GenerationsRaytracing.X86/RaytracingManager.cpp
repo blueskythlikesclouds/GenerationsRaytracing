@@ -372,13 +372,15 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     if (!world)
         return;
 
+    const bool prevEnable = prevRaytracingEnable;
+
     if (!initToggleablePatchesAndReturnShouldRender())
         return;
 
     PROFILER("Send Raytracing Render Messages");
 
     bool resetAccumulation = RaytracingParams::update();
-    resetAccumulation |= prevRaytracingEnable != RaytracingParams::enable;
+    resetAccumulation |= prevEnable != RaytracingParams::enable;
 
     hh::mr::CRenderingDevice* renderingDevice = **(hh::mr::CRenderingDevice***)((char*)A1 + 16);
 
