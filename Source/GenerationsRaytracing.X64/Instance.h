@@ -11,5 +11,4 @@ struct Instance
 
     unsigned int bottomLevelAS = 0;
     unsigned int instanceInfo = 0;
-    unsigned int instanceMask = 0;
 };

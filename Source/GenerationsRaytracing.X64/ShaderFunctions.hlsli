@@ -142,7 +142,7 @@ float3 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth, in
 {
     return TraceColor(
         origin, 
-        refract(view, normal, 1.0 / 1.333), 
+        refract(view, normal, 0.96), 
         depth, 
         random, 
         MISS_REFLECTION_REFRACTION);
@@ -176,7 +176,7 @@ float TraceShadow(float3 origin, inout uint random)
     TraceRay(
         g_BVH, 
         RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER, 
-        INSTANCE_MASK_DEFAULT, 
+        INSTANCE_MASK_OPAQ_PUNCH,
         CLOSEST_HIT_SECONDARY, 
         CLOSEST_HIT_NUM, 
         MISS_SHADOW, 

@@ -525,12 +525,12 @@ public static class RaytracingShaderConverter
 
                 params.Projection[0] = float4(1, 0, 0, 0);
                 params.Projection[1] = float4(0, 1, 0, 0);
-                params.Projection[2] = float4(0, 0, 0, 0);
+                params.Projection[2] = float4(0, 0, 1.0 / -Z_MAX, 0);
                 params.Projection[3] = float4(0, 0, 0, 1);
                 params.InvProjection[0] = float4(1, 0, 0, 0);
                 params.InvProjection[1] = float4(0, 1, 0, 0);
-                params.InvProjection[2] = float4(0, 0, 0, 0);
-                params.InvProjection[3] = float4(0, 0, -Z_MAX, 1);
+                params.InvProjection[2] = float4(0, 0, -Z_MAX, 0);
+                params.InvProjection[3] = float4(0, 0, 0, 1);
                 params.View[0] = float4(1, 0, 0, 0);
                 params.View[1] = float4(0, 1, 0, 0);
                 params.View[2] = float4(0, 0, 0, 0);
@@ -551,6 +551,15 @@ public static class RaytracingShaderConverter
 
                 params.Vertex = GetVertex(attributes);
                 params.Material = GetMaterial();
+
+                params.Projection[0] = float4(1, 0, 0, 0);
+                params.Projection[1] = float4(0, 1, 0, 0);
+                params.Projection[2] = float4(0, 0, 1.0 / -Z_MAX, 0);
+                params.Projection[3] = float4(0, 0, 0, 1);
+                params.InvProjection[0] = float4(1, 0, 0, 0);
+                params.InvProjection[1] = float4(0, 1, 0, 0);
+                params.InvProjection[2] = float4(0, 0, -Z_MAX, 0);
+                params.InvProjection[3] = float4(0, 0, 0, 1);
                 
                 float3 normal = params.Vertex.Normal;
 

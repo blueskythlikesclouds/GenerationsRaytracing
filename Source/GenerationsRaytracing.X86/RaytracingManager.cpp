@@ -1,13 +1,12 @@
 ﻿#include "RaytracingManager.h"
 
-#include <Profiler.h>
-
 #include "Buffer.h"
 #include "Identifier.h"
 #include "Message.h"
 #include "MessageSender.h"
-#include "ShaderMapping.h"
+#include "Profiler.h"
 #include "RaytracingParams.h"
+#include "ShaderMapping.h"
 #include "Texture.h"
 #include "VertexDeclaration.h"
 
@@ -136,7 +135,14 @@ static size_t createMaterial(hh::mr::CMaterialData& material)
     return result.id;
 }
 
-static void createGeometry(const size_t blasId, const size_t instanceInfo, const hh::mr::CMeshData & mesh, bool opaque, bool punchThrough, bool isSkeletalModel)
+static void createGeometry(
+    const size_t blasId, 
+    const size_t instanceInfo,
+    const hh::mr::CMeshData& mesh,
+    bool opaque, 
+    bool punchThrough, 
+    bool isSkeletalModel,
+    bool isSky)
 {
     if (mesh.m_VertexNum == 0 || mesh.m_IndexNum <= 2)
         return;
@@ -156,6 +162,19 @@ static void createGeometry(const size_t blasId, const size_t instanceInfo, const
 
     msg->bottomLevelAS = blasId;
     msg->instanceInfo = instanceInfo;
+
+    if (isSky)
+    {
+        msg->instanceMask = INSTANCE_MASK_SKY;
+    }
+    else
+    {
+        if (!opaque)
+            msg->instanceMask = INSTANCE_MASK_TRANS_WATER;
+        else
+            msg->instanceMask = INSTANCE_MASK_OPAQ_PUNCH;
+    }
+
     msg->opaque = opaque;
     msg->punchThrough = punchThrough;
     msg->vertexBuffer = reinterpret_cast<Buffer*>(mesh.m_pD3DVertexBuffer)->id;
@@ -214,7 +233,7 @@ static void createGeometry(const size_t blasId, const size_t instanceInfo, const
 }
 
 template<typename T>
-static void createBottomLevelAS(T& model, size_t blasId, size_t instanceInfo, bool isSkeletalModel)
+static void createBottomLevelAS(T& model, size_t blasId, size_t instanceInfo, bool isSkeletalModel, bool isSky)
 {
     for (const auto& meshGroup : model.m_NodeGroupModels)
     {
@@ -222,29 +241,29 @@ static void createBottomLevelAS(T& model, size_t blasId, size_t instanceInfo, bo
             continue;
     
         for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
-            createGeometry(blasId, instanceInfo, *mesh, true, false, isSkeletalModel);
+            createGeometry(blasId, instanceInfo, *mesh, true, false, isSkeletalModel, isSky);
     
         for (const auto& mesh : meshGroup->m_TransparentMeshes) 
-            createGeometry(blasId, instanceInfo, *mesh, false, false, isSkeletalModel);
+            createGeometry(blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
     
         for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
-            createGeometry(blasId, instanceInfo, *mesh, false, true, isSkeletalModel);
+            createGeometry(blasId, instanceInfo, *mesh, false, true, isSkeletalModel, isSky);
     
         for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
         {
             for (const auto& mesh : specialMeshGroup)
-                createGeometry(blasId, instanceInfo, *mesh, true, false, isSkeletalModel);
+                createGeometry(blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
         }
     }
     
     for (const auto& mesh : model.m_OpaqueMeshes) 
-        createGeometry(blasId, instanceInfo, *mesh, true, false, isSkeletalModel);
+        createGeometry(blasId, instanceInfo, *mesh, true, false, isSkeletalModel, isSky);
     
     for (const auto& mesh : model.m_TransparentMeshes) 
-        createGeometry(blasId, instanceInfo, *mesh, false, false, isSkeletalModel);
+        createGeometry(blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
     
     for (const auto& mesh : model.m_PunchThroughMeshes) 
-        createGeometry(blasId, instanceInfo, *mesh, false, true, isSkeletalModel);
+        createGeometry(blasId, instanceInfo, *mesh, false, true, isSkeletalModel, isSky);
 }
 
 static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModel)
@@ -256,7 +275,7 @@ static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModel)
 
     group.run([&terrainModel, result]
     {
-        createBottomLevelAS(terrainModel, result.id, NULL, false);
+        createBottomLevelAS(terrainModel, result.id, NULL, false, false);
 
         const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
         msg->bottomLevelAS = result.id;
@@ -268,7 +287,7 @@ static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModel)
     return result.id;
 }
 
-static std::pair<size_t, size_t> createBottomLevelAS(const hh::mr::CSingleElement& singleElement)
+static std::pair<size_t, size_t> createBottomLevelAS(const hh::mr::CSingleElement& singleElement, bool isSky)
 {
     const auto result = searchDatabaseData(*singleElement.m_spModel);
     const bool isSkeletalModel = singleElement.m_spInstanceInfo->m_spAnimationPose != nullptr && singleElement.m_spModel->m_NodeNum > 1;
@@ -276,9 +295,9 @@ static std::pair<size_t, size_t> createBottomLevelAS(const hh::mr::CSingleElemen
 
     if (result.shouldCreate || isSkeletalModel)
     {
-        group.run([&singleElement, result, instanceInfo, isSkeletalModel] 
+        group.run([&singleElement, result, instanceInfo, isSkeletalModel, isSky] 
         {
-            createBottomLevelAS(*singleElement.m_spModel, result.id, instanceInfo, isSkeletalModel);
+            createBottomLevelAS(*singleElement.m_spModel, result.id, instanceInfo, isSkeletalModel, isSky);
 
             const size_t matrixNum = isSkeletalModel ? singleElement.m_spModel->m_NodeNum : 0;
 
@@ -297,12 +316,12 @@ static std::pair<size_t, size_t> createBottomLevelAS(const hh::mr::CSingleElemen
     return std::make_pair(result.id, instanceInfo);
 }
 
-static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
+static void traverse(const hh::mr::CRenderable* renderable, bool isSky)
 {
     if (!renderable->m_Enabled)
         return;
 
-    group.run([renderable, instanceMask]
+    group.run([renderable, isSky]
     {
         if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
         {
@@ -314,7 +333,7 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
                 return;
             }
 
-            const auto idPair = createBottomLevelAS(*singleElement);
+            const auto idPair = createBottomLevelAS(*singleElement, isSky);
 
             const auto msg = msgSender.start<MsgCreateInstance>();
             {
@@ -338,19 +357,18 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
 
             msg->bottomLevelAS = idPair.first;
             msg->instanceInfo = idPair.second;
-            msg->instanceMask = instanceMask;
 
             msgSender.finish();
         }
         else if (auto bundle = dynamic_cast<const hh::mr::CBundle*>(renderable))
         {
             for (const auto& it : bundle->m_RenderableList)
-                traverse(it.get(), instanceMask);
+                traverse(it.get(), isSky);
         }
         else if (auto optimalBundle = dynamic_cast<const hh::mr::COptimalBundle*>(renderable))
         {
             for (const auto it : optimalBundle->m_RenderableList)
-                traverse(it, instanceMask);
+                traverse(it, isSky);
         }
     });
 }
@@ -445,7 +463,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
         if (pair == renderScene->m_BundleMap.end())
             continue;
 
-        traverse(pair->second.get(), i == 0 ? INSTANCE_MASK_SKY : INSTANCE_MASK_DEFAULT);
+        traverse(pair->second.get(), i == 0);
     }
 
     static boost::shared_ptr<hh::mr::CSingleElement> singleElement;
@@ -456,7 +474,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
         if (!singleElement || singleElement->m_spModel != RaytracingParams::sky)
             singleElement = boost::make_shared<hh::mr::CSingleElement>(RaytracingParams::sky);
 
-        traverse(singleElement.get(), INSTANCE_MASK_SKY);
+        traverse(singleElement.get(), true);
     }
     resetAccumulation |= singleElement != prevSingleElement;
 
@@ -484,7 +502,6 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
             msg->bottomLevelAS = blasId;
             msg->instanceInfo = 0;
-            msg->instanceMask = INSTANCE_MASK_DEFAULT;
 
             msgSender.finish();
         });

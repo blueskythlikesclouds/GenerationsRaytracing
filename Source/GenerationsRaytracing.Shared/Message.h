@@ -286,6 +286,7 @@ struct MsgCreateGeometry
     DEFINE_MSG_ID;
     unsigned int bottomLevelAS;
     unsigned int instanceInfo;
+    unsigned int instanceMask;
     bool opaque;
     bool punchThrough;
     unsigned int vertexBuffer;
@@ -315,8 +316,11 @@ struct MsgCreateBottomLevelAS
     unsigned int matrixNum;
 };
 
-#define INSTANCE_MASK_DEFAULT 1
-#define INSTANCE_MASK_SKY     2
+#define INSTANCE_MASK_NONE         0
+#define INSTANCE_MASK_OPAQ_PUNCH   1
+#define INSTANCE_MASK_TRANS_WATER  2
+#define INSTANCE_MASK_DEFAULT      (INSTANCE_MASK_OPAQ_PUNCH | INSTANCE_MASK_TRANS_WATER)
+#define INSTANCE_MASK_SKY          4
 
 struct MsgCreateInstance
 {
@@ -325,7 +329,6 @@ struct MsgCreateInstance
     float prevTransform[3][4];
     unsigned int bottomLevelAS;
     unsigned int instanceInfo;
-    unsigned int instanceMask;
 };
 
 struct MsgNotifySceneTraversed

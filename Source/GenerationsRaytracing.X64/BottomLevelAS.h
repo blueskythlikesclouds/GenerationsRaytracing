@@ -61,6 +61,6 @@ struct BottomLevelAS
         uint32_t indexInBuffer = 0;
     };
 
-    emhash8::HashMap<unsigned int, Instance> instances;
+    emhash8::HashMap<unsigned int, emhash8::HashMap<unsigned int, Instance>> instances;
     emhash8::HashMap<XXH64_hash_t, nvrhi::BufferHandle> nodeIndicesBuffers;
 };

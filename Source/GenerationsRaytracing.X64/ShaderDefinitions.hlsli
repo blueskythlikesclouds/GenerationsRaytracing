@@ -11,8 +11,11 @@
 #define HAS_REFLECTION             (1 << 1)
 #define HAS_REFRACTION             (1 << 2)
 
-#define INSTANCE_MASK_DEFAULT      1
-#define INSTANCE_MASK_SKY          2
+#define INSTANCE_MASK_NONE         0
+#define INSTANCE_MASK_OPAQ_PUNCH   1
+#define INSTANCE_MASK_TRANS_WATER  2
+#define INSTANCE_MASK_DEFAULT      (INSTANCE_MASK_OPAQ_PUNCH | INSTANCE_MASK_TRANS_WATER)
+#define INSTANCE_MASK_SKY          4
 
 #define CLOSEST_HIT_PRIMARY        0
 #define CLOSEST_HIT_SECONDARY      1
