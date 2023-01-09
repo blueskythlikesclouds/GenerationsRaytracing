@@ -225,7 +225,13 @@ void Bridge::processDirtyFlags()
 
     if ((dirtyFlags & DirtyFlags::Texture) != DirtyFlags::None)
     {
-        auto& textureBindingSet = textureBindingSets[hash = computeHash(curTextureBindingSetDesc.bindings.data(), curTextureBindingSetDesc.bindings.size(), 0)];
+        hash = computeHash(curTextureBindingSetDesc.bindings.data(), curTextureBindingSetDesc.bindings.size(), 0);
+
+        auto& textureBindingSet = textureBindingSets[hash];
+
+        if (!textureBindingSet)
+            textureBindingSet = textureBindingSetCache[hash];
+
         if (!textureBindingSet)
             textureBindingSet = device.nvrhi->createBindingSet(curTextureBindingSetDesc, textureBindingLayout);
 
@@ -243,7 +249,13 @@ void Bridge::processDirtyFlags()
             samplerBindingSetDesc.bindings[i] = nvrhi::BindingSetItem::Sampler(i, sampler);
         }
 
-        auto& samplerBindingSet = samplerBindingSets[hash = computeHash(samplerBindingSetDesc.bindings.data(), samplerBindingSetDesc.bindings.size(), 0)];
+        hash = computeHash(samplerBindingSetDesc.bindings.data(), samplerBindingSetDesc.bindings.size(), 0);
+
+        auto& samplerBindingSet = samplerBindingSets[hash];
+
+        if (!samplerBindingSet)
+            samplerBindingSet = samplerBindingSetCache[hash];
+
         if (!samplerBindingSet)
             samplerBindingSet = device.nvrhi->createBindingSet(samplerBindingSetDesc, samplerBindingLayout);
 
@@ -905,7 +917,12 @@ void Bridge::procMsgDrawPrimitiveUP()
         Format::convertPrimitiveType(msg->primitiveType),
         DirtyFlags::FramebufferAndPipeline);
 
-    auto& vertexBuffer = vertexBuffers[XXH64(data, msg->vertexStreamZeroSize, 0)];
+    const XXH64_hash_t hash = XXH64(data, msg->vertexStreamZeroSize, 0);
+
+    auto& vertexBuffer = vertexBuffers[hash];
+
+    if (!vertexBuffer)
+        vertexBuffer = vertexBufferCache[hash];
 
     if (!vertexBuffer)
     {
@@ -1283,6 +1300,10 @@ void Bridge::receiveMessages()
 
         if (shouldPresent)
         {
+            std::swap(textureBindingSets, textureBindingSetCache);
+            std::swap(samplerBindingSets, samplerBindingSetCache);
+            std::swap(vertexBuffers, vertexBufferCache);
+
             textureBindingSets.clear();
             samplerBindingSets.clear();
             vertexBuffers.clear();

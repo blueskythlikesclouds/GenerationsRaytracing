@@ -60,6 +60,7 @@ struct Bridge
 
     nvrhi::BindingLayoutHandle textureBindingLayout;
     nvrhi::BindingSetDesc textureBindingSetDesc;
+    emhash8::HashMap<XXH64_hash_t, nvrhi::BindingSetHandle> textureBindingSetCache;
     emhash8::HashMap<XXH64_hash_t, nvrhi::BindingSetHandle> textureBindingSets;
 
     nvrhi::SamplerDesc samplerDescs[16];
@@ -67,6 +68,7 @@ struct Bridge
 
     nvrhi::BindingLayoutHandle samplerBindingLayout;
     nvrhi::BindingSetDesc samplerBindingSetDesc;
+    emhash8::HashMap<XXH64_hash_t, nvrhi::BindingSetHandle> samplerBindingSetCache;
     emhash8::HashMap<XXH64_hash_t, nvrhi::BindingSetHandle> samplerBindingSets;
 
     nvrhi::FramebufferDesc framebufferDesc;
@@ -82,7 +84,9 @@ struct Bridge
     nvrhi::GraphicsPipelineDesc pipelineDesc;
     emhash8::HashMap<XXH64_hash_t, nvrhi::GraphicsPipelineHandle> pipelines;
 
+    emhash8::HashMap<XXH64_hash_t, nvrhi::BufferHandle> vertexBufferCache;
     emhash8::HashMap<XXH64_hash_t, nvrhi::BufferHandle> vertexBuffers;
+
     uint32_t vertexStrides[8] {};
     bool instancing = false;
     uint32_t instanceCount = 0;
