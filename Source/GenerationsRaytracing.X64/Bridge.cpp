@@ -1129,7 +1129,7 @@ void Bridge::procMsgSetPixelShaderConstantB()
     const void* data = msgReceiver.getDataAndMoveNext(msg->boolCount * sizeof(BOOL));
 
     const uint32_t mask = 1 << (16 + msg->startRegister);
-    const uint32_t value = *(const bool*)data << (16 + msg->startRegister);
+    const uint32_t value = *(const bool*)data << msg->startRegister;
 
     auto& booleans = reinterpret_cast<uint32_t&>(vsConstants.c[PS_UNUSED_CONSTANT][PS_BOOLEANS]);
     assignAndUpdateDirtyFlags(booleans, (booleans & ~mask) | value, DirtyFlags::PsConstants);

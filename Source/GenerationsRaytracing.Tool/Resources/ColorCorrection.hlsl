@@ -1,4 +1,4 @@
-cbuffer cbGlobalsPS : register(b0)
+cbuffer cbGlobalsPS : register(b1)
 {
     // x = params.brightness
     // y = params.contrast
