@@ -136,6 +136,7 @@ static size_t createMaterial(hh::mr::CMaterialData& material)
 }
 
 static void createGeometry(
+    const hh::mr::CSingleElement* singleElement,
     const size_t blasId, 
     const size_t instanceInfo,
     const hh::mr::CMeshData& mesh,
@@ -147,7 +148,18 @@ static void createGeometry(
     if (mesh.m_VertexNum == 0 || mesh.m_IndexNum <= 2)
         return;
 
-    const size_t materialId = createMaterial(*mesh.m_spMaterial);
+    size_t materialId = 0;
+
+    if (singleElement != nullptr)
+    {
+        const auto pair = singleElement->m_MaterialMap.find(mesh.m_spMaterial.get());
+
+        if (pair != singleElement->m_MaterialMap.end())
+            materialId = createMaterial(*pair->second);
+    }
+
+    if (materialId == 0)
+        materialId = createMaterial(*mesh.m_spMaterial);
 
     indexMutex.lock();
     auto& indexBuffer = indexMap[&mesh];
@@ -233,7 +245,7 @@ static void createGeometry(
 }
 
 template<typename T>
-static void createBottomLevelAS(T& model, size_t blasId, size_t instanceInfo, bool isSkeletalModel, bool isSky)
+static void createBottomLevelAS(T& model, const hh::mr::CSingleElement* singleElement, size_t blasId, size_t instanceInfo, bool isSkeletalModel, bool isSky)
 {
     for (const auto& meshGroup : model.m_NodeGroupModels)
     {
@@ -241,29 +253,29 @@ static void createBottomLevelAS(T& model, size_t blasId, size_t instanceInfo, bo
             continue;
     
         for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
-            createGeometry(blasId, instanceInfo, *mesh, true, false, isSkeletalModel, isSky);
+            createGeometry(singleElement, blasId, instanceInfo, *mesh, true, false, isSkeletalModel, isSky);
     
         for (const auto& mesh : meshGroup->m_TransparentMeshes) 
-            createGeometry(blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
+            createGeometry(singleElement, blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
     
         for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
-            createGeometry(blasId, instanceInfo, *mesh, false, true, isSkeletalModel, isSky);
+            createGeometry(singleElement, blasId, instanceInfo, *mesh, false, true, isSkeletalModel, isSky);
     
         for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
         {
             for (const auto& mesh : specialMeshGroup)
-                createGeometry(blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
+                createGeometry(singleElement, blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
         }
     }
     
     for (const auto& mesh : model.m_OpaqueMeshes) 
-        createGeometry(blasId, instanceInfo, *mesh, true, false, isSkeletalModel, isSky);
+        createGeometry(singleElement, blasId, instanceInfo, *mesh, true, false, isSkeletalModel, isSky);
     
     for (const auto& mesh : model.m_TransparentMeshes) 
-        createGeometry(blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
+        createGeometry(singleElement, blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
     
     for (const auto& mesh : model.m_PunchThroughMeshes) 
-        createGeometry(blasId, instanceInfo, *mesh, false, true, isSkeletalModel, isSky);
+        createGeometry(singleElement, blasId, instanceInfo, *mesh, false, true, isSkeletalModel, isSky);
 }
 
 static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModel)
@@ -275,7 +287,7 @@ static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModel)
 
     group.run([&terrainModel, result]
     {
-        createBottomLevelAS(terrainModel, result.id, NULL, false, false);
+        createBottomLevelAS(terrainModel, nullptr, result.id, NULL, false, false);
 
         const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
         msg->bottomLevelAS = result.id;
@@ -297,7 +309,7 @@ static std::pair<size_t, size_t> createBottomLevelAS(const hh::mr::CSingleElemen
     {
         group.run([&singleElement, result, instanceInfo, isSkeletalModel, isSky] 
         {
-            createBottomLevelAS(*singleElement.m_spModel, result.id, instanceInfo, isSkeletalModel, isSky);
+            createBottomLevelAS(*singleElement.m_spModel, &singleElement, result.id, instanceInfo, isSkeletalModel, isSky);
 
             const size_t matrixNum = isSkeletalModel ? singleElement.m_spModel->m_NodeNum : 0;
 
