@@ -169,7 +169,7 @@ static void createGeometry(
     }
     else
     {
-        if (!opaque)
+        if (!opaque && !punchThrough)
             msg->instanceMask = INSTANCE_MASK_TRANS_WATER;
         else
             msg->instanceMask = INSTANCE_MASK_OPAQ_PUNCH;
