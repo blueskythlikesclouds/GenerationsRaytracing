@@ -7,7 +7,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "ShaderMapping.h"
-#include "Params.h"
+#include "RaytracingParams.h"
 #include "Texture.h"
 #include "VertexDeclaration.h"
 
@@ -355,6 +355,9 @@ static void traverse(const hh::mr::CRenderable* renderable, int instanceMask)
     });
 }
 
+static bool prevRaytracingEnable;
+static bool initToggleablePatchesAndReturnShouldRender();
+
 static FUNCTION_PTR(void, __cdecl, SceneRender, 0x652110, void* A1);
 
 static void __cdecl SceneRender_Raytracing(void* A1)
@@ -369,9 +372,13 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     if (!world)
         return;
 
+    if (!initToggleablePatchesAndReturnShouldRender())
+        return;
+
     PROFILER("Send Raytracing Render Messages");
 
-    bool resetAccumulation = Params::update();
+    bool resetAccumulation = RaytracingParams::update();
+    resetAccumulation |= prevRaytracingEnable != RaytracingParams::enable;
 
     hh::mr::CRenderingDevice* renderingDevice = **(hh::mr::CRenderingDevice***)((char*)A1 + 16);
 
@@ -401,9 +408,9 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     const boost::shared_ptr<hh::mr::CLightData> prevLight = light;
 
     // Set light parameters
-    if (Params::light != nullptr && Params::light->IsMadeAll())
+    if (RaytracingParams::light != nullptr && RaytracingParams::light->IsMadeAll())
     {
-        light = Params::light;
+        light = RaytracingParams::light;
 
         renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(183, light->m_Direction.data(), 1);
         renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(184, light->m_Color.data(), 1);
@@ -430,7 +437,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
 
     const hh::base::CStringSymbol symbols[] = {"Sky", "Object", "Object_Overlay", "Player"};
 
-    for (size_t i = Params::sky != nullptr && Params::sky->IsMadeAll()  ? 1u : 0u; i < _countof(symbols); i++)
+    for (size_t i = RaytracingParams::sky != nullptr && RaytracingParams::sky->IsMadeAll()  ? 1u : 0u; i < _countof(symbols); i++)
     {
         const auto pair = renderScene->m_BundleMap.find(symbols[i]);
         if (pair == renderScene->m_BundleMap.end())
@@ -442,10 +449,10 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     static boost::shared_ptr<hh::mr::CSingleElement> singleElement;
     const boost::shared_ptr<hh::mr::CSingleElement> prevSingleElement = singleElement;
 
-    if (Params::sky != nullptr && Params::sky->IsMadeAll())
+    if (RaytracingParams::sky != nullptr && RaytracingParams::sky->IsMadeAll())
     {
-        if (!singleElement || singleElement->m_spModel != Params::sky)
-            singleElement = boost::make_shared<hh::mr::CSingleElement>(Params::sky);
+        if (!singleElement || singleElement->m_spModel != RaytracingParams::sky)
+            singleElement = boost::make_shared<hh::mr::CSingleElement>(RaytracingParams::sky);
 
         traverse(singleElement.get(), INSTANCE_MASK_SKY);
     }
@@ -674,19 +681,42 @@ HOOK(void, __fastcall, DestructSingleElement, 0x701850, hh::mr::CSingleElement* 
     originalDestructSingleElement(This);
 }
 
+static bool initToggleablePatchesAndReturnShouldRender()
+{
+    if (prevRaytracingEnable == RaytracingParams::enable)
+        return RaytracingParams::enable;
+
+    if (RaytracingParams::enable)
+    {
+        WRITE_MEMORY(0x13DDFD8, size_t, 0); // Disable shadow map
+        WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
+        WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
+        WRITE_MEMORY(0x13DDC20, size_t, 0); // Disable reflection map 2
+        WRITE_MEMORY(0x13DDCA0, size_t, 1); // Override game scene child count
+        WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
+    }
+    else
+    {
+        WRITE_MEMORY(0x13DDFD8, size_t, 4); // Enable shadow map
+        WRITE_MEMORY(0x13DDB20, size_t, 1); // Enable sky render
+        WRITE_MEMORY(0x13DDBA0, size_t, 22); // Enable reflection map 1
+        WRITE_MEMORY(0x13DDC20, size_t, 22); // Enable reflection map 2
+        WRITE_MEMORY(0x13DDCA0, size_t, 22); // Restore game scene child count
+        WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
+    }
+
+    const bool shouldRender = prevRaytracingEnable;
+    prevRaytracingEnable = RaytracingParams::enable;
+    return shouldRender;
+}
+
 void RaytracingManager::init()
 {
     shaderMapping.load("ShaderMapping.bin");
 
-    WRITE_MEMORY(0x13DDFD8, size_t, 0); // Disable shadow map
-    WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
-    WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
-    WRITE_MEMORY(0x13DDC20, size_t, 0); // Disable reflection map 2
+    initToggleablePatchesAndReturnShouldRender();
 
     WRITE_MEMORY(0x13DC2D8, void*, &SceneRender_Raytracing); // Override scene render function
-    WRITE_MEMORY(0x13DDCA0, size_t, 1); // Override game scene child count
-
-    WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
     WRITE_MEMORY(0x722760, uint8_t, 0xC3); // Disable shared buffer
 
     INSTALL_HOOK(MakeMesh); // Convert triangle strips to triangles for BLAS creation

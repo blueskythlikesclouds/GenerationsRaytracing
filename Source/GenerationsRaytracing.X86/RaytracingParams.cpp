@@ -1,4 +1,4 @@
-﻿#include "Params.h"
+﻿#include "RaytracingParams.h"
 
 struct Stage
 {
@@ -134,10 +134,10 @@ static void loadArchiveDatabase(const Stage& stage)
     hh::mr::CMirageDatabaseWrapper wrapper(database.get());
 
     if (stage.light)
-        Params::light = wrapper.GetLightData(stage.light);
+        RaytracingParams::light = wrapper.GetLightData(stage.light);
 
     if (stage.sky)
-        Params::sky = wrapper.GetModelData(stage.sky);
+        RaytracingParams::sky = wrapper.GetModelData(stage.sky);
 
     sceneEffect = database->GetRawData("SceneEffect.prm.xml");
 }
@@ -221,41 +221,50 @@ static void createParameterFile()
     parameterFile = appDocument->m_pMember->m_spParameterEditor->m_spGlobalParameterManager->CreateParameterFile("Raytracing", "");
 
     auto paramGroup = parameterFile->CreateParameterGroup("Default", "");
-    auto paramCategory = paramGroup->CreateParameterCategory("Stage", "");
 
-    std::vector<Sonic::SParamEnumValue> enumValues = { { "None", 0 } };
-    for (size_t i = 0; i < _countof(STAGES); i++)
-        enumValues.push_back({ STAGES[i].name, i + 1 });
+    auto commonParam = paramGroup->CreateParameterCategory("Common", "");
+    {
+        commonParam->CreateParamBool(&RaytracingParams::enable, "Enable");
+        paramGroup->Flush();
+    }
 
-    paramCategory->CreateParamTypeList(&stageIndex, "Stage", "", enumValues);
+    auto stageParam = paramGroup->CreateParameterCategory("Stage", "");
+    {
+        std::vector<Sonic::SParamEnumValue> enumValues = { { "None", 0 } };
+        for (size_t i = 0; i < _countof(STAGES); i++)
+            enumValues.push_back({ STAGES[i].name, i + 1 });
 
-    paramGroup->Flush();
+        stageParam->CreateParamTypeList(&stageIndex, "Stage", "", enumValues);
+        paramGroup->Flush();
+    }
 }
 
-bool Params::update()
+bool RaytracingParams::update()
 {
     createParameterFile();
 
     static size_t prevStageIndex;
     bool resetAccumulation = false;
 
-    if (prevStageIndex != stageIndex)
+    const size_t curStageIndex = enable ? stageIndex : NULL;
+
+    if (prevStageIndex != curStageIndex)
     {
         database = nullptr;
         light = nullptr;
         sky = nullptr;
         sceneEffect = nullptr;
 
-        if (stageIndex != 0)
+        if (curStageIndex != 0)
         {
-            loadArchiveDatabase(STAGES[stageIndex - 1]);
+            loadArchiveDatabase(STAGES[curStageIndex - 1]);
         }
         else
         {
             refreshGlobalParameters();
         }
 
-        prevStageIndex = stageIndex;
+        prevStageIndex = curStageIndex;
         resetAccumulation = true;
     }
 
