@@ -505,10 +505,26 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
                 if (groupPair->second.handle == nullptr || elementPair->second.matrixBufferChanged)
                 {
-                    groupPair->second.handle = bridge.device.nvrhi->createAccelStruct(groupPair->second.desc
-                        .setBuildFlags(elementPair->second.matrixBuffer != nullptr ? nvrhi::rt::AccelStructBuildFlags::PreferFastBuild : nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
+                    if (elementPair->second.matrixBuffer != nullptr)
+                    {
+                        groupPair->second.handle = bridge.device.nvrhi->createAccelStruct(groupPair->second.desc
+                            .setBuildFlags(nvrhi::rt::AccelStructBuildFlags::PreferFastBuild));
 
-                    nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, groupPair->second.handle, groupPair->second.desc);
+                        nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, groupPair->second.handle, groupPair->second.desc);
+                    }
+                    else
+                    {
+                        auto& handle = model.accelStructs[groupPair->first];
+                        if (!handle)
+                        {
+                            handle = bridge.device.nvrhi->createAccelStruct(groupPair->second.desc
+                                .setBuildFlags(nvrhi::rt::AccelStructBuildFlags::PreferFastTrace));
+
+                            nvrhi::utils::BuildBottomLevelAccelStruct(bridge.commandList, handle, groupPair->second.desc);
+                        }
+
+                        groupPair->second.handle = handle;
+                    }
                 }
 
                 ++groupPair;

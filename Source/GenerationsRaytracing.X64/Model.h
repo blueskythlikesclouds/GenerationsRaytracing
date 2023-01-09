@@ -66,4 +66,5 @@ struct Model
 {
     emhash8::HashMap<unsigned int, Element> elements;
     emhash8::HashMap<XXH64_hash_t, nvrhi::BufferHandle> nodeIndicesBuffers;
+    emhash8::HashMap<unsigned int, nvrhi::rt::AccelStructHandle> accelStructs;
 };
