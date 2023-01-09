@@ -708,6 +708,9 @@ FUNCTION_STUB(HRESULT, Device::GetPixelShader, Shader** ppShader)
 
 HRESULT Device::SetPixelShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount)
 {
+    if (StartRegister + Vector4fCount >= 181)
+        return S_OK;
+
     const auto msg = msgSender.start<MsgSetPixelShaderConstantF>(Vector4fCount * sizeof(FLOAT[4]));
 
     msg->startRegister = StartRegister;

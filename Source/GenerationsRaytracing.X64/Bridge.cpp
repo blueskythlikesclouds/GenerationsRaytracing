@@ -14,14 +14,14 @@ Bridge::Bridge(const std::string& directoryPath)
 
     vsConstantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setDebugName("VS Constants")
-        .setByteSize((sizeof(vsConstants.c) + 0xFF) & ~0xFF)
+        .setByteSize(sizeof(vsConstants.c))
         .setIsConstantBuffer(true)
         .setIsVolatile(true)
         .setMaxVersions(1));
 
     psConstantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setDebugName("PS Constants")
-        .setByteSize((sizeof(psConstants.c) + 0xFF) & ~0xFF)
+        .setByteSize(sizeof(psConstants.c))
         .setIsConstantBuffer(true)
         .setIsVolatile(true)
         .setMaxVersions(1));
