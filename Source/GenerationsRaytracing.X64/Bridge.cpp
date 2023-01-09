@@ -26,32 +26,15 @@ Bridge::Bridge(const std::string& directoryPath)
         .setIsVolatile(true)
         .setMaxVersions(1));
 
-    sharedConstantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
-        .setDebugName("Shared Constants")
-        .setByteSize(sizeof(sharedConstants))
-        .setIsConstantBuffer(true)
-        .setIsVolatile(true)
-        .setMaxVersions(1));
-
-    vsBindingLayout = device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
-        .setVisibility(nvrhi::ShaderType::Vertex)
+    bindingLayout = device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
+        .setVisibility(nvrhi::ShaderType::Vertex | nvrhi::ShaderType::Pixel)
         .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
         .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)));
 
-    vsBindingSet = device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
+    bindingSet = device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
         .setTrackLiveness(false)
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, vsConstantBuffer))
-        .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, sharedConstantBuffer)), vsBindingLayout);
-
-    psBindingLayout = device.nvrhi->createBindingLayout(nvrhi::BindingLayoutDesc()
-        .setVisibility(nvrhi::ShaderType::Pixel)
-        .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
-        .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)));
-
-    psBindingSet = device.nvrhi->createBindingSet(nvrhi::BindingSetDesc()
-        .setTrackLiveness(false)
-        .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, psConstantBuffer))
-        .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, sharedConstantBuffer)), psBindingLayout);
+        .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, psConstantBuffer)), bindingLayout);
 
     nullTexture = device.nvrhi->createTexture(nvrhi::TextureDesc()
         .setDebugName("Null Texture")
@@ -139,13 +122,11 @@ Bridge::Bridge(const std::string& directoryPath)
 
     fvfShader = device.nvrhi->createShader(nvrhi::ShaderDesc(nvrhi::ShaderType::Vertex), FVF, sizeof(FVF));
 
-    pipelineDesc.bindingLayouts.push_back(vsBindingLayout);
-    pipelineDesc.bindingLayouts.push_back(psBindingLayout);
+    pipelineDesc.bindingLayouts.push_back(bindingLayout);
     pipelineDesc.bindingLayouts.push_back(textureBindingLayout);
     pipelineDesc.bindingLayouts.push_back(samplerBindingLayout);
 
-    graphicsState.bindings.push_back(vsBindingSet);
-    graphicsState.bindings.push_back(psBindingSet);
+    graphicsState.bindings.push_back(bindingSet);
     graphicsState.bindings.emplace_back();
     graphicsState.bindings.emplace_back();
 }
@@ -202,9 +183,6 @@ void Bridge::processDirtyFlags()
     if ((dirtyFlags & DirtyFlags::PsConstants) != DirtyFlags::None)
         psConstants.writeBuffer(commandList, psConstantBuffer);
 
-    if ((dirtyFlags & DirtyFlags::SharedConstants) != DirtyFlags::None)
-        commandList->writeBuffer(sharedConstantBuffer, &sharedConstants, sizeof(sharedConstants));
-
     XXH64_hash_t hash = 0;
 
     auto curTextureBindingSetDesc = this->textureBindingSetDesc;
@@ -235,7 +213,7 @@ void Bridge::processDirtyFlags()
         if (!textureBindingSet)
             textureBindingSet = device.nvrhi->createBindingSet(curTextureBindingSetDesc, textureBindingLayout);
 
-        assignAndUpdateDirtyFlags(graphicsState.bindings[2], textureBindingSet, DirtyFlags::GraphicsState);
+        assignAndUpdateDirtyFlags(graphicsState.bindings[1], textureBindingSet, DirtyFlags::GraphicsState);
     }
 
     if ((dirtyFlags & DirtyFlags::Sampler) != DirtyFlags::None)
@@ -259,7 +237,7 @@ void Bridge::processDirtyFlags()
         if (!samplerBindingSet)
             samplerBindingSet = device.nvrhi->createBindingSet(samplerBindingSetDesc, samplerBindingLayout);
 
-        assignAndUpdateDirtyFlags(graphicsState.bindings[3], samplerBindingSet, DirtyFlags::GraphicsState);
+        assignAndUpdateDirtyFlags(graphicsState.bindings[2], samplerBindingSet, DirtyFlags::GraphicsState);
     }
 
     if ((dirtyFlags & DirtyFlags::InputLayout) != DirtyFlags::None)
@@ -647,9 +625,9 @@ void Bridge::procMsgSetRenderState()
 
     case D3DRS_ALPHATESTENABLE:
         assignAndUpdateDirtyFlags(
-            sharedConstants.flags,
-            sharedConstants.flags & ~SHARED_FLAGS_ENABLE_ALPHA_TEST | (msg->value ? SHARED_FLAGS_ENABLE_ALPHA_TEST : 0),
-            DirtyFlags::SharedConstants);
+            reinterpret_cast<uint32_t&>(psConstants.c[PS_UNUSED_CONSTANT][PS_ENABLE_ALPHA_TEST]), 
+            msg->value,
+            DirtyFlags::PsConstants);
 
         break;
 
@@ -691,9 +669,9 @@ void Bridge::procMsgSetRenderState()
 
     case D3DRS_ALPHAREF:
         assignAndUpdateDirtyFlags(
-            sharedConstants.alphaThreshold,
+            psConstants.c[PS_UNUSED_CONSTANT][PS_ALPHA_THRESHOLD],
             (float)msg->value / 255.0f,
-            DirtyFlags::SharedConstants);
+            DirtyFlags::PsConstants);
 
         break;
 
@@ -1068,7 +1046,8 @@ void Bridge::procMsgSetVertexShaderConstantB()
     const uint32_t mask = 1 << msg->startRegister;
     const uint32_t value = *(const BOOL*)data << msg->startRegister;
 
-    assignAndUpdateDirtyFlags(sharedConstants.booleans, (sharedConstants.booleans & ~mask) | value, DirtyFlags::SharedConstants);
+    auto& booleans = reinterpret_cast<uint32_t&>(vsConstants.c[VS_UNUSED_CONSTANT][VS_BOOLEANS]);
+    assignAndUpdateDirtyFlags(booleans, (booleans & ~mask) | value, DirtyFlags::VsConstants);
 }
 
 void Bridge::procMsgSetStreamSource()
@@ -1152,7 +1131,8 @@ void Bridge::procMsgSetPixelShaderConstantB()
     const uint32_t mask = 1 << (16 + msg->startRegister);
     const uint32_t value = *(const bool*)data << (16 + msg->startRegister);
 
-    assignAndUpdateDirtyFlags(sharedConstants.booleans, (sharedConstants.booleans & ~mask) | value, DirtyFlags::SharedConstants);
+    auto& booleans = reinterpret_cast<uint32_t&>(vsConstants.c[PS_UNUSED_CONSTANT][PS_BOOLEANS]);
+    assignAndUpdateDirtyFlags(booleans, (booleans & ~mask) | value, DirtyFlags::PsConstants);
 }
 
 void Bridge::procMsgMakePicture()

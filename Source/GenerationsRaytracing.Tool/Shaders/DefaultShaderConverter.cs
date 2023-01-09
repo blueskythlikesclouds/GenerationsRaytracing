@@ -272,7 +272,7 @@ public class DefaultShaderConverter
 
         stringBuilder.AppendLine("#define FLT_MAX asfloat(0x7f7fffff)\n");
 
-        stringBuilder.AppendFormat("cbuffer cbGlobals{0} : register(b0) {{\n", isPixelShader ? "PS" : "VS");
+        stringBuilder.AppendFormat("cbuffer cbGlobals{0} : register(b{1}) {{\n", isPixelShader ? "PS" : "VS", isPixelShader ? 1 : 0);
 
         foreach (var constant in constants)
         {
@@ -296,22 +296,23 @@ public class DefaultShaderConverter
                     break;
 
                 case ConstantType.Bool:
-                    stringBuilder.AppendFormat("#define {0} (1 << {1})\n", constant.Name, (isPixelShader ? 16 : 0) + constant.Register);
+                    stringBuilder.AppendFormat("#define {0} (1 << {1})\n", constant.Name, constant.Register);
                     constantMap.Add($"b{constant.Register}", $"g_Booleans & {constant.Name}");
                     break;
             }
         }
 
-        stringBuilder.AppendLine("}\n");
+        if (isPixelShader)
+        {
+            stringBuilder.AppendLine("\tbool g_EnableAlphaTest : packoffset(c148.x);");
+            stringBuilder.AppendLine("\tfloat g_AlphaThreshold : packoffset(c148.y);");
+            stringBuilder.AppendLine("\tuint g_Booleans : packoffset(c148.z);");
+        }
+        else
+        {
+            stringBuilder.AppendLine("\tuint g_Booleans : packoffset(c196.x);");
+        }
 
-        stringBuilder.AppendLine("#define SHARED_FLAGS_ENABLE_ALPHA_TEST (1 << 0)");
-        stringBuilder.AppendLine("#define SHARED_FLAGS_HAS_10_BIT_NORMAL (1 << 1)");
-        stringBuilder.AppendLine("#define SHARED_FLAGS_HAS_BINORMAL      (1 << 2)\n");
-
-        stringBuilder.AppendLine("cbuffer cbGlobalsShared : register(b1) {");
-        stringBuilder.AppendLine("\tuint g_Booleans;");
-        stringBuilder.AppendLine("\tuint g_Flags;");
-        stringBuilder.AppendLine("\tfloat g_AlphaThreshold;");
         stringBuilder.AppendLine("}\n");
 
         if (samplers.Count > 0)
@@ -449,7 +450,7 @@ public class DefaultShaderConverter
 
         if (isPixelShader)
         {
-            stringBuilder.AppendLine("\n\tif (g_Flags & SHARED_FLAGS_ENABLE_ALPHA_TEST) {");
+            stringBuilder.AppendLine("\n\tif (g_EnableAlphaTest) {");
             stringBuilder.AppendLine("\t\tclip(oC0.w - g_AlphaThreshold);");
             stringBuilder.AppendLine("\t}");
         }

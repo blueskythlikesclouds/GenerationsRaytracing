@@ -1,5 +1,13 @@
 ﻿#pragma once
 
+#define VS_UNUSED_CONSTANT   196
+#define VS_BOOLEANS          0
+
+#define PS_UNUSED_CONSTANT   148
+#define PS_ENABLE_ALPHA_TEST 0
+#define PS_ALPHA_THRESHOLD   1
+#define PS_BOOLEANS          2
+
 template<int N>
 struct ConstantBuffer
 {
@@ -14,15 +22,4 @@ struct ConstantBuffer
     {
         commandList->writeBuffer(constantBuffer, c, sizeof(c));
     }
-};
-
-#define SHARED_FLAGS_ENABLE_ALPHA_TEST (1 << 0)
-#define SHARED_FLAGS_HAS_10_BIT_NORMAL (1 << 1)
-#define SHARED_FLAGS_HAS_BINORMAL      (1 << 2)
-
-struct SharedConstantBuffer
-{
-    uint32_t booleans = 0;
-    uint32_t flags = 0;
-    float alphaThreshold = 0.5f;
 };

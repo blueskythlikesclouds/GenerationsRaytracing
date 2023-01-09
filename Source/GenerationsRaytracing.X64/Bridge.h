@@ -10,13 +10,12 @@ enum class DirtyFlags
     None = 0,
     VsConstants = 1 << 0,
     PsConstants = 1 << 1,
-    SharedConstants = 1 << 2,
-    Texture = 1 << 3,
-    Sampler = 1 << 4,
-    FramebufferAndPipeline = 1 << 5,
-    InputLayout = 1 << 6,
-    VertexBuffer = 1 << 7,
-    GraphicsState = 1 << 8,
+    Texture = 1 << 2,
+    Sampler = 1 << 3,
+    FramebufferAndPipeline = 1 << 4,
+    InputLayout = 1 << 5,
+    VertexBuffer = 1 << 6,
+    GraphicsState = 1 << 7,
     All = ~0
 };
 
@@ -47,14 +46,8 @@ struct Bridge
     ConstantBuffer<224> psConstants {};
     nvrhi::BufferHandle psConstantBuffer;
 
-    SharedConstantBuffer sharedConstants;
-    nvrhi::BufferHandle sharedConstantBuffer;
-
-    nvrhi::BindingLayoutHandle vsBindingLayout;
-    nvrhi::BindingSetHandle vsBindingSet;
-
-    nvrhi::BindingLayoutHandle psBindingLayout;
-    nvrhi::BindingSetHandle psBindingSet;
+    nvrhi::BindingLayoutHandle bindingLayout;
+    nvrhi::BindingSetHandle bindingSet;
 
     nvrhi::TextureHandle nullTexture;
 
