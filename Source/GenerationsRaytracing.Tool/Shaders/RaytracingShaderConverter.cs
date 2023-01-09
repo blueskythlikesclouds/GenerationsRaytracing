@@ -499,7 +499,7 @@ public static class RaytracingShaderConverter
                 g_Normal[index] = float4(normal, 0.0);
                 g_TexCoord[index] = params.Vertex.TexCoord;
                 g_Color[index] = params.Vertex.Color;
-                g_Shader[index] = uint4(SHADERINDEX, SHADERFLAGS, GetGeometry().MaterialIndex, 0);
+                g_Shader[index] = uint4(SHADERINDEX, SHADERFLAGS, GetGeometry().Material, 0);
             } 
 
             [shader("closesthit")]

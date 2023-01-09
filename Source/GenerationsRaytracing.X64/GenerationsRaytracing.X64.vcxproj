@@ -11,7 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DescriptorTableAllocator.cpp" />
     <ClCompile Include="BlueNoise.cpp" />
+    <ClCompile Include="BottomLevelAS.cpp" />
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DLSS.cpp" />
@@ -28,6 +30,7 @@
     <ClCompile Include="RaytracingBridge.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DescriptorTableAllocator.h" />
     <ClInclude Include="BlueNoise.h" />
     <ClInclude Include="BottomLevelAS.h" />
     <ClInclude Include="ConstantBuffer.h" />

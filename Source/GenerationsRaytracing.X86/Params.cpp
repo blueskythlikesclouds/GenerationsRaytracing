@@ -126,10 +126,10 @@ static void loadArchiveDatabase(const Stage& stage)
     const std::string ar = base + ".ar";
     const std::string arl = base + ".arl";
 
-    loader->CreateArchiveList(ar.c_str(), arl.c_str(), { 0, 0});
+    loader->CreateArchiveList(ar.c_str(), arl.c_str(), { 200, 5 });
 
     loader->LoadArchiveList(database, arl.c_str());
-    loader->LoadArchive(database, ar.c_str(), { 0, 0 }, false, false);
+    loader->LoadArchive(database, ar.c_str(), { -10, 5 }, false, false);
 
     hh::mr::CMirageDatabaseWrapper wrapper(database.get());
 
@@ -241,6 +241,7 @@ bool Params::update()
 
     if (prevStageIndex != stageIndex)
     {
+        database = nullptr;
         light = nullptr;
         sky = nullptr;
         sceneEffect = nullptr;

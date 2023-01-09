@@ -1290,6 +1290,7 @@ void Bridge::receiveMessages()
             for (const auto resource : pendingReleases)
             {
                 vertexAttributeDescs.erase(resource);
+                raytracing.descriptorTableManager.erase(resource);
                 raytracing.bottomLevelAccelStructs.erase(resource);
                 raytracing.materials.erase(resource);
                 resources.erase(resource);
@@ -1297,11 +1298,11 @@ void Bridge::receiveMessages()
 
             pendingReleases.clear();
 
-            for (const auto& resourcePair : raytracing.pendingReleases)
+            for (const auto& [bottomLevelAS, instanceInfo] : raytracing.pendingReleases)
             {
-                const auto blasPair = raytracing.bottomLevelAccelStructs.find(resourcePair.first);
+                const auto blasPair = raytracing.bottomLevelAccelStructs.find(bottomLevelAS);
                 if (blasPair != raytracing.bottomLevelAccelStructs.end())
-                    blasPair->second.instances.erase(resourcePair.second);
+                    blasPair->second.instances.erase(instanceInfo);
             }
 
             raytracing.pendingReleases.clear();

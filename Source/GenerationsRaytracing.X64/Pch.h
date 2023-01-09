@@ -37,4 +37,6 @@
 
 #include <INIReader.h>
 
+#include <hash_table8.hpp>
+
 using Microsoft::WRL::ComPtr;

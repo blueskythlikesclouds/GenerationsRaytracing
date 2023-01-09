@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "DescriptorTableAllocator.h"
 #include "BottomLevelAS.h"
 #include "Instance.h"
 #include "Material.h"
@@ -29,29 +30,35 @@ struct RaytracingBridge
     nvrhi::TextureHandle blueNoise;
 
     nvrhi::BindingLayoutHandle bindingLayout;
-    nvrhi::BindingLayoutHandle geometryBindlessLayout;
-    nvrhi::BindingLayoutHandle textureBindlessLayout;
+    nvrhi::BindingLayoutHandle bindlessLayout;
 
     RTConstants rtConstants{};
     nvrhi::BufferHandle rtConstantBuffer;
 
+    DescriptorTableAllocator descriptorTableManager;
+    nvrhi::DescriptorTableHandle descriptorTable;
+    std::vector<nvrhi::BindingSetItem> bindingSetItems;
+
+    std::vector<Material::GPU> materialBufferVec;
     nvrhi::BufferHandle materialBuffer;
+
+    std::vector<BottomLevelAS::Geometry::GPU> geometryBufferVec;
     nvrhi::BufferHandle geometryBuffer;
+
+    std::vector<Instance::GPU> instanceBufferVec;
     nvrhi::BufferHandle instanceBuffer;
+    std::vector<nvrhi::rt::InstanceDesc> instanceDescs;
 
     nvrhi::TextureHandle output;
     std::unique_ptr<Upscaler> upscaler;
-
-    nvrhi::DescriptorTableHandle geometryDescriptorTable;
-    nvrhi::DescriptorTableHandle textureDescriptorTable;
 
     nvrhi::SamplerHandle linearRepeatSampler;
 
     nvrhi::rt::PipelineHandle pipeline;
     nvrhi::rt::ShaderTableHandle shaderTable;
 
-    std::unordered_map<unsigned int, Material> materials;
-    std::unordered_map<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
+    emhash8::HashMap<unsigned int, Material> materials;
+    emhash8::HashMap<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
     std::vector<Instance> instances;
 
     nvrhi::ShaderHandle skinningShader;

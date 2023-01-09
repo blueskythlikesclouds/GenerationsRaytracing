@@ -43,6 +43,9 @@ struct Material
 
 struct Geometry
 {
+    uint VertexBuffer;
+    uint PrevVertexBuffer;
+
     uint VertexCount;
     uint VertexStride;
     uint NormalOffset;
@@ -53,7 +56,10 @@ struct Geometry
     uint ColorFormat;
     uint BlendWeightOffset;
     uint BlendIndicesOffset;
-    uint MaterialIndex;
+
+    uint IndexBuffer;
+
+    uint Material;
     uint PunchThrough;
 };
 
@@ -137,9 +143,9 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
 
     Geometry geometry = g_GeometryBuffer[index];
 
-    Buffer<uint> indexBuffer = g_BindlessIndexBuffer[index * 3 + 0];
-    ByteAddressBuffer vertexBuffer = g_BindlessVertexBuffer[index * 3 + 1];
-    ByteAddressBuffer prevVertexBuffer = g_BindlessVertexBuffer[index * 3 + 2];
+    Buffer<uint> indexBuffer = g_BindlessIndexBuffer[NonUniformResourceIndex(geometry.IndexBuffer)];
+    ByteAddressBuffer vertexBuffer = g_BindlessVertexBuffer[NonUniformResourceIndex(geometry.VertexBuffer)];
+    ByteAddressBuffer prevVertexBuffer = g_BindlessVertexBuffer[NonUniformResourceIndex(geometry.PrevVertexBuffer)];
 
     uint3 indices;
     indices.x = indexBuffer[PrimitiveIndex() * 3 + 0];
@@ -207,7 +213,7 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
 
 Material GetMaterial()
 {
-    return g_MaterialBuffer[g_GeometryBuffer[InstanceID() + GeometryIndex()].MaterialIndex];
+    return g_MaterialBuffer[g_GeometryBuffer[InstanceID() + GeometryIndex()].Material];
 }
 
 Geometry GetGeometry()

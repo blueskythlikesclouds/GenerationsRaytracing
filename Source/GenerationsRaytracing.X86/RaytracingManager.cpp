@@ -1,5 +1,7 @@
 ﻿#include "RaytracingManager.h"
 
+#include <Profiler.h>
+
 #include "Buffer.h"
 #include "Identifier.h"
 #include "Message.h"
@@ -366,6 +368,8 @@ static void __cdecl SceneRender_Raytracing(void* A1)
     auto world = document->GetWorld();
     if (!world)
         return;
+
+    PROFILER("Send Raytracing Render Messages");
 
     bool resetAccumulation = Params::update();
 

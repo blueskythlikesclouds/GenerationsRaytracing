@@ -38,7 +38,7 @@ struct ShaderMapping
     };
 
     std::vector<Shader> shaders;
-    std::unordered_map<std::string, size_t> indices;
+    emhash8::HashMap<std::string, size_t> indices;
 
     void load(const std::string& filePath)
     {

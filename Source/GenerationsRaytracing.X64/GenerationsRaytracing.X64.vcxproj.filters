@@ -13,6 +13,8 @@
     <ClCompile Include="FSR.cpp" />
     <ClCompile Include="BlueNoise.cpp" />
     <ClCompile Include="EnvironmentColor.cpp" />
+    <ClCompile Include="DescriptorTableAllocator.cpp" />
+    <ClCompile Include="BottomLevelAS.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -31,6 +33,7 @@
     <ClInclude Include="Instance.h" />
     <ClInclude Include="BlueNoise.h" />
     <ClInclude Include="EnvironmentColor.h" />
+    <ClInclude Include="DescriptorTableAllocator.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />

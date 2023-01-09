@@ -1,11 +1,19 @@
 ﻿#pragma once
 
+#define GEOMETRY_SKINNING_BUFFER_ID(vertexBuffer, instanceInfo) (((size_t)(vertexBuffer) << 32) | (size_t)(instanceInfo))
+#define GEOMETRY_PREV_SKINNING_BUFFER_ID(vertexBuffer, instanceInfo) (GEOMETRY_SKINNING_BUFFER_ID(vertexBuffer, instanceInfo) + 1)
+
+struct DescriptorTableAllocator;
+
 struct BottomLevelAS
 {
     struct Geometry
     {
         struct GPU
         {
+            uint32_t vertexBuffer = 0;
+            uint32_t prevVertexBuffer = 0;
+
             uint32_t vertexCount = 0;
             uint32_t vertexStride = 0;
             uint32_t normalOffset = 0;
@@ -16,6 +24,9 @@ struct BottomLevelAS
             uint32_t colorFormat = 0;
             uint32_t blendWeightOffset = 0;
             uint32_t blendIndicesOffset = 0;
+
+            uint32_t indexBuffer = 0;
+
             uint32_t material = 0;
             uint32_t punchThrough = 0;
         } gpu{};
@@ -25,6 +36,15 @@ struct BottomLevelAS
         nvrhi::BufferHandle skinningBuffer;
         nvrhi::BufferHandle prevSkinningBuffer;
         nvrhi::BufferHandle nodeIndicesBuffer;
+
+        DescriptorTableAllocator& allocator;
+        size_t skinningBufferId = 0;
+        size_t prevSkinningBufferId = 0;
+
+        Geometry(DescriptorTableAllocator& allocator);
+        ~Geometry();
+
+        void releaseDescriptors();
     };
 
     struct Instance
@@ -41,6 +61,6 @@ struct BottomLevelAS
         uint32_t indexInBuffer = 0;
     };
 
-    std::unordered_map<unsigned int, Instance> instances;
-    std::unordered_map<XXH64_hash_t, nvrhi::BufferHandle> nodeIndicesBuffers;
+    emhash8::HashMap<unsigned int, Instance> instances;
+    emhash8::HashMap<XXH64_hash_t, nvrhi::BufferHandle> nodeIndicesBuffers;
 };
