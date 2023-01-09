@@ -27,6 +27,8 @@ if (args[1].Contains("bb3"))
 
         archiveDatabase.Save(Path.Combine(args[1], Path.GetFileName(shaderArchiveFilePath)), 16, 5 * 1024 * 1024);
     }
+
+    //Console.WriteLine("VS: {0} PS: {1}", DefaultShaderConverter.MaxVertexConstant, DefaultShaderConverter.MaxPixelConstant);
 }
 else
 {

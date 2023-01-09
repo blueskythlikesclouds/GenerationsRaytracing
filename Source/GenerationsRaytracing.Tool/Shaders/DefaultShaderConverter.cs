@@ -1,4 +1,6 @@
-﻿using GenerationsRaytracing.Tool.Resources;
+﻿//#define TRACE_MAX_CONSTANT
+
+using GenerationsRaytracing.Tool.Resources;
 using GenerationsRaytracing.Tool.Shaders.Constants;
 using GenerationsRaytracing.Tool.Shaders.Instructions;
 using Vortice.Dxc;
@@ -7,6 +9,12 @@ namespace GenerationsRaytracing.Tool.Shaders;
 
 public class DefaultShaderConverter
 {
+#if TRACE_MAX_CONSTANT 
+    public static readonly object ConstantLock = new();
+    public static int MaxVertexConstant;
+    public static int MaxPixelConstant;
+#endif
+
     private static void PopulateSemantics(Dictionary<string, string> semantics)
     {
         semantics.Add("SV_Position", "svPos");
@@ -203,6 +211,27 @@ public class DefaultShaderConverter
         }
 
         var constants = ConstantParser.Parse(function, functionSize);
+
+#if TRACE_MAX_CONSTANT
+        if (constants != null)
+        {
+            lock (ConstantLock)
+            {
+                foreach (var constant in constants)
+                {
+                    if (constant.Type != ConstantType.Float4)
+                        continue;
+
+                    int endRegister = constant.Register + constant.Size;
+
+                    if (isPixelShader)
+                        MaxPixelConstant = Math.Max(MaxPixelConstant, endRegister);
+                    else
+                        MaxVertexConstant = Math.Max(MaxVertexConstant, endRegister);
+                }
+            }
+        }
+#endif
 
         // Auto-populate a constant table if nothing was found in the file.
         if (constants == null)
