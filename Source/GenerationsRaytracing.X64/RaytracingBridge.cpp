@@ -73,6 +73,7 @@ RaytracingBridge::RaytracingBridge(const Device& device, const std::string& dire
         .addRegisterSpace(nvrhi::BindingLayoutItem::Texture_SRV(4)));
 
     descriptorTable = device.nvrhi->createDescriptorTable(bindlessLayout);
+    device.nvrhi->resizeDescriptorTable(descriptorTable, 65536, false);
 
     rtConstantBuffer = device.nvrhi->createBuffer(nvrhi::BufferDesc()
         .setByteSize(sizeof(RTConstants))
