@@ -43,7 +43,7 @@ struct Bridge
     ConstantBuffer<256> vsConstants {};
     nvrhi::BufferHandle vsConstantBuffer;
 
-    ConstantBuffer<181> psConstants {};
+    ConstantBuffer<224> psConstants {};
     nvrhi::BufferHandle psConstantBuffer;
 
     nvrhi::BindingLayoutHandle bindingLayout;
