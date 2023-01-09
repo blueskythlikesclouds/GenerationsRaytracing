@@ -1251,14 +1251,14 @@ void Bridge::processMessages()
         case MsgMakePicture::ID:               procMsgMakePicture(); break;
         case MsgWriteBuffer::ID:               procMsgWriteBuffer(); break;
         case MsgWriteTexture::ID:              procMsgWriteTexture(); break;
-        case MsgCreateGeometry::ID:            raytracing.procMsgCreateGeometry(*this); break;
-        case MsgCreateBottomLevelAS::ID:       raytracing.procMsgCreateBottomLevelAS(*this); break;
+        case MsgCreateMesh::ID:                raytracing.procMsgCreateMesh(*this); break;
+        case MsgCreateModel::ID:               raytracing.procMsgCreateModel(*this); break;
         case MsgCreateInstance::ID:            raytracing.procMsgCreateInstance(*this); break;
         case MsgNotifySceneTraversed::ID:      raytracing.procMsgNotifySceneTraversed(*this); break;
         case MsgCreateMaterial::ID:            raytracing.procMsgCreateMaterial(*this); break;
         case MsgExit::ID:                      procMsgExit(); break;
         case MsgReleaseResource::ID:           procMsgReleaseResource(); break;
-        case MsgReleaseInstanceInfo::ID:       raytracing.procMsgReleaseInstanceInfo(*this); break;
+        case MsgReleaseElement::ID:            raytracing.procMsgReleaseSingleElement(*this); break;
         default:                               assert(0 && "Unknown message type"); break;
         }
     }
@@ -1292,18 +1292,18 @@ void Bridge::receiveMessages()
             {
                 vertexAttributeDescs.erase(resource);
                 raytracing.descriptorTableManager.erase(resource);
-                raytracing.bottomLevelAccelStructs.erase(resource);
+                raytracing.models.erase(resource);
                 raytracing.materials.erase(resource);
                 resources.erase(resource);
             }
 
             pendingReleases.clear();
 
-            for (const auto& [bottomLevelAS, instanceInfo] : raytracing.pendingReleases)
+            for (const auto& [model, element] : raytracing.pendingReleases)
             {
-                const auto blasPair = raytracing.bottomLevelAccelStructs.find(bottomLevelAS);
-                if (blasPair != raytracing.bottomLevelAccelStructs.end())
-                    blasPair->second.instances.erase(instanceInfo);
+                const auto modelPair = raytracing.models.find(model);
+                if (modelPair != raytracing.models.end())
+                    modelPair->second.elements.erase(element);
             }
 
             raytracing.pendingReleases.clear();

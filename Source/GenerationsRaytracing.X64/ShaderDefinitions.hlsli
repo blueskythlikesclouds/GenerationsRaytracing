@@ -44,7 +44,7 @@ struct Material
     float4 Parameters[16];
 };
 
-struct Geometry
+struct Mesh
 {
     uint VertexBuffer;
     uint PrevVertexBuffer;
@@ -99,7 +99,7 @@ struct CallableParams
 RaytracingAccelerationStructure g_BVH : register(t0);
 
 StructuredBuffer<Material> g_MaterialBuffer : register(t1);
-StructuredBuffer<Geometry> g_GeometryBuffer : register(t2);
+StructuredBuffer<Mesh> g_MeshBuffer : register(t2);
 StructuredBuffer<Instance> g_InstanceBuffer : register(t3);
 
 RWTexture2D<float4> g_Position : register(u0);
@@ -144,23 +144,23 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
     float3 uv = float3(1.0 - attributes.barycentrics.x - attributes.barycentrics.y, attributes.barycentrics.x, attributes.barycentrics.y);
     uint index = InstanceID() + GeometryIndex();
 
-    Geometry geometry = g_GeometryBuffer[index];
+    Mesh mesh = g_MeshBuffer[index];
 
-    Buffer<uint> indexBuffer = g_BindlessIndexBuffer[NonUniformResourceIndex(geometry.IndexBuffer)];
-    ByteAddressBuffer vertexBuffer = g_BindlessVertexBuffer[NonUniformResourceIndex(geometry.VertexBuffer)];
-    ByteAddressBuffer prevVertexBuffer = g_BindlessVertexBuffer[NonUniformResourceIndex(geometry.PrevVertexBuffer)];
+    Buffer<uint> indexBuffer = g_BindlessIndexBuffer[NonUniformResourceIndex(mesh.IndexBuffer)];
+    ByteAddressBuffer vertexBuffer = g_BindlessVertexBuffer[NonUniformResourceIndex(mesh.VertexBuffer)];
+    ByteAddressBuffer prevVertexBuffer = g_BindlessVertexBuffer[NonUniformResourceIndex(mesh.PrevVertexBuffer)];
 
     uint3 indices;
     indices.x = indexBuffer[PrimitiveIndex() * 3 + 0];
     indices.y = indexBuffer[PrimitiveIndex() * 3 + 1];
     indices.z = indexBuffer[PrimitiveIndex() * 3 + 2];
 
-    uint3 offsets = indices * geometry.VertexStride;
-    uint3 normalOffsets = offsets + geometry.NormalOffset;
-    uint3 tangentOffsets = offsets + geometry.TangentOffset;
-    uint3 binormalOffsets = offsets + geometry.BinormalOffset;
-    uint3 texCoordOffsets = offsets + geometry.TexCoordOffset;
-    uint3 colorOffsets = offsets + geometry.ColorOffset;
+    uint3 offsets = indices * mesh.VertexStride;
+    uint3 normalOffsets = offsets + mesh.NormalOffset;
+    uint3 tangentOffsets = offsets + mesh.TangentOffset;
+    uint3 binormalOffsets = offsets + mesh.BinormalOffset;
+    uint3 texCoordOffsets = offsets + mesh.TexCoordOffset;
+    uint3 colorOffsets = offsets + mesh.ColorOffset;
 
     Vertex vertex;
 
@@ -191,7 +191,7 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
         asfloat(vertexBuffer.Load2(texCoordOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load2(texCoordOffsets.z)) * uv.z;
 
-    if (geometry.ColorFormat != 0)
+    if (mesh.ColorFormat != 0)
     {
         vertex.Color =
             DecodeColor(vertexBuffer.Load(colorOffsets.x)) * uv.x +
@@ -216,12 +216,12 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
 
 Material GetMaterial()
 {
-    return g_MaterialBuffer[g_GeometryBuffer[InstanceID() + GeometryIndex()].Material];
+    return g_MaterialBuffer[g_MeshBuffer[InstanceID() + GeometryIndex()].Material];
 }
 
-Geometry GetGeometry()
+Mesh GetMesh()
 {
-    return g_GeometryBuffer[InstanceID() + GeometryIndex()];
+    return g_MeshBuffer[InstanceID() + GeometryIndex()];
 }
 
 #endif

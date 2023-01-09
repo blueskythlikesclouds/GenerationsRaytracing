@@ -13,7 +13,7 @@
   <ItemGroup>
     <ClCompile Include="DescriptorTableAllocator.cpp" />
     <ClCompile Include="BlueNoise.cpp" />
-    <ClCompile Include="BottomLevelAS.cpp" />
+    <ClCompile Include="Model.cpp" />
     <ClCompile Include="Bridge.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DLSS.cpp" />
@@ -32,7 +32,7 @@
   <ItemGroup>
     <ClInclude Include="DescriptorTableAllocator.h" />
     <ClInclude Include="BlueNoise.h" />
-    <ClInclude Include="BottomLevelAS.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="DLSS.h" />
     <ClInclude Include="EnvironmentColor.h" />

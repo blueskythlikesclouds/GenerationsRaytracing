@@ -135,26 +135,25 @@ static size_t createMaterial(hh::mr::CMaterialData& material)
     return result.id;
 }
 
-static void createGeometry(
-    const hh::mr::CSingleElement* singleElement,
-    const size_t blasId, 
-    const size_t instanceInfo,
+static void createMesh(
+    const size_t modelId,
+    const hh::mr::CSingleElement* element,
+    const size_t elementId,
+    bool isSky,
     const hh::mr::CMeshData& mesh,
-    bool opaque, 
-    bool punchThrough, 
-    bool isSkeletalModel,
-    bool isSky)
+    bool isOpaque, 
+    bool isPunchThrough)
 {
     if (mesh.m_VertexNum == 0 || mesh.m_IndexNum <= 2)
         return;
 
     size_t materialId = 0;
 
-    if (singleElement != nullptr)
+    if (element != nullptr)
     {
-        const auto pair = singleElement->m_MaterialMap.find(mesh.m_spMaterial.get());
+        const auto pair = element->m_MaterialMap.find(mesh.m_spMaterial.get());
 
-        if (pair != singleElement->m_MaterialMap.end())
+        if (pair != element->m_MaterialMap.end())
             materialId = createMaterial(*pair->second);
     }
 
@@ -168,27 +167,25 @@ static void createGeometry(
     if (!indexBuffer.first)
         return;
 
-    const size_t nodeNum = isSkeletalModel ? mesh.m_NodeNum : 0;
+    const auto msg = msgSender.start<MsgCreateMesh>(element != nullptr ? mesh.m_NodeNum : 0);
 
-    const auto msg = msgSender.start<MsgCreateGeometry>(nodeNum);
-
-    msg->bottomLevelAS = blasId;
-    msg->instanceInfo = instanceInfo;
+    msg->model = modelId;
+    msg->element = elementId;
 
     if (isSky)
     {
-        msg->instanceMask = INSTANCE_MASK_SKY;
+        msg->group = INSTANCE_MASK_SKY;
     }
     else
     {
-        if (!opaque && !punchThrough)
-            msg->instanceMask = INSTANCE_MASK_TRANS_WATER;
+        if (!isOpaque && !isPunchThrough)
+            msg->group = INSTANCE_MASK_TRANS_WATER;
         else
-            msg->instanceMask = INSTANCE_MASK_OPAQ_PUNCH;
+            msg->group = INSTANCE_MASK_OPAQ_PUNCH;
     }
 
-    msg->opaque = opaque;
-    msg->punchThrough = punchThrough;
+    msg->opaque = isOpaque;
+    msg->punchThrough = isPunchThrough;
     msg->vertexBuffer = reinterpret_cast<Buffer*>(mesh.m_pD3DVertexBuffer)->id;
     msg->vertexOffset = mesh.m_VertexOffset;
     msg->vertexCount = mesh.m_VertexNum;
@@ -238,47 +235,59 @@ static void createGeometry(
 
     assert(mesh.m_pD3DVertexBuffer && indexBuffer.first);
 
-    msg->nodeNum = nodeNum;
-    memcpy(MSG_DATA_PTR(msg), mesh.m_pNodeIndices, nodeNum);
+    if (element != nullptr)
+    {
+        msg->nodeNum = mesh.m_NodeNum;
+        memcpy(MSG_DATA_PTR(msg), mesh.m_pNodeIndices, mesh.m_NodeNum);
+    }
+    else
+    {
+        msg->nodeNum = 0;
+    }
 
     msgSender.finish();
 }
 
 template<typename T>
-static void createBottomLevelAS(T& model, const hh::mr::CSingleElement* singleElement, size_t blasId, size_t instanceInfo, bool isSkeletalModel, bool isSky)
+static void createModel(
+    T& model,
+    size_t modelId,
+    const hh::mr::CSingleElement* element, 
+    size_t elementId, 
+    bool isSky)
 {
     for (const auto& meshGroup : model.m_NodeGroupModels)
     {
         if (!meshGroup->m_Visible)
             continue;
     
-        for (const auto& mesh : meshGroup->m_OpaqueMeshes) 
-            createGeometry(singleElement, blasId, instanceInfo, *mesh, true, false, isSkeletalModel, isSky);
+        for (const auto& mesh : meshGroup->m_OpaqueMeshes)
+            createMesh(modelId, element, elementId, isSky, *mesh, true, false);
     
         for (const auto& mesh : meshGroup->m_TransparentMeshes) 
-            createGeometry(singleElement, blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
+            createMesh(modelId, element, elementId, isSky, *mesh, false, false);
     
         for (const auto& mesh : meshGroup->m_PunchThroughMeshes) 
-            createGeometry(singleElement, blasId, instanceInfo, *mesh, false, true, isSkeletalModel, isSky);
+            createMesh(modelId, element, elementId, isSky, *mesh, false, true);
     
         for (const auto& specialMeshGroup : meshGroup->m_SpecialMeshGroups)
         {
             for (const auto& mesh : specialMeshGroup)
-                createGeometry(singleElement, blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
+                createMesh(modelId, element, elementId, isSky, *mesh, false, false);
         }
     }
     
     for (const auto& mesh : model.m_OpaqueMeshes) 
-        createGeometry(singleElement, blasId, instanceInfo, *mesh, true, false, isSkeletalModel, isSky);
+        createMesh(modelId, element, elementId, isSky, *mesh, true, false);
     
     for (const auto& mesh : model.m_TransparentMeshes) 
-        createGeometry(singleElement, blasId, instanceInfo, *mesh, false, false, isSkeletalModel, isSky);
+        createMesh(modelId, element, elementId, isSky, *mesh, false, false);
     
     for (const auto& mesh : model.m_PunchThroughMeshes) 
-        createGeometry(singleElement, blasId, instanceInfo, *mesh, false, true, isSkeletalModel, isSky);
+        createMesh(modelId, element, elementId, isSky, *mesh, false, true);
 }
 
-static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModel)
+static size_t createModel(hh::mr::CTerrainModelData& terrainModel)
 {
     const auto result = searchDatabaseData(terrainModel);
 
@@ -287,45 +296,60 @@ static size_t createBottomLevelAS(hh::mr::CTerrainModelData& terrainModel)
 
     group.run([&terrainModel, result]
     {
-        createBottomLevelAS(terrainModel, nullptr, result.id, NULL, false, false);
+        createModel(
+            terrainModel,
+            result.id, 
+            nullptr,
+            NULL, 
+            false);
 
-        const auto msg = msgSender.start<MsgCreateBottomLevelAS>();
-        msg->bottomLevelAS = result.id;
-        msg->instanceInfo = 0;
+        const auto msg = msgSender.start<MsgCreateModel>();
+
+        msg->model = result.id;
+        msg->element = 0;
         msg->matrixNum = 0;
+
         msgSender.finish();
      });
 
     return result.id;
 }
 
-static std::pair<size_t, size_t> createBottomLevelAS(const hh::mr::CSingleElement& singleElement, bool isSky)
+static std::pair<size_t, size_t> createModel(const hh::mr::CSingleElement& element, bool isSky)
 {
-    const auto result = searchDatabaseData(*singleElement.m_spModel);
-    const bool isSkeletalModel = singleElement.m_spInstanceInfo->m_spAnimationPose != nullptr && singleElement.m_spModel->m_NodeNum > 1;
-    const size_t instanceInfo = isSkeletalModel ? (size_t)singleElement.m_spInstanceInfo.get() : 0;
+    const auto result = searchDatabaseData(*element.m_spModel);
 
-    if (result.shouldCreate || isSkeletalModel)
+    const bool isUnique = !element.m_MaterialMap.empty() || 
+        element.m_spInstanceInfo->m_spAnimationPose != nullptr;
+
+    const size_t elementId = isUnique ? (size_t)&element : NULL;
+
+    if (result.shouldCreate || isUnique)
     {
-        group.run([&singleElement, result, instanceInfo, isSkeletalModel, isSky] 
+        group.run([&element, isSky, result, isUnique, elementId]
         {
-            createBottomLevelAS(*singleElement.m_spModel, &singleElement, result.id, instanceInfo, isSkeletalModel, isSky);
+            createModel(
+                *element.m_spModel, 
+                result.id, 
+                isUnique ? &element : nullptr,
+                elementId,
+                isSky);
 
-            const size_t matrixNum = isSkeletalModel ? singleElement.m_spModel->m_NodeNum : 0;
+            const size_t matrixNum = isUnique && element.m_spInstanceInfo->m_spAnimationPose != nullptr ? element.m_spModel->m_NodeNum : 0;
 
-            const auto msg = msgSender.start<MsgCreateBottomLevelAS>(matrixNum * 64);
-            msg->bottomLevelAS = result.id;
-            msg->instanceInfo = instanceInfo;
+            const auto msg = msgSender.start<MsgCreateModel>(matrixNum * 64);
+            msg->model = result.id;
+            msg->element = elementId;
             msg->matrixNum = matrixNum;
 
-            if (isSkeletalModel)
-                memcpy(MSG_DATA_PTR(msg), singleElement.m_spInstanceInfo->m_spAnimationPose->GetMatrixList(), matrixNum * 64);
+            if (matrixNum != 0)
+                memcpy(MSG_DATA_PTR(msg), element.m_spInstanceInfo->m_spAnimationPose->GetMatrixList(), matrixNum * 64);
 
             msgSender.finish();
         });
     }
 
-    return std::make_pair(result.id, instanceInfo);
+    return std::make_pair(result.id, elementId);
 }
 
 static void traverse(const hh::mr::CRenderable* renderable, bool isSky)
@@ -335,40 +359,40 @@ static void traverse(const hh::mr::CRenderable* renderable, bool isSky)
 
     group.run([renderable, isSky]
     {
-        if (auto singleElement = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
+        if (auto element = dynamic_cast<const hh::mr::CSingleElement*>(renderable))
         {
-            if (!singleElement->m_spModel->IsMadeAll() || (singleElement->m_spInstanceInfo->m_Flags & hh::mr::eInstanceInfoFlags_Invisible) != 0)
+            if (!element->m_spModel->IsMadeAll() || (element->m_spInstanceInfo->m_Flags & hh::mr::eInstanceInfoFlags_Invisible) != 0)
             {
                 std::lock_guard lock(matrixMutex);
-                prevMatrixMap.erase(singleElement);
+                prevMatrixMap.erase(element);
 
                 return;
             }
 
-            const auto idPair = createBottomLevelAS(*singleElement, isSky);
+            const auto idPair = createModel(*element, isSky);
 
             const auto msg = msgSender.start<MsgCreateInstance>();
             {
                 std::lock_guard lock(matrixMutex);
 
-                const auto matrixPair = prevMatrixMap.find(singleElement);
+                const auto matrixPair = prevMatrixMap.find(element);
 
                 for (size_t i = 0; i < 3; i++)
                 {
                     for (size_t j = 0; j < 4; j++)
                     {
-                        msg->transform[i][j] = singleElement->m_spInstanceInfo->m_Transform(i, j);
+                        msg->transform[i][j] = element->m_spInstanceInfo->m_Transform(i, j);
 
                         msg->prevTransform[i][j] = matrixPair == prevMatrixMap.end() ? 
-                            singleElement->m_spInstanceInfo->m_Transform(i, j) : matrixPair->second(i, j);
+                            element->m_spInstanceInfo->m_Transform(i, j) : matrixPair->second(i, j);
                     }
                 }
 
-                prevMatrixMap[singleElement] = singleElement->m_spInstanceInfo->m_Transform;
+                prevMatrixMap[element] = element->m_spInstanceInfo->m_Transform;
             }
 
-            msg->bottomLevelAS = idPair.first;
-            msg->instanceInfo = idPair.second;
+            msg->model = idPair.first;
+            msg->element = idPair.second;
 
             msgSender.finish();
         }
@@ -499,7 +523,7 @@ static void __cdecl SceneRender_Raytracing(void* A1)
             if (!instance->IsMadeAll() || !instance->m_spTerrainModel)
                 return;
 
-            size_t blasId = createBottomLevelAS(*instance->m_spTerrainModel);
+            const size_t modelId = createModel(*instance->m_spTerrainModel);
 
             const auto msg = msgSender.start<MsgCreateInstance>();
 
@@ -512,8 +536,8 @@ static void __cdecl SceneRender_Raytracing(void* A1)
                 }
             }
 
-            msg->bottomLevelAS = blasId;
-            msg->instanceInfo = 0;
+            msg->model = modelId;
+            msg->element = 0;
 
             msgSender.finish();
         });
@@ -696,9 +720,9 @@ HOOK(void, __fastcall, DestructSingleElement, 0x701850, hh::mr::CSingleElement* 
 
             if (idPair != identifierMap.end())
             {
-                const auto msg = msgSender.start<MsgReleaseInstanceInfo>();
-                msg->bottomLevelAS = idPair->second;
-                msg->instanceInfo = (unsigned int)This->m_spInstanceInfo.get();
+                const auto msg = msgSender.start<MsgReleaseElement>();
+                msg->model = idPair->second;
+                msg->element = (unsigned int)This;
                 msgSender.finish();
             }
         }

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "DescriptorTableAllocator.h"
-#include "BottomLevelAS.h"
+#include "Model.h"
 #include "Instance.h"
 #include "Material.h"
 
@@ -42,8 +42,8 @@ struct RaytracingBridge
     std::vector<Material::GPU> materialBufferVec;
     nvrhi::BufferHandle materialBuffer;
 
-    std::vector<BottomLevelAS::Geometry::GPU> geometryBufferVec;
-    nvrhi::BufferHandle geometryBuffer;
+    std::vector<Mesh::GPU> meshBufferVec;
+    nvrhi::BufferHandle meshBuffer;
 
     std::vector<Instance::GPU> instanceBufferVec;
     nvrhi::BufferHandle instanceBuffer;
@@ -58,7 +58,7 @@ struct RaytracingBridge
     nvrhi::rt::ShaderTableHandle shaderTable;
 
     emhash8::HashMap<unsigned int, Material> materials;
-    emhash8::HashMap<unsigned int, BottomLevelAS> bottomLevelAccelStructs;
+    emhash8::HashMap<unsigned int, Model> models;
     std::vector<Instance> instances;
 
     nvrhi::ShaderHandle skinningShader;
@@ -79,10 +79,10 @@ struct RaytracingBridge
     RaytracingBridge(const Device& device, const std::string& directoryPath);
     ~RaytracingBridge();
 
-    void procMsgCreateGeometry(Bridge& bridge);
-    void procMsgCreateBottomLevelAS(Bridge& bridge);
+    void procMsgCreateMesh(Bridge& bridge);
+    void procMsgCreateModel(Bridge& bridge);
     void procMsgCreateInstance(Bridge& bridge);
     void procMsgCreateMaterial(Bridge& bridge);
-    void procMsgReleaseInstanceInfo(Bridge& bridge);
+    void procMsgReleaseSingleElement(Bridge& bridge);
     void procMsgNotifySceneTraversed(Bridge& bridge);
 };

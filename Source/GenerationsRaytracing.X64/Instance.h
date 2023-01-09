@@ -9,6 +9,6 @@ struct Instance
         float prevTransform[3][4]{};
     } gpu{};
 
-    unsigned int bottomLevelAS = 0;
-    unsigned int instanceInfo = 0;
+    unsigned int model = 0;
+    unsigned int element = 0;
 };

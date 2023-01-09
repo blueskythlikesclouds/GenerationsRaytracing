@@ -1,16 +1,16 @@
-#include "BottomLevelAS.h"
+#include "Model.h"
 #include "DescriptorTableAllocator.h"
 
-BottomLevelAS::Geometry::Geometry(DescriptorTableAllocator& allocator): allocator(allocator)
+Mesh::Mesh(DescriptorTableAllocator& allocator): allocator(allocator)
 {
 }
 
-BottomLevelAS::Geometry::~Geometry()
+Mesh::~Mesh()
 {
     releaseDescriptors();
 }
 
-void BottomLevelAS::Geometry::releaseDescriptors()
+void Mesh::releaseDescriptors()
 {
     if (skinningBufferId != 0)
         allocator.erase(skinningBufferId);

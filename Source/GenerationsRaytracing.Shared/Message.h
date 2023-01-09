@@ -281,12 +281,12 @@ struct MsgWriteTexture
     unsigned int pitch;
 };
 
-struct MsgCreateGeometry
+struct MsgCreateMesh
 {
     DEFINE_MSG_ID;
-    unsigned int bottomLevelAS;
-    unsigned int instanceInfo;
-    unsigned int instanceMask;
+    unsigned int model;
+    unsigned int element;
+    unsigned int group;
     bool opaque;
     bool punchThrough;
     unsigned int vertexBuffer;
@@ -308,11 +308,11 @@ struct MsgCreateGeometry
     unsigned int nodeNum;
 };
 
-struct MsgCreateBottomLevelAS
+struct MsgCreateModel
 {
     DEFINE_MSG_ID;
-    unsigned int bottomLevelAS;
-    unsigned int instanceInfo;
+    unsigned int model;
+    unsigned int element;
     unsigned int matrixNum;
 };
 
@@ -327,8 +327,8 @@ struct MsgCreateInstance
     DEFINE_MSG_ID;
     float transform[3][4];
     float prevTransform[3][4];
-    unsigned int bottomLevelAS;
-    unsigned int instanceInfo;
+    unsigned int model;
+    unsigned int element;
 };
 
 struct MsgNotifySceneTraversed
@@ -357,9 +357,9 @@ struct MsgReleaseResource
     unsigned int resource;
 };
 
-struct MsgReleaseInstanceInfo
+struct MsgReleaseElement
 {
     DEFINE_MSG_ID;
-    unsigned int bottomLevelAS;
-    unsigned int instanceInfo;
+    unsigned int model;
+    unsigned int element;
 };

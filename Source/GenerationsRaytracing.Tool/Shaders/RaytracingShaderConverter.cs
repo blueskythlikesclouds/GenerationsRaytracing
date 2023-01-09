@@ -499,7 +499,7 @@ public static class RaytracingShaderConverter
                 g_Normal[index] = float4(normal, 0.0);
                 g_TexCoord[index] = params.Vertex.TexCoord;
                 g_Color[index] = params.Vertex.Color;
-                g_Shader[index] = uint4(SHADERINDEX, SHADERFLAGS, GetGeometry().Material, 0);
+                g_Shader[index] = uint4(SHADERINDEX, SHADERFLAGS, GetMesh().Material, 0);
             } 
 
             [shader("closesthit")]
@@ -563,7 +563,7 @@ public static class RaytracingShaderConverter
                 
                 float3 normal = params.Vertex.Normal;
 
-                if (SHADERNAME<false>(params, normal).oC0.w < (GetGeometry().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
+                if (SHADERNAME<false>(params, normal).oC0.w < (GetMesh().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
                     IgnoreHit();
             }
 

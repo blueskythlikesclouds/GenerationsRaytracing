@@ -14,7 +14,7 @@
     <ClCompile Include="BlueNoise.cpp" />
     <ClCompile Include="EnvironmentColor.cpp" />
     <ClCompile Include="DescriptorTableAllocator.cpp" />
-    <ClCompile Include="BottomLevelAS.cpp" />
+    <ClCompile Include="Model.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -28,7 +28,7 @@
     <ClInclude Include="Upscaler.h" />
     <ClInclude Include="DLSS.h" />
     <ClInclude Include="FSR.h" />
-    <ClInclude Include="BottomLevelAS.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Instance.h" />
     <ClInclude Include="BlueNoise.h" />
