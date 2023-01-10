@@ -142,7 +142,7 @@ float3 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth, in
 {
     return TraceColor(
         origin, 
-        refract(view, normal, 0.96), 
+        refract(view, normal, 0.95), 
         depth, 
         random, 
         MISS_REFLECTION_REFRACTION);
