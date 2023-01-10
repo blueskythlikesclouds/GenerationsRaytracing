@@ -15,6 +15,7 @@
     <ClCompile Include="EnvironmentColor.cpp" />
     <ClCompile Include="DescriptorTableAllocator.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="VelocityMap.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -34,6 +35,7 @@
     <ClInclude Include="BlueNoise.h" />
     <ClInclude Include="EnvironmentColor.h" />
     <ClInclude Include="DescriptorTableAllocator.h" />
+    <ClInclude Include="VelocityMap.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />
@@ -47,6 +49,7 @@
     <FxCompile Include="FVF.hlsl" />
     <FxCompile Include="Skinning.hlsl" />
     <FxCompile Include="ShaderLibrary.hlsl" />
+    <FxCompile Include="CopyVelocityMapPS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="ShaderMapping.bin" />

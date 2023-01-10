@@ -748,6 +748,7 @@ static bool initToggleablePatchesAndReturnShouldRender()
         WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
         WRITE_MEMORY(0x13DDC20, size_t, 0); // Disable reflection map 2
         WRITE_MEMORY(0x13DDCA0, size_t, 1); // Override game scene child count
+        WRITE_MEMORY(0x13E01A8, size_t, 0); // Override motion blur child count
         WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
     }
     else
@@ -757,12 +758,27 @@ static bool initToggleablePatchesAndReturnShouldRender()
         WRITE_MEMORY(0x13DDBA0, size_t, 22); // Enable reflection map 1
         WRITE_MEMORY(0x13DDC20, size_t, 22); // Enable reflection map 2
         WRITE_MEMORY(0x13DDCA0, size_t, 22); // Restore game scene child count
+        WRITE_MEMORY(0x13E01A8, size_t, 2); // Restore motion blur child count
         WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
     }
 
     const bool shouldRender = prevRaytracingEnable;
     prevRaytracingEnable = RaytracingParams::enable;
     return shouldRender;
+}
+
+HOOK(void, __cdecl, SceneTraversed_ScreenMotionBlurFilter, 0x6577C0, size_t a1, size_t a2)
+{
+    if (RaytracingParams::enable)
+    {
+        const auto msg = msgSender.start<MsgCopyVelocityMap>();
+        msg->enableBoostBlur = *(bool*)(*(size_t*)(a1 + 4) + 977) ? 1u : 0u;
+        msgSender.finish();
+    }
+    else
+    {
+        originalSceneTraversed_ScreenMotionBlurFilter(a1, a2);
+    }
 }
 
 void RaytracingManager::init()
@@ -785,4 +801,6 @@ void RaytracingManager::init()
     INSTALL_HOOK(DestructTerrainInstanceInfo); // Garbage collection
 
     INSTALL_HOOK(DestructSingleElement); // Garbage collection
+
+    INSTALL_HOOK(SceneTraversed_ScreenMotionBlurFilter);
 }

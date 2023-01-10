@@ -363,3 +363,9 @@ struct MsgReleaseElement
     unsigned int model;
     unsigned int element;
 };
+
+struct MsgCopyVelocityMap
+{
+    DEFINE_MSG_ID;
+    unsigned int enableBoostBlur;
+};

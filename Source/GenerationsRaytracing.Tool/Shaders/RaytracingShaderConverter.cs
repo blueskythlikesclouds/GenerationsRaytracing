@@ -528,11 +528,12 @@ public static class RaytracingShaderConverter
 
                 float3 curPixelPosAndDepth = GetCurrentPixelPositionAndDepth(params.Vertex.Position);
                 float3 prevPixelPosAndDepth = GetPreviousPixelPositionAndDepth(params.Vertex.PrevPosition);
+                float3 blurPixelPosAndDepth = GetCurrentPixelPositionAndDepth(params.Vertex.BlurPosition);
 
                 uint2 index = DispatchRaysIndex().xy;
                 g_Position[index] = float4(params.Vertex.Position, 0.0);
                 g_Depth[index] = curPixelPosAndDepth.z;
-                g_MotionVector[index] = prevPixelPosAndDepth.xy - curPixelPosAndDepth.xy;
+                g_MotionVector[index] = float4(prevPixelPosAndDepth.xy - curPixelPosAndDepth.xy, blurPixelPosAndDepth.xy - curPixelPosAndDepth.xy);
                 g_Normal[index] = float4(normal, 0.0);
                 g_TexCoord[index] = params.Vertex.TexCoord;
                 g_Color[index] = params.Vertex.Color;

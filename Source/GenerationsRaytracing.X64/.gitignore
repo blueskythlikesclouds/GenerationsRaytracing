@@ -1,4 +1,5 @@
 CopyPS.h
+CopyVelocityMapPS.h
 CopyVS.h
 FVF.h
 ShaderLibrary.h

@@ -28,6 +28,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="RaytracingBridge.cpp" />
+    <ClCompile Include="VelocityMap.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DescriptorTableAllocator.h" />
@@ -47,6 +48,7 @@
     <ClInclude Include="Device.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="RaytracingBridge.h" />
+    <ClInclude Include="VelocityMap.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GenerationsRaytracing.Dependencies\GenerationsRaytracing.Dependencies.vcxproj">
@@ -57,6 +59,20 @@
     <None Include="ShaderDefinitions.hlsli" />
     <None Include="ShaderFunctions.hlsli" />
     <None Include="ShaderGlobals.hlsli" />
+    <FxCompile Include="CopyVelocityMapPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ObjectFileOutput>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">COPY_VELOCITY_MAP_PS</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)CopyVelocityMapPS.h</HeaderFileOutput>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">COPY_VELOCITY_MAP_PS</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)CopyVelocityMapPS.h</HeaderFileOutput>
+    </FxCompile>
     <FxCompile Include="ShaderLibrary.hlsl">
       <FileType>Document</FileType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.5</ShaderModel>

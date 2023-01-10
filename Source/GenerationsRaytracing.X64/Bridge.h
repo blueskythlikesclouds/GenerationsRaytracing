@@ -4,6 +4,7 @@
 #include "MessageReceiver.h"
 #include "Device.h"
 #include "RaytracingBridge.h"
+#include "VelocityMap.h"
 
 enum class DirtyFlags
 {
@@ -91,6 +92,7 @@ struct Bridge
     std::vector<unsigned int> pendingReleases;
 
     RaytracingBridge raytracing;
+    VelocityMap velocityMap;
 
     bool shouldExit = false;
     bool shouldPresent = false;

@@ -31,6 +31,7 @@ struct Vertex
 {
     float3 Position;
     float3 PrevPosition;
+    float3 BlurPosition;
     float3 Normal;
     float3 Tangent;
     float3 Binormal;
@@ -104,7 +105,7 @@ StructuredBuffer<Instance> g_InstanceBuffer : register(t3);
 
 RWTexture2D<float4> g_Position : register(u0);
 RWTexture2D<float> g_Depth : register(u1);
-RWTexture2D<float2> g_MotionVector : register(u2);
+RWTexture2D<float4> g_MotionVector : register(u2);
 RWTexture2D<float4> g_Normal : register(u3);
 RWTexture2D<float2> g_TexCoord : register(u4);
 RWTexture2D<float4> g_Color : register(u5);
@@ -166,7 +167,7 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
 
     vertex.Position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
 
-    vertex.PrevPosition = 
+    vertex.PrevPosition =
         asfloat(prevVertexBuffer.Load3(offsets.x)) * uv.x +
         asfloat(prevVertexBuffer.Load3(offsets.y)) * uv.y +
         asfloat(prevVertexBuffer.Load3(offsets.z)) * uv.z;
@@ -206,7 +207,9 @@ Vertex GetVertex(in BuiltInTriangleIntersectionAttributes attributes)
             asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
     }
 
+    vertex.BlurPosition = mul(ObjectToWorld3x4(), float4(vertex.PrevPosition, 1.0)).xyz;
     vertex.PrevPosition = mul(g_InstanceBuffer[InstanceIndex()].PrevTransform, float4(vertex.PrevPosition, 1.0)).xyz;
+
     vertex.Normal = mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz;
     vertex.Tangent = mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz;
     vertex.Binormal = mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz;

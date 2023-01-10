@@ -9,6 +9,7 @@ Bridge::Bridge(const std::string& directoryPath)
     : directoryPath(directoryPath)
     , device()
     , raytracing(device, directoryPath)
+    , velocityMap(device)
 {
     commandList = device.nvrhi->createCommandList(nvrhi::CommandListParameters());
 
@@ -1259,6 +1260,7 @@ void Bridge::processMessages()
         case MsgExit::ID:                      procMsgExit(); break;
         case MsgReleaseResource::ID:           procMsgReleaseResource(); break;
         case MsgReleaseElement::ID:            raytracing.procMsgReleaseSingleElement(*this); break;
+        case MsgCopyVelocityMap::ID:           velocityMap.procMsgCopyVelocityMap(*this, raytracing); break;
         default:                               assert(0 && "Unknown message type"); break;
         }
     }
