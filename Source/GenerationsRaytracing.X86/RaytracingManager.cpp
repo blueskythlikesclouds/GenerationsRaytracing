@@ -89,19 +89,25 @@ static void createMaterial(hh::mr::CMaterialData& material, size_t id)
 
                 std::unordered_map<hh::base::SSymbolNode*, size_t> counts;
 
+                static hh::base::CStringSymbol normal("normal");
+                static hh::base::CStringSymbol bump("bump");
+
                 for (const auto& texture : material.m_spTexsetData->m_TextureList)
                 {
-                    const size_t target = counts[texture->m_Type.m_pSymbolNode];
+                    auto& type = texture->m_Type.m_pSymbolNode == 
+                        bump.m_pSymbolNode ? normal : texture->m_Type;
+
+                    const size_t target = counts[type.m_pSymbolNode];
                     size_t current = 0;
 
                     for (size_t i = 0; i < shader.textures.size(); i++)
                     {
-                        if (shader.textures[i] == texture->m_Type.GetValue() && (current++) == target)
+                        if (shader.textures[i] == type.GetValue() && (current++) == target)
                         {
                             msg->textures[i] = texture->m_spPictureData && texture->m_spPictureData->m_pD3DTexture ?
                                 reinterpret_cast<Texture*>(texture->m_spPictureData->m_pD3DTexture)->id : NULL;
 
-                            ++counts[texture->m_Type.m_pSymbolNode];
+                            ++counts[type.m_pSymbolNode];
                             break;
                         }
                     }
