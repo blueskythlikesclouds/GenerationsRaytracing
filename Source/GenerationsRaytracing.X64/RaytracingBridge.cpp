@@ -447,7 +447,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
                     }
 
                     if ((groupPair->second.handle == nullptr || elementPair->second.matrixBufferChanged) && 
-                        (mesh.nodeIndicesBuffer != nullptr && elementPair->second.matrixBuffer))
+                        (mesh.nodeIndicesBuffer != nullptr && elementPair->second.matrixBuffer != nullptr))
                     {
                         std::swap(mesh.skinningBuffer, mesh.prevSkinningBuffer);
                         std::swap(mesh.skinningBufferId, mesh.prevSkinningBufferId);

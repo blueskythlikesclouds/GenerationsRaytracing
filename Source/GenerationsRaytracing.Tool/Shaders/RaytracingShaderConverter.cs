@@ -282,7 +282,17 @@ public static class RaytracingShaderConverter
         stringBuilder.AppendLine();
 
         int indent = 1;
-        bool seenDotProductWithGlobalLight = false;
+
+        // There are two ways we can detect the normal map:
+        // 1. Find it using the dot product with the global light.
+        // 2. In case the former doesn't apply, find a pattern where the value
+        //    goes through both normal * 0.5 + 0.5 and normal * normal.
+        bool hasNormalMap = shader.Type == ShaderType.Pixel && 
+            shader.Constants.Any(x => x.Name.Contains("sampNrm"));
+
+        bool foundDotProduct = false;
+        string normalRegister = null;
+        bool foundSquared = false;
 
         foreach (var instruction in shader.Instructions)
         {
@@ -315,18 +325,39 @@ public static class RaytracingShaderConverter
                         argument.Token = $"C[{argument.Token.Substring(1)}]";
                 }
 
-                if (shader.Type == ShaderType.Pixel && instruction.OpCode == "dp3")
+                if (hasNormalMap)
                 {
-                    var globalLightArgument = instruction.Arguments.FirstOrDefault(x => x.Token.Contains("mrgGlobalLight_Direction"));
-
-                    if (globalLightArgument != null && !seenDotProductWithGlobalLight)
+                    if (instruction.OpCode == "dp3")
                     {
-                        stringBuilder.AppendFormat("\tnormal = ({0}).xyz;\n",
-                            instruction.Arguments[1] == globalLightArgument
-                                ? instruction.Arguments[2]
-                                : instruction.Arguments[1]);
+                        var directionArgument = instruction.Arguments.FirstOrDefault(x =>
+                            x.Token.Contains("mrgGlobalLight_Direction"));
 
-                        seenDotProductWithGlobalLight = true;
+                        if (directionArgument != null && !foundDotProduct)
+                        {
+                            stringBuilder.AppendFormat("\tnormal = ({0}).xyz;\n",
+                                instruction.Arguments[1] == directionArgument
+                                    ? instruction.Arguments[2]
+                                    : instruction.Arguments[1]);
+
+                            foundDotProduct = true;
+                        }
+                    }
+                    else if (instruction.OpCode == "mad" && !foundDotProduct &&
+                             instruction.Arguments[0].Swizzle.Count == 3 &&
+                             instruction.Arguments[2].Token == instruction.Arguments[3].Token &&
+                             instruction.Arguments[2].Swizzle == instruction.Arguments[3].Swizzle)
+                    {
+                        normalRegister = instruction.Arguments[1].Token;
+                    }
+                    else if (instruction.OpCode == "mul" &&
+                             !foundDotProduct && normalRegister != null && !foundSquared &&
+                             instruction.Arguments[0].Swizzle.Count == 3 &&
+                             instruction.Arguments[1].Token == normalRegister &&
+                             instruction.Arguments[2].Token == normalRegister &&
+                             instruction.Arguments[1].Swizzle == instruction.Arguments[2].Swizzle)
+                    {
+                        stringBuilder.AppendFormat("\tnormal = ({0}).xyz;\n", instruction.Arguments[1]);
+                        foundSquared = true;
                     }
                 }
 
@@ -363,6 +394,12 @@ public static class RaytracingShaderConverter
             }
 
             if (instrLine.Contains('{')) ++indent;
+        }
+        
+        if (!foundDotProduct && !foundSquared && hasNormalMap &&
+            shader.Constants.Any(x => x.Name == "g_aLightField" || x.Name.StartsWith("g_ReflectionMapSampler")))
+        {
+            Console.WriteLine("Unable to extract normal map: {0}", shader.Name);
         }
 
         stringBuilder.AppendLine("}\n");

@@ -193,6 +193,34 @@ public class SwizzleSet
         return stringBuilder.ToString();
     }
 
+    protected bool Equals(SwizzleSet other)
+    {
+        return X == other.X && Y == other.Y && Z == other.Z && W == other.W;
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (ReferenceEquals(null, obj)) return false;
+        if (ReferenceEquals(this, obj)) return true;
+        if (obj.GetType() != this.GetType()) return false;
+        return Equals((SwizzleSet)obj);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine((int)X, (int)Y, (int)Z, (int)W);
+    }
+
+    public static bool operator ==(SwizzleSet left, SwizzleSet right)
+    {
+        return Equals(left, right);
+    }
+
+    public static bool operator !=(SwizzleSet left, SwizzleSet right)
+    {
+        return !Equals(left, right);
+    }
+
     public SwizzleSet(Swizzle x, Swizzle y, Swizzle z, Swizzle w)
     {
         X = x;
