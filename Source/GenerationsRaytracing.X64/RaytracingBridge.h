@@ -57,8 +57,8 @@ struct RaytracingBridge
     nvrhi::rt::PipelineHandle pipeline;
     nvrhi::rt::ShaderTableHandle shaderTable;
 
-    emhash8::HashMap<unsigned int, Material> materials;
-    emhash8::HashMap<unsigned int, Model> models;
+    ankerl::unordered_dense::map<unsigned int, Material> materials;
+    ankerl::unordered_dense::map<unsigned int, Model> models;
     std::vector<Instance> instances;
 
     nvrhi::ShaderHandle skinningShader;

@@ -55,7 +55,7 @@ struct Group
 
 struct Element
 {
-    emhash8::HashMap<unsigned int, Group> groups;
+    ankerl::unordered_dense::map<unsigned int, Group> groups;
 
     nvrhi::BufferHandle matrixBuffer;
     bool matrixBufferChanged = false;
@@ -64,7 +64,7 @@ struct Element
 
 struct Model
 {
-    emhash8::HashMap<unsigned int, Element> elements;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::BufferHandle> nodeIndicesBuffers;
-    emhash8::HashMap<unsigned int, nvrhi::rt::AccelStructHandle> accelStructs;
+    ankerl::unordered_dense::map<unsigned int, Element> elements;
+    XXHashMap<nvrhi::BufferHandle> nodeIndicesBuffers;
+    ankerl::unordered_dense::map<unsigned int, nvrhi::rt::AccelStructHandle> accelStructs;
 };

@@ -2,7 +2,7 @@
 
 #include "Bridge.h"
 
-static const emhash8::HashMap<XXH64_hash_t, std::array<uint8_t, 3>> ENVIRONMENT_COLORS =
+static const XXHashMap<std::array<uint8_t, 3>> ENVIRONMENT_COLORS =
 {
     { 0x3ce52f71f53a0333, { 208, 250, 244 } }, // ActD_Africa
     { 0xa2106d5402d979d7, { 149, 150, 198 } }, // ActD_Beach

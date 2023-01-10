@@ -35,7 +35,7 @@ struct Bridge
     unsigned int swapChainSurface = 0;
     std::vector<nvrhi::TextureHandle> swapChainTextures;
 
-    emhash8::HashMap<unsigned int, nvrhi::ResourceHandle> resources;
+    ankerl::unordered_dense::map<unsigned int, nvrhi::ResourceHandle> resources;
 
     nvrhi::CommandListHandle commandList;
     nvrhi::CommandListHandle commandListForCopy;
@@ -54,38 +54,38 @@ struct Bridge
 
     nvrhi::BindingLayoutHandle textureBindingLayout;
     nvrhi::BindingSetDesc textureBindingSetDesc;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::BindingSetHandle> textureBindingSetCache;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::BindingSetHandle> textureBindingSets;
+    XXHashMap<nvrhi::BindingSetHandle> textureBindingSetCache;
+    XXHashMap<nvrhi::BindingSetHandle> textureBindingSets;
 
     nvrhi::SamplerDesc samplerDescs[16];
-    emhash8::HashMap<XXH64_hash_t, nvrhi::SamplerHandle> samplers;
+    XXHashMap<nvrhi::SamplerHandle> samplers;
 
     nvrhi::BindingLayoutHandle samplerBindingLayout;
     nvrhi::BindingSetDesc samplerBindingSetDesc;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::BindingSetHandle> samplerBindingSetCache;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::BindingSetHandle> samplerBindingSets;
+    XXHashMap<nvrhi::BindingSetHandle> samplerBindingSetCache;
+    XXHashMap<nvrhi::BindingSetHandle> samplerBindingSets;
 
     nvrhi::FramebufferDesc framebufferDesc;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::FramebufferHandle> framebuffers;
+    XXHashMap<nvrhi::FramebufferHandle> framebuffers;
 
     nvrhi::ShaderHandle fvfShader;
     bool fvf = false;
 
-    emhash8::HashMap<unsigned int, std::vector<nvrhi::VertexAttributeDesc>> vertexAttributeDescs;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::InputLayoutHandle> inputLayouts;
+    ankerl::unordered_dense::map<unsigned int, std::vector<nvrhi::VertexAttributeDesc>> vertexAttributeDescs;
+    XXHashMap<nvrhi::InputLayoutHandle> inputLayouts;
     unsigned int vertexDeclaration = 0;
 
     nvrhi::GraphicsPipelineDesc pipelineDesc;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::GraphicsPipelineHandle> pipelines;
+    XXHashMap<nvrhi::GraphicsPipelineHandle> pipelines;
 
-    emhash8::HashMap<XXH64_hash_t, nvrhi::BufferHandle> vertexBufferCache;
-    emhash8::HashMap<XXH64_hash_t, nvrhi::BufferHandle> vertexBuffers;
+    XXHashMap<nvrhi::BufferHandle> vertexBufferCache;
+    XXHashMap<nvrhi::BufferHandle> vertexBuffers;
 
     uint32_t vertexStrides[8] {};
     bool instancing = false;
     uint32_t instanceCount = 0;
 
-    emhash8::HashMap<XXH64_hash_t, nvrhi::ShaderHandle> shaders;
+    XXHashMap<nvrhi::ShaderHandle> shaders;
 
     nvrhi::GraphicsState graphicsState;
 
