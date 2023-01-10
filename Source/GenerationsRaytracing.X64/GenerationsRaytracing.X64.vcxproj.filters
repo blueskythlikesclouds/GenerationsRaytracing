@@ -36,6 +36,7 @@
     <ClInclude Include="EnvironmentColor.h" />
     <ClInclude Include="DescriptorTableAllocator.h" />
     <ClInclude Include="VelocityMap.h" />
+    <ClInclude Include="Resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />
@@ -53,5 +54,8 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="ShaderMapping.bin" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
 </Project>

@@ -40,6 +40,7 @@
     <ClInclude Include="FSR.h" />
     <ClInclude Include="Instance.h" />
     <ClInclude Include="Material.h" />
+    <ClInclude Include="Resource.h" />
     <ClInclude Include="Upscaler.h" />
     <ClInclude Include="Format.h" />
     <ClInclude Include="Hash.h" />
@@ -165,6 +166,9 @@
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </ObjectFileOutput>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
