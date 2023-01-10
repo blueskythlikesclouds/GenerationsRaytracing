@@ -748,7 +748,7 @@ static bool initToggleablePatchesAndReturnShouldRender()
         WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
         WRITE_MEMORY(0x13DDC20, size_t, 0); // Disable reflection map 2
         WRITE_MEMORY(0x13DDCA0, size_t, 1); // Override game scene child count
-        WRITE_MEMORY(0x13E01A8, size_t, 0); // Override motion blur child count
+        //WRITE_MEMORY(0x13E01A8, size_t, 0); // Override motion blur child count
         WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
     }
     else
@@ -758,7 +758,7 @@ static bool initToggleablePatchesAndReturnShouldRender()
         WRITE_MEMORY(0x13DDBA0, size_t, 22); // Enable reflection map 1
         WRITE_MEMORY(0x13DDC20, size_t, 22); // Enable reflection map 2
         WRITE_MEMORY(0x13DDCA0, size_t, 22); // Restore game scene child count
-        WRITE_MEMORY(0x13E01A8, size_t, 2); // Restore motion blur child count
+        //WRITE_MEMORY(0x13E01A8, size_t, 2); // Restore motion blur child count
         WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
     }
 
@@ -802,5 +802,5 @@ void RaytracingManager::init()
 
     INSTALL_HOOK(DestructSingleElement); // Garbage collection
 
-    INSTALL_HOOK(SceneTraversed_ScreenMotionBlurFilter);
+    //INSTALL_HOOK(SceneTraversed_ScreenMotionBlurFilter);
 }
