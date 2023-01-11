@@ -102,6 +102,9 @@ DLSS::DLSS(const Device& device, const std::string& directoryPath) : Upscaler()
 
 DLSS::~DLSS()
 {
+    if (feature == nullptr)
+        return;
+
     THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(feature));
     THROW_IF_FAILED(NVSDK_NGX_D3D12_DestroyParameters(parameters));
     THROW_IF_FAILED(NVSDK_NGX_D3D12_Shutdown());

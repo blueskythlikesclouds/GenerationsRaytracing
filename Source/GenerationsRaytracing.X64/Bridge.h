@@ -149,7 +149,6 @@ struct Bridge
     void procMsgMakePicture();
     void procMsgWriteBuffer();
     void procMsgWriteTexture();
-    void procMsgExit();
     void procMsgReleaseResource();
 
     void processMessages();

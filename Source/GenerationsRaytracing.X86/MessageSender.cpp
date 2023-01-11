@@ -12,9 +12,6 @@ MessageSender::MessageSender()
 
 MessageSender::~MessageSender()
 {
-    oneShot<MsgExit>();
-    commitAllMessages();
-
     memoryMappedFile.unmap(memoryMappedFileBuffer);
 }
 
@@ -57,14 +54,19 @@ void MessageSender::commitAllMessages()
     while (messagesInProgress)
         ;
 
-    assert((buffer.size() & (MSG_ALIGNMENT - 1)) == 0);
+    if (!*(size_t*)0x1E5E2E8)
+    {
+        assert((buffer.size() & (MSG_ALIGNMENT - 1)) == 0);
 
-    if (buffer.size() <= MEMORY_MAPPED_FILE_SIZE - MSG_ALIGNMENT)
-        buffer.resize(buffer.size() + MSG_ALIGNMENT);
+        if (buffer.size() <= MEMORY_MAPPED_FILE_SIZE - MSG_ALIGNMENT)
+            buffer.resize(buffer.size() + MSG_ALIGNMENT);
 
-    gpuEvent.wait();
-    memcpy(memoryMappedFileBuffer, buffer.data(), buffer.size());
-    cpuEvent.set();
+        gpuEvent.wait();
+        gpuEvent.reset();
+
+        memcpy(memoryMappedFileBuffer, buffer.data(), buffer.size());
+        cpuEvent.set();
+    }
 
     buffer.clear();
 }

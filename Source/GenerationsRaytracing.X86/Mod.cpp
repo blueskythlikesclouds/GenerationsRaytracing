@@ -1,15 +1,22 @@
 #include "Configuration.h"
 #include "MemoryMappedFile.h"
+#include "MessageSender.h"
 #include "Patches.h"
-#include "Process.h"
+#include "ProcessUtil.h"
 
 constexpr LPCTSTR GENERATIONS_RAYTRACING_X64 = TEXT("GenerationsRaytracing.X64.exe");
 
+static std::thread thread;
+
+void setShouldExit()
+{
+    msgSender.cpuEvent.set();
+    msgSender.gpuEvent.set();
+    *(size_t*)0x1E5E2E8 = true;
+}
+
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
-    if (reason == DLL_PROCESS_DETACH)
-        terminateProcess(GENERATIONS_RAYTRACING_X64);
-
     return TRUE;
 }
 
@@ -39,7 +46,7 @@ extern "C" __declspec(dllexport) void Init()
 
     PROCESS_INFORMATION processInformation{};
 
-    CreateProcess(
+    const BOOL result = CreateProcess(
         GENERATIONS_RAYTRACING_X64,
         nullptr,
         nullptr,
@@ -54,13 +61,23 @@ extern "C" __declspec(dllexport) void Init()
         nullptr,
         &startupInfo,
         &processInformation);
+
+    if (!result)
+        return setShouldExit();
+
+    thread = std::thread([handle = processInformation.hProcess]
+    {
+        WaitForSingleObject(handle, INFINITE);
+        setShouldExit();
+    });
+
+    std::atexit([] { thread.join(); });
 }
 
 #define ENSURE_DLL_NOT_LOADED(x) \
     if (GetModuleHandle(TEXT(x ".dll")) != nullptr) \
     { \
         MessageBox(nullptr, TEXT(x " must be disabled for this mod to function properly."), TEXT("GenerationsRaytracing"), MB_ICONERROR); \
-        terminateProcess(GENERATIONS_RAYTRACING_X64); \
         exit(-1); \
     }
 

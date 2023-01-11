@@ -346,11 +346,6 @@ struct MsgCreateMaterial
     float parameters[16][4];
 };
 
-struct MsgExit
-{
-    DEFINE_MSG_ID;
-};
-
 struct MsgReleaseResource
 {
     DEFINE_MSG_ID;

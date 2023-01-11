@@ -1,6 +1,6 @@
 #include "Bridge.h"
 #include "Path.h"
-#include "Process.h"
+#include "ProcessUtil.h"
 
 constexpr LPCTSTR SONIC_GENERATIONS = TEXT("SonicGenerations.exe");
 
@@ -49,10 +49,29 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    {
-        auto bridge = std::make_unique<Bridge>(getDirectoryPath(argv[0]));
-        bridge->receiveMessages();
-    }
+    const auto process = findProcess(SONIC_GENERATIONS);
+    if (!process)
+        return -1;
 
-    terminateProcess(SONIC_GENERATIONS);
+    const HANDLE handle = OpenProcess(SYNCHRONIZE, FALSE, *process);
+    if (!handle)
+        return -1;
+
+    const auto bridge = std::make_unique<Bridge>(getDirectoryPath(argv[0]));
+
+    std::thread thread([&]
+    {
+        WaitForSingleObject(handle, INFINITE);
+
+        bridge->msgReceiver.cpuEvent.set();
+        bridge->msgReceiver.gpuEvent.set();
+        bridge->shouldExit = true;
+    });
+
+    bridge->receiveMessages();
+
+    thread.join();
+    CloseHandle(handle);
+
+    return 0;
 }

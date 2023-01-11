@@ -1199,12 +1199,6 @@ void Bridge::procMsgWriteTexture()
     const void* data = msgReceiver.getDataAndMoveNext(msg->size);
 }
 
-void Bridge::procMsgExit()
-{
-    msgReceiver.getMsgAndMoveNext<MsgExit>();
-    shouldExit = true;
-}
-
 void Bridge::procMsgReleaseResource()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgReleaseResource>();
@@ -1213,7 +1207,7 @@ void Bridge::procMsgReleaseResource()
 
 void Bridge::processMessages()
 {
-    while (msgReceiver.hasNext())
+    while (msgReceiver.hasNext() && !shouldExit)
     {
         switch (msgReceiver.getMsgId())
         {
@@ -1257,7 +1251,6 @@ void Bridge::processMessages()
         case MsgCreateInstance::ID:            raytracing.procMsgCreateInstance(*this); break;
         case MsgNotifySceneTraversed::ID:      raytracing.procMsgNotifySceneTraversed(*this); break;
         case MsgCreateMaterial::ID:            raytracing.procMsgCreateMaterial(*this); break;
-        case MsgExit::ID:                      procMsgExit(); break;
         case MsgReleaseResource::ID:           procMsgReleaseResource(); break;
         case MsgReleaseElement::ID:            raytracing.procMsgReleaseSingleElement(*this); break;
         case MsgCopyVelocityMap::ID:           velocityMap.procMsgCopyVelocityMap(*this, raytracing); break;

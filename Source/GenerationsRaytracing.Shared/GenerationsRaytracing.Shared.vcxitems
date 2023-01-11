@@ -21,7 +21,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)MemoryMappedFile.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Path.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)Process.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ProcessUtil.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Profiler.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ShaderMapping.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Utilities.h" />
