@@ -382,7 +382,7 @@ void Bridge::procMsgInitSwapChain()
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
     swapChainDesc.Width = msg->width;
     swapChainDesc.Height = msg->height;
-    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     swapChainDesc.Stereo = FALSE;
     swapChainDesc.SampleDesc.Count = 1;
     swapChainDesc.SampleDesc.Quality = 0;
@@ -417,7 +417,7 @@ void Bridge::procMsgInitSwapChain()
 
         const auto textureDesc = nvrhi::TextureDesc()
             .setDimension(nvrhi::TextureDimension::Texture2D)
-            .setFormat(nvrhi::Format::RGBA8_UNORM)
+            .setFormat(nvrhi::Format::BGRA8_UNORM)
             .setWidth(swapChainDesc.Width)
             .setHeight(swapChainDesc.Height)
             .setIsRenderTarget(true)
