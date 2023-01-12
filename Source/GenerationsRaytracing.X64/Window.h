@@ -1,15 +1,18 @@
 ﻿#pragma once
 
-struct MsgInitSwapChain;
 struct Bridge;
+struct MsgInitSwapChain;
 
 struct Window
 {
     HWND handle{};
     HWND gensHandle{};
+    bool mouseTracked = false;
 
     ~Window();
 
-    void init(Bridge* bridge, const MsgInitSwapChain& msg);
+    void procMsgInitWindow(Bridge& bridge);
+    void procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg);
+
     void processMessages() const;
 };

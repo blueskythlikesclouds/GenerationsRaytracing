@@ -124,7 +124,9 @@ HOOK(D3D9*, __cdecl, Direct3DCreate, 0xA5EDD0, UINT SDKVersion)
 
 void Patches::init()
 {
+    ArchiveTree::init();
     MemoryAllocator::init();
+    RaytracingManager::init();
     Window::init();
 
     INSTALL_HOOK(LoadPictureData);
@@ -169,7 +171,4 @@ void Patches::init()
 
     // Patch SFD decode function to copy data when it's valid.
     WRITE_JUMP(0x1059130, sfdDecodeTrampoline);
-
-    ArchiveTree::init();
-    RaytracingManager::init();
 }

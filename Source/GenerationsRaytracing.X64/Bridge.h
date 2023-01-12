@@ -117,6 +117,7 @@ struct Bridge
     }
 
     void processDirtyFlags();
+    void procMsgDummy();
     void procMsgSetFVF();
     void procMsgInitSwapChain();
     void procMsgPresent();
@@ -156,4 +157,5 @@ struct Bridge
 
     void processMessages();
     void receiveMessages();
+    void breakMessageLoop();
 };

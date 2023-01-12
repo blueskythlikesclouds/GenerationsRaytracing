@@ -14,11 +14,47 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
         {
         case WM_DESTROY:
         case WM_CLOSE:
-            bridge->shouldExit = true;
-            break;
+            bridge->breakMessageLoop();
+            goto postMessage;
 
-        default:
-            PostMessage(bridge->window.gensHandle, Msg, wParam, lParam);
+        case WM_MOUSEMOVE:
+            if (!bridge->window.mouseTracked)
+            {
+                TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hWnd, 0 };
+                TrackMouseEvent(&tme);
+                bridge->window.mouseTracked = true;
+            }
+            goto postMessage;
+
+        case WM_MOUSELEAVE:
+            bridge->window.mouseTracked = false;
+            goto postMessage;
+
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONDBLCLK:
+        case WM_RBUTTONDOWN:
+        case WM_RBUTTONDBLCLK:
+        case WM_MBUTTONDOWN:
+        case WM_MBUTTONDBLCLK:
+        case WM_XBUTTONDOWN:
+        case WM_XBUTTONDBLCLK:
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONUP:
+        case WM_XBUTTONUP:
+        case WM_MOUSEWHEEL:
+        case WM_MOUSEHWHEEL:
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
+        case WM_SETFOCUS:
+        case WM_KILLFOCUS:
+        case WM_CHAR:
+        case WM_SETCURSOR:
+        case WM_DEVICECHANGE:
+        postMessage:
+            PostMessage(bridge->window.gensHandle, WM_USER + Msg, wParam, lParam);
             break;
         }
     }
@@ -31,10 +67,13 @@ Window::~Window()
     CloseHandle(handle);
 }
 
-void Window::init(Bridge* bridge, const MsgInitSwapChain& msg)
+void Window::procMsgInitWindow(Bridge& bridge)
 {
-    WNDCLASSEX wndClassEx{};
+    const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgInitWindow>();
 
+    gensHandle = (HWND)(LONG_PTR)msg->handle;
+
+    WNDCLASSEX wndClassEx{};
     wndClassEx.cbSize = sizeof(WNDCLASSEX);
     wndClassEx.style = CS_DBLCLKS;
     wndClassEx.lpfnWndProc = WndProc;
@@ -55,26 +94,32 @@ void Window::init(Bridge* bridge, const MsgInitSwapChain& msg)
 #else
         TEXT("Generations Raytracing"),
 #endif
-        msg.style,
-        msg.x,
-        msg.y,
-        msg.width,
-        msg.height,
+        0,
+        0,
+        0,
+        0,
+        0,
         nullptr,
         nullptr,
         wndClassEx.hInstance,
-        this);
+        nullptr);
+
+    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)&bridge);
 
     assert(handle);
+}
 
-    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)bridge);
+void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
+{
+    SetWindowLongPtr(handle, GWL_STYLE, msg.style);
+    SetWindowPos(handle, HWND_TOP, msg.x, msg.y, msg.width, msg.height, SWP_FRAMECHANGED);
 
     const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
     const DWORD currentThreadId = GetCurrentThreadId();
 
     AttachThreadInput(windowThreadProcessId, currentThreadId, TRUE);
     BringWindowToTop(handle);
-    ShowWindow(handle, SW_NORMAL);
+    ShowWindow(handle, SW_SHOW);
     AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
 
     if (msg.style & WS_CAPTION)

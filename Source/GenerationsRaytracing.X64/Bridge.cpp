@@ -329,6 +329,11 @@ void Bridge::processDirtyFlags()
     dirtyFlags = DirtyFlags::None;
 }
 
+void Bridge::procMsgDummy()
+{
+    const auto msg = msgReceiver.getMsgAndMoveNext<MsgDummy>();
+}
+
 void Bridge::procMsgSetFVF()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetFVF>();
@@ -383,8 +388,7 @@ void Bridge::procMsgInitSwapChain()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgInitSwapChain>();
 
-    window.init(this, *msg);
-    window.gensHandle = (HWND)(LONG_PTR)msg->handle;
+    window.procMsgInitSwapChain(*this, *msg);
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
     swapChainDesc.Width = msg->renderWidth;
@@ -1219,7 +1223,9 @@ void Bridge::processMessages()
     {
         switch (msgReceiver.getMsgId())
         {
+        case MsgDummy::ID:                     procMsgDummy(); break;
         case MsgSetFVF::ID:                    procMsgSetFVF(); break;
+        case MsgInitWindow::ID:                window.procMsgInitWindow(*this); break;
         case MsgInitSwapChain::ID:             procMsgInitSwapChain(); break;
         case MsgPresent::ID:                   procMsgPresent(); break;
         case MsgCreateTexture::ID:             procMsgCreateTexture(); break;
@@ -1319,4 +1325,11 @@ void Bridge::receiveMessages()
         dirtyFlags = DirtyFlags::All;
         shouldPresent = false;
     }
+}
+
+void Bridge::breakMessageLoop()
+{
+    msgReceiver.cpuEvent.set();
+    msgReceiver.gpuEvent.set();
+    shouldExit = true;
 }

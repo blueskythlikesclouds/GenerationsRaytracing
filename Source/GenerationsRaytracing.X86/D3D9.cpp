@@ -143,7 +143,6 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
     msg->scaling = Configuration::allowResizeInWindowed ||
         width != pPresentationParameters->BackBufferWidth ||
         height != pPresentationParameters->BackBufferHeight ? DXGI_SCALING_STRETCH : DXGI_SCALING_NONE;
-    msg->handle = (unsigned int)pPresentationParameters->hDeviceWindow;
     msg->surface = (*ppReturnedDeviceInterface)->swapChainSurface->texture->id;
     msg->interval = pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE ? 1 : 0;
 

@@ -57,21 +57,16 @@ int main(int argc, char* argv[])
     if (!handle)
         return -1;
 
-    const auto bridge = std::make_unique<Bridge>(getDirectoryPath(argv[0]));
+    auto bridge = std::make_unique<Bridge>(getDirectoryPath(argv[0]));
 
     std::thread thread([&]
     {
         WaitForSingleObject(handle, INFINITE);
-
-        bridge->msgReceiver.cpuEvent.set();
-        bridge->msgReceiver.gpuEvent.set();
-        bridge->shouldExit = true;
+        bridge->breakMessageLoop();
     });
 
     bridge->receiveMessages();
 
     thread.join();
     CloseHandle(handle);
-
-    return 0;
 }

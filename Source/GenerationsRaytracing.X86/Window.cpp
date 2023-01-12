@@ -1,5 +1,25 @@
 ﻿#include "Window.h"
 
+#include "Message.h"
+#include "MessageSender.h"
+
+static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+    if (Msg < WM_USER)
+    {
+        if (GetWindowLong(hWnd, GWL_USERDATA) != 0)
+            return 0;
+    }
+    else
+    {
+        Msg -= WM_USER;
+    }
+
+    printf("Received message %x %x %x\n", Msg, wParam, lParam);
+
+    return ((WNDPROC)0xE7B6C0)(hWnd, Msg, wParam, lParam);
+}
+
 static bool __fastcall createWindowMidAsmHook(
     const char* lpszClassName,
     size_t param,
@@ -8,20 +28,18 @@ static bool __fastcall createWindowMidAsmHook(
     int width,
     int height)
 {
-    WNDCLASSEXA wndClassEx{};
+    WNDCLASSEX wndClassEx{};
     wndClassEx.cbSize = sizeof(WNDCLASSEXA);
-    wndClassEx.lpfnWndProc = (WNDPROC)0xE7B6C0;
+    wndClassEx.lpfnWndProc = WndProc;
     wndClassEx.hInstance = hInstance;
-    wndClassEx.lpszClassName = lpszClassName;
+    wndClassEx.lpszClassName = TEXT("SonicGenerations");
 
-    if (RegisterClassExA(&wndClassEx))
+    if (RegisterClassEx(&wndClassEx))
     {
-        auto& handle = *(HWND*)(param + 72);
-
-        handle = CreateWindowExA(
+        HWND handle = CreateWindowEx(
             0,
-            lpszClassName,
-            lpWindowName,
+            wndClassEx.lpszClassName,
+            wndClassEx.lpszClassName,
             0,
             0,
             0,
@@ -34,7 +52,16 @@ static bool __fastcall createWindowMidAsmHook(
 
         if (handle)
         {
+            SetWindowLong(handle, GWL_USERDATA, TRUE);
+            {
+                const auto msg = msgSender.start<MsgInitWindow>();
+                msg->handle = (unsigned int)handle;
+                msgSender.finish();
+            }
+
+            *(HWND*)(param + 72) = handle;
             *(bool*)(param + 144) = true;
+
             return true;
         }
     }

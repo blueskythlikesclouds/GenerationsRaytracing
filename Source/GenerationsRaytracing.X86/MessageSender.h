@@ -42,7 +42,7 @@ struct MessageSender
         finish();
     }
 
-    void commitAllMessages();  
+    void commitAllMessages();
 };
 
 extern MessageSender msgSender;

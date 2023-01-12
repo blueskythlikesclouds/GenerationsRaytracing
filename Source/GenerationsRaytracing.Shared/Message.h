@@ -12,6 +12,17 @@
 #define MSG_DATA_PTR(x) \
     ((char*)x + MSG_ALIGN(sizeof(*x)))
 
+struct MsgDummy
+{
+    DEFINE_MSG_ID;
+};
+
+struct MsgInitWindow
+{
+    DEFINE_MSG_ID;
+    unsigned int handle;
+};
+
 struct MsgInitSwapChain
 {
     DEFINE_MSG_ID;
@@ -24,7 +35,6 @@ struct MsgInitSwapChain
     unsigned int renderHeight;
     unsigned int bufferCount;
     unsigned int scaling;
-    unsigned int handle;
     unsigned int surface;
     unsigned int interval;
 };
