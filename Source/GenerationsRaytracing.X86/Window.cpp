@@ -1,12 +1,5 @@
 ﻿#include "Window.h"
 
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
-{
-    printf("Received message %x %x %x\n", Msg, wParam, lParam);
-
-    return ((WNDPROC)0xE7B6C0)(hWnd, Msg, wParam, lParam);
-}
-
 static bool __fastcall createWindowMidAsmHook(
     const char* lpszClassName,
     size_t param,
@@ -17,7 +10,7 @@ static bool __fastcall createWindowMidAsmHook(
 {
     WNDCLASSEXA wndClassEx{};
     wndClassEx.cbSize = sizeof(WNDCLASSEXA);
-    wndClassEx.lpfnWndProc = WndProc;
+    wndClassEx.lpfnWndProc = (WNDPROC)0xE7B6C0;
     wndClassEx.hInstance = hInstance;
     wndClassEx.lpszClassName = lpszClassName;
 
@@ -62,4 +55,8 @@ static void __declspec(naked) createWindowTrampoline()
 void Window::init()
 {
     WRITE_JUMP(0xE7B810, createWindowTrampoline);
+
+    // SetCooperativeLevel flags
+    WRITE_MEMORY(0x9C922D, uint8_t, 0xC);
+    WRITE_MEMORY(0x9C96DD, uint8_t, 0xC);
 }
