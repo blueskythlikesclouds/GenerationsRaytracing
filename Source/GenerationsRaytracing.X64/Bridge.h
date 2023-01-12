@@ -5,6 +5,7 @@
 #include "Device.h"
 #include "RaytracingBridge.h"
 #include "VelocityMap.h"
+#include "Window.h"
 
 enum class DirtyFlags
 {
@@ -31,6 +32,7 @@ struct Bridge
 
     DirtyFlags dirtyFlags;
 
+    Window window;
     ComPtr<IDXGISwapChain3> swapChain;
     unsigned int swapChainSurface = 0;
     std::vector<nvrhi::TextureHandle> swapChainTextures;
@@ -102,7 +104,7 @@ struct Bridge
 
     void openCommandList();
     void openCommandListForCopy();
-    void closeAndExecuteCommandLists();
+    bool closeAndExecuteCommandLists();
 
     template<typename T1, typename T2>
     void assignAndUpdateDirtyFlags(T1& dest, const T2& src, DirtyFlags flags)

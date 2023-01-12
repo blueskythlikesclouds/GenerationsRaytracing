@@ -16,6 +16,7 @@
     <ClCompile Include="DescriptorTableAllocator.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="VelocityMap.cpp" />
+    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -37,6 +38,7 @@
     <ClInclude Include="DescriptorTableAllocator.h" />
     <ClInclude Include="VelocityMap.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderDefinitions.hlsli" />

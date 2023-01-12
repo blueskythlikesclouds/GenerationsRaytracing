@@ -21,6 +21,7 @@
     <ClCompile Include="Identifier.cpp" />
     <ClCompile Include="RaytracingParams.cpp" />
     <ClCompile Include="ArchiveTree.cpp" />
+    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -42,5 +43,6 @@
     <ClInclude Include="Identifier.h" />
     <ClInclude Include="RaytracingParams.h" />
     <ClInclude Include="ArchiveTree.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
 </Project>

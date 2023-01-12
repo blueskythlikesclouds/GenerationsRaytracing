@@ -123,6 +123,7 @@
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Unknown.cpp" />
     <ClCompile Include="VertexDeclaration.cpp" />
+    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ArchiveTree.h" />
@@ -144,6 +145,7 @@
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Unknown.h" />
     <ClInclude Include="VertexDeclaration.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

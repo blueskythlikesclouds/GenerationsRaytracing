@@ -29,6 +29,7 @@
     </ClCompile>
     <ClCompile Include="RaytracingBridge.cpp" />
     <ClCompile Include="VelocityMap.cpp" />
+    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DescriptorTableAllocator.h" />
@@ -50,6 +51,7 @@
     <ClInclude Include="Pch.h" />
     <ClInclude Include="RaytracingBridge.h" />
     <ClInclude Include="VelocityMap.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GenerationsRaytracing.Dependencies\GenerationsRaytracing.Dependencies.vcxproj">

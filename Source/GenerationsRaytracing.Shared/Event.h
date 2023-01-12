@@ -36,6 +36,12 @@ struct Event
         assert(result == WAIT_OBJECT_0);
     }
 
+    bool waitImm() const
+    {
+        const DWORD result = WaitForSingleObject(handle, 1u);
+        return result == WAIT_OBJECT_0;
+    }
+
     void set() const
     {
         const BOOL result = SetEvent(handle);

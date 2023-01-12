@@ -10,9 +10,10 @@
 #include "RaytracingManager.h"
 #include "Texture.h"
 #include "ArchiveTree.h"
+#include "Window.h"
 
 HOOK(void, __cdecl, LoadPictureData, 0x743DE0,
-    hh::mr::CPictureData* pPictureData, const uint8_t* pData, size_t length, hh::mr::CRenderingInfrastructure* pRenderingInfrastructure)
+     hh::mr::CPictureData* pPictureData, const uint8_t* pData, size_t length, hh::mr::CRenderingInfrastructure* pRenderingInfrastructure)
 {
     if (pPictureData->m_Flags & hh::db::eDatabaseDataFlags_IsMadeOne)
         return;
@@ -116,11 +117,6 @@ void __declspec(naked) sfdDecodeTrampoline()
     }
 }
 
-HICON __stdcall LoadIconImpl(HINSTANCE hInstance, LPCSTR lpIconName)
-{
-    return LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(2057));
-}
-
 HOOK(D3D9*, __cdecl, Direct3DCreate, 0xA5EDD0, UINT SDKVersion)
 {
     return new D3D9();
@@ -129,17 +125,11 @@ HOOK(D3D9*, __cdecl, Direct3DCreate, 0xA5EDD0, UINT SDKVersion)
 void Patches::init()
 {
     MemoryAllocator::init();
+    Window::init();
 
     INSTALL_HOOK(LoadPictureData);
     INSTALL_HOOK(FillTexture);
     INSTALL_HOOK(Direct3DCreate);
-
-    // Patch the window function to load the icon in the executable.
-    WRITE_CALL(0xE7B843, LoadIconImpl);
-    WRITE_NOP(0xE7B848, 1);
-
-    // Hide window when it's first created because it's not a pleasant sight to see it centered/resized afterwards.
-    WRITE_MEMORY(0xE7B8F7, uint8_t, 0x00);
 
     // Prevent half-pixel correction
     WRITE_MEMORY(0x64F4C7, uintptr_t, 0x15C5858); // MTFx

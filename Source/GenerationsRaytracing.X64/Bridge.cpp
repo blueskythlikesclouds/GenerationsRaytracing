@@ -150,7 +150,7 @@ void Bridge::openCommandListForCopy()
     commandListForCopy->open();
 }
 
-void Bridge::closeAndExecuteCommandLists()
+bool Bridge::closeAndExecuteCommandLists()
 {
     nvrhi::ICommandList* commandLists[] = { nullptr, nullptr };
     size_t count = 0;
@@ -173,7 +173,11 @@ void Bridge::closeAndExecuteCommandLists()
     {
         device.nvrhi->executeCommandLists(commandLists, count);
         commandListForCopy = nullptr;
+
+        return true;
     }
+
+    return false;
 }
 
 void Bridge::processDirtyFlags()
@@ -379,9 +383,12 @@ void Bridge::procMsgInitSwapChain()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgInitSwapChain>();
 
+    window.init(this, *msg);
+    window.gensHandle = (HWND)(LONG_PTR)msg->handle;
+
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
-    swapChainDesc.Width = msg->width;
-    swapChainDesc.Height = msg->height;
+    swapChainDesc.Width = msg->renderWidth;
+    swapChainDesc.Height = msg->renderHeight;
     swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     swapChainDesc.Stereo = FALSE;
     swapChainDesc.SampleDesc.Count = 1;
@@ -396,7 +403,7 @@ void Bridge::procMsgInitSwapChain()
 
     device.dxgiFactory->CreateSwapChainForHwnd(
         device.d3d12.graphicsCommandQueue.Get(),
-        (HWND)(LONG_PTR)msg->handle,
+        window.handle,
         &swapChainDesc,
         nullptr,
         nullptr,
@@ -1264,9 +1271,13 @@ void Bridge::receiveMessages()
 {
     while (!shouldExit)
     {
+        window.processMessages();
+
         openCommandList();
         processMessages();
-        closeAndExecuteCommandLists();
+
+        if (!closeAndExecuteCommandLists())
+            continue;
 
         if (shouldPresent)
             swapChain->Present(syncInterval, 0);

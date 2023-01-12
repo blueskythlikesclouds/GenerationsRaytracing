@@ -15,8 +15,13 @@
 struct MsgInitSwapChain
 {
     DEFINE_MSG_ID;
+    unsigned int style;
+    unsigned int x;
+    unsigned int y;
     unsigned int width;
     unsigned int height;
+    unsigned int renderWidth;
+    unsigned int renderHeight;
     unsigned int bufferCount;
     unsigned int scaling;
     unsigned int handle;
