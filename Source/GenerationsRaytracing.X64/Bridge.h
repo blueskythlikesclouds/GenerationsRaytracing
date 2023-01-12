@@ -34,6 +34,7 @@ struct Bridge
     ComPtr<IDXGISwapChain3> swapChain;
     unsigned int swapChainSurface = 0;
     std::vector<nvrhi::TextureHandle> swapChainTextures;
+    uint32_t syncInterval = 0;
 
     ankerl::unordered_dense::map<unsigned int, nvrhi::ResourceHandle> resources;
 

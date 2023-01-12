@@ -21,6 +21,7 @@ struct MsgInitSwapChain
     unsigned int scaling;
     unsigned int handle;
     unsigned int surface;
+    unsigned int interval;
 };
 
 struct MsgPresent

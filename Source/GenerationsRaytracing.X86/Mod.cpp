@@ -51,7 +51,7 @@ extern "C" __declspec(dllexport) void Init()
         nullptr,
         nullptr,
         nullptr,
-        TRUE,
+        FALSE,
 #ifdef _DEBUG 
         0,
 #else

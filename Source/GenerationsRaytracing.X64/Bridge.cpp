@@ -379,7 +379,7 @@ void Bridge::procMsgInitSwapChain()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgInitSwapChain>();
 
-    DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
     swapChainDesc.Width = msg->width;
     swapChainDesc.Height = msg->height;
     swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -391,7 +391,6 @@ void Bridge::procMsgInitSwapChain()
     swapChainDesc.Scaling = (DXGI_SCALING)msg->scaling;
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-    swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
     ComPtr<IDXGISwapChain1> swapChain1;
 
@@ -427,6 +426,8 @@ void Bridge::procMsgInitSwapChain()
 
         swapChainTextures.push_back(device.nvrhi->createHandleForNativeTexture(nvrhi::ObjectTypes::D3D12_Resource, backBuffer.Get(), textureDesc));
     }
+
+    syncInterval = msg->interval;
 }
 
 void Bridge::procMsgPresent()
@@ -1268,7 +1269,7 @@ void Bridge::receiveMessages()
         closeAndExecuteCommandLists();
 
         if (shouldPresent)
-            swapChain->Present(0, 0);
+            swapChain->Present(syncInterval, 0);
 
         device.nvrhi->waitForIdle();
         device.nvrhi->runGarbageCollection();
