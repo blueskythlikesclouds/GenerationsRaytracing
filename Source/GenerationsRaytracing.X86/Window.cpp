@@ -1,8 +1,5 @@
 ﻿#include "Window.h"
 
-#include "Message.h"
-#include "MessageSender.h"
-
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
     if (Msg < WM_USER)
@@ -14,8 +11,6 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     {
         Msg -= WM_USER;
     }
-
-    printf("Received message %x %x %x\n", Msg, wParam, lParam);
 
     return ((WNDPROC)0xE7B6C0)(hWnd, Msg, wParam, lParam);
 }
@@ -53,11 +48,6 @@ static bool __fastcall createWindowMidAsmHook(
         if (handle)
         {
             SetWindowLong(handle, GWL_USERDATA, TRUE);
-            {
-                const auto msg = msgSender.start<MsgInitWindow>();
-                msg->handle = (unsigned int)handle;
-                msgSender.finish();
-            }
 
             *(HWND*)(param + 72) = handle;
             *(bool*)(param + 144) = true;

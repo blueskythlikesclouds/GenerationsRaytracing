@@ -17,7 +17,9 @@ bool MessageReceiver::hasNext()
 {
     if (position == INVALID_POSITION_VALUE)
     {
-        cpuEvent.wait();
+        if (!cpuEvent.waitImm())
+            return false;
+
         cpuEvent.reset();
 
         position = 0;

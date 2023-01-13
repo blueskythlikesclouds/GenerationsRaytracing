@@ -11,8 +11,6 @@ struct Window
 
     ~Window();
 
-    void procMsgInitWindow(Bridge& bridge);
     void procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg);
-
     void processMessages() const;
 };

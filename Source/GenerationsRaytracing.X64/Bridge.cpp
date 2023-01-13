@@ -329,61 +329,6 @@ void Bridge::processDirtyFlags()
     dirtyFlags = DirtyFlags::None;
 }
 
-void Bridge::procMsgDummy()
-{
-    const auto msg = msgReceiver.getMsgAndMoveNext<MsgDummy>();
-}
-
-void Bridge::procMsgSetFVF()
-{
-    const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetFVF>();
-
-    auto& attributes = vertexAttributeDescs[msg->vertexDeclaration];
-    if (attributes.empty())
-    {
-        uint32_t offset = 0;
-
-        if (msg->fvf & D3DFVF_XYZRHW)
-        {
-            attributes.emplace_back()
-                .setName("POSITION")
-                .setOffset(offset)
-                .setFormat(nvrhi::Format::RGBA32_FLOAT);
-
-            offset += 16;
-        }
-
-        if (msg->fvf & D3DFVF_DIFFUSE)
-        {
-            attributes.emplace_back()
-                .setName("COLOR")
-                .setOffset(offset)
-                .setFormat(nvrhi::Format::BGRA8_UNORM);
-
-            offset += 4;
-        }
-
-        if (msg->fvf & D3DFVF_TEX1)
-        {
-            attributes.emplace_back()
-                .setName("TEXCOORD")
-                .setOffset(offset)
-                .setFormat(nvrhi::Format::RG32_FLOAT);
-
-            offset += 8;
-        }
-    }
-
-    assignAndUpdateDirtyFlags(vertexDeclaration, msg->vertexDeclaration, DirtyFlags::InputLayout);
-    assignAndUpdateDirtyFlags(pipelineDesc.VS, fvfShader, DirtyFlags::FramebufferAndPipeline);
-
-    if (!fvf)
-    {
-        fvf = true;
-        dirtyFlags |= DirtyFlags::FramebufferAndPipeline;
-    }
-}
-
 void Bridge::procMsgInitSwapChain()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgInitSwapChain>();
@@ -1027,6 +972,56 @@ void Bridge::procMsgSetVertexDeclaration()
     }
 }
 
+void Bridge::procMsgSetFVF()
+{
+    const auto msg = msgReceiver.getMsgAndMoveNext<MsgSetFVF>();
+
+    auto& attributes = vertexAttributeDescs[msg->vertexDeclaration];
+    if (attributes.empty())
+    {
+        uint32_t offset = 0;
+
+        if (msg->fvf & D3DFVF_XYZRHW)
+        {
+            attributes.emplace_back()
+                .setName("POSITION")
+                .setOffset(offset)
+                .setFormat(nvrhi::Format::RGBA32_FLOAT);
+
+            offset += 16;
+        }
+
+        if (msg->fvf & D3DFVF_DIFFUSE)
+        {
+            attributes.emplace_back()
+                .setName("COLOR")
+                .setOffset(offset)
+                .setFormat(nvrhi::Format::BGRA8_UNORM);
+
+            offset += 4;
+        }
+
+        if (msg->fvf & D3DFVF_TEX1)
+        {
+            attributes.emplace_back()
+                .setName("TEXCOORD")
+                .setOffset(offset)
+                .setFormat(nvrhi::Format::RG32_FLOAT);
+
+            offset += 8;
+        }
+    }
+
+    assignAndUpdateDirtyFlags(vertexDeclaration, msg->vertexDeclaration, DirtyFlags::InputLayout);
+    assignAndUpdateDirtyFlags(pipelineDesc.VS, fvfShader, DirtyFlags::FramebufferAndPipeline);
+
+    if (!fvf)
+    {
+        fvf = true;
+        dirtyFlags |= DirtyFlags::FramebufferAndPipeline;
+    }
+}
+
 void Bridge::procMsgCreateVertexShader()
 {
     const auto msg = msgReceiver.getMsgAndMoveNext<MsgCreateVertexShader>();
@@ -1229,11 +1224,10 @@ void Bridge::processMessages()
 {
     while (msgReceiver.hasNext() && !shouldExit)
     {
+        openCommandList();
+
         switch (msgReceiver.getMsgId())
         {
-        case MsgDummy::ID:                     procMsgDummy(); break;
-        case MsgSetFVF::ID:                    procMsgSetFVF(); break;
-        case MsgInitWindow::ID:                window.procMsgInitWindow(*this); break;
         case MsgInitSwapChain::ID:             procMsgInitSwapChain(); break;
         case MsgPresent::ID:                   procMsgPresent(); break;
         case MsgCreateTexture::ID:             procMsgCreateTexture(); break;
@@ -1254,6 +1248,7 @@ void Bridge::processMessages()
         case MsgDrawPrimitiveUP::ID:           procMsgDrawPrimitiveUP(); break;
         case MsgCreateVertexDeclaration::ID:   procMsgCreateVertexDeclaration(); break;
         case MsgSetVertexDeclaration::ID:      procMsgSetVertexDeclaration(); break;
+        case MsgSetFVF::ID:                    procMsgSetFVF(); break;
         case MsgCreateVertexShader::ID:        procMsgCreateVertexShader(); break;
         case MsgSetVertexShader::ID:           procMsgSetVertexShader(); break;
         case MsgSetVertexShaderConstantF::ID:  procMsgSetVertexShaderConstantF(); break;
@@ -1286,8 +1281,6 @@ void Bridge::receiveMessages()
     while (!shouldExit)
     {
         window.processMessages();
-
-        openCommandList();
         processMessages();
 
         if (!closeAndExecuteCommandLists())

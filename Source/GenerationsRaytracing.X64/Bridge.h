@@ -117,8 +117,6 @@ struct Bridge
     }
 
     void processDirtyFlags();
-    void procMsgDummy();
-    void procMsgSetFVF();
     void procMsgInitSwapChain();
     void procMsgPresent();
     void procMsgCreateTexture();
@@ -139,6 +137,7 @@ struct Bridge
     void procMsgDrawPrimitiveUP();
     void procMsgCreateVertexDeclaration();
     void procMsgSetVertexDeclaration();
+    void procMsgSetFVF();
     void procMsgCreateVertexShader();
     void procMsgSetVertexShader();
     void procMsgSetVertexShaderConstantF();

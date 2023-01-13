@@ -30,6 +30,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
             bridge->window.mouseTracked = false;
             goto postMessage;
 
+        case WM_ACTIVATE:
         case WM_LBUTTONDOWN:
         case WM_LBUTTONDBLCLK:
         case WM_RBUTTONDOWN:
@@ -67,11 +68,9 @@ Window::~Window()
     CloseHandle(handle);
 }
 
-void Window::procMsgInitWindow(Bridge& bridge)
+void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
 {
-    const auto msg = bridge.msgReceiver.getMsgAndMoveNext<MsgInitWindow>();
-
-    gensHandle = (HWND)(LONG_PTR)msg->handle;
+    gensHandle = (HWND)(LONG_PTR)msg.handle;
 
     WNDCLASSEX wndClassEx{};
     wndClassEx.cbSize = sizeof(WNDCLASSEX);
@@ -90,11 +89,11 @@ void Window::procMsgInitWindow(Bridge& bridge)
         WS_EX_APPWINDOW,
         wndClassEx.lpszClassName,
         TEXT("SEGA - Sonic Generations"),
-        0,
-        0,
-        0,
-        0,
-        0,
+        msg.style,
+        msg.x,
+        msg.y,
+        msg.width,
+        msg.height,
         nullptr,
         nullptr,
         wndClassEx.hInstance,
@@ -103,12 +102,6 @@ void Window::procMsgInitWindow(Bridge& bridge)
     SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)&bridge);
 
     assert(handle);
-}
-
-void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
-{
-    SetWindowLongPtr(handle, GWL_STYLE, msg.style);
-    SetWindowPos(handle, HWND_TOP, msg.x, msg.y, msg.width, msg.height, SWP_FRAMECHANGED);
 
     const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
     const DWORD currentThreadId = GetCurrentThreadId();
