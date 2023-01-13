@@ -712,6 +712,14 @@ void Bridge::procMsgSetRenderState()
 
         break;
 
+    case D3DRS_SCISSORTESTENABLE:
+        assignAndUpdateDirtyFlags(
+            pipelineDesc.renderState.rasterState.scissorEnable,
+            msg->value ? true : false,
+            DirtyFlags::FramebufferAndPipeline);
+
+        break;
+
     case D3DRS_SLOPESCALEDEPTHBIAS:
         assignAndUpdateDirtyFlags(
             pipelineDesc.renderState.rasterState.slopeScaledDepthBias,

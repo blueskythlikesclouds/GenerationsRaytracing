@@ -89,11 +89,7 @@ void Window::procMsgInitWindow(Bridge& bridge)
     handle = CreateWindowEx(
         WS_EX_APPWINDOW,
         wndClassEx.lpszClassName,
-#ifdef _DEBUG 
-        TEXT("Generations Raytracing (Debug)"),
-#else
-        TEXT("Generations Raytracing"),
-#endif
+        TEXT("SEGA - Sonic Generations"),
         0,
         0,
         0,
