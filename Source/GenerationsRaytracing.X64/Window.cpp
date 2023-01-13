@@ -110,6 +110,7 @@ void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
     AttachThreadInput(windowThreadProcessId, currentThreadId, TRUE);
     BringWindowToTop(handle);
     ShowWindow(handle, SW_SHOW);
+    SetFocus(handle);
     AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
 
     if (msg.style & WS_CAPTION)
