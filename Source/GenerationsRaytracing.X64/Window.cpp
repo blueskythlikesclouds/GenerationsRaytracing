@@ -99,9 +99,10 @@ void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
         wndClassEx.hInstance,
         nullptr);
 
-    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)&bridge);
-
     assert(handle);
+
+    ShowCursor(FALSE);
+    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)&bridge);
 
     const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
     const DWORD currentThreadId = GetCurrentThreadId();
