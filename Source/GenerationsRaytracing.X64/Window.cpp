@@ -89,7 +89,7 @@ void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
         WS_EX_APPWINDOW,
         wndClassEx.lpszClassName,
         TEXT("SEGA - Sonic Generations"),
-        msg.style,
+        WS_VISIBLE | msg.style,
         msg.x,
         msg.y,
         msg.width,
@@ -103,15 +103,6 @@ void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
 
     ShowCursor(FALSE);
     SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)&bridge);
-
-    const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
-    const DWORD currentThreadId = GetCurrentThreadId();
-
-    AttachThreadInput(windowThreadProcessId, currentThreadId, TRUE);
-    BringWindowToTop(handle);
-    ShowWindow(handle, SW_SHOW);
-    SetFocus(handle);
-    AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
 
     if (msg.style & WS_CAPTION)
     {
@@ -137,6 +128,14 @@ void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
             msg.height + deltaY, 
             SWP_FRAMECHANGED);
     }
+
+    const DWORD windowThreadProcessId = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
+    const DWORD currentThreadId = GetCurrentThreadId();
+
+    AttachThreadInput(windowThreadProcessId, currentThreadId, TRUE);
+    BringWindowToTop(handle);
+    ShowWindow(handle, SW_NORMAL);
+    AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
 }
 
 void Window::processMessages() const
