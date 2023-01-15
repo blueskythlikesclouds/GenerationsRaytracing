@@ -302,10 +302,13 @@ void RaytracingBridge::procMsgReleaseSingleElement(Bridge& bridge)
 template<typename T>
 static void createUploadBuffer(const Bridge& bridge, const std::vector<T>& vector, nvrhi::BufferHandle& buffer)
 {
-    buffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
-        .setByteSize(vectorByteSize(vector))
-        .setStructStride((uint32_t)vectorByteStride(vector))
-        .setCpuAccess(nvrhi::CpuAccessMode::Write));
+    if (buffer == nullptr || buffer->getDesc().byteSize < vectorByteSize(vector))
+    {
+        buffer = bridge.device.nvrhi->createBuffer(nvrhi::BufferDesc()
+            .setByteSize(vectorByteSize(vector))
+            .setStructStride((uint32_t)vectorByteStride(vector))
+            .setCpuAccess(nvrhi::CpuAccessMode::Write));
+    }
 
     void* copyDest = bridge.device.nvrhi->mapBuffer(buffer, nvrhi::CpuAccessMode::Write);
     memcpy(copyDest, vector.data(), vectorByteSize(vector));
