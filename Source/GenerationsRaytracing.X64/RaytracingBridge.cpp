@@ -736,7 +736,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     POP_PROFILER();
     PUSH_PROFILER("Copy Raytracing Composite");
 
-    if (!copyPipeline)
+    if (!copyPipeline || !copyFramebuffer || copyFramebuffer->getDesc().colorAttachments[0].texture != bridge.framebufferDesc.colorAttachments[0].texture)
     {
         copyFramebuffer = bridge.device.nvrhi->createFramebuffer(bridge.framebufferDesc);
 
