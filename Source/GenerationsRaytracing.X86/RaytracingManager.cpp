@@ -562,44 +562,31 @@ static void convertToTriangles(const hh::mr::CMeshData& mesh, hl::hh::mirage::ra
         return;
 
     std::vector<hl::u16> indices;
+    indices.reserve((mesh.m_IndexNum - 2) * 3);
 
-    hl::u32 index = 0;
-    hl::u16 a = HL_SWAP_U16(data->faces.data()[index++]);
-    hl::u16 b = HL_SWAP_U16(data->faces.data()[index++]);
-    int direction = -1;
+    size_t start = 0;
 
-    while (index < HL_SWAP_U32(data->faces.count))
+    for (size_t i = 0; i < HL_SWAP_U32(data->faces.count); ++i)
     {
-        hl::u16 c = HL_SWAP_U16(data->faces.data()[index++]);
-
-        if (c == 0xFFFF)
+        if (data->faces.data()[i] == 0xFFFF)
         {
-            a = HL_SWAP_U16(data->faces.data()[index++]);
-            b = HL_SWAP_U16(data->faces.data()[index++]);
-            direction = -1;
+            start = i + 1;
         }
-        else
+        else if (i - start >= 2)
         {
-            direction *= -1;
+            hl::u16 a = HL_SWAP_U16(data->faces.data()[i - 2]);
+            hl::u16 b = HL_SWAP_U16(data->faces.data()[i - 1]);
+            hl::u16 c = HL_SWAP_U16(data->faces.data()[i]);
 
-            if (a != b && b != c && c != a)
+            if ((i - start) & 1)
+                std::swap(a, b);
+
+            if (a != b && a != c && b != c)
             {
                 indices.push_back(a);
-
-                if (direction > 0)
-                {
-                    indices.push_back(b);
-                    indices.push_back(c);
-                }
-                else
-                {
-                    indices.push_back(c);
-                    indices.push_back(b);
-                }
+                indices.push_back(b);
+                indices.push_back(c);
             }
-
-            a = b;
-            b = c;
         }
     }
 
