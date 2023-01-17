@@ -130,6 +130,9 @@ float3 TraceGlobalIllumination(float3 origin, float3 normal, uint depth, inout u
 
 float3 TraceReflection(float3 origin, float3 normal, float3 view, uint depth, inout uint random)
 {
+    if (dot(normal, view) > 0.0)
+        normal *= -1.0;
+
     return TraceColor(
         origin, 
         reflect(view, normal), 
@@ -140,9 +143,13 @@ float3 TraceReflection(float3 origin, float3 normal, float3 view, uint depth, in
 
 float3 TraceRefraction(float3 origin, float3 normal, float3 view, uint depth, inout uint random)
 {
+    bool facingView = dot(normal, view) <= 0.0;
+    if (!facingView)
+        normal *= -1.0;
+
     return TraceColor(
         origin, 
-        refract(view, normal, 0.95), 
+        refract(view, normal, facingView ? 0.95 : 1.05), 
         depth, 
         random, 
         MISS_REFLECTION_REFRACTION);
