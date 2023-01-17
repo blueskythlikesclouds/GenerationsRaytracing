@@ -119,7 +119,7 @@ void RefractionRayGeneration()
     float3 view = normalize(position - g_EyePosition.xyz);
     uint random = InitializeRandom(dimensions.x * index.y + index.x, g_CurrentFrame);
 
-    float3 refraction = TraceRefraction(position, normal, view, MAX_RECURSION_DEPTH - 2, random);
+    float3 refraction = TraceRefraction(position, normal, view, MAX_RECURSION_DEPTH - 3, random);
 
     g_Refraction[index] = float4(refraction, 1.0);
 }
