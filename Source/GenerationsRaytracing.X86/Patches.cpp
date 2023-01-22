@@ -10,6 +10,7 @@
 #include "RaytracingManager.h"
 #include "Texture.h"
 #include "ArchiveTree.h"
+#include "CpkBinder.h"
 #include "Window.h"
 
 HOOK(void, __cdecl, LoadPictureData, 0x743DE0,
@@ -125,6 +126,7 @@ HOOK(D3D9*, __cdecl, Direct3DCreate, 0xA5EDD0, UINT SDKVersion)
 void Patches::init()
 {
     ArchiveTree::init();
+    CpkBinder::init();
     MemoryAllocator::init();
     RaytracingManager::init();
     Window::init();

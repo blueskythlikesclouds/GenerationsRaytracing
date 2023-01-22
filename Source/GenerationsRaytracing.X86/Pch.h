@@ -11,6 +11,7 @@
 #include <d3d9.h>
 
 #include <cstdio>
+#include <filesystem>
 #include <mutex>
 #include <unordered_set>
 

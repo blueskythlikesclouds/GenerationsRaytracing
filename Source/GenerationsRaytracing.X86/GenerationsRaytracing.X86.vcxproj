@@ -103,6 +103,7 @@
     <ClCompile Include="ArchiveTree.cpp" />
     <ClCompile Include="BaseTexture.cpp" />
     <ClCompile Include="Buffer.cpp" />
+    <ClCompile Include="CpkBinder.cpp" />
     <ClCompile Include="Identifier.cpp" />
     <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="MessageSender.cpp" />
@@ -129,6 +130,7 @@
     <ClInclude Include="ArchiveTree.h" />
     <ClInclude Include="BaseTexture.h" />
     <ClInclude Include="Buffer.h" />
+    <ClInclude Include="CpkBinder.h" />
     <ClInclude Include="Identifier.h" />
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MessageSender.h" />

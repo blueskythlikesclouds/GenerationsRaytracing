@@ -22,6 +22,7 @@
     <ClCompile Include="RaytracingParams.cpp" />
     <ClCompile Include="ArchiveTree.cpp" />
     <ClCompile Include="Window.cpp" />
+    <ClCompile Include="CpkBinder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -44,5 +45,6 @@
     <ClInclude Include="RaytracingParams.h" />
     <ClInclude Include="ArchiveTree.h" />
     <ClInclude Include="Window.h" />
+    <ClInclude Include="CpkBinder.h" />
   </ItemGroup>
 </Project>

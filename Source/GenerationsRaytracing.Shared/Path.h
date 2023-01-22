@@ -38,6 +38,13 @@ inline std::string getFileNameWithoutExtension(const std::string& path)
     return fileName;
 }
 
+inline std::string wideCharToMultiByte(LPCWSTR value)
+{
+    char multiByte[1024];
+    WideCharToMultiByte(CP_UTF8, 0, value, -1, multiByte, _countof(multiByte), 0, 0);
+    return std::string(multiByte);
+}
+
 inline std::wstring multiByteToWideChar(const char* value)
 {
     WCHAR wideChar[1024];
