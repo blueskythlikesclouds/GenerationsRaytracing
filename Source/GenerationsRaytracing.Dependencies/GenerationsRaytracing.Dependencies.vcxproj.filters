@@ -51,7 +51,6 @@
     <ClCompile Include="..\..\Dependencies\nvrhi\src\common\misc.cpp" />
     <ClCompile Include="..\..\Dependencies\nvrhi\src\common\shader-blob.cpp" />
     <ClCompile Include="..\..\Dependencies\nvrhi\src\common\state-tracking.cpp" />
-    <ClCompile Include="..\..\Dependencies\tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="..\..\Dependencies\nvrhi\src\common\utils.cpp" />
     <ClCompile Include="..\..\Dependencies\nvrhi\src\validation\validation-commandlist.cpp" />
     <ClCompile Include="..\..\Dependencies\nvrhi\src\validation\validation-device.cpp" />
