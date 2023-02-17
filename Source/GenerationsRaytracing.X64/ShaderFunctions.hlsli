@@ -85,8 +85,8 @@ float3 GetCosHemisphereSample(float3 normal, inout uint random)
 
 float3 GetCosHemisphereSample(float3 normal)
 {
-    float2 index = DispatchRaysIndex().xy + float2(17, 31) * g_CurrentFrame;
-    return GetCosHemisphereSample(normal, g_BlueNoise.Load(int3(index, 0) % 512).xy);
+    uint2 index = DispatchRaysIndex().xy + uint2(17, 31) * g_CurrentFrame;
+    return GetCosHemisphereSample(normal, g_BlueNoise.Load(int3(index % 512, 0)).xy);
 }
 
 float3 TraceColor(float3 origin, float3 direction, uint depth, inout uint random, uint missShader)

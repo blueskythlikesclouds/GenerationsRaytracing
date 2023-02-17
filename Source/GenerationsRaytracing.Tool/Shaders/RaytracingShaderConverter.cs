@@ -599,10 +599,18 @@ public static class RaytracingShaderConverter
                 params.InvProjection[2] = float4(0, 0, -Z_MAX, 0);
                 params.InvProjection[3] = float4(0, 0, 0, 1);
                 
-                float3 normal = params.Vertex.Normal;
+                float3 normal = params.Vertex.Normal; 
+                float alpha = SHADERNAME<false>(params, normal).oC0.a; 
+                float threshold = 0.5;
 
-                if (SHADERNAME<false>(params, normal).oC0.w < (GetMesh().PunchThrough != 0 ? 0.5 : NextRandom(payload.Random)))
-                    IgnoreHit();
+                if (GetMesh().PunchThrough == 0)
+                {
+                    uint2 index = DispatchRaysIndex().xy + uint2(17, 31) * g_CurrentFrame;
+                    threshold = g_BlueNoise.Load(int3(index % 512, 0)).x; 
+                }
+
+                if (alpha < threshold)
+                    IgnoreHit(); 
             }
 
             [shader("callable")]
