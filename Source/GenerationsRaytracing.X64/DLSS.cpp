@@ -17,6 +17,8 @@
 
 void DLSS::validateImp(const ValidationParams& params)
 {
+    NVSDK_NGX_DLSS_Create_Params dlssParams{};
+
     if (qualityMode == QualityMode::Native)
     {
         width = params.output->getDesc().width;
@@ -24,6 +26,12 @@ void DLSS::validateImp(const ValidationParams& params)
     }
     else
     {
+        dlssParams.Feature.InPerfQualityValue = 
+            qualityMode == QualityMode::Quality ? NVSDK_NGX_PerfQuality_Value_MaxQuality :
+            qualityMode == QualityMode::Balanced ? NVSDK_NGX_PerfQuality_Value_Balanced :
+            qualityMode == QualityMode::Performance ? NVSDK_NGX_PerfQuality_Value_MaxPerf :
+            qualityMode == QualityMode::UltraPerformance ? NVSDK_NGX_PerfQuality_Value_UltraPerformance : NVSDK_NGX_PerfQuality_Value_UltraQuality;
+
         unsigned tmpUnsigned;
         float tmpFloat;
 
@@ -31,10 +39,7 @@ void DLSS::validateImp(const ValidationParams& params)
             parameters,
             params.output->getDesc().width,
             params.output->getDesc().height,
-            qualityMode == QualityMode::Quality ? NVSDK_NGX_PerfQuality_Value_MaxQuality :
-            qualityMode == QualityMode::Balanced ? NVSDK_NGX_PerfQuality_Value_Balanced :
-            qualityMode == QualityMode::Performance ? NVSDK_NGX_PerfQuality_Value_MaxPerf :
-            qualityMode == QualityMode::UltraPerformance ? NVSDK_NGX_PerfQuality_Value_UltraPerformance : NVSDK_NGX_PerfQuality_Value_UltraQuality,
+            dlssParams.Feature.InPerfQualityValue,
             &width,
             &height,
             &tmpUnsigned,
@@ -46,7 +51,6 @@ void DLSS::validateImp(const ValidationParams& params)
         assert(width > 0 && height > 0);
     }
 
-    NVSDK_NGX_DLSS_Create_Params dlssParams{};
     dlssParams.Feature.InWidth = width;
     dlssParams.Feature.InHeight = height;
     dlssParams.Feature.InTargetWidth = params.output->getDesc().width;
@@ -98,6 +102,10 @@ DLSS::DLSS(const Device& device, const std::string& directoryPath) : Upscaler()
 
     THROW_IF_FAILED(NVSDK_NGX_D3D12_Init(*(unsigned long long*) & APPLICATION_ID[0], multiByteToWideChar(directoryPath.c_str()).c_str(), device.d3d12.device.Get()));
     THROW_IF_FAILED(NVSDK_NGX_D3D12_GetCapabilityParameters(&parameters));
+
+    NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+    NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+    NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
 }
 
 DLSS::~DLSS()
