@@ -58,6 +58,12 @@ float NextRandom(inout uint s)
     return float(NextRandomUint(s) & 0x00FFFFFF) / float(0x01000000);
 }
 
+float2 GetBlueNoise()
+{
+    uint2 index = DispatchRaysIndex().xy + uint2(17, 31) * g_CurrentFrame;
+    return g_BlueNoise.Load(int3(index % 512, 0)).xy;
+}
+
 float3 GetPerpendicularVector(float3 u)
 {
     float3 a = abs(u);
@@ -85,8 +91,7 @@ float3 GetCosHemisphereSample(float3 normal, inout uint random)
 
 float3 GetCosHemisphereSample(float3 normal)
 {
-    uint2 index = DispatchRaysIndex().xy + uint2(17, 31) * g_CurrentFrame;
-    return GetCosHemisphereSample(normal, g_BlueNoise.Load(int3(index % 512, 0)).xy);
+    return GetCosHemisphereSample(normal, GetBlueNoise());
 }
 
 float3 TraceColor(float3 origin, float3 direction, uint depth, inout uint random, uint missShader)
