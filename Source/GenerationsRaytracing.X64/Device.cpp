@@ -43,7 +43,7 @@ public:
     MemoryAllocator(ID3D12Device* device, IDXGIAdapter* dxgiAdapter)
     {
         D3D12MA::ALLOCATOR_DESC desc{};
-        desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
+        desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED;
         desc.pDevice = device;
         desc.pAdapter = dxgiAdapter;
 

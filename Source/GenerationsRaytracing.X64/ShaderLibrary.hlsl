@@ -51,15 +51,15 @@ void GlobalIlluminationRayGeneration()
         random, 
         MISS_GLOBAL_ILLUMINATION);
 
-    int2 prevIndex = round(index + g_MotionVector[index].xy);
+    float2 motionVector = g_MotionVector[index].xy;
+    int2 prevIndex = round(index + motionVector);
 
     float prevDepth = g_PrevDepth.Load(int3(prevIndex, 0));
-    float3 prevNormal = g_PrevNormal.Load(int3(prevIndex, 0)).xyz;
     float4 prevGlobalIllumination = g_PrevGlobalIllumination.Load(int3(prevIndex, 0));
 
-    float factor = abs(depth - prevDepth);
-    factor = exp(factor / -0.01);
-    factor *= saturate(dot(prevNormal, normal));
+    float factor = length(motionVector);
+    factor *= abs(depth - prevDepth) / 0.001;
+    factor = exp2(-factor);
     factor *= prevGlobalIllumination.a;
     factor += 1.0;
 

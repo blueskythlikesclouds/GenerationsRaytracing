@@ -662,7 +662,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
         .addItem(nvrhi::BindingSetItem::Texture_UAV(0, upscaler->position))
         .addItem(nvrhi::BindingSetItem::Texture_UAV(1, upscaler->depth.getCurrent(rtConstants.currentFrame)))
         .addItem(nvrhi::BindingSetItem::Texture_UAV(2, upscaler->motionVector))
-        .addItem(nvrhi::BindingSetItem::Texture_UAV(3, upscaler->normal.getCurrent(rtConstants.currentFrame)))
+        .addItem(nvrhi::BindingSetItem::Texture_UAV(3, upscaler->normal))
         .addItem(nvrhi::BindingSetItem::Texture_UAV(4, upscaler->texCoord))
         .addItem(nvrhi::BindingSetItem::Texture_UAV(5, upscaler->color))
         .addItem(nvrhi::BindingSetItem::Texture_UAV(6, upscaler->shader))
@@ -674,8 +674,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
 
         .addItem(nvrhi::BindingSetItem::Texture_SRV(4, blueNoise))
         .addItem(nvrhi::BindingSetItem::Texture_SRV(5, upscaler->depth.getPrevious(rtConstants.currentFrame)))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(6, upscaler->normal.getPrevious(rtConstants.currentFrame)))
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(7, upscaler->globalIllumination.getPrevious(rtConstants.currentFrame)))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(6, upscaler->globalIllumination.getPrevious(rtConstants.currentFrame)))
 
         .addItem(nvrhi::BindingSetItem::Sampler(0, linearRepeatSampler)), bindingLayout);
 
@@ -715,7 +714,7 @@ void RaytracingBridge::procMsgNotifySceneTraversed(Bridge& bridge)
     bridge.commandList->setTextureState(upscaler->position, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->depth.getCurrent(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->motionVector, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
-    bridge.commandList->setTextureState(upscaler->normal.getCurrent(rtConstants.currentFrame), nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
+    bridge.commandList->setTextureState(upscaler->normal, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->texCoord, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->color, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);
     bridge.commandList->setTextureState(upscaler->shader, nvrhi::TextureSubresourceSet(), nvrhi::ResourceStates::UnorderedAccess);

@@ -53,7 +53,7 @@ public:
     nvrhi::TextureHandle position;
     PingPongTexture depth;
     nvrhi::TextureHandle motionVector;
-    PingPongTexture normal;
+    nvrhi::TextureHandle normal;
     nvrhi::TextureHandle texCoord;
     nvrhi::TextureHandle color;
     nvrhi::TextureHandle shader;

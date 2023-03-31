@@ -120,8 +120,7 @@ RWTexture2D<float4> g_Composite : register(u11);
 
 Texture2D<float4> g_BlueNoise : register(t4);
 Texture2D<float> g_PrevDepth : register(t5);
-Texture2D<float4> g_PrevNormal : register(t6);
-Texture2D<float4> g_PrevGlobalIllumination : register(t7);
+Texture2D<float4> g_PrevGlobalIllumination : register(t6);
 
 SamplerState g_LinearRepeatSampler : register(s0);
 
