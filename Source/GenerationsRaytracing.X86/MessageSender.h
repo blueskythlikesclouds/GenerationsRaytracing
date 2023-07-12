@@ -1,48 +1,52 @@
-﻿#pragma once
+#pragma once
 
-#include "CriticalSection.h"
-#include "Event.h"
 #include "MemoryMappedFile.h"
+#include "Mutex.h"
 
-class Device;
-
-struct MessageSender
+class MessageSender
 {
-    CriticalSection criticalSection;
-    
-    Event cpuEvent;
-    Event gpuEvent;
+protected:
+    std::unique_ptr<uint8_t[]> m_parallelBuffer;
+    uint32_t m_parallelBufferSize = 0;
 
-    MemoryMappedFile memoryMappedFile;
-    void* memoryMappedFileBuffer = nullptr;
+    std::unique_ptr<uint8_t[]> m_serialBuffer;
+    uint32_t m_serialBufferSize = 0;
 
-    std::vector<uint8_t> buffer;
+    Mutex m_mutex;
 
-    std::atomic<size_t> messagesInProgress;
+    std::atomic<uint32_t> m_pendingMessages;
 
+    MemoryMappedFile m_memoryMappedFile;
+    uint8_t* m_tgtBufferData;
+
+#ifdef _DEBUG
+    std::atomic<uint32_t> m_serialCounter;
+#endif
+
+public:
     MessageSender();
     ~MessageSender();
 
-    void* start(size_t msgSize, size_t dataSize = 0);
+    void* makeParallelMessage(uint32_t byteSize, uint32_t alignment);
+    void endParallelMessage();
+
+    void* makeSerialMessage(uint32_t byteSize, uint32_t alignment);
+
+    void sendAllMessages();
 
     template<typename T>
-    T* start(size_t dataSize = 0)
-    {
-        T* msg = (T*)start(sizeof(T), dataSize);
-        msg->id = T::ID;
-        return msg;
-    }
-
-    void finish();
+    T& makeParallelMessage();
 
     template<typename T>
-    void oneShot()
-    {
-        start<T>();
-        finish();
-    }
+    T& makeParallelMessage(uint32_t dataSize);
 
-    void commitAllMessages();
+    template<typename T>
+    T& makeSerialMessage();
+
+    template<typename T>
+    T& makeSerialMessage(uint32_t dataSize);
 };
 
-extern MessageSender msgSender;
+inline MessageSender s_messageSender;
+
+#include "MessageSender.inl"

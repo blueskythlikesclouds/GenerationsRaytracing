@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 enum class DisplayMode
 {
@@ -10,8 +10,8 @@ enum class DisplayMode
 class Configuration
 {
 public:
-    static DisplayMode displayMode;
-    static bool allowResizeInWindowed;
+    static inline DisplayMode s_displayMode = DisplayMode::BorderlessFullscreen;
+    static inline bool s_allowResizeInWindowed = false;
 
-    static bool load(const std::string& filePath);
+    static void init();
 };

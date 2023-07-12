@@ -3,7 +3,7 @@
   <PropertyGroup Label="Globals">
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <HasSharedItems>true</HasSharedItems>
-    <ItemsProjectGuid>{71f0cd88-e769-4407-b43e-17f652acebcb}</ItemsProjectGuid>
+    <ItemsProjectGuid>{f7a1e935-4384-44fd-996c-7f1151c258cf}</ItemsProjectGuid>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -14,16 +14,18 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)CriticalSection.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Event.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)File.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)Message.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)LockGuard.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)MemoryMappedFile.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Message.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)Path.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ProcessUtil.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)Profiler.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ShaderMapping.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)Utilities.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)SubAllocator.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)Event.inl" />
+    <None Include="$(MSBuildThisFileDirectory)LockGuard.inl" />
+    <None Include="$(MSBuildThisFileDirectory)MemoryMappedFile.inl" />
+    <None Include="$(MSBuildThisFileDirectory)Mutex.inl" />
+    <None Include="$(MSBuildThisFileDirectory)SubAllocator.inl" />
   </ItemGroup>
 </Project>

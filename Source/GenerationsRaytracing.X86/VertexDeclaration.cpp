@@ -1,25 +1,61 @@
-﻿#include "VertexDeclaration.h"
+#include "VertexDeclaration.h"
 
-VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* elements)
+#include "SubAllocator.h"
+
+static SubAllocator s_subAllocator;
+
+VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* vertexElements)
 {
-    for (int i = 0; ; i++)
-    {
-        if (elements[i].Stream == 0xFF || elements[i].Type == D3DDECLTYPE_UNUSED)
-            break;
+    m_id = s_subAllocator.allocate();
 
-        vertexElements.push_back(elements[i]);
+    m_vertexElementsSize = 0;
+
+    while (true)
+    {
+        ++m_vertexElementsSize;
+
+        if (vertexElements[m_vertexElementsSize - 1].Type == D3DDECLTYPE_UNUSED)
+            break;
     }
 
-    vertexElements.shrink_to_fit();
+    m_vertexElements = std::make_unique<D3DVERTEXELEMENT9[]>(m_vertexElementsSize);
+    memcpy(m_vertexElements.get(), vertexElements, sizeof(D3DVERTEXELEMENT9) * m_vertexElementsSize);
 }
 
-FUNCTION_STUB(HRESULT, VertexDeclaration::GetDevice, Device** ppDevice)
+VertexDeclaration::VertexDeclaration(DWORD fvf)
+{
+    m_id = s_subAllocator.allocate();
+
+    m_vertexElementsSize = 0;
+
+    // TODO
+}
+
+VertexDeclaration::~VertexDeclaration()
+{
+    s_subAllocator.free(m_id);
+}
+
+uint32_t VertexDeclaration::getId() const
+{
+    return m_id;
+}
+
+const D3DVERTEXELEMENT9* VertexDeclaration::getVertexElements() const
+{
+    return m_vertexElements.get();
+}
+
+uint32_t VertexDeclaration::getVertexElementsSize() const
+{
+    return m_vertexElementsSize;
+}
+
+FUNCTION_STUB(HRESULT, E_NOTIMPL, VertexDeclaration::GetDevice, Device** ppDevice)
 
 HRESULT VertexDeclaration::GetDeclaration(D3DVERTEXELEMENT9* pElement, UINT* pNumElements)
 {
-    memcpy(pElement, vertexElements.data(), getVertexElementsSize());
-    pElement[vertexElements.size()] = D3DDECL_END();
-    *pNumElements = vertexElements.size() + 1;
-
+    memcpy(pElement, m_vertexElements.get(), m_vertexElementsSize);
+    *pNumElements = m_vertexElementsSize;
     return S_OK;
 }

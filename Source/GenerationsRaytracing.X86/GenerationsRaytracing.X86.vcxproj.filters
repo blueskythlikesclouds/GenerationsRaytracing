@@ -1,50 +1,128 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Mod.cpp" />
     <ClCompile Include="Pch.cpp" />
-    <ClCompile Include="BaseTexture.cpp" />
-    <ClCompile Include="Buffer.cpp" />
-    <ClCompile Include="Device.cpp" />
-    <ClCompile Include="Resource.cpp" />
-    <ClCompile Include="Surface.cpp" />
-    <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="VertexDeclaration.cpp" />
-    <ClCompile Include="D3D9.cpp" />
-    <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="Unknown.cpp" />
-    <ClCompile Include="Configuration.cpp" />
-    <ClCompile Include="Patches.cpp" />
-    <ClCompile Include="MessageSender.cpp" />
-    <ClCompile Include="MemoryAllocator.cpp" />
-    <ClCompile Include="RaytracingManager.cpp" />
-    <ClCompile Include="Identifier.cpp" />
-    <ClCompile Include="RaytracingParams.cpp" />
-    <ClCompile Include="ArchiveTree.cpp" />
-    <ClCompile Include="Window.cpp" />
-    <ClCompile Include="CpkBinder.cpp" />
+    <ClCompile Include="D3D9.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
+    <ClCompile Include="Unknown.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
+    <ClCompile Include="Device.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageSender.cpp">
+      <Filter>Message</Filter>
+    </ClCompile>
+    <ClCompile Include="Resource.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="IndexBuffer.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexBuffer.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexDeclaration.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexShader.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="PixelShader.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseTexture.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Mod.cpp" />
+    <ClCompile Include="PictureData.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
+    <ClCompile Include="FillTexture.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
+    <ClCompile Include="Surface.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Configuration.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
-    <ClInclude Include="BaseTexture.h" />
-    <ClInclude Include="Buffer.h" />
-    <ClInclude Include="Device.h" />
-    <ClInclude Include="Resource.h" />
-    <ClInclude Include="Surface.h" />
-    <ClInclude Include="Texture.h" />
-    <ClInclude Include="VertexDeclaration.h" />
-    <ClInclude Include="D3D9.h" />
-    <ClInclude Include="Shader.h" />
-    <ClInclude Include="Unknown.h" />
-    <ClInclude Include="Configuration.h" />
-    <ClInclude Include="Patches.h" />
-    <ClInclude Include="MessageSender.h" />
-    <ClInclude Include="MemoryAllocator.h" />
-    <ClInclude Include="RaytracingManager.h" />
-    <ClInclude Include="Identifier.h" />
-    <ClInclude Include="RaytracingParams.h" />
-    <ClInclude Include="ArchiveTree.h" />
-    <ClInclude Include="Window.h" />
-    <ClInclude Include="CpkBinder.h" />
+    <ClInclude Include="D3D9.h">
+      <Filter>Device</Filter>
+    </ClInclude>
+    <ClInclude Include="Unknown.h">
+      <Filter>Base</Filter>
+    </ClInclude>
+    <ClInclude Include="Device.h">
+      <Filter>Device</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageSender.h">
+      <Filter>Message</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="IndexBuffer.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexBuffer.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexDeclaration.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexShader.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="PixelShader.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseTexture.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="PictureData.h">
+      <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="FillTexture.h">
+      <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="Surface.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Configuration.h">
+      <Filter>Base</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Device">
+      <UniqueIdentifier>{a46b952c-46e4-43f4-a552-44b35ec7e30a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{7556bcf9-e2d8-4238-b27f-bcb24531b001}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Message">
+      <UniqueIdentifier>{bcc8601f-84d6-4db6-9bfc-222ab4b2b883}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Base">
+      <UniqueIdentifier>{a216287e-6f01-47e4-8005-5ec7a5c37a5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Patch">
+      <UniqueIdentifier>{8ea5ef8a-a980-4416-b44c-43d9e0ae1cba}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="MessageSender.inl">
+      <Filter>Message</Filter>
+    </None>
   </ItemGroup>
 </Project>

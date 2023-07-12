@@ -1,31 +1,24 @@
-﻿#pragma once
+#pragma once
 
-#include "Event.h"
 #include "MemoryMappedFile.h"
 
-#define INVALID_POSITION_VALUE (size_t)-1
-
-struct MessageReceiver
+class MessageReceiver
 {
-    Event cpuEvent;
-    Event gpuEvent;
+protected:
+    MemoryMappedFile m_memoryMappedFile;
+    uint8_t* m_messageBuffer;
+    size_t m_offset;
 
-    MemoryMappedFile memoryMappedFile;
-    uint8_t* buffer = nullptr;
-    size_t position = INVALID_POSITION_VALUE;
-
+public:
     MessageReceiver();
     ~MessageReceiver();
 
-    bool hasNext();
+    uint8_t getId();
 
-    int getMsgId() const;
-    void* getMsgAndMoveNext(size_t msgSize);
-    void* getDataAndMoveNext(size_t dataSize);
+    template <typename T>
+    const T& getMessage();
 
-    template<typename T>
-    T* getMsgAndMoveNext()
-    {
-        return (T*)getMsgAndMoveNext(sizeof(T));
-    }
+    void reset();
 };
+
+#include "MessageReceiver.inl"

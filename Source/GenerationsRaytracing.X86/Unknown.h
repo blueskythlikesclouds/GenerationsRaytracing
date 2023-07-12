@@ -1,17 +1,19 @@
-﻿#pragma once
+#pragma once
 
 class Unknown
 {
-public:
-    const size_t id;
-    std::atomic<ULONG> refCount;
+protected:
+    std::atomic<ULONG> m_refCount;
 
+public:
     Unknown();
+
+    Unknown(Unknown&&) = delete;
+    Unknown(const Unknown&) = delete;
 
     virtual HRESULT QueryInterface(REFIID riid, void** ppvObj) final;
 
     virtual ULONG AddRef() final;
-
     virtual ULONG Release() final;
 
     virtual ~Unknown();

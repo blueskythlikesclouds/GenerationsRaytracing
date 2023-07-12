@@ -1,36 +1,29 @@
-﻿#include "Unknown.h"
+#include "Unknown.h"
 
-#include "Identifier.h"
-#include "Message.h"
-#include "MessageSender.h"
-
-Unknown::Unknown() : id(getNextIdentifier()), refCount(1)
+Unknown::Unknown() : m_refCount(1)
 {
 }
 
 HRESULT Unknown::QueryInterface(const IID& riid, void** ppvObj)
 {
-    // Not used by game.
-    return S_OK;
+    // Shall never be called.
+    assert(false);
+    return E_NOTIMPL;
 }
 
 ULONG Unknown::AddRef()
 {
-    return ++refCount;
+    return ++m_refCount;
 }
 
 ULONG Unknown::Release()
 {
-    const ULONG result = --refCount;
-    if (result == 0)
+    const ULONG current = --m_refCount;
+
+    if (current == 0)
         delete this;
 
-    return result;
+    return current;
 }
 
-Unknown::~Unknown()
-{
-    const auto msg = msgSender.start<MsgReleaseResource>();
-    msg->resource = id;
-    msgSender.finish();
-}
+Unknown::~Unknown() = default;

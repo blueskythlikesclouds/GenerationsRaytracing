@@ -1,74 +1,119 @@
-﻿#include "MessageSender.h"
+#include "MessageSender.h"
 
-#include "Device.h"
-#include "Message.h"
+#include "LockGuard.h"
 
-MessageSender::MessageSender()
-    : cpuEvent(TEXT(EVENT_NAME_CPU), FALSE), gpuEvent(TEXT(EVENT_NAME_GPU), TRUE)
+static constexpr size_t s_bufferSize = MemoryMappedFile::s_size / 2;
+
+MessageSender::MessageSender() : m_pendingMessages(0)
 {
-    memoryMappedFileBuffer = memoryMappedFile.map();
-    buffer.reserve(MEMORY_MAPPED_FILE_SIZE);
+    m_parallelBuffer = std::make_unique<uint8_t[]>(s_bufferSize);
+    m_serialBuffer = std::make_unique<uint8_t[]>(s_bufferSize);
+    m_tgtBufferData = static_cast<uint8_t*>(m_memoryMappedFile.map());
 }
 
 MessageSender::~MessageSender()
 {
-    memoryMappedFile.unmap(memoryMappedFileBuffer);
+    m_memoryMappedFile.unmap(m_tgtBufferData);
 }
 
-void* MessageSender::start(size_t msgSize, size_t dataSize)
+void* MessageSender::makeParallelMessage(uint32_t byteSize, uint32_t alignment)
 {
-    msgSize = MSG_ALIGN(msgSize);
-    dataSize = MSG_ALIGN(dataSize);
+    assert(byteSize <= s_bufferSize); // some ridiculously large meshes/textures may hit this limit but like... don't?
 
-    const size_t size = msgSize + dataSize;
-    
-    assert(size <= MEMORY_MAPPED_FILE_SIZE);
+    LockGuard lock(m_mutex);
 
-    std::lock_guard lock(criticalSection);
+    uint32_t offset = (m_parallelBufferSize + alignment - 1) & ~(alignment - 1);
+    uint32_t newSize = offset + byteSize;
 
-    if (buffer.size() + size > MEMORY_MAPPED_FILE_SIZE)
-        commitAllMessages();
-
-    const size_t position = buffer.size();
-    buffer.resize(buffer.size() + size);
-
-    ++messagesInProgress;
-
-    void* msg = buffer.data() + position;
-    assert((position & (MSG_ALIGNMENT - 1)) == 0);
-    return msg;
-}
-
-void MessageSender::finish()
-{
-    --messagesInProgress;
-}
-
-void MessageSender::commitAllMessages()
-{
-    std::lock_guard lock(criticalSection);
-
-    if (buffer.empty())
-        return;
-
-    while (messagesInProgress)
-        ;
-
-    if (!*(size_t*)0x1E5E2E8)
+    if (newSize >= s_bufferSize) // no need for terminator since serial buffer is gonna have it
     {
-        assert((buffer.size() & (MSG_ALIGNMENT - 1)) == 0);
+        sendAllMessages();
 
-        if (buffer.size() <= MEMORY_MAPPED_FILE_SIZE - MSG_ALIGNMENT)
-            buffer.resize(buffer.size() + MSG_ALIGNMENT);
-
-        gpuEvent.wait();
-        gpuEvent.reset();
-
-        memcpy(memoryMappedFileBuffer, buffer.data(), buffer.size());
-        cpuEvent.set();
+        offset = 0;
+        newSize = byteSize;
     }
 
-    buffer.clear();
+    ++m_pendingMessages;
+
+    if (m_parallelBufferSize != offset) // marker that says that the message is aligned
+        m_parallelBuffer[offset] = static_cast<uint8_t>(0x80 | (offset - m_parallelBufferSize));
+
+    m_parallelBufferSize = newSize;
+
+    return m_parallelBuffer.get() + offset;
 }
 
-MessageSender msgSender;
+void MessageSender::endParallelMessage()
+{
+    --m_pendingMessages;
+}
+
+void* MessageSender::makeSerialMessage(uint32_t byteSize, uint32_t alignment)
+{
+    assert(m_serialCounter == 0);
+    assert(byteSize < s_bufferSize);
+
+#ifdef _DEBUG
+    ++m_serialCounter;
+#endif
+
+    uint32_t offset = (m_serialBufferSize + alignment - 1) & ~(alignment - 1);
+    uint32_t newSize = offset + byteSize;
+
+    if (newSize > s_bufferSize) // need last byte as terminator
+    {
+        sendAllMessages();
+
+        offset = 0;
+        newSize = byteSize;
+    }
+
+    if (m_serialBufferSize != offset) // marker that says that the message is aligned
+        m_serialBuffer[offset] = static_cast<uint8_t>(0x80 | (offset - m_serialBufferSize));
+
+    m_serialBufferSize = newSize;
+
+    void* message = m_serialBuffer.get() + offset;
+#ifdef _DEBUG
+    --m_serialCounter;
+#endif
+    return message;
+}
+
+void MessageSender::sendAllMessages()
+{
+    LockGuard lock(m_mutex);
+
+    while (m_pendingMessages != 0)
+        ; // waste cycles, better than sleeping
+
+    // align parallel buffer to 16 bytes
+    const uint32_t alignedSize = (m_parallelBufferSize + 0xF) & ~0xF;
+
+    if (m_parallelBufferSize != alignedSize)
+    {
+        m_parallelBuffer[m_parallelBufferSize] = static_cast<uint8_t>(0x80 | (alignedSize - m_parallelBufferSize));
+        m_parallelBufferSize = alignedSize;
+    }
+
+    assert(m_serialBufferSize + m_parallelBufferSize < MemoryMappedFile::s_size);
+
+    memcpy(m_tgtBufferData, m_parallelBuffer.get(), m_parallelBufferSize);
+    memcpy(m_tgtBufferData + m_parallelBufferSize, m_serialBuffer.get(), m_serialBufferSize);
+    // MsgTerminator, end indicator
+    *(m_tgtBufferData + m_parallelBufferSize + m_serialBufferSize) = '\0';
+
+#if 0
+    static int counter = 0;
+    char path[256];
+    sprintf(path, "C:/Work/MessageSender/%d.bin", ++counter);
+    FILE* file = fopen(path, "wb");
+    fwrite(m_parallelBuffer.get(), 1, m_parallelBufferSize, file);
+    fwrite(m_serialBuffer.get(), 1, m_serialBufferSize, file);
+    fclose(file);
+#endif
+
+    m_parallelBufferSize = 0;
+    m_serialBufferSize = 0;
+}
+

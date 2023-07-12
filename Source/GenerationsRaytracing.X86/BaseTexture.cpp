@@ -1,20 +1,37 @@
-﻿#include "BaseTexture.h"
+#include "BaseTexture.h"
 
-FUNCTION_STUB(DWORD, BaseTexture::SetLOD, DWORD LODNew)
+#include "SubAllocator.h"
 
-FUNCTION_STUB(DWORD, BaseTexture::GetLOD)
+static SubAllocator s_subAllocator;
 
-DWORD BaseTexture::GetLevelCount()
+BaseTexture::BaseTexture(uint32_t levelCount)
 {
-    return 1;
+    m_id = s_subAllocator.allocate();
+    m_levelCount = levelCount;
 }
 
-FUNCTION_STUB(HRESULT, BaseTexture::SetAutoGenFilterType, D3DTEXTUREFILTERTYPE FilterType)
+BaseTexture::~BaseTexture()
+{
+    s_subAllocator.free(m_id);
+}
 
-FUNCTION_STUB(D3DTEXTUREFILTERTYPE, BaseTexture::GetAutoGenFilterType)
+uint32_t BaseTexture::getId() const
+{
+    return m_id;
+}
 
-FUNCTION_STUB(void, BaseTexture::GenerateMipSubLevels)
+FUNCTION_STUB(DWORD, NULL, BaseTexture::SetLOD, DWORD LODNew)
 
-FUNCTION_STUB(void, BaseTexture::FUN_48)
+FUNCTION_STUB(DWORD, NULL, BaseTexture::GetLOD)
 
-FUNCTION_STUB(HRESULT, BaseTexture::FUN_4C, void* A1)
+FUNCTION_STUB(DWORD, NULL, BaseTexture::GetLevelCount)
+
+FUNCTION_STUB(HRESULT, E_NOTIMPL, BaseTexture::SetAutoGenFilterType, D3DTEXTUREFILTERTYPE FilterType)
+
+FUNCTION_STUB(D3DTEXTUREFILTERTYPE, static_cast<D3DTEXTUREFILTERTYPE>(NULL), BaseTexture::GetAutoGenFilterType)
+
+FUNCTION_STUB(void, , BaseTexture::GenerateMipSubLevels)
+
+FUNCTION_STUB(void, , BaseTexture::FUN_48)
+
+FUNCTION_STUB(HRESULT, E_NOTIMPL, BaseTexture::FUN_4C, void* A1)

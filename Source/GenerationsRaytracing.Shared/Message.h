@@ -1,372 +1,265 @@
 #pragma once
 
-#define DEFINE_MSG_ID \
-    static constexpr int ID = __LINE__; \
-    int id
+#include <cstdint>
 
-#define MSG_ALIGNMENT 0x10
+#define MSG_DEFINE_MESSAGE(PREVIOUS_MESSAGE) \
+    static constexpr uint8_t s_id = PREVIOUS_MESSAGE::s_id + 1; \
+    static_assert(s_id < 128); \
+    uint8_t id = s_id
 
-#define MSG_ALIGN(x) \
-    (((x) + MSG_ALIGNMENT - 1) & ~(MSG_ALIGNMENT - 1))
+#pragma pack(push, 1)
 
-#define MSG_DATA_PTR(x) \
-    ((char*)x + MSG_ALIGN(sizeof(*x)))
-
-struct MsgInitSwapChain
+struct MsgNullTerminator
 {
-    DEFINE_MSG_ID;
-    unsigned int style;
-    unsigned int x;
-    unsigned int y;
-    unsigned int width;
-    unsigned int height;
-    unsigned int renderWidth;
-    unsigned int renderHeight;
-    unsigned int bufferCount;
-    unsigned int scaling;
-    unsigned int surface;
-    unsigned int interval;
-    unsigned int handle;
+    static constexpr uint32_t s_id = 0;
+    uint8_t id = 0;
 };
 
-struct MsgPresent
+struct MsgCreateSwapChain
 {
-    DEFINE_MSG_ID;
-};
-
-struct MsgCreateTexture
-{
-    DEFINE_MSG_ID;
-    unsigned int width;
-    unsigned int height;
-    unsigned int levels;
-    unsigned int usage;
-    unsigned int format;
-    unsigned int texture;
-};
-
-struct MsgCreateVertexBuffer
-{
-    DEFINE_MSG_ID;
-    unsigned int length;
-    unsigned int vertexBuffer;
-};
-
-struct MsgCreateIndexBuffer
-{
-    DEFINE_MSG_ID;
-    unsigned int length;
-    unsigned int format;
-    unsigned int indexBuffer;
-};
-
-struct MsgCreateRenderTarget
-{
-    DEFINE_MSG_ID;
-    unsigned int width;
-    unsigned int height;
-    unsigned int format;
-    unsigned int surface;
-};
-
-struct MsgCreateDepthStencilSurface
-{
-    DEFINE_MSG_ID;
-    unsigned int width;
-    unsigned int height;
-    unsigned int format;
-    unsigned int surface;
+    MSG_DEFINE_MESSAGE(MsgNullTerminator);
+    uint32_t postHandle;
+    uint32_t style;
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
 };
 
 struct MsgSetRenderTarget
 {
-    DEFINE_MSG_ID;
-    unsigned int index;
-    unsigned int surface;
+    MSG_DEFINE_MESSAGE(MsgCreateSwapChain);
+    uint8_t renderTargetIndex;
+    uint32_t textureId;
+    uint8_t textureLevel;
 };
-
-struct MsgSetDepthStencilSurface
+struct MsgCreateVertexDeclaration
 {
-    DEFINE_MSG_ID;
-    unsigned int surface;
+    MSG_DEFINE_MESSAGE(MsgSetRenderTarget);
+    uint32_t vertexDeclarationId;
+    uint16_t dataSize;
+    uint8_t data[1u];
 };
-
-struct MsgClear
+struct MsgCreatePixelShader
 {
-    DEFINE_MSG_ID;
-    unsigned int flags;
-    unsigned int color;
-    float z;
-    unsigned int stencil;
+    MSG_DEFINE_MESSAGE(MsgCreateVertexDeclaration);
+    uint32_t pixelShaderId;
+    uint32_t dataSize;
+    uint8_t data[1u];
 };
-
-struct MsgSetViewport
+struct MsgCreateVertexShader
 {
-    DEFINE_MSG_ID;
-    unsigned int x;
-    unsigned int y;
-    unsigned int width;
-    unsigned int height;
-    float minZ;
-    float maxZ;
+    MSG_DEFINE_MESSAGE(MsgCreatePixelShader);
+    uint32_t vertexShaderId;
+    uint32_t dataSize;
+    uint8_t data[1u];
 };
 
 struct MsgSetRenderState
 {
-    DEFINE_MSG_ID;
-    unsigned int state;
-    unsigned int value;
+    MSG_DEFINE_MESSAGE(MsgCreateVertexShader);
+    uint8_t state;
+    uint32_t value;
+};
+
+struct MsgCreateTexture
+{
+    MSG_DEFINE_MESSAGE(MsgSetRenderState);
+    uint16_t width;
+    uint16_t height;
+    uint8_t levels;
+    uint32_t usage;
+    uint32_t format;
+    uint32_t textureId;
 };
 
 struct MsgSetTexture
 {
-    DEFINE_MSG_ID;
-    unsigned int stage;
-    unsigned int texture;
+    MSG_DEFINE_MESSAGE(MsgCreateTexture);
+    uint8_t stage;
+    uint32_t textureId;
 };
 
-struct MsgSetSamplerState
+struct MsgSetDepthStencilSurface
 {
-    DEFINE_MSG_ID;
-    unsigned int sampler;
-    unsigned int type;
-    unsigned int value;
+    MSG_DEFINE_MESSAGE(MsgSetTexture);
+    uint32_t depthStencilSurfaceId;
+    uint8_t level;
 };
 
-struct MsgSetScissorRect
+struct MsgClear
 {
-    DEFINE_MSG_ID;
-    unsigned int left;
-    unsigned int top;
-    unsigned int right;
-    unsigned int bottom;
-};
-
-struct MsgDrawPrimitive
-{
-    DEFINE_MSG_ID;
-    unsigned int primitiveType;
-    unsigned int startVertex;
-    unsigned int primitiveCount;
-};
-
-struct MsgDrawIndexedPrimitive
-{
-    DEFINE_MSG_ID;
-    unsigned int primitiveType;
-    int baseVertexIndex;
-    unsigned int startIndex;
-    unsigned int primitiveCount;
-};
-
-struct MsgDrawPrimitiveUP
-{
-    DEFINE_MSG_ID;
-    unsigned int primitiveType;
-    unsigned int primitiveCount;
-    unsigned int vertexStreamZeroSize;
-    unsigned int vertexStreamZeroStride;
-};
-
-struct MsgCreateVertexDeclaration
-{
-    DEFINE_MSG_ID;
-    unsigned int vertexElementCount;
-    unsigned int vertexDeclaration;
-};
-
-struct MsgSetVertexDeclaration
-{
-    DEFINE_MSG_ID;
-    unsigned int vertexDeclaration;
-};
-
-struct MsgSetFVF
-{
-    DEFINE_MSG_ID;
-    unsigned int vertexDeclaration;
-    unsigned int fvf;
-};
-
-struct MsgCreateVertexShader
-{
-    DEFINE_MSG_ID;
-    unsigned int shader;
-    unsigned int functionSize;
+    MSG_DEFINE_MESSAGE(MsgSetDepthStencilSurface);
+    uint32_t flags;
+    uint32_t color;
+    float z;
+    uint8_t stencil;
 };
 
 struct MsgSetVertexShader
 {
-    DEFINE_MSG_ID;
-    unsigned int shader;
-};
-
-struct MsgSetVertexShaderConstantF
-{
-    DEFINE_MSG_ID;
-    unsigned int startRegister;
-    unsigned int vector4fCount;
-};
-
-struct MsgSetVertexShaderConstantB
-{
-    DEFINE_MSG_ID;
-    unsigned int startRegister;
-    unsigned int boolCount;
-};
-
-struct MsgSetStreamSource
-{
-    DEFINE_MSG_ID;
-    unsigned int streamNumber;
-    unsigned int streamData;
-    unsigned int offsetInBytes;
-    unsigned int stride;
-};
-
-struct MsgSetStreamSourceFreq
-{
-    DEFINE_MSG_ID;
-    unsigned int streamNumber;
-    unsigned int setting;
-};
-
-struct MsgSetIndices
-{
-    DEFINE_MSG_ID;
-    unsigned int indexData;
-};
-
-struct MsgCreatePixelShader
-{
-    DEFINE_MSG_ID;
-    unsigned int shader;
-    unsigned int functionSize;
+    MSG_DEFINE_MESSAGE(MsgClear);
+    uint32_t vertexShaderId;
 };
 
 struct MsgSetPixelShader
 {
-    DEFINE_MSG_ID;
-    unsigned int shader;
+    MSG_DEFINE_MESSAGE(MsgSetVertexShader);
+    uint32_t pixelShaderId;
 };
 
 struct MsgSetPixelShaderConstantF
 {
-    DEFINE_MSG_ID;
-    unsigned int startRegister;
-    unsigned int vector4fCount;
+    MSG_DEFINE_MESSAGE(MsgSetPixelShader);
+    uint8_t startRegister;
+    uint16_t dataSize;
+    uint8_t data[1u];
 };
 
-struct MsgSetPixelShaderConstantB
+struct MsgSetVertexShaderConstantF
 {
-    DEFINE_MSG_ID;
-    unsigned int startRegister;
-    unsigned int boolCount;
+    MSG_DEFINE_MESSAGE(MsgSetPixelShaderConstantF);
+    uint8_t startRegister;
+    uint16_t dataSize;
+    uint8_t data[1u];
 };
 
-struct MsgMakePicture
+struct MsgSetVertexShaderConstantB
 {
-    DEFINE_MSG_ID;
-    unsigned int texture;
-    unsigned int size;
-    wchar_t name[256];
+    MSG_DEFINE_MESSAGE(MsgSetVertexShaderConstantF);
+    uint32_t startRegister;
+    uint8_t dataSize;
+    uint8_t data[1u];
 };
 
-struct MsgWriteBuffer
+struct MsgSetSamplerState
 {
-    DEFINE_MSG_ID;
-    unsigned int buffer;
-    unsigned int size;
+    MSG_DEFINE_MESSAGE(MsgSetVertexShaderConstantB);
+    uint8_t sampler;
+    uint8_t type;
+    uint32_t value;
+};
+
+struct MsgSetViewport
+{
+    MSG_DEFINE_MESSAGE(MsgSetSamplerState);
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
+    float minZ;
+    float maxZ;
+};
+
+struct MsgSetScissorRect
+{
+    MSG_DEFINE_MESSAGE(MsgSetViewport);
+    uint16_t left;
+    uint16_t top;
+    uint16_t right;
+    uint16_t bottom;
+};
+
+struct MsgSetVertexDeclaration
+{
+    MSG_DEFINE_MESSAGE(MsgSetScissorRect);
+    uint32_t vertexDeclarationId;
+};
+
+struct MsgDrawPrimitiveUP
+{
+    MSG_DEFINE_MESSAGE(MsgSetVertexDeclaration);
+    uint8_t primitiveType;
+    uint32_t vertexCount;
+    uint8_t vertexStreamZeroStride;
+    uint32_t dataSize;
+    uint8_t data[1u];
+};
+
+struct MsgSetStreamSource
+{
+    MSG_DEFINE_MESSAGE(MsgDrawPrimitiveUP);
+    uint8_t streamNumber;
+    uint32_t streamDataId;
+    uint32_t offsetInBytes;
+    uint8_t stride;
+};
+
+struct MsgSetIndices
+{
+    MSG_DEFINE_MESSAGE(MsgSetStreamSource);
+    uint32_t indexDataId;
+};
+
+struct MsgPresent
+{
+    MSG_DEFINE_MESSAGE(MsgSetIndices);
+};
+
+struct MsgCreateVertexBuffer
+{
+    MSG_DEFINE_MESSAGE(MsgPresent);
+    uint32_t length;
+    uint32_t vertexBufferId;
+};
+
+struct MsgWriteVertexBuffer
+{
+    MSG_DEFINE_MESSAGE(MsgCreateVertexBuffer);
+    uint32_t vertexBufferId;
+    uint32_t offset;
+    uint32_t dataSize;
+    alignas(0x10) uint8_t data[1u];
+};
+
+struct MsgCreateIndexBuffer
+{
+    MSG_DEFINE_MESSAGE(MsgWriteVertexBuffer);
+    uint32_t length;
+    uint32_t format;
+    uint32_t indexBufferId;
+};
+
+struct MsgWriteIndexBuffer
+{
+    MSG_DEFINE_MESSAGE(MsgCreateIndexBuffer);
+    uint32_t indexBufferId;
+    uint32_t offset;
+    uint32_t dataSize;
+    alignas(0x10) uint8_t data[1u];
 };
 
 struct MsgWriteTexture
 {
-    DEFINE_MSG_ID;
-    unsigned int texture;
-    unsigned int size;
-    unsigned int pitch;
+    MSG_DEFINE_MESSAGE(MsgWriteIndexBuffer);
+    uint32_t textureId;
+    uint8_t level;
+    uint32_t dataSize;
+    alignas(0x10) uint8_t data[1u];
 };
 
-struct MsgCreateMesh
+struct MsgMakeTexture
 {
-    DEFINE_MSG_ID;
-    unsigned int model;
-    unsigned int element;
-    unsigned int group;
-    bool opaque;
-    bool punchThrough;
-    unsigned int vertexBuffer;
-    unsigned int vertexOffset;
-    unsigned int vertexCount;
-    unsigned int vertexStride;
-    unsigned int indexBuffer;
-    unsigned int indexOffset;
-    unsigned int indexCount;
-    unsigned int normalOffset;
-    unsigned int tangentOffset;
-    unsigned int binormalOffset;
-    unsigned int texCoordOffset;
-    unsigned int colorOffset;
-    unsigned int colorFormat;
-    unsigned int blendWeightOffset;
-    unsigned int blendIndicesOffset;
-    unsigned int material;
-    unsigned int nodeNum;
+    MSG_DEFINE_MESSAGE(MsgWriteTexture);
+    uint32_t textureId;
+    uint32_t dataSize;
+    uint8_t data[1u];
 };
 
-struct MsgCreateModel
+struct MsgDrawIndexedPrimitive
 {
-    DEFINE_MSG_ID;
-    unsigned int model;
-    unsigned int element;
-    unsigned int matrixNum;
+    MSG_DEFINE_MESSAGE(MsgMakeTexture);
+    uint8_t primitiveType;
+    int32_t baseVertexIndex;
+    uint32_t startIndex;
+    uint32_t indexCount;
 };
 
-#define INSTANCE_MASK_NONE         0
-#define INSTANCE_MASK_OPAQ_PUNCH   1
-#define INSTANCE_MASK_TRANS_WATER  2
-#define INSTANCE_MASK_DEFAULT      (INSTANCE_MASK_OPAQ_PUNCH | INSTANCE_MASK_TRANS_WATER)
-#define INSTANCE_MASK_SKY          4
-
-struct MsgCreateInstance
+struct MsgSetStreamSourceFreq
 {
-    DEFINE_MSG_ID;
-    float transform[3][4];
-    float prevTransform[3][4];
-    unsigned int model;
-    unsigned int element;
+    MSG_DEFINE_MESSAGE(MsgDrawIndexedPrimitive);
+    uint8_t streamNumber;
+    uint32_t setting;
 };
 
-struct MsgNotifySceneTraversed
-{
-    DEFINE_MSG_ID;
-    unsigned int resetAccumulation;
-};
-
-struct MsgCreateMaterial
-{
-    DEFINE_MSG_ID;
-    unsigned int material;
-    char shader[256];
-    unsigned int textures[16];
-    float parameters[16][4];
-};
-
-struct MsgReleaseResource
-{
-    DEFINE_MSG_ID;
-    unsigned int resource;
-};
-
-struct MsgReleaseElement
-{
-    DEFINE_MSG_ID;
-    unsigned int model;
-    unsigned int element;
-};
-
-struct MsgCopyVelocityMap
-{
-    DEFINE_MSG_ID;
-    unsigned int enableBoostBlur;
-};
+#pragma pack(pop)

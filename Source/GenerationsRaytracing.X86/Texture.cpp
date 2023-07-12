@@ -1,64 +1,68 @@
-﻿#include "Texture.h"
+#include "Texture.h"
 
 #include "Message.h"
 #include "MessageSender.h"
 #include "Surface.h"
 
-Texture::Texture() = default;
-
-Texture::Texture(size_t width, size_t height) : width(width), height(height)
+Texture::Texture(uint32_t width, uint32_t height, uint32_t levelCount)
+    : BaseTexture(levelCount), m_width(width), m_height(height)
 {
 }
 
 Texture::~Texture() = default;
 
-HRESULT Texture::GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc)
+uint32_t Texture::getWidth() const
 {
-    pDesc->Width = width >> Level;
-    pDesc->Height = height >> Level;
+    return m_width;
+}
+
+uint32_t Texture::getHeight() const
+{
+    return m_height;
+}
+
+HRESULT Texture::GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc)
+{
+    pDesc->Format = D3DFMT_UNKNOWN;
+    pDesc->Type = D3DRTYPE_SURFACE;
+    pDesc->Usage = NULL;
+    pDesc->Pool = D3DPOOL_DEFAULT;
+    pDesc->MultiSampleType = D3DMULTISAMPLE_NONE;
+    pDesc->MultiSampleQuality = 0;
+    pDesc->Width = m_width >> Level;
+    pDesc->Height = m_height >> Level;
 
     return S_OK;
 }
 
 HRESULT Texture::GetSurfaceLevel(UINT Level, Surface** ppSurfaceLevel)
 {
-    if (!surface)
-        surface.Attach(new Surface(this));
+    if (!m_surfaces[Level])
+        m_surfaces[Level].Attach(new Surface(this, Level));
 
-    surface.CopyTo(ppSurfaceLevel);
+    m_surfaces[Level].CopyTo(ppSurfaceLevel);
     return S_OK;
 }
 
-HRESULT Texture::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags)
+HRESULT Texture::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags)
 {
-    const size_t size = width * height * 4;
-    const auto msg = msgSender.start<MsgWriteTexture>(size);
+    // TODO: is it safe to assume RGBA8 here??
+    auto& message = s_messageSender.makeParallelMessage<MsgWriteTexture>((m_width >> Level) * (m_height >> Level) * 4);
 
-    msg->texture = id;
-    msg->size = size;
-    msg->pitch = width * 4;
+    message.textureId = m_id;
+    message.level = Level;
 
-    pLockedRect->Pitch = (INT)msg->pitch;
-    pLockedRect->pBits = MSG_DATA_PTR(msg);
+    pLockedRect->pBits = message.data;
+    pLockedRect->Pitch = static_cast<INT>((m_width >> Level) * 4);
 
     return S_OK;
 }
 
 HRESULT Texture::UnlockRect(UINT Level)
 {
-    msgSender.finish();
+    s_messageSender.endParallelMessage();
+
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Texture::AddDirtyRect, CONST RECT* pDirtyRect)
-
-HRESULT Texture::BeginSfdDecodeCallback(uintptr_t, Texture*& texture, uintptr_t, uintptr_t)
-{
-    texture = this;
-    return S_OK;
-}
-
-HRESULT Texture::EndSfdDecodeCallback(uintptr_t)
-{
-    return S_OK;
-}
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Texture::AddDirtyRect, const RECT* pDirtyRect)

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Resource.h"
 
@@ -6,12 +6,16 @@ class Texture;
 
 class Surface : public Resource
 {
-public:
-    ComPtr<Texture> texture;
+protected:
+    ComPtr<Texture> m_texture;
+    uint32_t m_level;
 
-    Surface();
-    Surface(Texture* texture);
-    ~Surface();
+public:
+    explicit Surface(Texture* texture, size_t level);
+    ~Surface() override;
+
+    Texture* getTexture() const;
+    uint32_t getLevel() const;
 
     virtual HRESULT GetContainer(const IID& riid, void** ppContainer) final;
     virtual HRESULT GetDesc(D3DSURFACE_DESC* pDesc) final;

@@ -13,7 +13,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{f300f7d5-ee2f-439a-a3b9-c08ca3744009}</ProjectGuid>
+    <ProjectGuid>{c3aa70f3-7480-46e5-a30c-bc1e281b69e1}</ProjectGuid>
     <RootNamespace>GenerationsRaytracingX86</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -21,13 +21,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -56,19 +56,19 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;NOMINMAX</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies;..\..\Dependencies\BlueBlur;..\..\Dependencies\Detours\include;..\..\Dependencies\HedgeLib\HedgeLib\include;..\..\Dependencies\oneTBB\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\Dependencies\BlueBlur;..\..\Dependencies\Detours\lib\x86;..\..\Dependencies\oneTBB\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>detours.lib;syelog.lib;d3d9.lib;tbb12_debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d9.lib;detours.lib;syelog.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -77,77 +77,76 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;NOMINMAX</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>..\GenerationsRaytracing.Shared;..\..\Dependencies;..\..\Dependencies\BlueBlur;..\..\Dependencies\Detours\include;..\..\Dependencies\HedgeLib\HedgeLib\include;..\..\Dependencies\oneTBB\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <StringPooling>true</StringPooling>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalOptions>/Ob3 %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>false</ExceptionHandling>
-      <FloatingPointModel>Fast</FloatingPointModel>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <StringPooling>true</StringPooling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\Dependencies\BlueBlur;..\..\Dependencies\Detours\lib\x86;..\..\Dependencies\oneTBB\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>detours.lib;syelog.lib;d3d9.lib;tbb12.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d9.lib;detours.lib;syelog.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ArchiveTree.cpp" />
     <ClCompile Include="BaseTexture.cpp" />
-    <ClCompile Include="Buffer.cpp" />
-    <ClCompile Include="CpkBinder.cpp" />
-    <ClCompile Include="Identifier.cpp" />
-    <ClCompile Include="MemoryAllocator.cpp" />
-    <ClCompile Include="MessageSender.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="D3D9.cpp" />
+    <ClCompile Include="PictureData.cpp" />
     <ClCompile Include="Device.cpp" />
+    <ClCompile Include="FillTexture.cpp" />
+    <ClCompile Include="IndexBuffer.cpp" />
+    <ClCompile Include="MessageSender.cpp" />
     <ClCompile Include="Mod.cpp" />
-    <ClCompile Include="Patches.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="RaytracingManager.cpp" />
+    <ClCompile Include="PixelShader.cpp" />
     <ClCompile Include="Resource.cpp" />
-    <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="RaytracingParams.cpp" />
     <ClCompile Include="Surface.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Unknown.cpp" />
+    <ClCompile Include="VertexBuffer.cpp" />
     <ClCompile Include="VertexDeclaration.cpp" />
-    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="VertexShader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ArchiveTree.h" />
     <ClInclude Include="BaseTexture.h" />
-    <ClInclude Include="Buffer.h" />
-    <ClInclude Include="CpkBinder.h" />
-    <ClInclude Include="Identifier.h" />
-    <ClInclude Include="MemoryAllocator.h" />
-    <ClInclude Include="MessageSender.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="D3D9.h" />
+    <ClInclude Include="PictureData.h" />
     <ClInclude Include="Device.h" />
-    <ClInclude Include="Patches.h" />
+    <ClInclude Include="FillTexture.h" />
+    <ClInclude Include="IndexBuffer.h" />
+    <ClInclude Include="MessageSender.h" />
     <ClInclude Include="Pch.h" />
-    <ClInclude Include="RaytracingManager.h" />
+    <ClInclude Include="PixelShader.h" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="Shader.h" />
-    <ClInclude Include="RaytracingParams.h" />
     <ClInclude Include="Surface.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Unknown.h" />
+    <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VertexDeclaration.h" />
-    <ClInclude Include="Window.h" />
+    <ClInclude Include="VertexShader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="MessageSender.inl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\Mutex.inl">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

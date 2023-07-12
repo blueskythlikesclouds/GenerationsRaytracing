@@ -1,276 +1,235 @@
-﻿#include "Device.h"
+#include "Device.h"
 
-#include "Buffer.h"
-#include "Identifier.h"
+#include "IndexBuffer.h"
 #include "Message.h"
 #include "MessageSender.h"
-#include "Shader.h"
+#include "PixelShader.h"
 #include "Surface.h"
 #include "Texture.h"
+#include "VertexBuffer.h"
 #include "VertexDeclaration.h"
+#include "VertexShader.h"
 
-Device::Device(size_t width, size_t height)
+Device::Device()
 {
-    swapChainSurface.Attach(new Surface());
-    swapChainSurface->texture.Attach(new Texture(width, height));
+    m_backBuffer.Attach(new Texture(1600, 900, 1));
 }
 
-Device::~Device() = default;
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::TestCooperativeLevel)
 
-FUNCTION_STUB(HRESULT, Device::TestCooperativeLevel)
+FUNCTION_STUB(UINT, 0, Device::GetAvailableTextureMem)
 
-FUNCTION_STUB(UINT, Device::GetAvailableTextureMem)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::EvictManagedResources)
 
-FUNCTION_STUB(HRESULT, Device::EvictManagedResources)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetDirect3D, D3D9** ppD3D9)
 
-FUNCTION_STUB(HRESULT, Device::GetDirect3D, D3D9** ppD3D9)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetDeviceCaps, D3DCAPS9* pCaps)
 
-FUNCTION_STUB(HRESULT, Device::GetDeviceCaps, D3DCAPS9* pCaps)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetDisplayMode, UINT iSwapChain, D3DDISPLAYMODE* pMode)
 
-FUNCTION_STUB(HRESULT, Device::GetDisplayMode, UINT iSwapChain, D3DDISPLAYMODE* pMode)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetCreationParameters, D3DDEVICE_CREATION_PARAMETERS* pParameters)
 
-FUNCTION_STUB(HRESULT, Device::GetCreationParameters, D3DDEVICE_CREATION_PARAMETERS *pParameters)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetCursorProperties, UINT XHotSpot, UINT YHotSpot, Surface* pCursorBitmap)
 
-FUNCTION_STUB(HRESULT, Device::SetCursorProperties, UINT XHotSpot, UINT YHotSpot, Surface* pCursorBitmap)
+FUNCTION_STUB(void, , Device::SetCursorPosition, int X, int Y, DWORD Flags)
 
-FUNCTION_STUB(void, Device::SetCursorPosition, int X, int Y, DWORD Flags)
+FUNCTION_STUB(BOOL, FALSE, Device::ShowCursor, BOOL bShow)
 
-FUNCTION_STUB(BOOL, Device::ShowCursor, BOOL bShow)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::CreateAdditionalSwapChain, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain)
 
-FUNCTION_STUB(HRESULT, Device::CreateAdditionalSwapChain, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetSwapChain, UINT iSwapChain, IDirect3DSwapChain9** pSwapChain)
 
-FUNCTION_STUB(HRESULT, Device::GetSwapChain, UINT iSwapChain, IDirect3DSwapChain9** pSwapChain)
+FUNCTION_STUB(UINT, 0, Device::GetNumberOfSwapChains)
 
-FUNCTION_STUB(UINT, Device::GetNumberOfSwapChains)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::Reset, D3DPRESENT_PARAMETERS* pPresentationParameters)
 
-FUNCTION_STUB(HRESULT, Device::Reset, D3DPRESENT_PARAMETERS* pPresentationParameters)
-
-HRESULT Device::Present(CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion)
+HRESULT Device::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion)
 {
-    msgSender.oneShot<MsgPresent>();
-    msgSender.commitAllMessages();
+    s_messageSender.makeSerialMessage<MsgPresent>();
+    s_messageSender.sendAllMessages();
 
     return S_OK;
 }
 
 HRESULT Device::GetBackBuffer(UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, Surface** ppBackBuffer)
 {
-    swapChainSurface.CopyTo(ppBackBuffer);
-    return S_OK;
+    return m_backBuffer->GetSurfaceLevel(0, ppBackBuffer);
 }
-    
-FUNCTION_STUB(HRESULT, Device::GetRasterStatus, UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus)
 
-FUNCTION_STUB(HRESULT, Device::SetDialogBoxMode, BOOL bEnableDialogs)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetRasterStatus, UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus)
 
-FUNCTION_STUB(void, Device::SetGammaRamp, UINT iSwapChain, DWORD Flags, CONST D3DGAMMARAMP* pRamp)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetDialogBoxMode, BOOL bEnableDialogs)
 
-FUNCTION_STUB(void, Device::GetGammaRamp, UINT iSwapChain, D3DGAMMARAMP* pRamp)
+void Device::SetGammaRamp(UINT iSwapChain, DWORD Flags, const D3DGAMMARAMP* pRamp)
+{
+    // nothing to do here...
+}
+
+FUNCTION_STUB(void, , Device::GetGammaRamp, UINT iSwapChain, D3DGAMMARAMP* pRamp)
 
 HRESULT Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Texture** ppTexture, HANDLE* pSharedHandle)
 {
-    *ppTexture = new Texture(Width, Height);
+    *ppTexture = new Texture(Width, Height, Levels);
 
-    assert((Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) ||
-        Format == D3DFMT_A8B8G8R8 ||
-        Format == D3DFMT_A8R8G8B8 ||
-        Format == D3DFMT_X8B8G8R8 ||
-        Format == D3DFMT_X8R8G8B8);
+    auto& message = s_messageSender.makeParallelMessage<MsgCreateTexture>();
 
-    const auto msg = msgSender.start<MsgCreateTexture>();
+    message.width = Width;
+    message.height = Height;
+    message.levels = Levels;
+    message.usage = Usage;
+    message.format = Format;
+    message.textureId = (*ppTexture)->getId();
 
-    msg->width = Width;
-    msg->height = Height;
-    msg->levels = Levels;
-    msg->usage = Usage;
-    msg->format = Format;
-    msg->texture = (*ppTexture)->id;
-
-    msgSender.finish();
+    s_messageSender.endParallelMessage();
 
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::CreateVolumeTexture, UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::CreateVolumeTexture, UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle)
 
-FUNCTION_STUB(HRESULT, Device::CreateCubeTexture, UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Texture** ppCubeTexture, HANDLE* pSharedHandle)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::CreateCubeTexture, UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, CubeTexture** ppCubeTexture, HANDLE* pSharedHandle)
 
-HRESULT Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, Buffer** ppVertexBuffer, HANDLE* pSharedHandle)
+HRESULT Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, VertexBuffer** ppVertexBuffer, HANDLE* pSharedHandle)
 {
-    *ppVertexBuffer = new Buffer(Length);
+    *ppVertexBuffer = new VertexBuffer(Length);
 
-    if (Length == 0)
-        return S_OK;
+    auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexBuffer>();
 
-    const auto msg = msgSender.start<MsgCreateVertexBuffer>();
+    message.length = Length;
+    message.vertexBufferId = (*ppVertexBuffer)->getId();
 
-    msg->length = Length;
-    msg->vertexBuffer = (*ppVertexBuffer)->id;
-
-    msgSender.finish();
+    s_messageSender.endParallelMessage();
 
     return S_OK;
 }
 
-HRESULT Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Buffer** ppIndexBuffer, HANDLE* pSharedHandle)
+HRESULT Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IndexBuffer** ppIndexBuffer, HANDLE* pSharedHandle)
 {
-    *ppIndexBuffer = new Buffer(Length);
+    *ppIndexBuffer = new IndexBuffer(Length);
 
-    if (Length == 0)
-        return S_OK;
+    auto& message = s_messageSender.makeParallelMessage<MsgCreateIndexBuffer>();
 
-    const auto msg = msgSender.start<MsgCreateIndexBuffer>();
+    message.length = Length;
+    message.format = Format;
+    message.indexBufferId = (*ppIndexBuffer)->getId();
 
-    msg->length = Length;
-    msg->format = Format;
-    msg->indexBuffer = (*ppIndexBuffer)->id;
-
-    msgSender.finish();
+    s_messageSender.endParallelMessage();
 
     return S_OK;
 }
 
-HRESULT Device::CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, Surface** ppSurface, HANDLE* pSharedHandle)
-{
-    *ppSurface = new Surface();
-    (*ppSurface)->texture.Attach(new Texture(Width, Height));
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::CreateRenderTarget, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, Surface** ppSurface, HANDLE* pSharedHandle)
 
-    const auto msg = msgSender.start<MsgCreateRenderTarget>();
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::CreateDepthStencilSurface, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, Surface** ppSurface, HANDLE* pSharedHandle)
 
-    msg->width = Width;
-    msg->height = Height;
-    msg->format = Format;
-    msg->surface = (*ppSurface)->texture->id;
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::UpdateSurface, Surface* pSourceSurface, const RECT* pSourceRect, Surface* pDestinationSurface, const POINT* pDestPoint)
 
-    msgSender.finish();
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::UpdateTexture, BaseTexture* pSourceTexture, BaseTexture* pDestinationTexture)
 
-    return S_OK;
-}
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetRenderTargetData, Surface* pRenderTarget, Surface* pDestSurface)
 
-HRESULT Device::CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, Surface** ppSurface, HANDLE* pSharedHandle)
-{
-    *ppSurface = new Surface();
-    (*ppSurface)->texture.Attach(new Texture(Width, Height));
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetFrontBufferData, UINT iSwapChain, Surface* pDestSurface)
 
-    const auto msg = msgSender.start<MsgCreateDepthStencilSurface>();
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::StretchRect, Surface* pSourceSurface, const RECT* pSourceRect, Surface* pDestSurface, const RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter)
 
-    msg->width = Width;
-    msg->height = Height;
-    msg->format = Format;
-    msg->surface = (*ppSurface)->texture->id;
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::ColorFill, Surface* pSurface, const RECT* pRect, D3DCOLOR color)
 
-    msgSender.finish();
-
-    return S_OK;
-}
-
-FUNCTION_STUB(HRESULT, Device::UpdateSurface, Surface* pSourceSurface, CONST RECT* pSourceRect, Surface* pDestinationSurface, CONST POINT* pDestPoint)
-
-FUNCTION_STUB(HRESULT, Device::UpdateTexture, BaseTexture* pSourceTexture, BaseTexture* pDestinationTexture)
-
-FUNCTION_STUB(HRESULT, Device::GetRenderTargetData, Surface* pRenderTarget, Surface* pDestSurface)
-
-FUNCTION_STUB(HRESULT, Device::GetFrontBufferData, UINT iSwapChain, Surface* pDestSurface)
-
-HRESULT Device::StretchRect(Surface* pSourceSurface, CONST RECT* pSourceRect, Surface* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter)
-{
-    return S_OK;
-}
-
-FUNCTION_STUB(HRESULT, Device::ColorFill, Surface* pSurface, CONST RECT* pRect, D3DCOLOR color)
-
-HRESULT Device::CreateOffscreenPlainSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, Surface** ppSurface, HANDLE* pSharedHandle)
-{
-    *ppSurface = nullptr;
-    return E_FAIL;
-}
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::CreateOffscreenPlainSurface, UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, Surface** ppSurface, HANDLE* pSharedHandle)
 
 HRESULT Device::SetRenderTarget(DWORD RenderTargetIndex, Surface* pRenderTarget)
 {
-    if (renderTargets[RenderTargetIndex].Get() == pRenderTarget) return S_OK;
-    renderTargets[RenderTargetIndex] = pRenderTarget;
+    Texture* texture = pRenderTarget != nullptr ? pRenderTarget->getTexture() : nullptr;
+    const uint32_t level = pRenderTarget != nullptr ? pRenderTarget->getLevel() : NULL;
 
-    const auto msg = msgSender.start<MsgSetRenderTarget>();
+    if (m_renderTargets[RenderTargetIndex].Get() != texture || 
+        m_renderTargetLevels[RenderTargetIndex] != level)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetRenderTarget>();
 
-    msg->index = RenderTargetIndex;
-    msg->surface = pRenderTarget ? pRenderTarget->texture->id : NULL;
+        message.renderTargetIndex = static_cast<uint8_t>(RenderTargetIndex);
+        message.textureId = texture != nullptr ? texture->getId() : NULL;
+        message.textureLevel = static_cast<uint8_t>(level);
 
-    msgSender.finish();
-
+        m_renderTargets[RenderTargetIndex] = texture;
+        m_renderTargetLevels[RenderTargetIndex] = level;
+    }
     return S_OK;
 }
 
-HRESULT Device::GetRenderTarget(DWORD RenderTargetIndex, Surface** ppRenderTarget)
-{
-    return S_OK;
-}
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetRenderTarget, DWORD RenderTargetIndex, Surface** ppRenderTarget)
 
 HRESULT Device::SetDepthStencilSurface(Surface* pNewZStencil)
 {
-    if (depthStencilSurface.Get() == pNewZStencil) return S_OK;
-    depthStencilSurface = pNewZStencil;
+    Texture* texture = pNewZStencil != nullptr ? pNewZStencil->getTexture() : nullptr;
+    const uint32_t level = pNewZStencil != nullptr ? pNewZStencil->getLevel() : NULL;
 
-    const auto msg = msgSender.start<MsgSetDepthStencilSurface>();
+    if (m_depthStencil.Get() != texture || m_depthStencilLevel != level)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetDepthStencilSurface>();
 
-    msg->surface = pNewZStencil ? pNewZStencil->texture->id : NULL;
+        message.depthStencilSurfaceId = texture != nullptr ? texture->getId() : NULL;
+        message.level = level;
 
-    msgSender.finish();
-
+        m_depthStencil = texture;
+        m_depthStencilLevel = level;
+    }
     return S_OK;
 }
 
 HRESULT Device::GetDepthStencilSurface(Surface** ppZStencilSurface)
 {
-    depthStencilSurface.CopyTo(ppZStencilSurface);
+    if (m_depthStencil != nullptr)
+        return m_depthStencil->GetSurfaceLevel(m_depthStencilLevel, ppZStencilSurface);
+
+    *ppZStencilSurface = nullptr;
     return S_OK;
 }
 
 HRESULT Device::BeginScene()
 {
+    // nothing to do here...
     return S_OK;
 }
 
 HRESULT Device::EndScene()
 {
+    // nothing to do here...
     return S_OK;
 }
 
-HRESULT Device::Clear(DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil)
+HRESULT Device::Clear(DWORD Count, const D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil)
 {
-    const auto msg = msgSender.start<MsgClear>();
+    auto& message = s_messageSender.makeSerialMessage<MsgClear>();
 
-    msg->flags = Flags;
-    msg->color = Color;
-    msg->z = Z;
-    msg->stencil = Stencil;
-
-    msgSender.finish();
+    message.flags = Flags;
+    message.color = Color;
+    message.z = Z;
+    message.stencil = static_cast<uint8_t>(Stencil);
 
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::SetTransform, D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetTransform, D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix)
 
-FUNCTION_STUB(HRESULT, Device::GetTransform, D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetTransform, D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix)
 
-FUNCTION_STUB(HRESULT, Device::MultiplyTransform, D3DTRANSFORMSTATETYPE, CONST D3DMATRIX*)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::MultiplyTransform, D3DTRANSFORMSTATETYPE, const D3DMATRIX*)
 
-HRESULT Device::SetViewport(CONST D3DVIEWPORT9* pViewport)
+HRESULT Device::SetViewport(const D3DVIEWPORT9* pViewport)
 {
-    if (memcmp(&viewport, pViewport, sizeof(D3DVIEWPORT9)) == 0) return S_OK;
-    viewport = *pViewport;
+    if (memcmp(&viewport, pViewport, sizeof(D3DVIEWPORT9)) != 0)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetViewport>();
 
-    const auto msg = msgSender.start<MsgSetViewport>();
+        message.x = static_cast<uint16_t>(pViewport->X);
+        message.y = static_cast<uint16_t>(pViewport->Y);
+        message.width = static_cast<uint16_t>(pViewport->Width);
+        message.height = static_cast<uint16_t>(pViewport->Height);
+        message.minZ = pViewport->MinZ;
+        message.maxZ = pViewport->MaxZ;
 
-    msg->x = pViewport->X;
-    msg->y = pViewport->Y;
-    msg->width = pViewport->Width;
-    msg->height = pViewport->Height;
-    msg->minZ = pViewport->MinZ;
-    msg->maxZ = pViewport->MaxZ;
-
-    msgSender.finish();
-
+        viewport = *pViewport;
+    }
     return S_OK;
 }
 
@@ -280,129 +239,131 @@ HRESULT Device::GetViewport(D3DVIEWPORT9* pViewport)
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::SetMaterial, CONST D3DMATERIAL9* pMaterial)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetMaterial, const D3DMATERIAL9* pMaterial)
 
-FUNCTION_STUB(HRESULT, Device::GetMaterial, D3DMATERIAL9* pMaterial)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetMaterial, D3DMATERIAL9* pMaterial)
 
-FUNCTION_STUB(HRESULT, Device::SetLight, DWORD Index, CONST D3DLIGHT9*)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetLight, DWORD Index, const D3DLIGHT9*)
 
-FUNCTION_STUB(HRESULT, Device::GetLight, DWORD Index, D3DLIGHT9*)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetLight, DWORD Index, D3DLIGHT9*)
 
-FUNCTION_STUB(HRESULT, Device::LightEnable, DWORD Index, BOOL Enable)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::LightEnable, DWORD Index, BOOL Enable)
 
-FUNCTION_STUB(HRESULT, Device::GetLightEnable, DWORD Index, BOOL* pEnable)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetLightEnable, DWORD Index, BOOL* pEnable)
 
-FUNCTION_STUB(HRESULT, Device::SetClipPlane, DWORD Index, CONST float* pPlane)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetClipPlane, DWORD Index, const float* pPlane)
 
-FUNCTION_STUB(HRESULT, Device::GetClipPlane, DWORD Index, float* pPlane)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetClipPlane, DWORD Index, float* pPlane)
 
 HRESULT Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value)
 {
-    if (renderStates[State] == Value) return S_OK;
-    renderStates[State] = Value;
+    assert(State < 210);
 
-    const auto msg = msgSender.start<MsgSetRenderState>();
+    if (m_renderStates[State] != Value)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetRenderState>();
 
-    msg->state = State;
-    msg->value = Value;
+        message.state = State;
+        message.value = Value;
 
-    msgSender.finish();
+        m_renderStates[State] = Value;
+    }
 
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetRenderState, D3DRENDERSTATETYPE State, DWORD* pValue)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetRenderState, D3DRENDERSTATETYPE State, DWORD* pValue)
 
-FUNCTION_STUB(HRESULT, Device::CreateStateBlock, D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::CreateStateBlock, D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB)
 
-FUNCTION_STUB(HRESULT, Device::BeginStateBlock)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::BeginStateBlock)
 
-FUNCTION_STUB(HRESULT, Device::EndStateBlock, IDirect3DStateBlock9** ppSB)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::EndStateBlock, IDirect3DStateBlock9** ppSB)
 
-FUNCTION_STUB(HRESULT, Device::SetClipStatus, CONST D3DCLIPSTATUS9* pClipStatus)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetClipStatus, const D3DCLIPSTATUS9* pClipStatus)
 
-FUNCTION_STUB(HRESULT, Device::GetClipStatus, D3DCLIPSTATUS9* pClipStatus)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetClipStatus, D3DCLIPSTATUS9* pClipStatus)
 
-FUNCTION_STUB(HRESULT, Device::GetTexture, DWORD Stage, BaseTexture** ppTexture)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetTexture, DWORD Stage, BaseTexture** ppTexture)
 
 HRESULT Device::SetTexture(DWORD Stage, BaseTexture* pTexture)
 {
-    if (textures[Stage].Get() == pTexture) return S_OK;
-    textures[Stage] = pTexture;
+    if (m_textures[Stage].Get() != pTexture)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetTexture>();
 
-    const auto msg = msgSender.start<MsgSetTexture>();
+        message.stage = static_cast<uint8_t>(Stage);
+        message.textureId = pTexture != nullptr ? pTexture->getId() : NULL;
 
-    msg->stage = Stage;
-    msg->texture = pTexture ? pTexture->id : NULL;
-
-    msgSender.finish();
-
+        m_textures[Stage] = pTexture;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetTextureStageState, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetTextureStageState, DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue)
 
 HRESULT Device::SetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value)
 {
+    // nothing to do here...
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetSamplerState, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD* pValue)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetSamplerState, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD* pValue)
 
 HRESULT Device::SetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value)
 {
-    if (samplerStates[Sampler][Type] == Value) return S_OK;
-    samplerStates[Sampler][Type] = Value;
+    assert(Type < 14);
 
-    const auto msg = msgSender.start<MsgSetSamplerState>();
+    if (m_samplerStates[Sampler][Type] != Value)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetSamplerState>();
 
-    msg->sampler = Sampler;
-    msg->type = Type;
-    msg->value = Value;
+        message.sampler = static_cast<uint8_t>(Sampler);
+        message.type = static_cast<uint8_t>(Type);
+        message.value = Value;
 
-    msgSender.finish();
-
+        m_samplerStates[Sampler][Type] = Value;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::ValidateDevice, DWORD* pNumPasses)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::ValidateDevice, DWORD* pNumPasses)
 
-FUNCTION_STUB(HRESULT, Device::SetPaletteEntries, UINT PaletteNumber, CONST PALETTEENTRY* pEntries)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetPaletteEntries, UINT PaletteNumber, const PALETTEENTRY* pEntries)
 
-FUNCTION_STUB(HRESULT, Device::GetPaletteEntries, UINT PaletteNumber, PALETTEENTRY* pEntries)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetPaletteEntries, UINT PaletteNumber, PALETTEENTRY* pEntries)
 
-FUNCTION_STUB(HRESULT, Device::SetCurrentTexturePalette, UINT PaletteNumber)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetCurrentTexturePalette, UINT PaletteNumber)
 
-FUNCTION_STUB(HRESULT, Device::GetCurrentTexturePalette, UINT *PaletteNumber)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetCurrentTexturePalette, UINT* PaletteNumber)
 
-HRESULT Device::SetScissorRect(CONST RECT* pRect)
+HRESULT Device::SetScissorRect(const RECT* pRect)
 {
-    if (memcmp(&scissorRect, pRect, sizeof(RECT)) == 0) return S_OK;
-    scissorRect = *pRect;
+    if (memcmp(&m_scissorRect, pRect, sizeof(RECT)) != 0)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetScissorRect>();
 
-    const auto msg = msgSender.start<MsgSetScissorRect>();
+        message.left = static_cast<uint16_t>(pRect->left);
+        message.top = static_cast<uint16_t>(pRect->top);
+        message.right = static_cast<uint16_t>(pRect->right);
+        message.bottom = static_cast<uint16_t>(pRect->bottom);
 
-    msg->left = pRect->left;
-    msg->top = pRect->top;
-    msg->right = pRect->right;
-    msg->bottom = pRect->bottom;
-
-    msgSender.finish();
-
+        m_scissorRect = *pRect;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetScissorRect, RECT* pRect)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetScissorRect, RECT* pRect)
 
-FUNCTION_STUB(HRESULT, Device::SetSoftwareVertexProcessing, BOOL bSoftware)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetSoftwareVertexProcessing, BOOL bSoftware)
 
-FUNCTION_STUB(BOOL, Device::GetSoftwareVertexProcessing)
+FUNCTION_STUB(BOOL, FALSE, Device::GetSoftwareVertexProcessing)
 
-FUNCTION_STUB(HRESULT, Device::SetNPatchMode, float nSegments)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetNPatchMode, float nSegments)
 
-FUNCTION_STUB(float, Device::GetNPatchMode)
+FUNCTION_STUB(float, 0.0f, Device::GetNPatchMode)
 
-static UINT calculateIndexCount(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount)
+UINT calculateVertexCount(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount)
 {
     UINT vertexCount = 0;
     switch (PrimitiveType)
@@ -429,332 +390,242 @@ static UINT calculateIndexCount(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCo
     return vertexCount;
 }
 
-HRESULT Device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
-{
-    const auto msg = msgSender.start<MsgDrawPrimitive>();
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::DrawPrimitive, D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
 
-    msg->primitiveType = PrimitiveType;
-    msg->startVertex = StartVertex;
-    msg->primitiveCount = calculateIndexCount(PrimitiveType, PrimitiveCount);
-
-    msgSender.finish();
-
-    return S_OK;
-}       
-        
 HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
 {
-    const auto msg = msgSender.start<MsgDrawIndexedPrimitive>();
+    auto& message = s_messageSender.makeSerialMessage<MsgDrawIndexedPrimitive>();
 
-    msg->primitiveType = PrimitiveType;
-    msg->baseVertexIndex = BaseVertexIndex;
-    msg->startIndex = startIndex;
-    msg->primitiveCount = calculateIndexCount(PrimitiveType, primCount);
-
-    msgSender.finish();
+    message.primitiveType = PrimitiveType;
+    message.baseVertexIndex = BaseVertexIndex;
+    message.startIndex = startIndex;
+    message.indexCount = calculateVertexCount(PrimitiveType, primCount);
 
     return S_OK;
 }
-        
-HRESULT Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
+
+HRESULT Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 {
-    const unsigned int primitiveCount = calculateIndexCount(PrimitiveType, PrimitiveCount);
-    const unsigned int vertexStreamZeroSize = primitiveCount * VertexStreamZeroStride;
+    const uint32_t vertexCount = calculateVertexCount(PrimitiveType, PrimitiveCount);
 
-    if (vertexStreamZeroSize == 0)
-        return S_OK;
+    auto& message = s_messageSender.makeSerialMessage<MsgDrawPrimitiveUP>(vertexCount * VertexStreamZeroStride);
 
-    const auto msg = msgSender.start<MsgDrawPrimitiveUP>(vertexStreamZeroSize);
-
-    msg->primitiveType = PrimitiveType;
-    msg->primitiveCount = primitiveCount;
-    msg->vertexStreamZeroSize = vertexStreamZeroSize;
-    msg->vertexStreamZeroStride = VertexStreamZeroStride;
-
-    memcpy(MSG_DATA_PTR(msg), pVertexStreamZeroData, vertexStreamZeroSize);
-
-    msgSender.finish();
+    message.primitiveType = PrimitiveType;
+    message.vertexCount = vertexCount;
+    message.vertexStreamZeroStride = VertexStreamZeroStride;
+    memcpy(message.data, pVertexStreamZeroData, vertexCount * VertexStreamZeroStride);
 
     return S_OK;
 }
-        
-FUNCTION_STUB(HRESULT, Device::DrawIndexedPrimitiveUP, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, CONST void* pIndexData, D3DFORMAT IndexDataFormat, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 
-FUNCTION_STUB(HRESULT, Device::ProcessVertices, UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, Buffer* pDestBuffer, VertexDeclaration* pVertexDecl, DWORD Flags)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::DrawIndexedPrimitiveUP, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 
-HRESULT Device::CreateVertexDeclaration(CONST D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::ProcessVertices, UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, VertexBuffer* pDestBuffer, VertexDeclaration* pVertexDecl, DWORD Flags)
+
+HRESULT Device::CreateVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl)
 {
     *ppDecl = new VertexDeclaration(pVertexElements);
 
-    const auto msg = msgSender.start<MsgCreateVertexDeclaration>((*ppDecl)->getVertexElementsSize());
+    auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexDeclaration>(
+        (*ppDecl)->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
 
-    msg->vertexElementCount = (*ppDecl)->vertexElements.size();
-    msg->vertexDeclaration = (*ppDecl)->id;
+    message.vertexDeclarationId = (*ppDecl)->getId();
+    memcpy(message.data, (*ppDecl)->getVertexElements(), (*ppDecl)->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
 
-    memcpy(MSG_DATA_PTR(msg), (*ppDecl)->vertexElements.data(), (*ppDecl)->getVertexElementsSize());
-
-    msgSender.finish();
+    s_messageSender.endParallelMessage();
 
     return S_OK;
 }
 
 HRESULT Device::SetVertexDeclaration(VertexDeclaration* pDecl)
 {
-    if (vertexDeclaration.Get() == pDecl) return S_OK;
+    if (m_vertexDeclaration.Get() != pDecl)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetVertexDeclaration>();
+        message.vertexDeclarationId = pDecl != nullptr ? pDecl->getId() : NULL;
 
-    vertexDeclaration = pDecl;
-    fvf = 0;
-
-    const auto msg = msgSender.start<MsgSetVertexDeclaration>();
-
-    msg->vertexDeclaration = pDecl ? pDecl->id : NULL;
-
-    msgSender.finish();
-
+        m_vertexDeclaration = pDecl;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetVertexDeclaration, VertexDeclaration** ppDecl)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetVertexDeclaration, VertexDeclaration** ppDecl)
 
 HRESULT Device::SetFVF(DWORD FVF)
 {
-    if (fvf == FVF) return S_OK;
-
-    vertexDeclaration = nullptr;
-    fvf = FVF;
-
-    auto& vertexDeclaration = fvfMap[FVF];
+    auto& vertexDeclaration = m_fvfMap[FVF];
     if (!vertexDeclaration)
-        vertexDeclaration = getNextIdentifier();
+        vertexDeclaration.Attach(new VertexDeclaration(FVF));
 
-    const auto msg = msgSender.start<MsgSetFVF>();
-
-    msg->vertexDeclaration = vertexDeclaration;
-    msg->fvf = FVF;
-
-    msgSender.finish();
-
-    return S_OK;
+    return SetVertexDeclaration(vertexDeclaration.Get());
 }
 
-FUNCTION_STUB(HRESULT, Device::GetFVF, DWORD* pFVF)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetFVF, DWORD* pFVF)
 
-HRESULT Device::CreateVertexShader(CONST DWORD* pFunction, Shader** ppShader, DWORD FunctionSize)
+HRESULT Device::CreateVertexShader(const DWORD* pFunction, VertexShader** ppShader, DWORD FunctionSize)
 {
-    *ppShader = new Shader();
+    *ppShader = new VertexShader();
 
-    const auto msg = msgSender.start<MsgCreateVertexShader>(FunctionSize);
+    auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexShader>(FunctionSize);
 
-    msg->shader = (*ppShader)->id;
-    msg->functionSize = FunctionSize;
+    message.vertexShaderId = (*ppShader)->getId();
+    memcpy(message.data, pFunction, FunctionSize);
 
-    memcpy(MSG_DATA_PTR(msg), pFunction, FunctionSize);
-
-    msgSender.finish();
+    s_messageSender.endParallelMessage();
 
     return S_OK;
 }
 
-HRESULT Device::SetVertexShader(Shader* pShader)
+HRESULT Device::SetVertexShader(VertexShader* pShader)
 {
-    if (vertexShader.Get() == pShader) return S_OK;
-    vertexShader = pShader;
+    if (m_vertexShader.Get() != pShader)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetVertexShader>();
+        message.vertexShaderId = pShader != nullptr ? pShader->getId() : NULL;
 
-    const auto msg = msgSender.start<MsgSetVertexShader>();
-
-    msg->shader = pShader ? pShader->id : NULL;
-
-    msgSender.finish();
-
+        m_vertexShader = pShader;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetVertexShader, Shader** ppShader)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetVertexShader, VertexShader** ppShader)
 
-HRESULT Device::SetVertexShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount)
+HRESULT Device::SetVertexShaderConstantF(UINT StartRegister, const float* pConstantData, UINT Vector4fCount)
 {
-    const auto msg = msgSender.start<MsgSetVertexShaderConstantF>(Vector4fCount * sizeof(FLOAT[4]));
+    auto& message = s_messageSender.makeSerialMessage<MsgSetVertexShaderConstantF>(Vector4fCount * sizeof(float[4]));
 
-    msg->startRegister = StartRegister;
-    msg->vector4fCount = Vector4fCount;
-
-    memcpy(MSG_DATA_PTR(msg), pConstantData, Vector4fCount * sizeof(FLOAT[4]));
-
-    msgSender.finish();
+    message.startRegister = StartRegister;
+    memcpy(message.data, pConstantData, Vector4fCount * sizeof(float[4]));
 
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetVertexShaderConstantF, UINT StartRegister, float* pConstantData, UINT Vector4fCount)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetVertexShaderConstantF, UINT StartRegister, float* pConstantData, UINT Vector4fCount)
 
-HRESULT Device::SetVertexShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetVertexShaderConstantI, UINT StartRegister, const int* pConstantData, UINT Vector4iCount)
+
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetVertexShaderConstantI, UINT StartRegister, int* pConstantData, UINT Vector4iCount)
+
+HRESULT Device::SetVertexShaderConstantB(UINT StartRegister, const BOOL* pConstantData, UINT BoolCount)
 {
+    auto& message = s_messageSender.makeSerialMessage<MsgSetVertexShaderConstantB>(BoolCount * sizeof(BOOL));
+
+    message.startRegister = StartRegister;
+    memcpy(message.data, pConstantData, BoolCount * sizeof(BOOL));
+
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetVertexShaderConstantI, UINT StartRegister, int* pConstantData, UINT Vector4iCount)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetVertexShaderConstantB, UINT StartRegister, BOOL* pConstantData, UINT BoolCount)
 
-HRESULT Device::SetVertexShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount)
+HRESULT Device::SetStreamSource(UINT StreamNumber, VertexBuffer* pStreamData, UINT OffsetInBytes, UINT Stride)
 {
-    void* dest = &boolConstantsVS[StartRegister];
-    const size_t destSize = BoolCount * sizeof(BOOL);
+    if (m_streamData[StreamNumber].Get() != pStreamData ||
+        m_offsetsInBytes[StreamNumber] != OffsetInBytes ||
+        m_strides[StreamNumber] != Stride)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetStreamSource>();
 
-    if (memcmp(dest, pConstantData, destSize) == 0) return S_OK;
-    memcpy(dest, pConstantData, destSize);
+        message.streamNumber = StreamNumber;
+        message.streamDataId = pStreamData != nullptr ? pStreamData->getId() : NULL;
+        message.offsetInBytes = OffsetInBytes;
+        message.stride = Stride;
 
-    const auto msg = msgSender.start<MsgSetVertexShaderConstantB>(destSize);
-
-    msg->startRegister = StartRegister;
-    msg->boolCount = BoolCount;
-
-    memcpy(MSG_DATA_PTR(msg), pConstantData, destSize);
-
-    msgSender.finish();
-
+        m_streamData[StreamNumber] = pStreamData;
+        m_offsetsInBytes[StreamNumber] = OffsetInBytes;
+        m_strides[StreamNumber] = Stride;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetVertexShaderConstantB, UINT StartRegister, BOOL* pConstantData, UINT BoolCount)
-
-HRESULT Device::SetStreamSource(UINT StreamNumber, Buffer* pStreamData, UINT OffsetInBytes, UINT Stride)
-{
-    if (streamBuffers[StreamNumber].Get() == pStreamData &&
-        streamOffsets[StreamNumber] == OffsetInBytes &&
-        streamStrides[StreamNumber] == Stride)
-        return S_OK;
-
-    streamBuffers[StreamNumber] = pStreamData;
-    streamOffsets[StreamNumber] = OffsetInBytes;
-    streamOffsets[StreamNumber] = Stride;
-
-    const auto msg = msgSender.start<MsgSetStreamSource>();
-
-    msg->streamNumber = StreamNumber;
-    msg->streamData = pStreamData ? pStreamData->id : NULL;
-    msg->offsetInBytes = OffsetInBytes;
-    msg->stride = Stride;
-
-    msgSender.finish();
-
-    return S_OK;
-}
-
-FUNCTION_STUB(HRESULT, Device::GetStreamSource, UINT StreamNumber, Buffer** ppStreamData, UINT* pOffsetInBytes, UINT* pStride)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetStreamSource, UINT StreamNumber, VertexBuffer** ppStreamData, UINT* pOffsetInBytes, UINT* pStride)
 
 HRESULT Device::SetStreamSourceFreq(UINT StreamNumber, UINT Setting)
 {
-    if (streamSettings[StreamNumber] == Setting) return S_OK;
-    streamSettings[StreamNumber] = Setting;
+    if (m_settings[StreamNumber] != Setting)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetStreamSourceFreq>();
 
-    const auto msg = msgSender.start<MsgSetStreamSourceFreq>();
+        message.streamNumber = StreamNumber;
+        message.setting = Setting;
 
-    msg->streamNumber = StreamNumber;
-    msg->setting = Setting;
-
-    msgSender.finish();
-
+        m_settings[StreamNumber] = Setting;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetStreamSourceFreq, UINT StreamNumber, UINT* pSetting)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetStreamSourceFreq, UINT StreamNumber, UINT* pSetting)
 
-HRESULT Device::SetIndices(Buffer* pIndexData)
+HRESULT Device::SetIndices(IndexBuffer* pIndexData)
 {
-    if (indices.Get() == pIndexData) return S_OK;
-    indices = pIndexData;
+    if (m_indexData.Get() != pIndexData)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetIndices>();
+        message.indexDataId = pIndexData != nullptr ? pIndexData->getId() : NULL;
 
-    const auto msg = msgSender.start<MsgSetIndices>();
-
-    msg->indexData = pIndexData ? pIndexData->id : NULL;
-
-    msgSender.finish();
-
+        m_indexData = pIndexData;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetIndices, Buffer** ppIndexData)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetIndices, IndexBuffer** ppIndexData)
 
-HRESULT Device::CreatePixelShader(CONST DWORD* pFunction, Shader** ppShader, DWORD FunctionSize)
+HRESULT Device::CreatePixelShader(const DWORD* pFunction, PixelShader** ppShader, DWORD FunctionSize)
 {
-    *ppShader = new Shader();
+    *ppShader = new PixelShader();
 
-    const auto msg = msgSender.start<MsgCreatePixelShader>(FunctionSize);
+    auto& message = s_messageSender.makeParallelMessage<MsgCreatePixelShader>(FunctionSize);
 
-    msg->shader = (*ppShader)->id;
-    msg->functionSize = FunctionSize;
+    message.pixelShaderId = (*ppShader)->getId();
+    memcpy(message.data, pFunction, FunctionSize);
 
-    memcpy(MSG_DATA_PTR(msg), pFunction, FunctionSize);
-
-    msgSender.finish();
+    s_messageSender.endParallelMessage();
 
     return S_OK;
 }
 
-HRESULT Device::SetPixelShader(Shader* pShader)
+HRESULT Device::SetPixelShader(PixelShader* pShader)
 {
-    if (pixelShader.Get() == pShader) return S_OK;
-    pixelShader = pShader;
+    if (m_pixelShader.Get() != pShader)
+    {
+        auto& message = s_messageSender.makeSerialMessage<MsgSetPixelShader>();
+        message.pixelShaderId = pShader != nullptr ? pShader->getId() : NULL;
 
-    const auto msg = msgSender.start<MsgSetPixelShader>();
-
-    msg->shader = pShader ? pShader->id : NULL;
-
-    msgSender.finish();
-
+        m_pixelShader = pShader;
+    }
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetPixelShader, Shader** ppShader)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetPixelShader, PixelShader** ppShader)
 
-HRESULT Device::SetPixelShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount)
+HRESULT Device::SetPixelShaderConstantF(UINT StartRegister, const float* pConstantData, UINT Vector4fCount)
 {
-    const auto msg = msgSender.start<MsgSetPixelShaderConstantF>(Vector4fCount * sizeof(FLOAT[4]));
+    auto& message = s_messageSender.makeSerialMessage<MsgSetPixelShaderConstantF>(Vector4fCount * sizeof(float[4]));
 
-    msg->startRegister = StartRegister;
-    msg->vector4fCount = Vector4fCount;
-
-    memcpy(MSG_DATA_PTR(msg), pConstantData, Vector4fCount * sizeof(FLOAT[4]));
-
-    msgSender.finish();
+    message.startRegister = StartRegister;
+    memcpy(message.data, pConstantData, Vector4fCount * sizeof(float[4]));
 
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetPixelShaderConstantF, UINT StartRegister, float* pConstantData, UINT Vector4fCount)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetPixelShaderConstantF, UINT StartRegister, float* pConstantData, UINT Vector4fCount)
 
-HRESULT Device::SetPixelShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetPixelShaderConstantI, UINT StartRegister, const int* pConstantData, UINT Vector4iCount)
+
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetPixelShaderConstantI, UINT StartRegister, int* pConstantData, UINT Vector4iCount)
+
+HRESULT Device::SetPixelShaderConstantB(UINT StartRegister, const BOOL* pConstantData, UINT BoolCount)
 {
+    // nothing to do here...
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, Device::GetPixelShaderConstantI, UINT StartRegister, int* pConstantData, UINT Vector4iCount)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetPixelShaderConstantB, UINT StartRegister, BOOL* pConstantData, UINT BoolCount)
 
-HRESULT Device::SetPixelShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT  BoolCount)
-{
-    void* dest = &boolConstantsPS[StartRegister];
-    const size_t destSize = BoolCount * sizeof(BOOL);
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::DrawRectPatch, UINT Handle, const float* pNumSegs, const D3DRECTPATCH_INFO* pRectPatchInfo)
 
-    if (memcmp(dest, pConstantData, destSize) == 0) return S_OK;
-    memcpy(dest, pConstantData, destSize);
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::DrawTriPatch, UINT Handle, const float* pNumSegs, const D3DTRIPATCH_INFO* pTriPatchInfo)
 
-    const auto msg = msgSender.start<MsgSetPixelShaderConstantB>(destSize);
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::DeletePatch, UINT Handle)
 
-    msg->startRegister = StartRegister;
-    msg->boolCount = BoolCount;
-
-    memcpy(MSG_DATA_PTR(msg), pConstantData, destSize);
-
-    msgSender.finish();
-
-    return S_OK;
-}
-
-FUNCTION_STUB(HRESULT, Device::GetPixelShaderConstantB, UINT StartRegister, BOOL* pConstantData, UINT BoolCount)
-
-FUNCTION_STUB(HRESULT, Device::DrawRectPatch, UINT Handle, CONST float* pNumSegs, CONST D3DRECTPATCH_INFO* pRectPatchInfo)
-
-FUNCTION_STUB(HRESULT, Device::DrawTriPatch, UINT Handle, CONST float* pNumSegs, CONST D3DTRIPATCH_INFO* pTriPatchInfo)
-
-FUNCTION_STUB(HRESULT, Device::DeletePatch, UINT Handle)
-
-FUNCTION_STUB(HRESULT, Device::CreateQuery, D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery)
+FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::CreateQuery, D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery)

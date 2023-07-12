@@ -1,66 +1,27 @@
-﻿#include "MessageReceiver.h"
+#include "MessageReceiver.h"
 
-#include "Message.h"
-
-MessageReceiver::MessageReceiver()
-    : cpuEvent(TEXT(EVENT_NAME_CPU)), gpuEvent(TEXT(EVENT_NAME_GPU))
+MessageReceiver::MessageReceiver() : m_offset(0)
 {
-    buffer = (uint8_t*)memoryMappedFile.map();
+    m_messageBuffer = static_cast<uint8_t*>(m_memoryMappedFile.map());
 }
 
 MessageReceiver::~MessageReceiver()
 {
-    memoryMappedFile.unmap(buffer);
+    m_memoryMappedFile.unmap(m_messageBuffer);
 }
 
-bool MessageReceiver::hasNext()
+uint8_t MessageReceiver::getId()
 {
-    if (position == INVALID_POSITION_VALUE)
+    uint8_t id = *(m_messageBuffer + m_offset);
+    if ((id & 0x80) != 0)
     {
-        if (!cpuEvent.waitImm())
-            return false;
-
-        cpuEvent.reset();
-
-        position = 0;
+        m_offset += id & 0x7F;
+        id = *(m_messageBuffer + m_offset);
     }
-
-    if (position < MEMORY_MAPPED_FILE_SIZE && *(int*)(buffer + position) != 0)
-        return true;
-
-#if 0
-    static int msgIdx = 0;
-    char path[0x400];
-    sprintf(path, "dbgmsg/%d.bin", msgIdx++);
-    FILE* file = fopen(path, "wb");
-    if (file)
-    {
-        fwrite(buffer, position, 1, file);
-        fclose(file);
-    }
-#endif
-
-    position = INVALID_POSITION_VALUE;
-
-    gpuEvent.set();
-    return false;
+    return id;
 }
 
-int MessageReceiver::getMsgId() const
+void MessageReceiver::reset()
 {
-    return *(int*)(buffer + position);
-}
-
-void* MessageReceiver::getMsgAndMoveNext(size_t msgSize)
-{
-    void* command = buffer + position;
-    position += MSG_ALIGN(msgSize);
-    return command;
-}
-
-void* MessageReceiver::getDataAndMoveNext(size_t dataSize)
-{
-    void* data = buffer + position;
-    position += MSG_ALIGN(dataSize);
-    return data;
+    m_offset = 0;
 }

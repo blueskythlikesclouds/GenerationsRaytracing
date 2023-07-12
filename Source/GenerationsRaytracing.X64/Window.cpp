@@ -1,33 +1,32 @@
-﻿#include "Window.h"
+#include "Window.h"
 
-#include "Bridge.h"
 #include "Message.h"
 #include "Resource.h"
 
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
-    Bridge* bridge = (Bridge*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    Window* window = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
-    if (bridge != nullptr)
+    if (window != nullptr)
     {
         switch (Msg)
         {
         case WM_DESTROY:
         case WM_CLOSE:
-            bridge->breakMessageLoop();
+            window->m_shouldExit = true;
             goto postMessage;
 
         case WM_MOUSEMOVE:
-            if (!bridge->window.mouseTracked)
+            if (!window->m_mouseTracked)
             {
                 TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hWnd, 0 };
                 TrackMouseEvent(&tme);
-                bridge->window.mouseTracked = true;
+                window->m_mouseTracked = true;
             }
             goto postMessage;
 
         case WM_MOUSELEAVE:
-            bridge->window.mouseTracked = false;
+            window->m_mouseTracked = false;
             goto postMessage;
 
         case WM_ACTIVATE:
@@ -55,7 +54,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
         case WM_SETCURSOR:
         case WM_DEVICECHANGE:
         postMessage:
-            PostMessage(bridge->window.gensHandle, WM_USER + Msg, wParam, lParam);
+            PostMessage(window->m_postHandle, WM_USER + Msg, wParam, lParam);
             break;
         }
     }
@@ -63,14 +62,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     return DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
-Window::~Window()
+void Window::procMsgCreateSwapChain(const MsgCreateSwapChain& message)
 {
-    CloseHandle(handle);
-}
-
-void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
-{
-    gensHandle = (HWND)(LONG_PTR)msg.handle;
+    m_postHandle = reinterpret_cast<HWND>(static_cast<LONG_PTR>(message.postHandle));
 
     WNDCLASSEX wndClassEx{};
     wndClassEx.cbSize = sizeof(WNDCLASSEX);
@@ -85,47 +79,47 @@ void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
 
     RegisterClassEx(&wndClassEx);
 
-    handle = CreateWindowEx(
+    m_handle = CreateWindowEx(
         WS_EX_APPWINDOW,
         wndClassEx.lpszClassName,
         TEXT("SEGA - Sonic Generations"),
-        WS_VISIBLE | msg.style,
-        msg.x,
-        msg.y,
-        msg.width,
-        msg.height,
+        WS_VISIBLE | message.style,
+        message.x,
+        message.y,
+        message.width,
+        message.height,
         nullptr,
         nullptr,
         wndClassEx.hInstance,
         nullptr);
 
-    assert(handle);
+    assert(m_handle != nullptr);
 
     ShowCursor(FALSE);
-    SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)&bridge);
+    SetWindowLongPtr(m_handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 
-    if (msg.style & WS_CAPTION)
+    if (message.style & WS_CAPTION)
     {
         RECT windowRect, clientRect;
-        GetWindowRect(handle, &windowRect);
-        GetClientRect(handle, &clientRect);
+        GetWindowRect(m_handle, &windowRect);
+        GetClientRect(m_handle, &clientRect);
 
-        uint32_t windowWidth = windowRect.right - windowRect.left;
-        uint32_t windowHeight = windowRect.bottom - windowRect.top;
+        const uint32_t windowWidth = windowRect.right - windowRect.left;
+        const uint32_t windowHeight = windowRect.bottom - windowRect.top;
 
-        uint32_t clientWidth = clientRect.right - clientRect.left;
-        uint32_t clientHeight = clientRect.bottom - clientRect.top;
+        const uint32_t clientWidth = clientRect.right - clientRect.left;
+        const uint32_t clientHeight = clientRect.bottom - clientRect.top;
 
-        uint32_t deltaX = windowWidth - clientWidth;
-        uint32_t deltaY = windowHeight - clientHeight;
+        const uint32_t deltaX = windowWidth - clientWidth;
+        const uint32_t deltaY = windowHeight - clientHeight;
 
         SetWindowPos(
-            handle, 
-            HWND_TOP, 
-            msg.x - deltaX / 2,
-            msg.y - deltaY / 2,
-            msg.width + deltaX,
-            msg.height + deltaY, 
+            m_handle,
+            HWND_TOP,
+            message.x - deltaX / 2,
+            message.y - deltaY / 2,
+            message.width + deltaX,
+            message.height + deltaY,
             SWP_FRAMECHANGED);
     }
 
@@ -133,20 +127,20 @@ void Window::procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg)
     const DWORD currentThreadId = GetCurrentThreadId();
 
     AttachThreadInput(windowThreadProcessId, currentThreadId, TRUE);
-    BringWindowToTop(handle);
-    ShowWindow(handle, SW_NORMAL);
+    BringWindowToTop(m_handle);
+    ShowWindow(m_handle, SW_NORMAL);
     AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
 }
 
 void Window::processMessages() const
 {
-    if (handle == nullptr)
-        return;
-
-    MSG msg;
-    while (PeekMessage(&msg, handle, 0, 0, PM_REMOVE))
+    if (m_handle != nullptr)
     {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        MSG msg;
+        while (PeekMessage(&msg, m_handle, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
 }

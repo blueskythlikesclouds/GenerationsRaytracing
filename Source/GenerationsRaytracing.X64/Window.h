@@ -1,16 +1,20 @@
-﻿#pragma once
+#pragma once
 
-struct Bridge;
-struct MsgInitSwapChain;
+struct MsgCreateSwapChain;
 
-struct Window
+class Window
 {
-    HWND handle{};
-    HWND gensHandle{};
-    bool mouseTracked = false;
+protected:
+    HWND m_handle{};
+    HWND m_postHandle{};
+    bool m_mouseTracked = false;
 
-    ~Window();
+    static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 
-    void procMsgInitSwapChain(Bridge& bridge, const MsgInitSwapChain& msg);
+public:
+    bool m_shouldExit = false;
+
+    void procMsgCreateSwapChain(const MsgCreateSwapChain& message);
+
     void processMessages() const;
 };

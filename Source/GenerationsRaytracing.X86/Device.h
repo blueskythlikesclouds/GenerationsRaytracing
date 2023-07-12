@@ -1,41 +1,56 @@
-﻿#pragma once
+#pragma once
 
 #include "Unknown.h"
 
 class BaseTexture;
-class Buffer;
+class CubeTexture;
 class D3D9;
-class Shader;
+class IndexBuffer;
+class PixelShader;
 class Surface;
 class Texture;
+class VertexBuffer;
 class VertexDeclaration;
+class VertexShader;
 
 class Device : public Unknown
 {
-public:
-    ComPtr<Surface> swapChainSurface;
-    ComPtr<Surface> renderTargets[4];
-    ComPtr<Surface> depthStencilSurface;
-    D3DVIEWPORT9 viewport{};
-    DWORD renderStates[210]{};
-    ComPtr<BaseTexture> textures[16];
-    DWORD samplerStates[16][14]{};
-    RECT scissorRect{};
-    ComPtr<VertexDeclaration> vertexDeclaration;
-    std::unordered_map<DWORD, size_t> fvfMap;
-    DWORD fvf{};
-    ComPtr<Shader> vertexShader;
-    BOOL boolConstantsVS[16]{};
-    ComPtr<Buffer> streamBuffers[8];
-    UINT streamOffsets[8]{};
-    UINT streamStrides[8]{};
-    UINT streamSettings[8]{};
-    ComPtr<Buffer> indices;
-    ComPtr<Shader> pixelShader;
-    BOOL boolConstantsPS[16]{};
+protected:
+    ComPtr<Texture> m_backBuffer;
 
-    Device(size_t width, size_t height);
-    virtual ~Device() final;
+    ComPtr<Texture> m_renderTargets[4];
+    uint32_t m_renderTargetLevels[4]{};
+
+    D3DVIEWPORT9 viewport{};
+
+    DWORD m_renderStates[210]{};
+
+    ComPtr<BaseTexture> m_textures[16];
+
+    ComPtr<Texture> m_depthStencil;
+    uint32_t m_depthStencilLevel = 0;
+
+    ComPtr<VertexShader> m_vertexShader;
+    ComPtr<PixelShader> m_pixelShader;
+
+    DWORD m_samplerStates[16][14];
+
+    RECT m_scissorRect{};
+
+    ComPtr<VertexDeclaration> m_vertexDeclaration;
+
+    std::unordered_map<DWORD, ComPtr<VertexDeclaration>> m_fvfMap;
+
+    ComPtr<VertexBuffer> m_streamData[16];
+    UINT m_offsetsInBytes[16]{};
+    UINT m_strides[16]{};
+
+    ComPtr<IndexBuffer> m_indexData;
+
+    UINT m_settings[16]{};
+
+public:
+    Device();
 
     virtual HRESULT TestCooperativeLevel() final;
     virtual UINT GetAvailableTextureMem() final;
@@ -59,9 +74,9 @@ public:
     virtual void GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) final;
     virtual HRESULT CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Texture** ppTexture, HANDLE* pSharedHandle) final;
     virtual HRESULT CreateVolumeTexture(UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle) final;
-    virtual HRESULT CreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Texture** ppCubeTexture, HANDLE* pSharedHandle) final;
-    virtual HRESULT CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, Buffer** ppVertexBuffer, HANDLE* pSharedHandle) final;
-    virtual HRESULT CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Buffer** ppIndexBuffer, HANDLE* pSharedHandle) final;
+    virtual HRESULT CreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, CubeTexture** ppCubeTexture, HANDLE* pSharedHandle) final;
+    virtual HRESULT CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, VertexBuffer** ppVertexBuffer, HANDLE* pSharedHandle) final;
+    virtual HRESULT CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IndexBuffer** ppIndexBuffer, HANDLE* pSharedHandle) final;
     virtual HRESULT CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, Surface** ppSurface, HANDLE* pSharedHandle) final;
     virtual HRESULT CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, Surface** ppSurface, HANDLE* pSharedHandle) final;
     virtual HRESULT UpdateSurface(Surface* pSourceSurface, const RECT* pSourceRect, Surface* pDestinationSurface, const POINT* pDestPoint) final;
@@ -119,30 +134,30 @@ public:
     virtual HRESULT DrawIndexedPrimitive(D3DPRIMITIVETYPE, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount) final;
     virtual HRESULT DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) final;
     virtual HRESULT DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) final;
-    virtual HRESULT ProcessVertices(UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, Buffer* pDestBuffer, VertexDeclaration* pVertexDecl, DWORD Flags) final;
+    virtual HRESULT ProcessVertices(UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, VertexBuffer* pDestBuffer, VertexDeclaration* pVertexDecl, DWORD Flags) final;
     virtual HRESULT CreateVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl) final;
     virtual HRESULT SetVertexDeclaration(VertexDeclaration* pDecl) final;
     virtual HRESULT GetVertexDeclaration(VertexDeclaration** ppDecl) final;
     virtual HRESULT SetFVF(DWORD FVF) final;
     virtual HRESULT GetFVF(DWORD* pFVF) final;
-    virtual HRESULT CreateVertexShader(const DWORD* pFunction, Shader** ppShader, DWORD FunctionSize) final;
-    virtual HRESULT SetVertexShader(Shader* pShader) final;
-    virtual HRESULT GetVertexShader(Shader** ppShader) final;
+    virtual HRESULT CreateVertexShader(const DWORD* pFunction, VertexShader** ppShader, DWORD FunctionSize) final;
+    virtual HRESULT SetVertexShader(VertexShader* pShader) final;
+    virtual HRESULT GetVertexShader(VertexShader** ppShader) final;
     virtual HRESULT SetVertexShaderConstantF(UINT StartRegister, const float* pConstantData, UINT Vector4fCount) final;
     virtual HRESULT GetVertexShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount) final;
     virtual HRESULT SetVertexShaderConstantI(UINT StartRegister, const int* pConstantData, UINT Vector4iCount) final;
     virtual HRESULT GetVertexShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount) final;
     virtual HRESULT SetVertexShaderConstantB(UINT StartRegister, const BOOL* pConstantData, UINT BoolCount) final;
     virtual HRESULT GetVertexShaderConstantB(UINT StartRegister, BOOL* pConstantData, UINT BoolCount) final;
-    virtual HRESULT SetStreamSource(UINT StreamNumber, Buffer* pStreamData, UINT OffsetInBytes, UINT Stride) final;
-    virtual HRESULT GetStreamSource(UINT StreamNumber, Buffer** ppStreamData, UINT* pOffsetInBytes, UINT* pStride) final;
+    virtual HRESULT SetStreamSource(UINT StreamNumber, VertexBuffer* pStreamData, UINT OffsetInBytes, UINT Stride) final;
+    virtual HRESULT GetStreamSource(UINT StreamNumber, VertexBuffer** ppStreamData, UINT* pOffsetInBytes, UINT* pStride) final;
     virtual HRESULT SetStreamSourceFreq(UINT StreamNumber, UINT Setting) final;
     virtual HRESULT GetStreamSourceFreq(UINT StreamNumber, UINT* pSetting) final;
-    virtual HRESULT SetIndices(Buffer* pIndexData) final;
-    virtual HRESULT GetIndices(Buffer** ppIndexData) final;
-    virtual HRESULT CreatePixelShader(const DWORD* pFunction, Shader** ppShader, DWORD FunctionSize) final;
-    virtual HRESULT SetPixelShader(Shader* pShader) final;
-    virtual HRESULT GetPixelShader(Shader** ppShader) final;
+    virtual HRESULT SetIndices(IndexBuffer* pIndexData) final;
+    virtual HRESULT GetIndices(IndexBuffer** ppIndexData) final;
+    virtual HRESULT CreatePixelShader(const DWORD* pFunction, PixelShader** ppShader, DWORD FunctionSize) final;
+    virtual HRESULT SetPixelShader(PixelShader* pShader) final;
+    virtual HRESULT GetPixelShader(PixelShader** ppShader) final;
     virtual HRESULT SetPixelShaderConstantF(UINT StartRegister, const float* pConstantData, UINT Vector4fCount) final;
     virtual HRESULT GetPixelShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount) final;
     virtual HRESULT SetPixelShaderConstantI(UINT StartRegister, const int* pConstantData, UINT Vector4iCount) final;

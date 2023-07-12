@@ -1,140 +1,309 @@
-﻿#include "Device.h"
+#include "Device.h"
 
-static ID3D12CommandQueue* createCommandQueue(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE type)
+#include "Message.h"
+
+void Device::procMsgSetRenderTarget()
 {
-    D3D12_COMMAND_QUEUE_DESC commandQueueDesc;
-    
-    commandQueueDesc.Type = type;
-    commandQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-    commandQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-    commandQueueDesc.NodeMask = 0;
-
-    ID3D12CommandQueue* commandQueue = nullptr;
-    device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&commandQueue));
-
-    assert(commandQueue);
-    return commandQueue;
+    const auto& message = m_messageReceiver.getMessage<MsgSetRenderTarget>();
 }
 
-static class MessageCallback : public nvrhi::IMessageCallback
+void Device::procMsgCreateVertexDeclaration()
 {
-public:
-    void message(nvrhi::MessageSeverity severity, const char* messageText) override
-    {
-        constexpr const char* SEVERITY_TEXT[] =
-        {
-            "Info",
-            "Warning",
-            "Error",
-            "Fatal"
-        };
+    const auto& message = m_messageReceiver.getMessage<MsgCreateVertexDeclaration>();
+}
 
-        printf("%s: %s\n", SEVERITY_TEXT[(int)severity], messageText);
-        assert(severity != nvrhi::MessageSeverity::Error && severity != nvrhi::MessageSeverity::Fatal);
-    }
-} messageCallback;
-
-class MemoryAllocator : public nvrhi::d3d12::IMemoryAllocator
+void Device::procMsgCreatePixelShader()
 {
-protected:
-    ComPtr<D3D12MA::Allocator> allocator;
+    const auto& message = m_messageReceiver.getMessage<MsgCreatePixelShader>();
+}
 
-public:
-    MemoryAllocator(ID3D12Device* device, IDXGIAdapter* dxgiAdapter)
-    {
-        D3D12MA::ALLOCATOR_DESC desc{};
-        desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED;
-        desc.pDevice = device;
-        desc.pAdapter = dxgiAdapter;
+void Device::procMsgCreateVertexShader()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCreateVertexShader>();
+}
 
-        D3D12MA::CreateAllocator(&desc, allocator.GetAddressOf());
-    }
+void Device::procMsgSetRenderState()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetRenderState>();
+}
 
-    HRESULT createResource(const D3D12_HEAP_PROPERTIES* heapProperties, D3D12_HEAP_FLAGS heapFlags,
-        const D3D12_RESOURCE_DESC* desc, D3D12_RESOURCE_STATES initialResourceState,
-        const D3D12_CLEAR_VALUE* optimizedClearValue, const IID& riid, void** resource, IUnknown** allocation) override
-    {
-        D3D12MA::ALLOCATION_DESC allocationDesc{};
-        allocationDesc.HeapType = heapProperties->Type;
+void Device::procMsgCreateTexture()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCreateTexture>();
+}
 
-        return allocator->CreateResource(
-            &allocationDesc,
-            desc,
-            initialResourceState,
-            optimizedClearValue,
-            reinterpret_cast<D3D12MA::Allocation**>(allocation),
-            riid,
-            resource);
-    }
-};
+void Device::procMsgSetTexture()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetTexture>();
+}
+
+void Device::procMsgSetDepthStencilSurface()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetDepthStencilSurface>();
+}
+
+void Device::procMsgClear()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgClear>();
+}
+
+void Device::procMsgSetVertexShader()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetVertexShader>();
+}
+
+void Device::procMsgSetPixelShader()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetPixelShader>();
+}
+
+void Device::procMsgSetPixelShaderConstantF()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetPixelShaderConstantF>();
+}
+
+void Device::procMsgSetVertexShaderConstantF()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetVertexShaderConstantF>();
+}
+
+void Device::procMsgSetVertexShaderConstantB()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetVertexShaderConstantB>();
+}
+
+void Device::procMsgSetSamplerState()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetSamplerState>();
+}
+
+void Device::procMsgSetViewport()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetViewport>();
+}
+
+void Device::procMsgSetScissorRect()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetScissorRect>();
+}
+
+void Device::procMsgSetVertexDeclaration()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetVertexDeclaration>();
+}
+
+void Device::procMsgDrawPrimitiveUP()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgDrawPrimitiveUP>();
+}
+
+void Device::procMsgSetStreamSource()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetStreamSource>();
+}
+
+void Device::procMsgSetIndices()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetIndices>();
+}
+
+void Device::procMsgPresent()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgPresent>();
+}
+
+void Device::procMsgCreateVertexBuffer()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCreateVertexBuffer>();
+}
+
+void Device::procMsgWriteVertexBuffer()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgWriteVertexBuffer>();
+}
+
+void Device::procMsgCreateIndexBuffer()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCreateIndexBuffer>();
+}
+
+void Device::procMsgWriteIndexBuffer()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgWriteIndexBuffer>();
+}
+
+void Device::procMsgWriteTexture()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgWriteTexture>();
+}
+
+void Device::procMsgMakeTexture()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgMakeTexture>();
+}
+
+void Device::procMsgDrawIndexedPrimitive()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgDrawIndexedPrimitive>();
+}
+
+void Device::procMsgSetStreamSourceFreq()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetStreamSourceFreq>();
+}
 
 Device::Device()
 {
+    HRESULT hr;
+
 #ifdef _DEBUG
     ComPtr<ID3D12Debug> debugInterface;
-    D3D12GetDebugInterface(IID_PPV_ARGS(debugInterface.GetAddressOf()));
-    assert(debugInterface);
+    hr = D3D12GetDebugInterface(IID_PPV_ARGS(debugInterface.GetAddressOf()));
+
+    assert(SUCCEEDED(hr) && debugInterface != nullptr);
 
     debugInterface->EnableDebugLayer();
 #endif
 
-    CreateDXGIFactory2(
-#ifdef _DEBUG
-        DXGI_CREATE_FACTORY_DEBUG,
-#else
-        0,
-#endif
-        IID_PPV_ARGS(dxgiFactory.GetAddressOf()));
+    hr = D3D12CreateDevice(m_swapChain.getAdapter(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(m_device.GetAddressOf()));
 
-    assert(dxgiFactory);
-
-    ComPtr<IDXGIAdapter> dxgiAdapter;
-    dxgiFactory->EnumAdapters(0, dxgiAdapter.GetAddressOf());
-    assert(dxgiAdapter);
-
-    D3D12CreateDevice(dxgiAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(d3d12.device.GetAddressOf()));
-    assert(d3d12.device);
-
-#ifdef _DEBUG
-    ComPtr<ID3D12InfoQueue> infoQueue;
-    d3d12.device.As(&infoQueue);
-
-    //infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-    //infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-    //infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, false);
-
-    // Disable messages we're aware of and okay with
-    D3D12_MESSAGE_ID ids[] =
-    {
-        D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE
-    };
-
-    D3D12_INFO_QUEUE_FILTER filter{};
-    filter.DenyList.NumIDs = _countof(ids);
-    filter.DenyList.pIDList = ids;
-
-    infoQueue->AddStorageFilterEntries(&filter);
-#endif
-
-    d3d12.graphicsCommandQueue.Attach(createCommandQueue(d3d12.device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT));
-    memoryAllocator = std::make_unique<MemoryAllocator>(d3d12.device.Get(), dxgiAdapter.Get());
-
-    nvrhi::d3d12::DeviceDesc deviceDesc;
-    deviceDesc.pDevice = d3d12.device.Get();
-    deviceDesc.pGraphicsCommandQueue = d3d12.graphicsCommandQueue.Get();
-    deviceDesc.messageCallback = &messageCallback;
-    deviceDesc.memoryAllocator = memoryAllocator.get();
-
-    nvrhi = nvrhi::d3d12::createDevice(deviceDesc);
-    assert(nvrhi);
-
-#ifdef _DEBUG
-    nvrhi = nvrhi::validation::createValidationLayer(nvrhi);
-    assert(nvrhi);
-#endif
+    assert(SUCCEEDED(hr) && m_device != nullptr);
 }
 
-Device::~Device()
+void Device::receiveMessages()
 {
-    nvrhi->waitForIdle();
+    m_messageReceiver.reset();
+
+    while (true)
+    {
+        switch (m_messageReceiver.getId())
+        {
+        case MsgNullTerminator::s_id:
+            return;
+
+        case MsgSetRenderTarget::s_id:
+            procMsgSetRenderTarget();
+            break;
+
+        case MsgCreateVertexDeclaration::s_id:
+            procMsgCreateVertexDeclaration();
+            break;
+
+        case MsgCreatePixelShader::s_id:
+            procMsgCreatePixelShader();
+            break;
+
+        case MsgCreateVertexShader::s_id:
+            procMsgCreateVertexShader();
+            break;
+
+        case MsgSetRenderState::s_id:
+            procMsgSetRenderState();
+            break;
+
+        case MsgCreateTexture::s_id:
+            procMsgCreateTexture();
+            break;
+
+        case MsgSetTexture::s_id:
+            procMsgSetTexture();
+            break;
+
+        case MsgSetDepthStencilSurface::s_id:
+            procMsgSetDepthStencilSurface();
+            break;
+
+        case MsgClear::s_id:
+            procMsgClear();
+            break;
+
+        case MsgSetVertexShader::s_id:
+            procMsgSetVertexShader();
+            break;
+
+        case MsgSetPixelShader::s_id:
+            procMsgSetPixelShader();
+            break;
+
+        case MsgSetPixelShaderConstantF::s_id:
+            procMsgSetPixelShaderConstantF();
+            break;
+
+        case MsgSetVertexShaderConstantF::s_id:
+            procMsgSetVertexShaderConstantF();
+            break;
+
+        case MsgSetVertexShaderConstantB::s_id:
+            procMsgSetVertexShaderConstantB();
+            break;
+
+        case MsgSetSamplerState::s_id:
+            procMsgSetSamplerState();
+            break;
+
+        case MsgSetViewport::s_id:
+            procMsgSetViewport();
+            break;
+
+        case MsgSetScissorRect::s_id:
+            procMsgSetScissorRect();
+            break;
+
+        case MsgSetVertexDeclaration::s_id: 
+            procMsgSetVertexDeclaration();
+            break;
+
+        case MsgDrawPrimitiveUP::s_id:
+            procMsgDrawPrimitiveUP();
+            break;
+
+        case MsgSetStreamSource::s_id:
+            procMsgSetStreamSource();
+            break;
+
+        case MsgSetIndices::s_id: 
+            procMsgSetIndices();
+            break;
+
+        case MsgPresent::s_id: 
+            procMsgPresent();
+            break;
+
+        case MsgCreateVertexBuffer::s_id:
+            procMsgCreateVertexBuffer();
+            break;
+
+        case MsgWriteVertexBuffer::s_id: 
+            procMsgWriteVertexBuffer();
+            break;
+
+        case MsgCreateIndexBuffer::s_id: 
+            procMsgCreateIndexBuffer();
+            break;
+
+        case MsgWriteIndexBuffer::s_id: 
+            procMsgWriteIndexBuffer();
+            break;
+
+        case MsgWriteTexture::s_id: 
+            procMsgWriteTexture();
+            break;
+
+        case MsgMakeTexture::s_id: 
+            procMsgMakeTexture();
+            break;
+
+        case MsgDrawIndexedPrimitive::s_id:
+            procMsgDrawIndexedPrimitive();
+            break;
+
+        case MsgSetStreamSourceFreq::s_id:
+            procMsgSetStreamSourceFreq();
+            break;
+
+        default:
+            assert(!"Unknown message type");
+            return;
+        }
+    }
 }

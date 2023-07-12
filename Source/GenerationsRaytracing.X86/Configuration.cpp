@@ -1,16 +1,16 @@
-﻿#include "Configuration.h"
+#include "Configuration.h"
 
-DisplayMode Configuration::displayMode = DisplayMode::BorderlessFullscreen;
-bool Configuration::allowResizeInWindowed = false;
-
-bool Configuration::load(const std::string& filePath)
+void Configuration::init()
 {
-    const INIReader reader(filePath);
+    const INIReader reader("GenerationsRaytracing.ini");
+
     if (reader.ParseError() != 0)
-        return false;
-
-    displayMode = (DisplayMode)reader.GetInteger("Mod", "DisplayMode", (uint32_t)DisplayMode::BorderlessFullscreen);
-    allowResizeInWindowed = reader.GetBoolean("Mod", "AllowResizeInWindowed", false);
-
-    return true;
+    {
+        MessageBox(nullptr, TEXT("Unable to locate GenerationsRaytracing.ini"), TEXT("GenerationsRaytracing"), MB_ICONERROR);
+    }
+    else
+    {
+        s_displayMode = static_cast<DisplayMode>(reader.GetInteger("Mod", "DisplayMode", static_cast<uint32_t>(DisplayMode::BorderlessFullscreen)));
+        s_allowResizeInWindowed = reader.GetBoolean("Mod", "AllowResizeInWindowed", false);
+    }
 }
