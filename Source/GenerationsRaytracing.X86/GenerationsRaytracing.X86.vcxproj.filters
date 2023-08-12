@@ -51,6 +51,9 @@
     <ClCompile Include="Configuration.cpp">
       <Filter>Base</Filter>
     </ClCompile>
+    <ClCompile Include="Window.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -101,6 +104,9 @@
     </ClInclude>
     <ClInclude Include="Configuration.h">
       <Filter>Base</Filter>
+    </ClInclude>
+    <ClInclude Include="Window.h">
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

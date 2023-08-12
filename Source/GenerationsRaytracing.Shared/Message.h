@@ -24,6 +24,10 @@ struct MsgCreateSwapChain
     uint16_t y;
     uint16_t width;
     uint16_t height;
+    uint16_t renderWidth;
+    uint16_t renderHeight;
+    uint8_t bufferCount;
+    uint32_t textureId;
 };
 
 struct MsgSetRenderTarget

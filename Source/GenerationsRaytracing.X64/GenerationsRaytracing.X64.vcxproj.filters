@@ -12,10 +12,13 @@
     <ClCompile Include="SwapChain.cpp">
       <Filter>Device</Filter>
     </ClCompile>
-    <ClCompile Include="Texture.cpp">
-      <Filter>Resource</Filter>
-    </ClCompile>
     <ClCompile Include="Window.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandQueue.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorHeap.cpp">
       <Filter>Device</Filter>
     </ClCompile>
   </ItemGroup>
@@ -28,6 +31,9 @@
     </Filter>
     <Filter Include="Resource">
       <UniqueIdentifier>{e5e147b1-dbdc-4ff6-9246-95c12226f27a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Base">
+      <UniqueIdentifier>{8c952580-0bed-48d3-9f2d-3094e9e39818}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -48,6 +54,24 @@
       <Filter>Device</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="CommandQueue.h">
+      <Filter>Device</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorHeap.h">
+      <Filter>Device</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexDeclaration.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexShader.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="PixelShader.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="xxHashMap.h">
+      <Filter>Base</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">

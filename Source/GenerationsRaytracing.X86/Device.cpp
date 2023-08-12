@@ -10,9 +10,14 @@
 #include "VertexDeclaration.h"
 #include "VertexShader.h"
 
-Device::Device()
+Device::Device(uint32_t width, uint32_t height)
 {
-    m_backBuffer.Attach(new Texture(1600, 900, 1));
+    m_backBuffer.Attach(new Texture(width, height, 1));
+}
+
+Texture* Device::getBackBuffer() const
+{
+    return m_backBuffer.Get();
 }
 
 FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::TestCooperativeLevel)

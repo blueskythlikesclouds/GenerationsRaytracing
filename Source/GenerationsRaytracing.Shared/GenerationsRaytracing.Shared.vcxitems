@@ -19,6 +19,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)MemoryMappedFile.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Message.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ProcessUtil.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)SubAllocator.h" />
   </ItemGroup>
   <ItemGroup>

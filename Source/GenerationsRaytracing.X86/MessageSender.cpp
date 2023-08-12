@@ -98,10 +98,17 @@ void MessageSender::sendAllMessages()
 
     assert(m_serialBufferSize + m_parallelBufferSize < MemoryMappedFile::s_size);
 
+    // wait for bridge to process messages
+    m_gpuEvent.wait();
+    m_gpuEvent.reset();
+
     memcpy(m_tgtBufferData, m_parallelBuffer.get(), m_parallelBufferSize);
     memcpy(m_tgtBufferData + m_parallelBufferSize, m_serialBuffer.get(), m_serialBufferSize);
-    // MsgTerminator, end indicator
+    // MsgNullTerminator, end indicator
     *(m_tgtBufferData + m_parallelBufferSize + m_serialBufferSize) = '\0';
+
+    // let bridge know we finished copying messages
+    m_cpuEvent.set();
 
 #if 0
     static int counter = 0;
@@ -115,5 +122,11 @@ void MessageSender::sendAllMessages()
 
     m_parallelBufferSize = 0;
     m_serialBufferSize = 0;
+}
+
+void MessageSender::setEvents() const
+{
+    m_cpuEvent.set();
+    m_gpuEvent.set();
 }
 

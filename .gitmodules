@@ -1,3 +1,12 @@
 [submodule "Dependencies/BlueBlur"]
 	path = Dependencies/BlueBlur
 	url = https://github.com/blueskythlikesclouds/BlueBlur.git
+[submodule "Dependencies/D3D12MemoryAllocator"]
+	path = Dependencies/D3D12MemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+[submodule "Dependencies/unordered_dense"]
+	path = Dependencies/unordered_dense
+	url = https://github.com/martinus/unordered_dense.git
+[submodule "Dependencies/xxHash"]
+	path = Dependencies/xxHash
+	url = https://github.com/Cyan4973/xxHash.git

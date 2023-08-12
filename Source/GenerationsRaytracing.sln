@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X64",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.Shared", "GenerationsRaytracing.Shared\GenerationsRaytracing.Shared.vcxitems", "{F7A1E935-4384-44FD-996C-7F1151C258CF}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X64.Dependencies", "GenerationsRaytracing.X64.Dependencies\GenerationsRaytracing.X64.Dependencies.vcxproj", "{747F99A2-F195-4937-B75D-67B373972075}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -22,6 +24,10 @@ Global
 		{A046C389-EE86-4307-AB09-970464FB08E3}.Debug|x64.Build.0 = Debug|x64
 		{A046C389-EE86-4307-AB09-970464FB08E3}.Release|x64.ActiveCfg = Release|x64
 		{A046C389-EE86-4307-AB09-970464FB08E3}.Release|x64.Build.0 = Release|x64
+		{747F99A2-F195-4937-B75D-67B373972075}.Debug|x64.ActiveCfg = Debug|x64
+		{747F99A2-F195-4937-B75D-67B373972075}.Debug|x64.Build.0 = Debug|x64
+		{747F99A2-F195-4937-B75D-67B373972075}.Release|x64.ActiveCfg = Release|x64
+		{747F99A2-F195-4937-B75D-67B373972075}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

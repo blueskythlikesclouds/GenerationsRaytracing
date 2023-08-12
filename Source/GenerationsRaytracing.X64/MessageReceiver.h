@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Event.h"
 #include "MemoryMappedFile.h"
 
 class MessageReceiver
@@ -7,7 +8,7 @@ class MessageReceiver
 protected:
     MemoryMappedFile m_memoryMappedFile;
     uint8_t* m_messageBuffer;
-    size_t m_offset;
+    size_t m_offset = 0;
 
 public:
     MessageReceiver();

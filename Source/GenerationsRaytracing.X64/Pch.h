@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d12.h>
+#include <d3dx12.h>
 #include <d3d9.h>
 #include <dxgi1_4.h>
 #include <Windows.h>
@@ -13,3 +13,8 @@ using Microsoft::WRL::ComPtr;
 #include <cstdint>
 
 #include <type_traits>
+#include <vector>
+
+#include <D3D12MemAlloc.h>
+#include <ankerl/unordered_dense.h>
+#include <xxhash.h>

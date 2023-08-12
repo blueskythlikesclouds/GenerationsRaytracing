@@ -50,7 +50,9 @@ protected:
     UINT m_settings[16]{};
 
 public:
-    Device();
+    Device(uint32_t width, uint32_t height);
+
+    Texture* getBackBuffer() const;
 
     virtual HRESULT TestCooperativeLevel() final;
     virtual UINT GetAvailableTextureMem() final;

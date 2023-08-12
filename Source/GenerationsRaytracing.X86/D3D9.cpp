@@ -2,6 +2,9 @@
 
 #include "Configuration.h"
 #include "Device.h"
+#include "Message.h"
+#include "MessageSender.h"
+#include "Texture.h"
 
 void D3D9::ensureNotNull()
 {
@@ -131,6 +134,21 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
         width = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left;
         height = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
     }
+
+    *ppReturnedDeviceInterface = new Device(pPresentationParameters->BackBufferWidth, pPresentationParameters->BackBufferHeight);
+
+    auto& message = s_messageSender.makeSerialMessage<MsgCreateSwapChain>();
+
+    message.postHandle = reinterpret_cast<uint32_t>(pPresentationParameters->hDeviceWindow);
+    message.style = style;
+    message.x = x;
+    message.y = y;
+    message.width = width;
+    message.height = height;
+    message.renderWidth = pPresentationParameters->BackBufferWidth;
+    message.renderHeight = pPresentationParameters->BackBufferHeight;
+    message.bufferCount = pPresentationParameters->BackBufferCount;
+    message.textureId = (*ppReturnedDeviceInterface)->getBackBuffer()->getId();
 
     return S_OK;
 }

@@ -8,8 +8,8 @@ protected:
     HANDLE m_handle = nullptr;
 
 public:
-    static constexpr TCHAR s_cpuEventName[] = "GenerationsRaytracingCPUEvent";
-    static constexpr TCHAR s_gpuEventName[] = "GenerationsRaytracingGPUEvent";
+    static constexpr TCHAR s_cpuEventName[] = TEXT("GenerationsRaytracingCPUEvent");
+    static constexpr TCHAR s_gpuEventName[] = TEXT("GenerationsRaytracingGPUEvent");
 
     Event(LPCTSTR name, BOOL initialState);
     Event(LPCTSTR name);

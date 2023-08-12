@@ -120,6 +120,7 @@
     <ClCompile Include="VertexBuffer.cpp" />
     <ClCompile Include="VertexDeclaration.cpp" />
     <ClCompile Include="VertexShader.cpp" />
+    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseTexture.h" />
@@ -139,12 +140,19 @@
     <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VertexDeclaration.h" />
     <ClInclude Include="VertexShader.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageSender.inl" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\FreeListAllocator.inl">
+      <FileType>Document</FileType>
+    </None>
     <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\Mutex.inl">
+      <FileType>Document</FileType>
+    </None>
+    <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\SubAllocator.inl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -16,5 +16,7 @@ public:
 
     void procMsgCreateSwapChain(const MsgCreateSwapChain& message);
 
+    HWND getHandle() const;
+
     void processMessages() const;
 };

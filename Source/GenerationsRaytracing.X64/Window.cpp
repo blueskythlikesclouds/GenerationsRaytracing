@@ -132,6 +132,11 @@ void Window::procMsgCreateSwapChain(const MsgCreateSwapChain& message)
     AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
 }
 
+HWND Window::getHandle() const
+{
+    return m_handle;
+}
+
 void Window::processMessages() const
 {
     if (m_handle != nullptr)

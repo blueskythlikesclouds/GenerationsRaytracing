@@ -1,6 +1,6 @@
 #include "MessageReceiver.h"
 
-MessageReceiver::MessageReceiver() : m_offset(0)
+MessageReceiver::MessageReceiver()
 {
     m_messageBuffer = static_cast<uint8_t*>(m_memoryMappedFile.map());
 }

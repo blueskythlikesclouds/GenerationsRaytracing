@@ -2,6 +2,17 @@
 
 #include "Message.h"
 
+void Device::procMsgCreateSwapChain()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCreateSwapChain>();
+
+    m_swapChain.procMsgCreateSwapChain(*this, message);
+    m_swapChainTextureId = message.textureId;
+
+    if (m_textures.size() <= m_swapChainTextureId)
+        m_textures.resize(m_swapChainTextureId + 1);
+}
+
 void Device::procMsgSetRenderTarget()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetRenderTarget>();
@@ -168,18 +179,50 @@ Device::Device()
     hr = D3D12CreateDevice(m_swapChain.getAdapter(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(m_device.GetAddressOf()));
 
     assert(SUCCEEDED(hr) && m_device != nullptr);
+
+    D3D12MA::ALLOCATOR_DESC desc{};
+
+    desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
+    desc.pDevice = m_device.Get();
+    desc.pAdapter = m_swapChain.getAdapter();
+
+    hr = D3D12MA::CreateAllocator(&desc, m_allocator.GetAddressOf());
+
+    assert(SUCCEEDED(hr) && m_allocator != nullptr);
+
+    m_graphicsQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+    m_copyQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_COPY);
+
+    m_descriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    m_samplerDescriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+    m_rtvDescriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    m_dsvDescriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 }
 
-void Device::receiveMessages()
+void Device::processMessages()
 {
+    if (m_swapChainTextureId != 0)
+        m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
+
+    // wait for Generations to copy the messages
+    m_cpuEvent.wait();
+    m_cpuEvent.reset();
+
     m_messageReceiver.reset();
 
-    while (true)
+    bool stop = false;
+
+    while (!stop && !m_swapChain.getWindow().m_shouldExit)
     {
         switch (m_messageReceiver.getId())
         {
         case MsgNullTerminator::s_id:
-            return;
+            stop = true;
+            break;
+
+        case MsgCreateSwapChain::s_id:
+            procMsgCreateSwapChain();
+            break;
 
         case MsgSetRenderTarget::s_id:
             procMsgSetRenderTarget();
@@ -303,7 +346,63 @@ void Device::receiveMessages()
 
         default:
             assert(!"Unknown message type");
-            return;
+            stop = true;
+            break;
         }
     }
+
+    // let Generations know we finished processing messages
+    m_gpuEvent.set();
+}
+
+void Device::runLoop()
+{
+    while (!m_swapChain.getWindow().m_shouldExit)
+    {
+        m_swapChain.getWindow().processMessages();
+        processMessages();
+    }
+}
+
+void Device::setShouldExit()
+{
+    m_cpuEvent.set();
+    m_gpuEvent.set();
+
+    m_swapChain.getWindow().m_shouldExit = true;
+}
+
+ID3D12Device* Device::getUnderlyingDevice() const
+{
+    return m_device.Get();
+}
+
+CommandQueue& Device::getGraphicsQueue()
+{
+    return m_graphicsQueue;
+}
+
+CommandQueue& Device::getCopyQueue()
+{
+    return m_copyQueue;
+}
+
+DescriptorHeap& Device::getDescriptorHeap()
+{
+    return m_descriptorHeap;
+}
+
+DescriptorHeap& Device::getSamplerDescriptorHeap()
+{
+    return m_samplerDescriptorHeap;
+}
+
+DescriptorHeap& Device::getRtvDescriptorHeap()
+{
+    return m_rtvDescriptorHeap;
+}
+
+DescriptorHeap& Device::getDsvDescriptorHeap()
+{
+    return m_dsvDescriptorHeap;
 }

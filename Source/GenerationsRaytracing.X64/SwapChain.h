@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Texture.h"
 #include "Window.h"
 
 class Device;
@@ -12,11 +13,14 @@ protected:
     ComPtr<IDXGIAdapter> m_adapter;
     Window m_window;
     ComPtr<IDXGISwapChain3> m_swapChain;
+    std::vector<Texture> m_textures;
 
 public:
     SwapChain();
 
     IDXGIAdapter* getAdapter() const;
+    Window& getWindow();
+    const Texture& getTexture() const;
 
-    void procMsgCreateSwapChain(const Device& device, const MsgCreateSwapChain& message);
+    void procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain& message);
 };

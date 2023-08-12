@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="D3D12MemoryAllocator">
+      <UniqueIdentifier>{b0c2f63e-02b0-4243-b244-0f8a07dedda4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="xxHash">
+      <UniqueIdentifier>{abd7df78-1e10-4d0d-974f-47da62c42d0b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\Dependencies\D3D12MemoryAllocator\src\D3D12MemAlloc.cpp">
+      <Filter>D3D12MemoryAllocator</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c">
+      <Filter>xxHash</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

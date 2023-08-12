@@ -1,4 +1,4 @@
-#include "DDSTextureLoader.h"
+#include "PictureData.h"
 
 #include "Message.h"
 #include "MessageSender.h"
@@ -28,7 +28,7 @@ HOOK(void, __cdecl, CPictureDataMake, Hedgehog::Mirage::fpCPictureDataMake0,
     }
 }
 
-void DDSTextureLoader::init()
+void PictureData::init()
 {
     INSTALL_HOOK(CPictureDataMake);
 }

@@ -1,11 +1,15 @@
 #pragma once
 
+#include "Event.h"
 #include "MemoryMappedFile.h"
 #include "Mutex.h"
 
 class MessageSender
 {
 protected:
+    Event m_cpuEvent{ Event::s_cpuEventName, FALSE };
+    Event m_gpuEvent{ Event::s_gpuEventName, TRUE };
+
     std::unique_ptr<uint8_t[]> m_parallelBuffer;
     uint32_t m_parallelBufferSize = 0;
 
@@ -33,6 +37,8 @@ public:
     void* makeSerialMessage(uint32_t byteSize, uint32_t alignment);
 
     void sendAllMessages();
+
+    void setEvents() const;
 
     template<typename T>
     T& makeParallelMessage();
