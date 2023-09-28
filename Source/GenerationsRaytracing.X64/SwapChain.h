@@ -22,5 +22,7 @@ public:
     Window& getWindow();
     const Texture& getTexture() const;
 
+    void present() const;
+
     void procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain& message);
 };

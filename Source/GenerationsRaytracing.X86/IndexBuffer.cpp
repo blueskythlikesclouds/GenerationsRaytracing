@@ -2,19 +2,19 @@
 
 #include "Message.h"
 #include "MessageSender.h"
-#include "SubAllocator.h"
+#include "FreeListAllocator.h"
 
-static SubAllocator s_subAllocator;
+static FreeListAllocator s_freeListAllocator;
 
 IndexBuffer::IndexBuffer(uint32_t byteSize)
 {
-    m_id = s_subAllocator.allocate();
+    m_id = s_freeListAllocator.allocate();
     m_byteSize = byteSize;
 }
 
 IndexBuffer::~IndexBuffer()
 {
-    s_subAllocator.free(m_id);
+    s_freeListAllocator.free(m_id);
 }
 
 uint32_t IndexBuffer::getId() const

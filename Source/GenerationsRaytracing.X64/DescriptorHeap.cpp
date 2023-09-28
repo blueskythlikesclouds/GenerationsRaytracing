@@ -15,18 +15,25 @@ void DescriptorHeap::init(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type)
 
     const HRESULT hr = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(m_heap.GetAddressOf()));
     assert(SUCCEEDED(hr) && m_heap != nullptr);
+
+    m_incrementSize = device->GetDescriptorHandleIncrementSize(type);
+}
+
+ID3D12DescriptorHeap* DescriptorHeap::getUnderlyingHeap() const
+{
+    return m_heap.Get();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getCpuHandle(uint32_t index) const
 {
     auto handle = m_heap->GetCPUDescriptorHandleForHeapStart();
-    handle.ptr += m_incrementSize * index;
+    handle.ptr += m_incrementSize * static_cast<SIZE_T>(index);
     return handle;
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::getGpuHandle(uint32_t index) const
 {
     auto handle = m_heap->GetGPUDescriptorHandleForHeapStart();
-    handle.ptr += m_incrementSize * index;
+    handle.ptr += m_incrementSize * static_cast<SIZE_T>(index);
     return handle;
 }

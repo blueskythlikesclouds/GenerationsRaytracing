@@ -33,7 +33,7 @@ protected:
     ComPtr<VertexShader> m_vertexShader;
     ComPtr<PixelShader> m_pixelShader;
 
-    DWORD m_samplerStates[16][14];
+    DWORD m_samplerStates[16][14]{};
 
     RECT m_scissorRect{};
 

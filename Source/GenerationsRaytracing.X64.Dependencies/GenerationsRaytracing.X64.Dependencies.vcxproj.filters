@@ -7,6 +7,9 @@
     <Filter Include="xxHash">
       <UniqueIdentifier>{abd7df78-1e10-4d0d-974f-47da62c42d0b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="DDSTextureLoader">
+      <UniqueIdentifier>{8ca3a346-34ea-493a-b915-b387fddd2f4d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Dependencies\D3D12MemoryAllocator\src\D3D12MemAlloc.cpp">
@@ -14,6 +17,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c">
       <Filter>xxHash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Dependencies\DDSTextureLoader\DDSTextureLoader12.cpp">
+      <Filter>DDSTextureLoader</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

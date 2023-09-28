@@ -20,13 +20,13 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Message.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ProcessUtil.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)SubAllocator.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)FreeListAllocator.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)Event.inl" />
     <None Include="$(MSBuildThisFileDirectory)LockGuard.inl" />
     <None Include="$(MSBuildThisFileDirectory)MemoryMappedFile.inl" />
     <None Include="$(MSBuildThisFileDirectory)Mutex.inl" />
-    <None Include="$(MSBuildThisFileDirectory)SubAllocator.inl" />
+    <None Include="$(MSBuildThisFileDirectory)FreeListAllocator.inl" />
   </ItemGroup>
 </Project>

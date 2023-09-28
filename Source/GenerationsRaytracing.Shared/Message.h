@@ -247,7 +247,7 @@ struct MsgMakeTexture
     MSG_DEFINE_MESSAGE(MsgWriteTexture);
     uint32_t textureId;
     uint32_t dataSize;
-    uint8_t data[1u];
+    alignas(0x10) uint8_t data[1u];
 };
 
 struct MsgDrawIndexedPrimitive

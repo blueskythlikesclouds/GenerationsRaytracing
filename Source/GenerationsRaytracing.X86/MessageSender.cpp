@@ -36,7 +36,7 @@ void* MessageSender::makeParallelMessage(uint32_t byteSize, uint32_t alignment)
     ++m_pendingMessages;
 
     if (m_parallelBufferSize != offset) // marker that says that the message is aligned
-        m_parallelBuffer[offset] = static_cast<uint8_t>(0x80 | (offset - m_parallelBufferSize));
+        m_parallelBuffer[m_parallelBufferSize] = static_cast<uint8_t>(0x80 | (offset - m_parallelBufferSize));
 
     m_parallelBufferSize = newSize;
 
@@ -69,7 +69,7 @@ void* MessageSender::makeSerialMessage(uint32_t byteSize, uint32_t alignment)
     }
 
     if (m_serialBufferSize != offset) // marker that says that the message is aligned
-        m_serialBuffer[offset] = static_cast<uint8_t>(0x80 | (offset - m_serialBufferSize));
+        m_serialBuffer[m_serialBufferSize] = static_cast<uint8_t>(0x80 | (offset - m_serialBufferSize));
 
     m_serialBufferSize = newSize;
 

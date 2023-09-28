@@ -11,6 +11,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.Share
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X64.Dependencies", "GenerationsRaytracing.X64.Dependencies\GenerationsRaytracing.X64.Dependencies.vcxproj", "{747F99A2-F195-4937-B75D-67B373972075}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GenerationsRaytracing.Tool", "GenerationsRaytracing.Tool\GenerationsRaytracing.Tool.csproj", "{8C622AE6-B697-4F49-99BE-16E26323EBCA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Amicitia.IO", "..\Dependencies\Amicitia.IO\src\Amicitia.IO\Amicitia.IO.csproj", "{E94D086C-2227-4CBC-8297-6E66337A6A9D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -28,6 +32,14 @@ Global
 		{747F99A2-F195-4937-B75D-67B373972075}.Debug|x64.Build.0 = Debug|x64
 		{747F99A2-F195-4937-B75D-67B373972075}.Release|x64.ActiveCfg = Release|x64
 		{747F99A2-F195-4937-B75D-67B373972075}.Release|x64.Build.0 = Release|x64
+		{8C622AE6-B697-4F49-99BE-16E26323EBCA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8C622AE6-B697-4F49-99BE-16E26323EBCA}.Debug|x64.Build.0 = Debug|Any CPU
+		{8C622AE6-B697-4F49-99BE-16E26323EBCA}.Release|x64.ActiveCfg = Release|Any CPU
+		{8C622AE6-B697-4F49-99BE-16E26323EBCA}.Release|x64.Build.0 = Release|Any CPU
+		{E94D086C-2227-4CBC-8297-6E66337A6A9D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E94D086C-2227-4CBC-8297-6E66337A6A9D}.Debug|x64.Build.0 = Debug|Any CPU
+		{E94D086C-2227-4CBC-8297-6E66337A6A9D}.Release|x64.ActiveCfg = Release|Any CPU
+		{E94D086C-2227-4CBC-8297-6E66337A6A9D}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

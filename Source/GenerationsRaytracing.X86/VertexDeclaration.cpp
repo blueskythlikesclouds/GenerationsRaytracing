@@ -1,12 +1,12 @@
 #include "VertexDeclaration.h"
 
-#include "SubAllocator.h"
+#include "FreeListAllocator.h"
 
-static SubAllocator s_subAllocator;
+static FreeListAllocator s_freeListAllocator;
 
 VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* vertexElements)
 {
-    m_id = s_subAllocator.allocate();
+    m_id = s_freeListAllocator.allocate();
 
     m_vertexElementsSize = 0;
 
@@ -24,7 +24,7 @@ VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* vertexElements)
 
 VertexDeclaration::VertexDeclaration(DWORD fvf)
 {
-    m_id = s_subAllocator.allocate();
+    m_id = s_freeListAllocator.allocate();
 
     m_vertexElementsSize = 0;
 
@@ -33,7 +33,7 @@ VertexDeclaration::VertexDeclaration(DWORD fvf)
 
 VertexDeclaration::~VertexDeclaration()
 {
-    s_subAllocator.free(m_id);
+    s_freeListAllocator.free(m_id);
 }
 
 uint32_t VertexDeclaration::getId() const

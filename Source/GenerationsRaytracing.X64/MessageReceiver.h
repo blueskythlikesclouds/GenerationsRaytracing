@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Event.h"
 #include "MemoryMappedFile.h"
 
 class MessageReceiver

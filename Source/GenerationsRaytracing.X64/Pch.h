@@ -16,5 +16,6 @@ using Microsoft::WRL::ComPtr;
 #include <vector>
 
 #include <D3D12MemAlloc.h>
+#include <DDSTextureLoader12.h>
 #include <ankerl/unordered_dense.h>
 #include <xxhash.h>

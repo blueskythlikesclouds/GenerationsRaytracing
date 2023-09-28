@@ -1,18 +1,18 @@
 #include "BaseTexture.h"
 
-#include "SubAllocator.h"
+#include "FreeListAllocator.h"
 
-static SubAllocator s_subAllocator;
+static FreeListAllocator s_freeListAllocator;
 
 BaseTexture::BaseTexture(uint32_t levelCount)
 {
-    m_id = s_subAllocator.allocate();
+    m_id = s_freeListAllocator.allocate();
     m_levelCount = levelCount;
 }
 
 BaseTexture::~BaseTexture()
 {
-    s_subAllocator.free(m_id);
+    s_freeListAllocator.free(m_id);
 }
 
 uint32_t BaseTexture::getId() const

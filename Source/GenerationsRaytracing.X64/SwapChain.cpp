@@ -35,6 +35,12 @@ const Texture& SwapChain::getTexture() const
     return m_textures[m_swapChain->GetCurrentBackBufferIndex()];
 }
 
+void SwapChain::present() const
+{
+    const HRESULT hr = m_swapChain->Present(0, 0);
+    assert(SUCCEEDED(hr));
+}
+
 void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain& message)
 {
     m_window.procMsgCreateSwapChain(message);
@@ -71,14 +77,15 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
     for (uint32_t i = 0; i < message.bufferCount; i++)
     {
         auto& texture = m_textures.emplace_back();
+        ComPtr<ID3D12Resource> resource;
 
-        hr = m_swapChain->GetBuffer(i, IID_PPV_ARGS(texture.resource.GetAddressOf()));
+        hr = m_swapChain->GetBuffer(i, IID_PPV_ARGS(resource.GetAddressOf()));
 
-        assert(SUCCEEDED(hr) && texture.resource != nullptr);
+        assert(SUCCEEDED(hr) && resource != nullptr);
 
         texture.rtvIndex = device.getRtvDescriptorHeap().allocate();
 
         device.getUnderlyingDevice()->CreateRenderTargetView(
-            texture.resource.Get(), nullptr, device.getRtvDescriptorHeap().getCpuHandle(texture.rtvIndex));
+            resource.Get(), nullptr, device.getRtvDescriptorHeap().getCpuHandle(texture.rtvIndex));
     }
 }
