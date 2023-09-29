@@ -136,6 +136,7 @@
     <ClInclude Include="SwapChain.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="DxgiConverter.h" />
+    <ClInclude Include="UploadBuffer.h" />
     <ClInclude Include="VertexDeclaration.h" />
     <ClInclude Include="VertexShader.h" />
     <ClInclude Include="Window.h" />

@@ -74,7 +74,7 @@ FUNCTION_STUB(void, , Device::GetGammaRamp, UINT iSwapChain, D3DGAMMARAMP* pRamp
 
 HRESULT Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Texture** ppTexture, HANDLE* pSharedHandle)
 {
-    if (Format == MAKEFOURCC('N', 'U', 'L', 'L') && 0)
+    if (Format == MAKEFOURCC('N', 'U', 'L', 'L'))
     {
         *ppTexture = nullptr;
     }
