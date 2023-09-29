@@ -14,6 +14,7 @@ protected:
     Window m_window;
     ComPtr<IDXGISwapChain3> m_swapChain;
     std::vector<Texture> m_textures;
+    std::vector<ComPtr<ID3D12Resource>> m_resources;
 
 public:
     SwapChain();
@@ -21,6 +22,7 @@ public:
     IDXGIAdapter* getAdapter() const;
     Window& getWindow();
     const Texture& getTexture() const;
+    ID3D12Resource* getResource() const;
 
     void present() const;
 

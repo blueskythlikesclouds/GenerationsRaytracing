@@ -13,7 +13,6 @@ protected:
 
 public:
     explicit VertexDeclaration(const D3DVERTEXELEMENT9* vertexElements);
-    explicit VertexDeclaration(DWORD fvf);
     ~VertexDeclaration() override;
 
     uint32_t getId() const;

@@ -41,6 +41,9 @@
     <Filter Include="Base">
       <UniqueIdentifier>{8c952580-0bed-48d3-9f2d-3094e9e39818}</UniqueIdentifier>
     </Filter>
+    <Filter Include="FVF">
+      <UniqueIdentifier>{3c57636c-5d7c-4abd-9860-06eba5ae7c9a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MessageReceiver.h">
@@ -84,6 +87,9 @@
     <ClInclude Include="DxgiConverter.h">
       <Filter>Resource</Filter>
     </ClInclude>
+    <ClInclude Include="Buffer.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
@@ -92,5 +98,13 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="FVFPixelShader.hlsl">
+      <Filter>FVF</Filter>
+    </FxCompile>
+    <FxCompile Include="FVFVertexShader.hlsl">
+      <Filter>FVF</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

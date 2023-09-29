@@ -281,7 +281,7 @@ public class ShaderConverter
 	                char swizzle = SwizzleSet.SwizzleChars[constant.Register % 4];
 
 	                stringBuilder.AppendFormat("\tuint {0}_tI : packoffset(c{1}.{2});\n", constant.Name, 224 + index, swizzle);
-	                stringBuilder.AppendFormat("\tuint {0}_sI : packoffset(c{1}.{2});\n", constant.Name, 240 + index, swizzle);
+	                stringBuilder.AppendFormat("\tuint {0}_sI : packoffset(c{1}.{2});\n", constant.Name, 228 + index, swizzle);
 	                break;
             }
         }
@@ -439,6 +439,15 @@ public class ShaderConverter
         // Prevent half-pixel correction in CSD shaders
         else if (IsCsdShader(function, functionSize))
             stringBuilder.AppendLine("\to0.xy += float2(g_ViewportSize.z, -g_ViewportSize.w) * o0.w;");
+
+        if (!isPixelShader)
+        {
+	        foreach (var (_, value) in outSemantics)
+	        {
+		        if (value[0] != 'o')
+			        stringBuilder.AppendFormat("\t{0} = 0;\n", value);
+	        }
+        }
 
         stringBuilder.AppendLine("}");
 

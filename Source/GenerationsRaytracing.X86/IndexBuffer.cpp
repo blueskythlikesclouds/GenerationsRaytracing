@@ -14,6 +14,13 @@ IndexBuffer::IndexBuffer(uint32_t byteSize)
 
 IndexBuffer::~IndexBuffer()
 {
+    auto& message = s_messageSender.makeParallelMessage<MsgReleaseResource>();
+
+    message.resourceType = MsgReleaseResource::ResourceType::IndexBuffer;
+    message.resourceId = m_id;
+
+    s_messageSender.endParallelMessage();
+
     s_freeListAllocator.free(m_id);
 }
 

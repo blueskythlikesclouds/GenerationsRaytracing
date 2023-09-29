@@ -2,8 +2,11 @@
 #include "D3D9.h"
 #include "PictureData.h"
 #include "FillTexture.h"
+#include "HalfPixel.h"
 #include "MessageSender.h"
 #include "ProcessUtil.h"
+#include "TriangleFan.h"
+#include "TriangleStrip.h"
 #include "Window.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
@@ -24,6 +27,9 @@ extern "C" void __declspec(dllexport) Init()
     PictureData::init();
     FillTexture::init();
     Window::init();
+    TriangleFan::init();
+    HalfPixel::init();
+    TriangleStrip::init();
 
 #ifdef _DEBUG
     MessageBox(NULL, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_ICONINFORMATION | MB_OK);

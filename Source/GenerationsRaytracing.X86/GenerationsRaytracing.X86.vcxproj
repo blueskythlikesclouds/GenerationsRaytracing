@@ -102,6 +102,7 @@
     <ClCompile Include="BaseTexture.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="D3D9.cpp" />
+    <ClCompile Include="HalfPixel.cpp" />
     <ClCompile Include="PictureData.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="FillTexture.cpp" />
@@ -116,6 +117,8 @@
     <ClCompile Include="Resource.cpp" />
     <ClCompile Include="Surface.cpp" />
     <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="TriangleFan.cpp" />
+    <ClCompile Include="TriangleStrip.cpp" />
     <ClCompile Include="Unknown.cpp" />
     <ClCompile Include="VertexBuffer.cpp" />
     <ClCompile Include="VertexDeclaration.cpp" />
@@ -126,6 +129,7 @@
     <ClInclude Include="BaseTexture.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="D3D9.h" />
+    <ClInclude Include="HalfPixel.h" />
     <ClInclude Include="PictureData.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="FillTexture.h" />
@@ -136,6 +140,8 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Surface.h" />
     <ClInclude Include="Texture.h" />
+    <ClInclude Include="TriangleFan.h" />
+    <ClInclude Include="TriangleStrip.h" />
     <ClInclude Include="Unknown.h" />
     <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VertexDeclaration.h" />

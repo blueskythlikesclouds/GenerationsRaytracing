@@ -54,6 +54,15 @@
     <ClCompile Include="Window.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
+    <ClCompile Include="TriangleFan.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
+    <ClCompile Include="HalfPixel.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
+    <ClCompile Include="TriangleStrip.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -106,6 +115,15 @@
       <Filter>Base</Filter>
     </ClInclude>
     <ClInclude Include="Window.h">
+      <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="TriangleFan.h">
+      <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="HalfPixel.h">
+      <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="TriangleStrip.h">
       <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>

@@ -2,6 +2,8 @@
 
 #include "DxgiConverter.h"
 #include "Message.h"
+#include "FVFVertexShader.h"
+#include "FVFPixelShader.h"
 
 void Device::createBuffer(
     D3D12_HEAP_TYPE type,
@@ -19,7 +21,7 @@ void Device::createBuffer(
     const HRESULT hr = m_allocator->CreateResource(
         &allocDesc,
         &resourceDesc,
-        D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_RESOURCE_STATE_COMMON,
         nullptr,
         allocation.GetAddressOf(),
         IID_ID3D12Resource,
@@ -82,7 +84,7 @@ void Device::procMsgSetRenderTarget()
             texture.rtvIndex = m_rtvDescriptorHeap.allocate();
 
             D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
-            rtvDesc.Format = DxgiConverter::makeColor(texture.format);
+            rtvDesc.Format = texture.format;
             rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
             rtvDesc.Texture2D.MipSlice = 0;
             rtvDesc.Texture2D.PlaneSlice = 0;
@@ -92,11 +94,65 @@ void Device::procMsgSetRenderTarget()
                 &rtvDesc,
                 m_rtvDescriptorHeap.getCpuHandle(texture.rtvIndex));
         }
-        m_renderTargetView = m_rtvDescriptorHeap.getCpuHandle(texture.rtvIndex);
+
+        const auto renderTargetView = m_rtvDescriptorHeap.getCpuHandle(texture.rtvIndex);
+
+        if (m_renderTargetView.ptr != renderTargetView.ptr)
+            m_dirtyFlags |= DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
+
+        if (m_pipelineDesc.NumRenderTargets != 1 || m_pipelineDesc.RTVFormats[0] != texture.format)
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
+        m_renderTargetView = renderTargetView;
+        m_renderTarget = texture.allocation != nullptr ? texture.allocation->GetResource() : nullptr;
+
+        m_pipelineDesc.NumRenderTargets = 1;
+        m_pipelineDesc.RTVFormats[0] = texture.format;
     }
     else
     {
+        if (m_renderTargetView.ptr != NULL)
+            m_dirtyFlags |= DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
+
+        if (m_pipelineDesc.NumRenderTargets != 0 || m_pipelineDesc.RTVFormats[0] != DXGI_FORMAT_UNKNOWN)
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
         m_renderTargetView.ptr = NULL;
+        m_renderTarget = nullptr;
+
+        m_pipelineDesc.NumRenderTargets = 0;
+        m_pipelineDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+    }
+}
+
+static void addMissingInputElement(
+    std::vector<D3D12_INPUT_ELEMENT_DESC>& inputElements,
+    const char* semanticName, 
+    uint32_t semanticIndex,
+    DXGI_FORMAT format)
+{
+    bool foundAny = false;
+
+    for (const auto& inputElement : inputElements)
+    {
+        if (strcmp(inputElement.SemanticName, semanticName) == 0 && 
+            inputElement.SemanticIndex == semanticIndex)
+        {
+            foundAny = true;
+            break;
+        }
+    }
+
+    if (!foundAny)
+    {
+        inputElements.push_back({
+            semanticName,
+            semanticIndex,
+            format,
+            0,
+            0,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            0 });
     }
 }
 
@@ -104,8 +160,46 @@ void Device::procMsgCreateVertexDeclaration()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCreateVertexDeclaration>();
 
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputElements;
+
+    const D3DVERTEXELEMENT9* vertexElement = reinterpret_cast<const D3DVERTEXELEMENT9*>(message.data);
+
+    while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
+    {
+        auto& inputElement = inputElements.emplace_back();
+
+        inputElement.SemanticName = DxgiConverter::convertDeclUsage(static_cast<D3DDECLUSAGE>(vertexElement->Usage));
+        inputElement.SemanticIndex = static_cast<UINT>(vertexElement->UsageIndex);
+        inputElement.Format = DxgiConverter::convertDeclType(static_cast<D3DDECLTYPE>(vertexElement->Type));
+        inputElement.InputSlot = static_cast<UINT>(vertexElement->Stream);
+        inputElement.AlignedByteOffset = static_cast<UINT>(vertexElement->Offset);
+        inputElement.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+        inputElement.InstanceDataStepRate = 0;
+
+        ++vertexElement;
+    }
+
+    addMissingInputElement(inputElements, "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT);
+    addMissingInputElement(inputElements, "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT);
+    addMissingInputElement(inputElements, "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
+    addMissingInputElement(inputElements, "BINORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT);
+    addMissingInputElement(inputElements, "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT);
+    addMissingInputElement(inputElements, "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT);
+    addMissingInputElement(inputElements, "TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT);
+    addMissingInputElement(inputElements, "TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT);
+    addMissingInputElement(inputElements, "COLOR", 0, DXGI_FORMAT_B8G8R8A8_UNORM);
+    addMissingInputElement(inputElements, "BLENDWEIGHT", 0, DXGI_FORMAT_R8G8B8A8_UNORM);
+    addMissingInputElement(inputElements, "BLENDINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT);
+
     if (m_vertexDeclarations.size() <= message.vertexDeclarationId)
         m_vertexDeclarations.resize(message.vertexDeclarationId + 1);
+
+    auto& vertexDeclaration = m_vertexDeclarations[message.vertexDeclarationId];
+
+    vertexDeclaration.inputElements = std::make_unique<D3D12_INPUT_ELEMENT_DESC[]>(inputElements.size());
+    vertexDeclaration.inputElementsSize = static_cast<uint32_t>(inputElements.size());
+
+    memcpy(vertexDeclaration.inputElements.get(), inputElements.data(), inputElements.size() * sizeof(D3D12_INPUT_ELEMENT_DESC));
 }
 
 void Device::procMsgCreatePixelShader()
@@ -115,7 +209,7 @@ void Device::procMsgCreatePixelShader()
     if (m_pixelShaders.size() <= message.pixelShaderId)
         m_pixelShaders.resize(message.pixelShaderId + 1);
 
-    auto& pixelShader = m_pixelShaders.emplace_back();
+    auto& pixelShader = m_pixelShaders[message.pixelShaderId];
 
     pixelShader.byteCode = std::make_unique<uint8_t[]>(message.dataSize);
     pixelShader.byteSize = message.dataSize;
@@ -130,7 +224,7 @@ void Device::procMsgCreateVertexShader()
     if (m_vertexShaders.size() <= message.vertexShaderId)
         m_vertexShaders.resize(message.vertexShaderId + 1);
 
-    auto& vertexShader = m_vertexShaders.emplace_back();
+    auto& vertexShader = m_vertexShaders[message.vertexShaderId];
 
     vertexShader.byteCode = std::make_unique<uint8_t[]>(message.dataSize);
     vertexShader.byteSize = message.dataSize;
@@ -141,6 +235,100 @@ void Device::procMsgCreateVertexShader()
 void Device::procMsgSetRenderState()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetRenderState>();
+
+#define SET_PIPELINE_DESC_VALUE(dst, src) \
+    if (dst != src) m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC; \
+    dst = src
+
+    switch (message.state)
+    {
+    case D3DRS_ZENABLE:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.DepthStencilState.DepthEnable, static_cast<BOOL>(message.value));
+        break;
+
+    case D3DRS_FILLMODE:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.RasterizerState.FillMode, static_cast<D3D12_FILL_MODE>(message.value));
+        break;
+
+    case D3DRS_ZWRITEENABLE:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.DepthStencilState.DepthWriteMask, static_cast<D3D12_DEPTH_WRITE_MASK>(message.value));
+        break;
+
+    case D3DRS_ALPHATESTENABLE:
+        break;
+
+    case D3DRS_SRCBLEND:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[0].SrcBlend, static_cast<D3D12_BLEND>(message.value));
+        break;
+
+    case D3DRS_DESTBLEND:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[0].DestBlend, static_cast<D3D12_BLEND>(message.value));
+        break;
+
+    case D3DRS_CULLMODE:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.RasterizerState.CullMode, static_cast<D3D12_CULL_MODE>(message.value));
+        break;
+
+    case D3DRS_ZFUNC:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.DepthStencilState.DepthFunc, static_cast<D3D12_COMPARISON_FUNC>(message.value));
+        break;
+
+    case D3DRS_ALPHAREF:
+        break;
+
+    case D3DRS_ALPHABLENDENABLE:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[0].BlendEnable, static_cast<BOOL>(message.value));
+        break;
+
+    case D3DRS_COLORWRITEENABLE:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[0].RenderTargetWriteMask, static_cast<UINT8>(message.value));
+        break;
+
+    case D3DRS_BLENDOP:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[0].BlendOp, static_cast<D3D12_BLEND_OP>(message.value));
+        break;
+
+    case D3DRS_SCISSORTESTENABLE:
+        break;
+
+    case D3DRS_SLOPESCALEDEPTHBIAS:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.RasterizerState.SlopeScaledDepthBias, *reinterpret_cast<const float*>(&message.value));
+        break;
+
+    case D3DRS_COLORWRITEENABLE1:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[1].RenderTargetWriteMask, static_cast<UINT8>(message.value));
+        break;
+
+    case D3DRS_COLORWRITEENABLE2:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[2].RenderTargetWriteMask, static_cast<UINT8>(message.value));
+        break;
+
+    case D3DRS_COLORWRITEENABLE3:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[3].RenderTargetWriteMask, static_cast<UINT8>(message.value));
+        break;
+
+    case D3DRS_DEPTHBIAS:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.RasterizerState.DepthBias, static_cast<INT>(*reinterpret_cast<const float*>(&message.value) * (1 << 24)));
+        break;
+
+    case D3DRS_SRCBLENDALPHA:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[0].SrcBlendAlpha, static_cast<D3D12_BLEND>(message.value));
+        break;
+
+    case D3DRS_DESTBLENDALPHA:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[0].DestBlendAlpha, static_cast<D3D12_BLEND>(message.value));
+        break;
+
+    case D3DRS_BLENDOPALPHA:
+        SET_PIPELINE_DESC_VALUE(m_pipelineDesc.BlendState.RenderTarget[0].BlendOpAlpha, static_cast<D3D12_BLEND_OP>(message.value));
+        break;
+
+    default:
+        assert(false);
+        break;
+    }
+
+#undef SET_PIPELINE_DESC_VALUE
 }
 
 void Device::procMsgCreateTexture()
@@ -194,6 +382,19 @@ void Device::procMsgCreateTexture()
     assert(SUCCEEDED(hr) && texture.allocation != nullptr);
 
     texture.format = DxgiConverter::convert(static_cast<D3DFORMAT>(message.format));
+
+#if _DEBUG
+    wchar_t name[0x100];
+
+    if ((message.usage & D3DUSAGE_RENDERTARGET) != 0)
+        _swprintf(name, L"Render Target %d", message.textureId);
+    else if ((message.usage & D3DUSAGE_DEPTHSTENCIL) != 0)
+        _swprintf(name, L"Depth Stencil %d", message.textureId);
+    else
+        _swprintf(name, L"Texture %d", message.textureId);
+
+    texture.allocation->GetResource()->SetName(name);
+#endif
 }
 
 void Device::procMsgSetTexture()
@@ -223,10 +424,20 @@ void Device::procMsgSetTexture()
                 &srvDesc,
                 m_descriptorHeap.getCpuHandle(texture.srvIndex));
         }
+
+        if (texture.rtvIndex != NULL || texture.dsvIndex != NULL)
+            m_graphicsCommandList.setResourceState(texture.allocation->GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+        if (m_globalsPS.textureIndices[message.stage] != texture.srvIndex)
+            m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
+
         m_globalsPS.textureIndices[message.stage] = texture.srvIndex;
     }
     else
     {
+        if (m_globalsPS.textureIndices[message.stage] != NULL)
+            m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
+
         m_globalsPS.textureIndices[message.stage] = NULL;
     }
 }
@@ -244,8 +455,9 @@ void Device::procMsgSetDepthStencilSurface()
             texture.dsvIndex = m_dsvDescriptorHeap.allocate();
 
             D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
-            dsvDesc.Format = DxgiConverter::makeDepth(texture.format);
+            dsvDesc.Format = texture.format;
             dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+            dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
             dsvDesc.Texture2D.MipSlice = 0;
 
             m_device->CreateDepthStencilView(
@@ -253,17 +465,72 @@ void Device::procMsgSetDepthStencilSurface()
                 &dsvDesc,
                 m_dsvDescriptorHeap.getCpuHandle(texture.dsvIndex));
         }
-        m_depthStencilView = m_dsvDescriptorHeap.getCpuHandle(texture.dsvIndex);
+
+        const auto depthStencilView = m_dsvDescriptorHeap.getCpuHandle(texture.dsvIndex);
+
+        if (m_depthStencilView.ptr != depthStencilView.ptr)
+            m_dirtyFlags |= DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
+
+        if (m_pipelineDesc.DSVFormat != texture.format)
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
+        m_depthStencilView = depthStencilView;
+        m_depthStencil = texture.allocation->GetResource();
+
+        m_pipelineDesc.DSVFormat = texture.format;
     }
     else
     {
+        if (m_depthStencilView.ptr != NULL)
+            m_dirtyFlags |= DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
+
+        if (m_pipelineDesc.DSVFormat != DXGI_FORMAT_UNKNOWN)
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
         m_depthStencilView.ptr = NULL;
+        m_depthStencil = nullptr;
+
+        m_pipelineDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
     }
 }
 
 void Device::procMsgClear()
 {
     const auto& message = m_messageReceiver.getMessage<MsgClear>();
+
+    if ((message.flags & D3DCLEAR_TARGET) && m_renderTarget != nullptr)
+        m_graphicsCommandList.setResourceState(m_renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+    if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencil != nullptr)
+        m_graphicsCommandList.setResourceState(m_depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+    m_graphicsCommandList.dispatchResourceBarriers();
+
+    if ((message.flags & D3DCLEAR_TARGET) && m_renderTargetView.ptr != NULL)
+    {
+        FLOAT color[4];
+        color[2] = static_cast<float>(message.color & 0xFF) / 255.0f;
+        color[1] = static_cast<float>((message.color >> 8) & 0xFF) / 255.0f;
+        color[0] = static_cast<float>((message.color >> 16) & 0xFF) / 255.0f;
+        color[3] = static_cast<float>((message.color >> 24) & 0xFF) / 255.0f;
+
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->ClearRenderTargetView(m_renderTargetView, color, 0, nullptr);
+    }
+
+    if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencilView.ptr != NULL)
+    {
+        UINT clearFlag = 0;
+
+        if (message.flags & D3DCLEAR_ZBUFFER)
+            clearFlag |= D3D12_CLEAR_FLAG_DEPTH;
+
+        if (message.flags & D3DCLEAR_STENCIL)
+            clearFlag |= D3D12_CLEAR_FLAG_STENCIL;
+
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->ClearDepthStencilView(m_depthStencilView, static_cast<D3D12_CLEAR_FLAGS>(clearFlag), message.z, message.stencil, 0, nullptr);
+    }
 }
 
 void Device::procMsgSetVertexShader()
@@ -274,13 +541,19 @@ void Device::procMsgSetVertexShader()
     {
         const auto& vertexShader = m_vertexShaders[message.vertexShaderId];
 
+        if (m_pipelineDesc.VS.pShaderBytecode != vertexShader.byteCode.get())
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
         m_pipelineDesc.VS.pShaderBytecode = vertexShader.byteCode.get();
         m_pipelineDesc.VS.BytecodeLength = static_cast<SIZE_T>(vertexShader.byteSize);
     }
     else
     {
-        m_pipelineDesc.VS.pShaderBytecode = nullptr;
-        m_pipelineDesc.VS.BytecodeLength = 0;
+        if (m_pipelineDesc.VS.pShaderBytecode != FVFVertexShader)
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
+        m_pipelineDesc.VS.pShaderBytecode = FVFVertexShader;
+        m_pipelineDesc.VS.BytecodeLength = sizeof(FVFVertexShader);
     }
 }
 
@@ -292,13 +565,19 @@ void Device::procMsgSetPixelShader()
     {
         const auto& pixelShader = m_pixelShaders[message.pixelShaderId];
 
+        if (m_pipelineDesc.PS.pShaderBytecode != pixelShader.byteCode.get())
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
         m_pipelineDesc.PS.pShaderBytecode = pixelShader.byteCode.get();
         m_pipelineDesc.PS.BytecodeLength = static_cast<SIZE_T>(pixelShader.byteSize);
     }
     else
     {
-        m_pipelineDesc.PS.pShaderBytecode = nullptr;
-        m_pipelineDesc.PS.BytecodeLength = 0;
+        if (m_pipelineDesc.PS.pShaderBytecode != FVFPixelShader)
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
+        m_pipelineDesc.PS.pShaderBytecode = FVFPixelShader;
+        m_pipelineDesc.PS.BytecodeLength = sizeof(FVFPixelShader);
     }
 }
 
@@ -307,6 +586,7 @@ void Device::procMsgSetPixelShaderConstantF()
     const auto& message = m_messageReceiver.getMessage<MsgSetPixelShaderConstantF>();
 
     memcpy(m_globalsPS.floatConstants[message.startRegister], message.data, message.dataSize);
+    m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
 }
 
 void Device::procMsgSetVertexShaderConstantF()
@@ -314,6 +594,7 @@ void Device::procMsgSetVertexShaderConstantF()
     const auto& message = m_messageReceiver.getMessage<MsgSetVertexShaderConstantF>();
 
     memcpy(m_globalsVS.floatConstants[message.startRegister], message.data, message.dataSize);
+    m_dirtyFlags |= DIRTY_FLAG_GLOBALS_VS;
 }
 
 void Device::procMsgSetVertexShaderConstantB()
@@ -324,28 +605,115 @@ void Device::procMsgSetVertexShaderConstantB()
 void Device::procMsgSetSamplerState()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetSamplerState>();
+
+    auto dirtyFlag = m_dirtyFlags & DIRTY_FLAG_SAMPLER_DESC;
+
+#define SET_SAMPLER_DESC_VALUE(dst, src) \
+    do { \
+        if (dst != (src)) m_dirtyFlags |= DIRTY_FLAG_SAMPLER_DESC; \
+        dst = src; \
+    } \
+    while (0)
+
+    switch (message.type)
+    {
+    case D3DSAMP_ADDRESSU:
+        SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].AddressU, static_cast<D3D12_TEXTURE_ADDRESS_MODE>(message.value));
+        break;
+
+    case D3DSAMP_ADDRESSV:
+        SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].AddressV, static_cast<D3D12_TEXTURE_ADDRESS_MODE>(message.value));
+        break;
+
+    case D3DSAMP_ADDRESSW:
+        SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].AddressW, static_cast<D3D12_TEXTURE_ADDRESS_MODE>(message.value));
+        break;
+
+    case D3DSAMP_BORDERCOLOR:
+        SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].BorderColor[0], (static_cast<float>((message.value >> 16) & 0xFF)) / 255.0f);
+        SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].BorderColor[1], (static_cast<float>((message.value >> 8) & 0xFF)) / 255.0f);
+        SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].BorderColor[2], (static_cast<float>(message.value & 0xFF)) / 255.0f);
+        SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].BorderColor[3], (static_cast<float>((message.value >> 24) & 0xFF)) / 255.0f);
+        break;
+
+    case D3DSAMP_MAGFILTER:
+        if (message.value == D3DTEXF_LINEAR)
+            SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].Filter, static_cast<D3D12_FILTER>(m_samplerDescs[message.sampler].Filter | 0x4));
+        else
+            SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].Filter, static_cast<D3D12_FILTER>(m_samplerDescs[message.sampler].Filter & ~0x4));
+
+        break;
+
+    case D3DSAMP_MINFILTER:
+        if (message.value == D3DTEXF_LINEAR)
+            SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].Filter, static_cast<D3D12_FILTER>(m_samplerDescs[message.sampler].Filter | 0x10));
+        else
+            SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].Filter, static_cast<D3D12_FILTER>(m_samplerDescs[message.sampler].Filter & ~0x10));
+
+        break;
+
+    case D3DSAMP_MIPFILTER:
+        if (message.value == D3DTEXF_LINEAR)
+            SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].Filter, static_cast<D3D12_FILTER>(m_samplerDescs[message.sampler].Filter | 0x1));
+        else
+            SET_SAMPLER_DESC_VALUE(m_samplerDescs[message.sampler].Filter, static_cast<D3D12_FILTER>(m_samplerDescs[message.sampler].Filter & ~0x1));
+
+        break;
+    }
+
+#undef SET_SAMPLER_DESC_VALUE
+
+    if (dirtyFlag != (m_dirtyFlags & DIRTY_FLAG_SAMPLER_DESC))
+    {
+        m_samplerMinIndex = std::min<uint32_t>(m_samplerMinIndex, message.sampler);
+        m_samplerMaxIndex = std::max<uint32_t>(m_samplerMaxIndex, message.sampler);
+    }
 }
 
 void Device::procMsgSetViewport()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetViewport>();
 
-    m_viewport.TopLeftX = static_cast<float>(message.x);
-    m_viewport.TopLeftY = static_cast<float>(message.y);
-    m_viewport.Width = static_cast<float>(message.width);
-    m_viewport.Height = static_cast<float>(message.height);
-    m_viewport.MinDepth = message.minZ;
-    m_viewport.MinDepth = message.maxZ;
+    D3D12_VIEWPORT viewport;
+    viewport.TopLeftX = static_cast<float>(message.x);
+    viewport.TopLeftY = static_cast<float>(message.y);
+    viewport.Width = static_cast<float>(message.width);
+    viewport.Height = static_cast<float>(message.height);
+    viewport.MinDepth = message.minZ;
+    viewport.MaxDepth = message.maxZ;
+
+    if (m_viewport.TopLeftX != viewport.TopLeftX ||
+        m_viewport.TopLeftY != viewport.TopLeftY ||
+        m_viewport.Width != viewport.Width ||
+        m_viewport.Height != viewport.Height ||
+        m_viewport.MinDepth != viewport.MinDepth ||
+        m_viewport.MaxDepth != viewport.MaxDepth)
+    {
+        m_dirtyFlags |= DIRTY_FLAG_VIEWPORT;
+    }
+
+    m_viewport = viewport;
 }
 
 void Device::procMsgSetScissorRect()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetScissorRect>();
 
-    m_scissorRect.left = static_cast<LONG>(message.left);
-    m_scissorRect.top = static_cast<LONG>(message.top);
-    m_scissorRect.right = static_cast<LONG>(message.right);
-    m_scissorRect.bottom = static_cast<LONG>(message.bottom);
+    RECT scissorRect;
+    scissorRect.left = static_cast<LONG>(message.left);
+    scissorRect.top = static_cast<LONG>(message.top);
+    scissorRect.right = static_cast<LONG>(message.right);
+    scissorRect.bottom = static_cast<LONG>(message.bottom);
+
+    if (m_scissorRect.left != scissorRect.left ||
+        m_scissorRect.top != scissorRect.top ||
+        m_scissorRect.right != scissorRect.right ||
+        m_scissorRect.bottom != scissorRect.bottom)
+    {
+        m_dirtyFlags |= DIRTY_FLAG_SCISSOR_RECT;
+    }
+
+    m_scissorRect = scissorRect;
 }
 
 void Device::procMsgSetVertexDeclaration()
@@ -356,11 +724,17 @@ void Device::procMsgSetVertexDeclaration()
     {
         const auto& vertexDeclaration = m_vertexDeclarations[message.vertexDeclarationId];
 
+        if (m_pipelineDesc.InputLayout.pInputElementDescs != vertexDeclaration.inputElements.get())
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
         m_pipelineDesc.InputLayout.pInputElementDescs = vertexDeclaration.inputElements.get();
         m_pipelineDesc.InputLayout.NumElements = static_cast<UINT>(vertexDeclaration.inputElementsSize);
     }
     else
     {
+        if (m_pipelineDesc.InputLayout.pInputElementDescs != nullptr)
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
         m_pipelineDesc.InputLayout.pInputElementDescs = nullptr;
         m_pipelineDesc.InputLayout.NumElements = 0;
     }
@@ -370,7 +744,30 @@ void Device::procMsgDrawPrimitiveUP()
 {
     const auto& message = m_messageReceiver.getMessage<MsgDrawPrimitiveUP>();
 
+    auto& uploadBuffer = m_uploadBuffers.emplace_back();
+    createBuffer(D3D12_HEAP_TYPE_UPLOAD, message.dataSize, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
+
+    void* mappedData = nullptr;
+    const HRESULT hr = uploadBuffer->GetResource()->Map(0, nullptr, &mappedData);
+
+    assert(SUCCEEDED(hr) && mappedData != nullptr);
+
+    memcpy(mappedData, message.data, message.dataSize);
+
+    uploadBuffer->GetResource()->Unmap(0, nullptr);
+
+    m_vertexBufferViews[0].BufferLocation = uploadBuffer->GetResource()->GetGPUVirtualAddress();
+    m_vertexBufferViews[0].SizeInBytes = message.dataSize;
+    m_vertexBufferViews[0].StrideInBytes = message.vertexStreamZeroStride;
+
+    m_dirtyFlags |= DIRTY_FLAG_VERTEX_BUFFER_VIEWS;
+    m_vertexMinIndex = 0;
+
+    setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
     flushState();
+
+    m_graphicsCommandList.getUnderlyingCommandList()
+        ->DrawInstanced(message.vertexCount, 1, 0, 0);
 }
 
 void Device::procMsgSetStreamSource()
@@ -379,40 +776,73 @@ void Device::procMsgSetStreamSource()
 
     auto& vertexBufferView = m_vertexBufferViews[message.streamNumber];
 
+    D3D12_GPU_VIRTUAL_ADDRESS bufferLocation;
+    UINT sizeInBytes;
+    UINT strideInBytes;
+
     if (message.streamDataId != NULL)
     {
         const auto& vertexBuffer = m_vertexBuffers[message.streamDataId];
 
-        vertexBufferView.BufferLocation = vertexBuffer->GetResource()->GetGPUVirtualAddress() + message.offsetInBytes;
-        vertexBufferView.SizeInBytes = static_cast<UINT>(vertexBuffer->GetSize() - message.offsetInBytes);
-        vertexBufferView.StrideInBytes = static_cast<UINT>(message.stride);
+        bufferLocation = vertexBuffer.allocation->GetResource()->GetGPUVirtualAddress() + message.offsetInBytes;
+        sizeInBytes = static_cast<UINT>(vertexBuffer.byteSize - message.offsetInBytes);
+        strideInBytes = static_cast<UINT>(message.stride);
     }
     else
     {
-        vertexBufferView.BufferLocation = NULL;
-        vertexBufferView.SizeInBytes = 0;
-        vertexBufferView.StrideInBytes = 0;
+        bufferLocation = NULL;
+        sizeInBytes = 0;
+        strideInBytes = 0;
     }
+
+    if (vertexBufferView.BufferLocation != bufferLocation ||
+        vertexBufferView.SizeInBytes != sizeInBytes ||
+        vertexBufferView.StrideInBytes != strideInBytes)
+    {
+        m_dirtyFlags |= DIRTY_FLAG_VERTEX_BUFFER_VIEWS;
+
+        m_vertexMinIndex = std::min<uint32_t>(m_vertexMinIndex, message.streamNumber);
+        m_vertexMaxIndex = std::max<uint32_t>(m_vertexMaxIndex, message.streamNumber);
+    }
+
+    vertexBufferView.BufferLocation = bufferLocation;
+    vertexBufferView.SizeInBytes = sizeInBytes;
+    vertexBufferView.StrideInBytes = strideInBytes;
 }
 
 void Device::procMsgSetIndices()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetIndices>();
 
+    D3D12_GPU_VIRTUAL_ADDRESS bufferLocation;
+    UINT sizeInBytes;
+    DXGI_FORMAT format;
+
     if (message.indexDataId != NULL)
     {
         const auto& indexBuffer = m_indexBuffers[message.indexDataId];
 
-        m_indexBufferView.BufferLocation = indexBuffer->GetResource()->GetGPUVirtualAddress();
-        m_indexBufferView.SizeInBytes = static_cast<UINT>(indexBuffer->GetSize());
-        m_indexBufferView.Format = DXGI_FORMAT_R16_UINT; // Safe bet for now.
+        bufferLocation = indexBuffer.allocation->GetResource()->GetGPUVirtualAddress();
+        sizeInBytes = static_cast<UINT>(indexBuffer.byteSize);
+        format = indexBuffer.format;
     }
     else
     {
-        m_indexBufferView.BufferLocation = NULL;
-        m_indexBufferView.SizeInBytes = 0;
-        m_indexBufferView.Format = DXGI_FORMAT_UNKNOWN;
+        bufferLocation = NULL;
+        sizeInBytes = 0;
+        format = DXGI_FORMAT_UNKNOWN;
     }
+
+    if (m_indexBufferView.BufferLocation != bufferLocation ||
+        m_indexBufferView.SizeInBytes != sizeInBytes ||
+        m_indexBufferView.Format != format)
+    {
+        m_dirtyFlags |= DIRTY_FLAG_INDEX_BUFFER_VIEW;
+    }
+
+    m_indexBufferView.BufferLocation = bufferLocation;
+    m_indexBufferView.SizeInBytes = sizeInBytes;
+    m_indexBufferView.Format = format;
 }
 
 void Device::procMsgPresent()
@@ -428,11 +858,21 @@ void Device::procMsgCreateVertexBuffer()
     if (m_vertexBuffers.size() <= message.vertexBufferId)
         m_vertexBuffers.resize(message.vertexBufferId + 1);
 
+    auto& vertexBuffer = m_vertexBuffers[message.vertexBufferId];
+
     createBuffer(
         D3D12_HEAP_TYPE_DEFAULT,
         message.length, 
         D3D12_RESOURCE_STATE_COMMON, 
-        m_vertexBuffers[message.vertexBufferId]);
+        vertexBuffer.allocation);
+
+    vertexBuffer.byteSize = message.length;
+
+#if _DEBUG
+    wchar_t name[0x100];
+    _swprintf(name, L"Vertex Buffer %d", message.vertexBufferId);
+    vertexBuffer.allocation->GetResource()->SetName(name);
+#endif
 }
 
 void Device::procMsgWriteVertexBuffer()
@@ -443,7 +883,7 @@ void Device::procMsgWriteVertexBuffer()
         message.data,
         message.offset, 
         message.dataSize,
-        m_vertexBuffers[message.vertexBufferId]->GetResource());
+        m_vertexBuffers[message.vertexBufferId].allocation->GetResource());
 }
 
 void Device::procMsgCreateIndexBuffer()
@@ -453,11 +893,22 @@ void Device::procMsgCreateIndexBuffer()
     if (m_indexBuffers.size() <= message.indexBufferId)
         m_indexBuffers.resize(message.indexBufferId + 1);
 
+    auto& indexBuffer = m_indexBuffers[message.indexBufferId];
+
     createBuffer(
         D3D12_HEAP_TYPE_DEFAULT,
         message.length,
         D3D12_RESOURCE_STATE_COMMON,
-        m_indexBuffers[message.indexBufferId]);
+        indexBuffer.allocation);
+
+    indexBuffer.format = DxgiConverter::convert(static_cast<D3DFORMAT>(message.format));
+    indexBuffer.byteSize = message.length;
+
+#if _DEBUG
+    wchar_t name[0x100];
+    _swprintf(name, L"Index Buffer %d", message.indexBufferId);
+    indexBuffer.allocation->GetResource()->SetName(name);
+#endif
 }
 
 void Device::procMsgWriteIndexBuffer()
@@ -468,7 +919,7 @@ void Device::procMsgWriteIndexBuffer()
         message.data,
         message.offset,
         message.dataSize,
-        m_indexBuffers[message.indexBufferId]->GetResource());
+        m_indexBuffers[message.indexBufferId].allocation->GetResource());
 }
 
 void Device::procMsgWriteTexture()
@@ -615,26 +1066,63 @@ void Device::procMsgMakeTexture()
         texture.allocation->GetResource(),
         &srvDesc,
         m_descriptorHeap.getCpuHandle(texture.srvIndex));
+
+#if _DEBUG
+    wchar_t name[0x100];
+    _swprintf(name, L"DDS Texture %d", message.textureId);
+    texture.allocation->GetResource()->SetName(name);
+#endif
 }
 
 void Device::procMsgDrawIndexedPrimitive()
 {
     const auto& message = m_messageReceiver.getMessage<MsgDrawIndexedPrimitive>();
 
+    setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
     flushState();
 
-    //m_graphicsCommandList.getUnderlyingCommandList()
-    //    ->DrawIndexedInstanced(
-    //        message.indexCount,
-    //        1,
-    //        message.startIndex,
-    //        message.baseVertexIndex,
-    //        0);
+    m_graphicsCommandList.getUnderlyingCommandList()
+        ->DrawIndexedInstanced(
+            message.indexCount,
+            1,
+            message.startIndex,
+            message.baseVertexIndex,
+            0);
 }
 
 void Device::procMsgSetStreamSourceFreq()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetStreamSourceFreq>();
+}
+
+void Device::procMsgReleaseResource()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgReleaseResource>();
+
+    switch (message.resourceType)
+    {
+    case MsgReleaseResource::ResourceType::Texture:
+        m_tmpTextures.push_back(m_textures[message.resourceId]);
+        m_textures[message.resourceId] = {};
+
+        break;
+
+    case MsgReleaseResource::ResourceType::IndexBuffer:
+        m_tmpBuffers.push_back(std::move(m_indexBuffers[message.resourceId].allocation));
+        break;
+
+    case MsgReleaseResource::ResourceType::VertexBuffer:
+        m_tmpBuffers.push_back(std::move(m_vertexBuffers[message.resourceId].allocation));
+        break;
+
+    case MsgReleaseResource::ResourceType::VertexDeclaration:
+        m_tmpVertexDeclarations.push_back(std::move(m_vertexDeclarations[message.resourceId]));
+        break;
+
+    default: 
+        assert(false);
+        break;
+    }
 }
 
 Device::Device()
@@ -674,50 +1162,265 @@ Device::Device()
     m_samplerDescriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
     m_rtvDescriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     m_dsvDescriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+    CD3DX12_ROOT_PARAMETER rootParameters[2];
+    rootParameters[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+    rootParameters[1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
+    rootSignatureDesc.NumParameters = _countof(rootParameters);
+    rootSignatureDesc.pParameters = rootParameters;
+    rootSignatureDesc.Flags = 
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
+        D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
+
+    ComPtr<ID3DBlob> blob;
+    ComPtr<ID3DBlob> errorBlob;
+
+    hr = D3D12SerializeRootSignature(
+        &rootSignatureDesc,
+        D3D_ROOT_SIGNATURE_VERSION_1, 
+        blob.GetAddressOf(),
+        errorBlob.GetAddressOf());
+
+    assert(SUCCEEDED(hr) && blob != nullptr);
+
+    hr = m_device->CreateRootSignature(
+        0,
+        blob->GetBufferPointer(),
+        blob->GetBufferSize(),
+        IID_PPV_ARGS(m_rootSignature.GetAddressOf()));
+
+    assert(SUCCEEDED(hr) && m_rootSignature != nullptr);
+
+    m_pipelineDesc.pRootSignature = m_rootSignature.Get();
+    m_pipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    m_pipelineDesc.SampleMask = ~0;
+    m_pipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    m_pipelineDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    m_pipelineDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF;
+    m_pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    m_pipelineDesc.NumRenderTargets = 1;
+    m_pipelineDesc.SampleDesc.Count = 1;
+
+    for (auto& samplerDesc : m_samplerDescs)
+    {
+        samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+    }
+}
+
+void Device::setPrimitiveType(D3DPRIMITIVETYPE primitiveType)
+{
+    D3D12_PRIMITIVE_TOPOLOGY primitiveTopology;
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE primitiveTopologyType;
+
+    switch (primitiveType)
+    {
+    case D3DPT_POINTLIST:
+        primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+        primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+        break;
+
+    case D3DPT_LINELIST:
+        primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+        primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+        break;
+
+    case D3DPT_LINESTRIP:
+        primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+        primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+        break;
+
+    case D3DPT_TRIANGLELIST:
+        primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        break;
+
+    case D3DPT_TRIANGLESTRIP:
+        primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        break;
+
+    default: 
+        assert(false);
+        break;
+    }
+
+    if (m_primitiveTopology != primitiveTopology)
+        m_dirtyFlags |= DIRTY_FLAG_PRIMITIVE_TOPOLOGY;
+
+    if (m_pipelineDesc.PrimitiveTopologyType != primitiveTopologyType)
+        m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
+    m_primitiveTopology = primitiveTopology;
+    m_pipelineDesc.PrimitiveTopologyType = primitiveTopologyType;
 }
 
 void Device::flushState()
 {
-    m_graphicsCommandList.getUnderlyingCommandList()
-        ->OMSetRenderTargets(
-            1, 
-            m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr, 
-            FALSE, 
-            m_depthStencilView.ptr != NULL ? &m_depthStencilView : nullptr);
-
-    const XXH64_hash_t pipelineHash = XXH3_64bits(&m_pipelineDesc, sizeof(m_pipelineDesc));
-    auto& pipeline = m_pipelines[pipelineHash];
-    if (!pipeline)
+    if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
     {
-        const HRESULT hr = m_device->CreateGraphicsPipelineState(&m_pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
-        assert(SUCCEEDED(hr));
+        if (m_renderTarget != nullptr)
+            m_graphicsCommandList.setResourceState(m_renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+        if (m_depthStencil != nullptr)
+            m_graphicsCommandList.setResourceState(m_depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
     }
-    m_graphicsCommandList.getUnderlyingCommandList()
-        ->SetPipelineState(pipeline.Get());
 
-    m_graphicsCommandList.getUnderlyingCommandList()
-        ->SetComputeRootConstantBufferView(0, makeConstantBuffer(&m_globalsVS));
+    m_graphicsCommandList.dispatchResourceBarriers();
 
-    m_graphicsCommandList.getUnderlyingCommandList()
-        ->SetComputeRootConstantBufferView(1, makeConstantBuffer(&m_globalsPS));
+    if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
+    {
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->OMSetRenderTargets(
+                m_renderTargetView.ptr != NULL ? 1 : 0,
+                m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr,
+                FALSE,
+                m_depthStencilView.ptr != NULL ? &m_depthStencilView : nullptr);
+    }
 
-    m_graphicsCommandList.getUnderlyingCommandList()
-        ->RSSetViewports(1, &m_viewport);
+    if (m_dirtyFlags & DIRTY_FLAG_PIPELINE_DESC)
+    {
+        const XXH64_hash_t pipelineHash = XXH3_64bits(&m_pipelineDesc, sizeof(m_pipelineDesc));
+        auto& pipeline = m_pipelines[pipelineHash];
+        if (!pipeline)
+        {
+            const HRESULT hr = m_device->CreateGraphicsPipelineState(&m_pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
+            assert(SUCCEEDED(hr));
+        }
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->SetPipelineState(pipeline.Get());
+    }
 
-    m_graphicsCommandList.getUnderlyingCommandList()
-        ->RSSetScissorRects(1, &m_scissorRect);
+    if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_VS)
+    {
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->SetGraphicsRootConstantBufferView(0, makeConstantBuffer(&m_globalsVS));
+    }
 
-    m_graphicsCommandList.getUnderlyingCommandList()
-        ->IASetVertexBuffers(0, 16, m_vertexBufferViews);
+    if (m_dirtyFlags & DIRTY_FLAG_SAMPLER_DESC)
+    {
+        for (uint32_t i = m_samplerMinIndex; i <= m_samplerMaxIndex; i++)
+        {
+            const XXH64_hash_t samplerHash = XXH3_64bits(&m_samplerDescs[i], sizeof(m_samplerDescs[i]));
+            auto& sampler = m_samplers[samplerHash];
+            if (sampler == NULL)
+            {
+                sampler = m_samplerDescriptorHeap.allocate();
 
-    m_graphicsCommandList.getUnderlyingCommandList()
-        ->IASetIndexBuffer(&m_indexBufferView);
+                m_device->CreateSampler(
+                    &m_samplerDescs[i],
+                    m_samplerDescriptorHeap.getCpuHandle(sampler));
+            }
+            if (m_globalsPS.samplerIndices[i] != sampler)
+                m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
+
+            m_globalsPS.samplerIndices[i] = sampler;
+        }
+    }
+
+    if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_PS)
+    {
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->SetGraphicsRootConstantBufferView(1, makeConstantBuffer(&m_globalsPS));
+    }
+
+    if (m_dirtyFlags & DIRTY_FLAG_VIEWPORT)
+    {
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->RSSetViewports(1, &m_viewport);
+    }
+
+    if (m_dirtyFlags & DIRTY_FLAG_SCISSOR_RECT)
+    {
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->RSSetScissorRects(1, &m_scissorRect);
+    }
+
+    if (m_dirtyFlags & DIRTY_FLAG_VERTEX_BUFFER_VIEWS)
+    {
+        UINT startSlot;
+        UINT numViews;
+
+        if (m_vertexMinIndex > m_vertexMaxIndex)
+        {
+            startSlot = 0;
+            numViews = _countof(m_vertexBufferViews);
+        }
+        else
+        {
+            startSlot = m_vertexMinIndex;
+            numViews = m_vertexMaxIndex - m_vertexMinIndex + 1;
+        }
+
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
+    }
+
+    if (m_dirtyFlags & DIRTY_FLAG_INDEX_BUFFER_VIEW)
+    {
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->IASetIndexBuffer(&m_indexBufferView);
+    }
+
+    if (m_dirtyFlags & DIRTY_FLAG_PRIMITIVE_TOPOLOGY)
+    {
+        m_graphicsCommandList.getUnderlyingCommandList()
+            ->IASetPrimitiveTopology(m_primitiveTopology);
+    }
+
+    m_dirtyFlags = 0;
+
+    m_vertexMinIndex = ~0;
+    m_vertexMaxIndex = 0;
+
+    m_samplerMinIndex = ~0;
+    m_samplerMaxIndex = 0;
 }
 
 void Device::resetState()
 {
     m_uploadBuffers.clear();
+
+    m_renderTargetView = {};
+    m_depthStencilView = {};
+    m_renderTarget = nullptr;
+    m_depthStencil = nullptr;
+    memset(m_vertexBufferViews, 0, sizeof(m_vertexBufferViews));
+    m_indexBufferView = {};
+
     m_cbPool.resize(m_cbIndex);
+    m_cbIndex = 0;
+
+    m_dirtyFlags = ~0;
+
+    m_vertexMinIndex = 0;
+    m_vertexMaxIndex = _countof(m_vertexBufferViews) - 1;
+
+    m_samplerMinIndex = 0;
+    m_samplerMaxIndex = _countof(m_samplerDescs) - 1;
+
+    for (const auto& texture : m_tmpTextures)
+    {
+        if (texture.srvIndex != NULL)
+            m_descriptorHeap.free(texture.srvIndex);
+
+        if (texture.rtvIndex != NULL)
+            m_rtvDescriptorHeap.free(texture.rtvIndex);
+
+        if (texture.dsvIndex != NULL)
+            m_dsvDescriptorHeap.free(texture.dsvIndex);
+    }
+
+    m_tmpTextures.clear();
+    m_tmpBuffers.clear();
+    m_tmpVertexDeclarations.clear();
 }
 
 D3D12_GPU_VIRTUAL_ADDRESS Device::makeConstantBuffer(const void* memory)
@@ -726,6 +1429,8 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::makeConstantBuffer(const void* memory)
         m_cbPool.resize(m_cbIndex + 1);
 
     auto& buffer = m_cbPool[m_cbIndex];
+    ++m_cbIndex;
+
     if (!buffer)
     {
         D3D12MA::ALLOCATION_DESC allocDesc{};
@@ -757,20 +1462,27 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::makeConstantBuffer(const void* memory)
 
 void Device::processMessages()
 {
-    if (m_swapChainTextureId != 0)
-        m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-
     m_messageReceiver.reset();
 
     m_graphicsCommandList.open();
+
+    if (m_swapChainTextureId != 0)
+    {
+        m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
+        m_graphicsCommandList.setResourceState(m_swapChain.getResource(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+    }
 
     ID3D12DescriptorHeap* descriptorHeaps[] =
     {
         m_descriptorHeap.getUnderlyingHeap(),
         m_samplerDescriptorHeap.getUnderlyingHeap()
     };
+
     m_graphicsCommandList.getUnderlyingCommandList()
         ->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+    m_graphicsCommandList.getUnderlyingCommandList()
+        ->SetGraphicsRootSignature(m_rootSignature.Get());
 
     // wait for Generations to copy the messages
     m_cpuEvent.wait();
@@ -908,6 +1620,10 @@ void Device::processMessages()
 
         case MsgSetStreamSourceFreq::s_id:
             procMsgSetStreamSourceFreq();
+            break;
+
+        case MsgReleaseResource::s_id:
+            procMsgReleaseResource();
             break;
 
         default:

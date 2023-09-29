@@ -14,6 +14,13 @@ VertexBuffer::VertexBuffer(uint32_t byteSize)
 
 VertexBuffer::~VertexBuffer()
 {
+    auto& message = s_messageSender.makeParallelMessage<MsgReleaseResource>();
+
+    message.resourceType = MsgReleaseResource::ResourceType::VertexBuffer;
+    message.resourceId = m_id;
+
+    s_messageSender.endParallelMessage();
+
     s_freeListAllocator.free(m_id);
 }
 

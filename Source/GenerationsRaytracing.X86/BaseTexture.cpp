@@ -1,6 +1,8 @@
 #include "BaseTexture.h"
 
 #include "FreeListAllocator.h"
+#include "Message.h"
+#include "MessageSender.h"
 
 static FreeListAllocator s_freeListAllocator;
 
@@ -12,6 +14,13 @@ BaseTexture::BaseTexture(uint32_t levelCount)
 
 BaseTexture::~BaseTexture()
 {
+    auto& message = s_messageSender.makeParallelMessage<MsgReleaseResource>();
+
+    message.resourceType = MsgReleaseResource::ResourceType::Texture;
+    message.resourceId = m_id;
+
+    s_messageSender.endParallelMessage();
+
     s_freeListAllocator.free(m_id);
 }
 

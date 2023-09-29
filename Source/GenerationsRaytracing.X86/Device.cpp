@@ -74,18 +74,25 @@ FUNCTION_STUB(void, , Device::GetGammaRamp, UINT iSwapChain, D3DGAMMARAMP* pRamp
 
 HRESULT Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, Texture** ppTexture, HANDLE* pSharedHandle)
 {
-    *ppTexture = new Texture(Width, Height, Levels);
+    if (Format == MAKEFOURCC('N', 'U', 'L', 'L') && 0)
+    {
+        *ppTexture = nullptr;
+    }
+    else
+    {
+        *ppTexture = new Texture(Width, Height, Levels);
 
-    auto& message = s_messageSender.makeParallelMessage<MsgCreateTexture>();
+        auto& message = s_messageSender.makeParallelMessage<MsgCreateTexture>();
 
-    message.width = Width;
-    message.height = Height;
-    message.levels = Levels;
-    message.usage = Usage;
-    message.format = Format;
-    message.textureId = (*ppTexture)->getId();
+        message.width = Width;
+        message.height = Height;
+        message.levels = Levels;
+        message.usage = Usage;
+        message.format = Format;
+        message.textureId = (*ppTexture)->getId();
 
-    s_messageSender.endParallelMessage();
+        s_messageSender.endParallelMessage();
+    }
 
     return S_OK;
 }
@@ -266,10 +273,38 @@ HRESULT Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value)
 
     if (m_renderStates[State] != Value)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetRenderState>();
+        switch (State)
+        {
+        case D3DRS_ZENABLE:
+        case D3DRS_FILLMODE:
+        case D3DRS_ZWRITEENABLE:
+        case D3DRS_ALPHATESTENABLE:
+        case D3DRS_SRCBLEND:
+        case D3DRS_DESTBLEND:
+        case D3DRS_CULLMODE:
+        case D3DRS_ZFUNC:
+        case D3DRS_ALPHAREF:
+        case D3DRS_ALPHABLENDENABLE:
+        case D3DRS_COLORWRITEENABLE:
+        case D3DRS_BLENDOP:
+        case D3DRS_SCISSORTESTENABLE:
+        case D3DRS_SLOPESCALEDEPTHBIAS:
+        case D3DRS_COLORWRITEENABLE1:
+        case D3DRS_COLORWRITEENABLE2:
+        case D3DRS_COLORWRITEENABLE3:
+        case D3DRS_DEPTHBIAS:
+        case D3DRS_SRCBLENDALPHA:
+        case D3DRS_DESTBLENDALPHA:
+        case D3DRS_BLENDOPALPHA:
+        {
+            auto& message = s_messageSender.makeSerialMessage<MsgSetRenderState>();
 
-        message.state = State;
-        message.value = Value;
+            message.state = State;
+            message.value = Value;
+
+            break;
+        }
+        }
 
         m_renderStates[State] = Value;
     }
@@ -460,7 +495,33 @@ HRESULT Device::SetFVF(DWORD FVF)
 {
     auto& vertexDeclaration = m_fvfMap[FVF];
     if (!vertexDeclaration)
-        vertexDeclaration.Attach(new VertexDeclaration(FVF));
+    {
+        std::vector<D3DVERTEXELEMENT9> vertexElements;
+        size_t offset = 0;
+
+        if (FVF & D3DFVF_XYZRHW)
+        {
+            vertexElements.push_back({ 0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 });
+            offset += 16;
+        }
+
+        if (FVF & D3DFVF_DIFFUSE)
+        {
+            vertexElements.push_back({ 0, 0, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0 });
+            offset += 4;
+        }
+
+        if (FVF & D3DFVF_TEX1)
+        {
+            vertexElements.push_back({ 0, 0, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 });
+            offset += 8;
+        }
+
+        vertexElements.push_back(D3DDECL_END());
+
+        const HRESULT hr = CreateVertexDeclaration(vertexElements.data(), vertexDeclaration.GetAddressOf());
+        assert(SUCCEEDED(hr) && vertexDeclaration != nullptr);
+    }
 
     return SetVertexDeclaration(vertexDeclaration.Get());
 }

@@ -35,6 +35,11 @@ const Texture& SwapChain::getTexture() const
     return m_textures[m_swapChain->GetCurrentBackBufferIndex()];
 }
 
+ID3D12Resource* SwapChain::getResource() const
+{
+    return m_resources[m_swapChain->GetCurrentBackBufferIndex()].Get();
+}
+
 void SwapChain::present() const
 {
     const HRESULT hr = m_swapChain->Present(0, 0);
@@ -77,12 +82,19 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
     for (uint32_t i = 0; i < message.bufferCount; i++)
     {
         auto& texture = m_textures.emplace_back();
-        ComPtr<ID3D12Resource> resource;
+        auto& resource = m_resources.emplace_back();
 
         hr = m_swapChain->GetBuffer(i, IID_PPV_ARGS(resource.GetAddressOf()));
 
         assert(SUCCEEDED(hr) && resource != nullptr);
 
+#if _DEBUG
+        wchar_t name[0x100];
+        _swprintf(name, L"Swap Chain %d", i);
+        resource->SetName(name);
+#endif
+
+        texture.format = DXGI_FORMAT_B8G8R8A8_UNORM;
         texture.rtvIndex = device.getRtvDescriptorHeap().allocate();
 
         device.getUnderlyingDevice()->CreateRenderTargetView(

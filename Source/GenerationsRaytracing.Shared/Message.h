@@ -266,4 +266,20 @@ struct MsgSetStreamSourceFreq
     uint32_t setting;
 };
 
+struct MsgReleaseResource
+{
+    MSG_DEFINE_MESSAGE(MsgSetStreamSourceFreq);
+
+    enum class ResourceType : uint8_t
+    {
+        Texture,
+        IndexBuffer,
+        VertexBuffer,
+        VertexDeclaration,
+    };
+
+    ResourceType resourceType;
+    uint32_t resourceId;
+};
+
 #pragma pack(pop)

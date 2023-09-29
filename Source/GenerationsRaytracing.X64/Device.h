@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Buffer.h"
 #include "CommandList.h"
 #include "CommandQueue.h"
 #include "DescriptorHeap.h"
@@ -14,12 +15,12 @@
 
 struct GlobalsVS
 {
-    float floatConstants[4][256]{};
+    float floatConstants[256][4]{};
 };
 
 struct GlobalsPS
 {
-    float floatConstants[4][224]{};
+    float floatConstants[224][4]{};
     uint32_t textureIndices[16]{};
     uint32_t samplerIndices[16]{};
 };
@@ -74,6 +75,7 @@ protected:
     void procMsgMakeTexture();
     void procMsgDrawIndexedPrimitive();
     void procMsgSetStreamSourceFreq();
+    void procMsgReleaseResource();
 
     SwapChain m_swapChain;
     uint32_t m_swapChainTextureId = 0;
@@ -93,17 +95,23 @@ protected:
     DescriptorHeap m_rtvDescriptorHeap;
     DescriptorHeap m_dsvDescriptorHeap;
 
+    ComPtr<ID3D12RootSignature> m_rootSignature;
+
     std::vector<ComPtr<D3D12MA::Allocation>> m_uploadBuffers;
     std::vector<Texture> m_textures;
     std::vector<VertexDeclaration> m_vertexDeclarations;
     std::vector<PixelShader> m_pixelShaders;
     std::vector<VertexShader> m_vertexShaders;
+    D3D12_SAMPLER_DESC m_samplerDescs[16]{};
     xxHashMap<uint32_t> m_samplers;
-    std::vector<ComPtr<D3D12MA::Allocation>> m_vertexBuffers;
-    std::vector<ComPtr<D3D12MA::Allocation>> m_indexBuffers;
+    std::vector<Buffer> m_vertexBuffers;
+    std::vector<Buffer> m_indexBuffers;
 
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
     D3D12_CPU_DESCRIPTOR_HANDLE m_depthStencilView{};
+
+    ComPtr<ID3D12Resource> m_renderTarget;
+    ComPtr<ID3D12Resource> m_depthStencil;
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC m_pipelineDesc{};
     xxHashMap<ComPtr<ID3D12PipelineState>> m_pipelines;
@@ -116,9 +124,40 @@ protected:
 
     D3D12_VIEWPORT m_viewport{};
     RECT m_scissorRect{};
+    bool m_scissorEnable = false;
 
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferViews[16]{};
     D3D12_INDEX_BUFFER_VIEW m_indexBufferView{};
+    D3D12_PRIMITIVE_TOPOLOGY m_primitiveTopology{};
+
+    void setPrimitiveType(D3DPRIMITIVETYPE primitiveType);
+
+    enum
+    {
+        DIRTY_FLAG_NONE                            = 0,
+        DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL = 1 << 0,
+        DIRTY_FLAG_PIPELINE_DESC                   = 1 << 1,
+        DIRTY_FLAG_GLOBALS_PS                      = 1 << 2,
+        DIRTY_FLAG_GLOBALS_VS                      = 1 << 3,
+        DIRTY_FLAG_VIEWPORT                        = 1 << 4,
+        DIRTY_FLAG_SCISSOR_RECT                    = 1 << 5,
+        DIRTY_FLAG_VERTEX_BUFFER_VIEWS             = 1 << 6,
+        DIRTY_FLAG_INDEX_BUFFER_VIEW               = 1 << 7,
+        DIRTY_FLAG_PRIMITIVE_TOPOLOGY              = 1 << 8,
+        DIRTY_FLAG_SAMPLER_DESC                    = 1 << 9
+    };
+
+    uint32_t m_dirtyFlags = ~0;
+
+    uint32_t m_vertexMinIndex = 0;
+    uint32_t m_vertexMaxIndex = _countof(m_vertexBufferViews) - 1;
+
+    uint32_t m_samplerMinIndex = 0;
+    uint32_t m_samplerMaxIndex = _countof(m_samplerDescs) - 1;
+
+    std::vector<Texture> m_tmpTextures;
+    std::vector<ComPtr<D3D12MA::Allocation>> m_tmpBuffers;
+    std::vector<VertexDeclaration> m_tmpVertexDeclarations;
 
     void flushState();
     void resetState();

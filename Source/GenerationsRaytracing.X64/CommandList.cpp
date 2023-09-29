@@ -36,9 +36,37 @@ void CommandList::close()
 {
     if (m_isOpen)
     {
+        for (auto& [resource, states] : m_resourceStates)
+            states.stateAfter = D3D12_RESOURCE_STATE_COMMON;
+
+        dispatchResourceBarriers();
+        m_resourceStates.clear();
+
         const HRESULT hr = m_commandList->Close();
         assert(SUCCEEDED(hr));
 
         m_isOpen = false;
     }
+}
+
+void CommandList::setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES resourceState)
+{
+    m_resourceStates[resource].stateAfter = resourceState;
+}
+
+void CommandList::dispatchResourceBarriers()
+{
+    m_resourceBarriers.clear();
+
+    for (auto& [resource, states] : m_resourceStates)
+    {
+        if (states.stateBefore != states.stateAfter)
+        {
+            m_resourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, states.stateBefore, states.stateAfter));
+            states.stateBefore = states.stateAfter;
+        }
+    }
+
+    if (!m_resourceBarriers.empty())
+        m_commandList->ResourceBarrier(static_cast<UINT>(m_resourceBarriers.size()), m_resourceBarriers.data());
 }
