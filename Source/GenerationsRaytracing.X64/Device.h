@@ -84,10 +84,7 @@ protected:
     std::vector<ComPtr<D3D12MA::Allocation>> m_releasedBuffers;
 
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
-    ComPtr<ID3D12Resource> m_renderTarget;
-
     D3D12_CPU_DESCRIPTOR_HANDLE m_depthStencilView{};
-    ComPtr<ID3D12Resource> m_depthStencil;
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC m_pipelineDesc{};
     xxHashMap<ComPtr<ID3D12PipelineState>> m_pipelines;

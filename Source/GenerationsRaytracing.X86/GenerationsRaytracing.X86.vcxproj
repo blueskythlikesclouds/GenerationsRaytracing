@@ -123,6 +123,7 @@
     </ClCompile>
     <ClCompile Include="PixelShader.cpp" />
     <ClCompile Include="Resource.cpp" />
+    <ClCompile Include="Sky.cpp" />
     <ClCompile Include="Surface.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="TriangleFan.cpp" />
@@ -146,6 +147,7 @@
     <ClInclude Include="Pch.h" />
     <ClInclude Include="PixelShader.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Sky.h" />
     <ClInclude Include="Surface.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="TriangleFan.h" />

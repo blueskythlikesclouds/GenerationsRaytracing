@@ -17,6 +17,9 @@ HOOK(void, __cdecl, CPictureDataMake, Hedgehog::Mirage::fpCPictureDataMake0,
         auto& message = s_messageSender.makeParallelMessage<MsgMakeTexture>(dataSize);
 
         message.textureId = texture->getId();
+#if _DEBUG
+        strcpy(message.textureName, pictureData->m_TypeAndName.c_str() + 15);
+#endif
         memcpy(message.data, data, dataSize);
 
         s_messageSender.endParallelMessage();

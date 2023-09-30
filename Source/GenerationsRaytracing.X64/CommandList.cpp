@@ -42,7 +42,7 @@ void CommandList::close()
         for (auto& [resource, states] : m_resourceStates)
             states.stateAfter = states.stateInitial;
 
-        dispatchResourceBarriers();
+        commitBarriers();
         m_resourceStates.clear();
 
         const HRESULT hr = m_commandList->Close();
@@ -67,7 +67,7 @@ void CommandList::setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STAT
     }
 }
 
-void CommandList::dispatchResourceBarriers()
+void CommandList::commitBarriers()
 {
     m_resourceBarriers.clear();
 

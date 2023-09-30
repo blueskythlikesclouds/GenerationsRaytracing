@@ -440,15 +440,6 @@ public class ShaderConverter
         else if (IsCsdShader(function, functionSize))
             stringBuilder.AppendLine("\to0.xy += float2(g_ViewportSize.z, -g_ViewportSize.w) * o0.w;");
 
-        if (!isPixelShader)
-        {
-	        foreach (var (_, value) in outSemantics)
-	        {
-		        if (value[0] != 'o')
-			        stringBuilder.AppendFormat("\t{0} = 0;\n", value);
-	        }
-        }
-
         stringBuilder.AppendLine("}");
 
         return stringBuilder.ToString();

@@ -155,18 +155,11 @@ void Device::flushGraphicsState()
 {
     if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
     {
-        if (m_renderTarget != nullptr)
-            m_graphicsCommandList.setResourceState(m_renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-        if (m_depthStencil != nullptr)
-            m_graphicsCommandList.setResourceState(m_depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-        m_graphicsCommandList.getUnderlyingCommandList()
-            ->OMSetRenderTargets(
-                m_renderTargetView.ptr != NULL ? 1 : 0,
-                m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr,
-                FALSE,
-                m_depthStencilView.ptr != NULL ? &m_depthStencilView : nullptr);
+        m_graphicsCommandList.getUnderlyingCommandList()->OMSetRenderTargets(
+            m_renderTargetView.ptr != NULL ? 1 : 0,
+            m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr,
+            FALSE,
+            m_depthStencilView.ptr != NULL ? &m_depthStencilView : nullptr);
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_PIPELINE_DESC)
@@ -178,8 +171,7 @@ void Device::flushGraphicsState()
             const HRESULT hr = m_device->CreateGraphicsPipelineState(&m_pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
             assert(SUCCEEDED(hr));
         }
-        m_graphicsCommandList.getUnderlyingCommandList()
-            ->SetPipelineState(pipeline.Get());
+        m_graphicsCommandList.getUnderlyingCommandList()->SetPipelineState(pipeline.Get());
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_VS)
@@ -216,16 +208,10 @@ void Device::flushGraphicsState()
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_VIEWPORT)
-    {
-        m_graphicsCommandList.getUnderlyingCommandList()
-            ->RSSetViewports(1, &m_viewport);
-    }
+        m_graphicsCommandList.getUnderlyingCommandList()->RSSetViewports(1, &m_viewport);
 
     if (m_dirtyFlags & DIRTY_FLAG_SCISSOR_RECT)
-    {
-        m_graphicsCommandList.getUnderlyingCommandList()
-            ->RSSetScissorRects(1, &m_scissorRect);
-    }
+        m_graphicsCommandList.getUnderlyingCommandList()->RSSetScissorRects(1, &m_scissorRect);
 
     if (m_dirtyFlags & DIRTY_FLAG_VERTEX_BUFFER_VIEWS)
     {
@@ -243,23 +229,16 @@ void Device::flushGraphicsState()
             numViews = m_vertexBufferViewsLast - m_vertexBufferViewsFirst + 1;
         }
 
-        m_graphicsCommandList.getUnderlyingCommandList()
-            ->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
+        m_graphicsCommandList.getUnderlyingCommandList()->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_INDEX_BUFFER_VIEW)
-    {
-        m_graphicsCommandList.getUnderlyingCommandList()
-            ->IASetIndexBuffer(&m_indexBufferView);
-    }
+        m_graphicsCommandList.getUnderlyingCommandList()->IASetIndexBuffer(&m_indexBufferView);
 
     if (m_dirtyFlags & DIRTY_FLAG_PRIMITIVE_TOPOLOGY)
-    {
-        m_graphicsCommandList.getUnderlyingCommandList()
-            ->IASetPrimitiveTopology(m_primitiveTopology);
-    }
+        m_graphicsCommandList.getUnderlyingCommandList()->IASetPrimitiveTopology(m_primitiveTopology);
 
-    m_graphicsCommandList.dispatchResourceBarriers();
+    m_graphicsCommandList.commitBarriers();
 
     m_dirtyFlags = 0;
 
@@ -293,6 +272,10 @@ void Device::procMsgSetRenderTarget()
     if (message.textureId != NULL)
     {
         auto& texture = m_textures[message.textureId];
+
+        if (texture.allocation != nullptr)
+            m_graphicsCommandList.setResourceState(texture.allocation->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
         if (texture.rtvIndex == NULL)
         {
             texture.rtvIndex = m_rtvDescriptorHeap.allocate();
@@ -318,8 +301,6 @@ void Device::procMsgSetRenderTarget()
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
         m_renderTargetView = renderTargetView;
-        m_renderTarget = texture.allocation != nullptr ? texture.allocation->GetResource() : nullptr;
-
         m_pipelineDesc.NumRenderTargets = 1;
         m_pipelineDesc.RTVFormats[0] = texture.format;
     }
@@ -332,8 +313,6 @@ void Device::procMsgSetRenderTarget()
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
         m_renderTargetView.ptr = NULL;
-        m_renderTarget = nullptr;
-
         m_pipelineDesc.NumRenderTargets = 0;
         m_pipelineDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
     }
@@ -581,6 +560,9 @@ void Device::procMsgCreateTexture()
     D3D12MA::ALLOCATION_DESC allocDesc{};
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 
+    if ((message.usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0)
+        allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
+
     D3D12_RESOURCE_DESC resourceDesc;
     resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     resourceDesc.Alignment = 0;
@@ -589,17 +571,9 @@ void Device::procMsgCreateTexture()
     resourceDesc.DepthOrArraySize = 1;
     resourceDesc.MipLevels = static_cast<UINT16>(message.levels);
     resourceDesc.Format = DxgiConverter::convert(static_cast<D3DFORMAT>(message.format));
-
-    if ((message.usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0)
-    {
-        allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
-        resourceDesc.Format = DxgiConverter::makeTypeless(resourceDesc.Format);
-    }
-
     resourceDesc.SampleDesc.Count = 1;
     resourceDesc.SampleDesc.Quality = 0;
     resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-
     resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
     if ((message.usage & D3DUSAGE_RENDERTARGET) != 0)
@@ -612,7 +586,9 @@ void Device::procMsgCreateTexture()
         m_textures.resize(message.textureId + 1);
 
     auto& texture = m_textures[message.textureId];
-    texture.format = DxgiConverter::convert(static_cast<D3DFORMAT>(message.format));
+
+    texture.format = resourceDesc.Format;
+    texture.isShadowMap = message.format == D3DFMT_D24S8;
 
     constexpr float transparentColor[4]{};
     const CD3DX12_CLEAR_VALUE renderTargetClearValue(texture.format, transparentColor);
@@ -640,11 +616,11 @@ void Device::procMsgCreateTexture()
     wchar_t name[0x100];
 
     if ((message.usage & D3DUSAGE_RENDERTARGET) != 0)
-        _swprintf(name, L"Render Target %d", message.textureId);
+        _swprintf(name, L"Render Target %d %dx%d", message.textureId, message.width, message.height);
     else if ((message.usage & D3DUSAGE_DEPTHSTENCIL) != 0)
-        _swprintf(name, L"Depth Stencil %d", message.textureId);
+        _swprintf(name, L"Depth Stencil %d %dx%d", message.textureId, message.width, message.height);
     else
-        _swprintf(name, L"Texture %d", message.textureId);
+        _swprintf(name, L"Texture %d %dx%d", message.textureId, message.width, message.height);
 
     texture.allocation->GetResource()->SetName(name);
 #endif
@@ -654,9 +630,13 @@ void Device::procMsgSetTexture()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetTexture>();
 
+    bool isShadowMap = false;
+
     if (message.textureId != NULL)
     {
         auto& texture = m_textures[message.textureId];
+
+        isShadowMap = texture.isShadowMap;
 
         if (texture.srvIndex == NULL)
         {
@@ -678,15 +658,16 @@ void Device::procMsgSetTexture()
                 m_descriptorHeap.getCpuHandle(texture.srvIndex));
         }
 
+        // NOTE: texture corruption on nvidia with only pixel shader resource
         if (texture.rtvIndex != NULL)
         {
             m_graphicsCommandList.setResourceState(texture.allocation->GetResource(), 
-                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
         }
         else if (texture.dsvIndex != NULL)
         {
             m_graphicsCommandList.setResourceState(texture.allocation->GetResource(),
-                D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
         }
 
         if (m_globalsPS.textureIndices[message.stage] != texture.srvIndex)
@@ -701,6 +682,17 @@ void Device::procMsgSetTexture()
 
         m_globalsPS.textureIndices[message.stage] = NULL;
     }
+
+    auto& filter = m_samplerDescs[message.stage].Filter;
+    const auto value = (filter & ~0x80) | (isShadowMap ? 0x80 : 0x00); // comparison filter
+
+    if (filter != value)
+    {
+        m_dirtyFlags |= DIRTY_FLAG_SAMPLER_DESC;
+        m_samplerDescsFirst = std::min<uint32_t>(m_samplerDescsFirst, message.stage);
+        m_samplerDescsLast = std::max<uint32_t>(m_samplerDescsLast, message.stage);
+    }
+    filter = static_cast<D3D12_FILTER>(value);
 }
 
 void Device::procMsgSetDepthStencilSurface()
@@ -710,6 +702,9 @@ void Device::procMsgSetDepthStencilSurface()
     if (message.depthStencilSurfaceId != NULL)
     {
         auto& texture = m_textures[message.depthStencilSurfaceId];
+
+        m_graphicsCommandList.setResourceState(texture.allocation->GetResource(),
+            D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         if (texture.dsvIndex == NULL)
         {
@@ -736,8 +731,6 @@ void Device::procMsgSetDepthStencilSurface()
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
         m_depthStencilView = depthStencilView;
-        m_depthStencil = texture.allocation->GetResource();
-
         m_pipelineDesc.DSVFormat = texture.format;
     }
     else
@@ -749,8 +742,6 @@ void Device::procMsgSetDepthStencilSurface()
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
         m_depthStencilView.ptr = NULL;
-        m_depthStencil = nullptr;
-
         m_pipelineDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
     }
 }
@@ -759,13 +750,7 @@ void Device::procMsgClear()
 {
     const auto& message = m_messageReceiver.getMessage<MsgClear>();
 
-    if ((message.flags & D3DCLEAR_TARGET) && m_renderTarget != nullptr)
-        m_graphicsCommandList.setResourceState(m_renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-    if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencil != nullptr)
-        m_graphicsCommandList.setResourceState(m_depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-    m_graphicsCommandList.dispatchResourceBarriers();
+    m_graphicsCommandList.commitBarriers();
 
     if ((message.flags & D3DCLEAR_TARGET) && m_renderTargetView.ptr != NULL)
     {
@@ -878,11 +863,11 @@ void Device::procMsgSetSamplerState()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetSamplerState>();
 
-    auto dirtyFlag = m_dirtyFlags & DIRTY_FLAG_SAMPLER_DESC;
+    bool isDirty = false;
 
 #define SET_SAMPLER_DESC_VALUE(dst, src) \
     do { \
-        if (dst != (src)) m_dirtyFlags |= DIRTY_FLAG_SAMPLER_DESC; \
+        if (dst != (src)) isDirty = true; \
         dst = src; \
     } \
     while (0)
@@ -935,8 +920,9 @@ void Device::procMsgSetSamplerState()
 
 #undef SET_SAMPLER_DESC_VALUE
 
-    if (dirtyFlag != (m_dirtyFlags & DIRTY_FLAG_SAMPLER_DESC))
+    if (isDirty)
     {
+        m_dirtyFlags |= DIRTY_FLAG_SAMPLER_DESC;
         m_samplerDescsFirst = std::min<uint32_t>(m_samplerDescsFirst, message.sampler);
         m_samplerDescsLast = std::max<uint32_t>(m_samplerDescsLast, message.sampler);
     }
@@ -1331,7 +1317,7 @@ void Device::procMsgMakeTexture()
 
 #if _DEBUG
     wchar_t name[0x100];
-    _swprintf(name, L"DDS Texture %d", message.textureId);
+    MultiByteToWideChar(CP_UTF8, 0, message.textureName, -1, name, _countof(name));
     texture.allocation->GetResource()->SetName(name);
 #endif
 }
@@ -1422,6 +1408,7 @@ Device::Device()
     // Disable messages we're aware of and okay with
     D3D12_MESSAGE_ID ids[] =
     {
+        D3D12_MESSAGE_ID_CREATEGRAPHICSPIPELINESTATE_RENDERTARGETVIEW_NOT_SET,
         D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE
     };
 
@@ -1738,10 +1725,7 @@ void Device::processMessages()
     m_uploadBufferOffset = 0;
 
     m_renderTargetView = {};
-    m_renderTarget = nullptr;
-
     m_depthStencilView = {};
-    m_depthStencil = nullptr;
 
     memset(m_vertexBufferViews, 0, sizeof(m_vertexBufferViews));
     m_vertexBufferViewsFirst = 0;

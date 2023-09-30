@@ -66,6 +66,9 @@
     <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c">
       <Filter>Dependencies</Filter>
     </ClCompile>
+    <ClCompile Include="Sky.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -127,6 +130,9 @@
       <Filter>Patch</Filter>
     </ClInclude>
     <ClInclude Include="TriangleStrip.h">
+      <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="Sky.h">
       <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>

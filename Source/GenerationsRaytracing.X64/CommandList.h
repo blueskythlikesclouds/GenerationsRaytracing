@@ -31,5 +31,5 @@ public:
     void close();
 
     void setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
-    void dispatchResourceBarriers();
+    void commitBarriers();
 };

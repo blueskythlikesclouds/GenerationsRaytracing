@@ -251,6 +251,9 @@ struct MsgMakeTexture
 {
     MSG_DEFINE_MESSAGE(MsgWriteTexture);
     uint32_t textureId;
+#ifdef _DEBUG
+    char textureName[0x100];
+#endif
     uint32_t dataSize;
     alignas(0x10) uint8_t data[1u];
 };

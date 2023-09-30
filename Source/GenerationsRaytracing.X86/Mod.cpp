@@ -5,6 +5,7 @@
 #include "HalfPixel.h"
 #include "MessageSender.h"
 #include "ProcessUtil.h"
+#include "Sky.h"
 #include "TriangleFan.h"
 #include "TriangleStrip.h"
 #include "Window.h"
@@ -30,6 +31,7 @@ extern "C" void __declspec(dllexport) Init()
     TriangleFan::init();
     HalfPixel::init();
     TriangleStrip::init();
+    Sky::init();
 
 #ifdef _DEBUG
     MessageBox(NULL, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_ICONINFORMATION | MB_OK);
