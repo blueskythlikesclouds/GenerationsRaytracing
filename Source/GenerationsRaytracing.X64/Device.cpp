@@ -36,25 +36,45 @@ void Device::writeBuffer(
     uint32_t dataSize, 
     ID3D12Resource* dstResource)
 {
-    auto& uploadBuffer = m_releasedBuffers.emplace_back();
-    createBuffer(D3D12_HEAP_TYPE_UPLOAD, dataSize, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
+    if (m_uploadBufferOffset + dataSize <= UPLOAD_BUFFER_SIZE && m_uploadBuffers.size() > m_uploadBufferIndex &&
+        m_uploadBuffers[m_uploadBufferIndex].allocation != nullptr)
+    {
+        const auto& uploadBuffer = m_uploadBuffers[m_uploadBufferIndex];
 
-    void* mappedData = nullptr;
-    const HRESULT hr = uploadBuffer->GetResource()->Map(0, nullptr, &mappedData);
+        memcpy(uploadBuffer.memory + m_uploadBufferOffset, memory, dataSize);
 
-    assert(SUCCEEDED(hr) && mappedData != nullptr);
+        m_copyCommandList.open();
+        m_copyCommandList.getUnderlyingCommandList()->CopyBufferRegion(
+            dstResource,
+            offset,
+            uploadBuffer.allocation->GetResource(),
+            m_uploadBufferOffset,
+            dataSize);
 
-    memcpy(mappedData, memory, dataSize);
+        m_uploadBufferOffset += dataSize;
+    }
+    else
+    {
+        auto& uploadBuffer = m_releasedBuffers.emplace_back();
+        createBuffer(D3D12_HEAP_TYPE_UPLOAD, dataSize, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
 
-    uploadBuffer->GetResource()->Unmap(0, nullptr);
+        void* mappedData = nullptr;
+        const HRESULT hr = uploadBuffer->GetResource()->Map(0, nullptr, &mappedData);
 
-    m_copyCommandList.open();
-    m_copyCommandList.getUnderlyingCommandList()->CopyBufferRegion(
-        dstResource,
-        offset,
-        uploadBuffer->GetResource(),
-        0,
-        dataSize);
+        assert(SUCCEEDED(hr) && mappedData != nullptr);
+
+        memcpy(mappedData, memory, dataSize);
+
+        uploadBuffer->GetResource()->Unmap(0, nullptr);
+
+        m_copyCommandList.open();
+        m_copyCommandList.getUnderlyingCommandList()->CopyBufferRegion(
+            dstResource,
+            offset,
+            uploadBuffer->GetResource(),
+            0,
+            dataSize);
+    }
 }
 
 D3D12_GPU_VIRTUAL_ADDRESS Device::makeBuffer(const void* memory, uint32_t dataSize, uint32_t dataAlignment)
