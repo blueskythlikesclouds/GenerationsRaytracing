@@ -14,9 +14,10 @@ VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* vertexElements)
 
     while (true)
     {
+        auto& vertexElement = vertexElements[m_vertexElementsSize];
         ++m_vertexElementsSize;
 
-        if (vertexElements[m_vertexElementsSize - 1].Type == D3DDECLTYPE_UNUSED)
+        if (vertexElement.Stream == 0xFF || vertexElement.Type == D3DDECLTYPE_UNUSED)
             break;
     }
 
@@ -55,7 +56,7 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, VertexDeclaration::GetDevice, Device** ppDevic
 
 HRESULT VertexDeclaration::GetDeclaration(D3DVERTEXELEMENT9* pElement, UINT* pNumElements)
 {
-    memcpy(pElement, m_vertexElements.get(), m_vertexElementsSize);
+    memcpy(pElement, m_vertexElements.get(), sizeof(D3DVERTEXELEMENT9) * m_vertexElementsSize);
     *pNumElements = m_vertexElementsSize;
     return S_OK;
 }

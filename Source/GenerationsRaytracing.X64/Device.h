@@ -133,7 +133,6 @@ protected:
     void setPrimitiveType(D3DPRIMITIVETYPE primitiveType);
 
     void flushGraphicsState();
-    void resetGraphicsState();
 
     void procMsgCreateSwapChain();
     void procMsgSetRenderTarget();
@@ -167,6 +166,7 @@ protected:
     void procMsgDrawIndexedPrimitive();
     void procMsgSetStreamSourceFreq();
     void procMsgReleaseResource();
+    void procMsgDrawPrimitive();
 
     void processMessages();
 

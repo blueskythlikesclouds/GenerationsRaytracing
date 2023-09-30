@@ -9,15 +9,20 @@
 
 #pragma pack(push, 1)
 
-struct MsgNullTerminator
+struct MsgSerialTerminator
 {
     static constexpr uint32_t s_id = 0;
     uint8_t id = 0;
 };
 
+struct MsgParallelTerminator
+{
+    MSG_DEFINE_MESSAGE(MsgSerialTerminator);
+};
+
 struct MsgCreateSwapChain
 {
-    MSG_DEFINE_MESSAGE(MsgNullTerminator);
+    MSG_DEFINE_MESSAGE(MsgParallelTerminator);
     uint32_t postHandle;
     uint32_t style;
     uint16_t x;
@@ -280,6 +285,14 @@ struct MsgReleaseResource
 
     ResourceType resourceType;
     uint32_t resourceId;
+};
+
+struct MsgDrawPrimitive
+{
+    MSG_DEFINE_MESSAGE(MsgReleaseResource);
+    uint8_t primitiveType;
+    uint32_t startVertex;
+    uint32_t vertexCount;
 };
 
 #pragma pack(pop)

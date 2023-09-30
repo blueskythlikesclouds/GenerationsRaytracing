@@ -430,7 +430,16 @@ UINT calculateVertexCount(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount)
     return vertexCount;
 }
 
-FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::DrawPrimitive, D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
+HRESULT Device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
+{
+    auto& message = s_messageSender.makeSerialMessage<MsgDrawPrimitive>();
+
+    message.primitiveType = PrimitiveType;
+    message.startVertex = StartVertex;
+    message.vertexCount = calculateVertexCount(PrimitiveType, PrimitiveCount);
+
+    return S_OK;
+}
 
 HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
 {

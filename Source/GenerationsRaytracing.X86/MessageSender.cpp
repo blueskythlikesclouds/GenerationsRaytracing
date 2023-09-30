@@ -1,6 +1,7 @@
 #include "MessageSender.h"
 
 #include "LockGuard.h"
+#include "Message.h"
 
 static constexpr size_t s_bufferSize = MemoryMappedFile::s_size / 2;
 
@@ -25,7 +26,7 @@ void* MessageSender::makeParallelMessage(uint32_t byteSize, uint32_t alignment)
     uint32_t offset = (m_parallelBufferSize + alignment - 1) & ~(alignment - 1);
     uint32_t newSize = offset + byteSize;
 
-    if (newSize >= s_bufferSize) // no need for terminator since serial buffer is gonna have it
+    if (newSize > s_bufferSize) // need last byte as parallel terminator
     {
         sendAllMessages();
 
@@ -60,7 +61,7 @@ void* MessageSender::makeSerialMessage(uint32_t byteSize, uint32_t alignment)
     uint32_t offset = (m_serialBufferSize + alignment - 1) & ~(alignment - 1);
     uint32_t newSize = offset + byteSize;
 
-    if (newSize > s_bufferSize) // need last byte as terminator
+    if (newSize > s_bufferSize) // need last byte as serial terminator
     {
         sendAllMessages();
 
@@ -87,6 +88,9 @@ void MessageSender::sendAllMessages()
     while (m_pendingMessages != 0)
         ; // waste cycles, better than sleeping
 
+    m_parallelBuffer[m_parallelBufferSize] = MsgParallelTerminator::s_id;
+    ++m_parallelBufferSize;
+
     // align parallel buffer to 16 bytes
     const uint32_t alignedSize = (m_parallelBufferSize + 0xF) & ~0xF;
 
@@ -104,8 +108,8 @@ void MessageSender::sendAllMessages()
 
     memcpy(m_tgtBufferData, m_parallelBuffer.get(), m_parallelBufferSize);
     memcpy(m_tgtBufferData + m_parallelBufferSize, m_serialBuffer.get(), m_serialBufferSize);
-    // MsgNullTerminator, end indicator
-    *(m_tgtBufferData + m_parallelBufferSize + m_serialBufferSize) = '\0';
+    // MsgSerialTerminator, end indicator
+    *(m_tgtBufferData + m_parallelBufferSize + m_serialBufferSize) = MsgSerialTerminator::s_id;
 
     // let bridge know we finished copying messages
     m_cpuEvent.set();

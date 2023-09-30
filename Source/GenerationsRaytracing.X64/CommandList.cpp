@@ -25,7 +25,10 @@ void CommandList::open()
 {
     if (!m_isOpen)
     {
-        const HRESULT hr = m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+        HRESULT hr = m_commandAllocator->Reset();
+        assert(SUCCEEDED(hr));
+
+        hr = m_commandList->Reset(m_commandAllocator.Get(), nullptr);
         assert(SUCCEEDED(hr));
 
         m_isOpen = true;
