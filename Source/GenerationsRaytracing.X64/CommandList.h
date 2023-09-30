@@ -12,6 +12,7 @@ protected:
 
     struct ResourceStates
     {
+        D3D12_RESOURCE_STATES stateInitial = D3D12_RESOURCE_STATE_COMMON;
         D3D12_RESOURCE_STATES stateBefore = D3D12_RESOURCE_STATE_COMMON;
         D3D12_RESOURCE_STATES stateAfter = D3D12_RESOURCE_STATE_COMMON;
     };
@@ -29,6 +30,6 @@ public:
     void open();
     void close();
 
-    void setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES resourceState);
+    void setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
     void dispatchResourceBarriers();
 };

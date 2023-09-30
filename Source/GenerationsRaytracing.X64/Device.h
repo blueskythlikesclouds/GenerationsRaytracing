@@ -82,7 +82,6 @@ protected:
 
     std::vector<Texture> m_releasedTextures;
     std::vector<ComPtr<D3D12MA::Allocation>> m_releasedBuffers;
-    std::vector<VertexDeclaration> m_releasedVertexDeclarations;
 
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
     ComPtr<ID3D12Resource> m_renderTarget;

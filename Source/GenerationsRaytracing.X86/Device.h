@@ -39,7 +39,10 @@ protected:
 
     ComPtr<VertexDeclaration> m_vertexDeclaration;
 
+    std::unordered_map<XXH32_hash_t, ComPtr<VertexDeclaration>> m_vertexDeclarationMap;
     std::unordered_map<DWORD, ComPtr<VertexDeclaration>> m_fvfMap;
+    std::unordered_map<XXH32_hash_t, ComPtr<VertexShader>> m_vertexShaderMap;
+    std::unordered_map<XXH32_hash_t, ComPtr<PixelShader>> m_pixelShaderMap;
 
     ComPtr<VertexBuffer> m_streamData[16];
     UINT m_offsetsInBytes[16]{};

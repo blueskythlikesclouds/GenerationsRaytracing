@@ -1,15 +1,12 @@
 #include "VertexDeclaration.h"
 
-#include "FreeListAllocator.h"
 #include "Message.h"
 #include "MessageSender.h"
 
-static FreeListAllocator s_freeListAllocator;
+static std::atomic<uint32_t> s_curId = 0;
 
-VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* vertexElements)
+VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* vertexElements) : m_id(++s_curId)
 {
-    m_id = s_freeListAllocator.allocate();
-
     m_vertexElementsSize = 0;
 
     while (true)
@@ -23,18 +20,6 @@ VertexDeclaration::VertexDeclaration(const D3DVERTEXELEMENT9* vertexElements)
 
     m_vertexElements = std::make_unique<D3DVERTEXELEMENT9[]>(m_vertexElementsSize);
     memcpy(m_vertexElements.get(), vertexElements, sizeof(D3DVERTEXELEMENT9) * m_vertexElementsSize);
-}
-
-VertexDeclaration::~VertexDeclaration()
-{
-    auto& message = s_messageSender.makeParallelMessage<MsgReleaseResource>();
-
-    message.resourceType = MsgReleaseResource::ResourceType::VertexDeclaration;
-    message.resourceId = m_id;
-
-    s_messageSender.endParallelMessage();
-
-    s_freeListAllocator.free(m_id);
 }
 
 uint32_t VertexDeclaration::getId() const

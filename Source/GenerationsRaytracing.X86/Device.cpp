@@ -473,15 +473,32 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::ProcessVertices, UINT SrcStartIndex, U
 
 HRESULT Device::CreateVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl)
 {
-    *ppDecl = new VertexDeclaration(pVertexElements);
+    auto vertexElement = pVertexElements;
+    size_t vertexElementCount = 0;
 
-    auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexDeclaration>(
-        (*ppDecl)->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
+    while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
+    {
+        ++vertexElement;
+        ++vertexElementCount;
+    }
 
-    message.vertexDeclarationId = (*ppDecl)->getId();
-    memcpy(message.data, (*ppDecl)->getVertexElements(), (*ppDecl)->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
+    auto& pDecl = m_vertexDeclarationMap[
+        XXH32(pVertexElements, sizeof(D3DVERTEXELEMENT9) * vertexElementCount, 0)];
 
-    s_messageSender.endParallelMessage();
+    if (!pDecl)
+    {
+        pDecl.Attach(new VertexDeclaration(pVertexElements));
+
+        auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexDeclaration>(
+            pDecl->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
+
+        message.vertexDeclarationId = pDecl->getId();
+        memcpy(message.data, pDecl->getVertexElements(), pDecl->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
+
+        s_messageSender.endParallelMessage();
+    }
+
+    pDecl.CopyTo(ppDecl);
 
     return S_OK;
 }
@@ -539,14 +556,20 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetFVF, DWORD* pFVF)
 
 HRESULT Device::CreateVertexShader(const DWORD* pFunction, VertexShader** ppShader, DWORD FunctionSize)
 {
-    *ppShader = new VertexShader();
+    auto& pShader = m_vertexShaderMap[XXH32(pFunction, FunctionSize, 0)];
+    if (!pShader)
+    {
+        pShader.Attach(new VertexShader());
 
-    auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexShader>(FunctionSize);
+        auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexShader>(FunctionSize);
 
-    message.vertexShaderId = (*ppShader)->getId();
-    memcpy(message.data, pFunction, FunctionSize);
+        message.vertexShaderId = pShader->getId();
+        memcpy(message.data, pFunction, FunctionSize);
 
-    s_messageSender.endParallelMessage();
+        s_messageSender.endParallelMessage();
+    }
+
+    pShader.CopyTo(ppShader);
 
     return S_OK;
 }
@@ -647,14 +670,20 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetIndices, IndexBuffer** ppIndexData)
 
 HRESULT Device::CreatePixelShader(const DWORD* pFunction, PixelShader** ppShader, DWORD FunctionSize)
 {
-    *ppShader = new PixelShader();
+    auto& pShader = m_pixelShaderMap[XXH32(pFunction, FunctionSize, 0)];
+    if (!pShader)
+    {
+        pShader.Attach(new PixelShader());
 
-    auto& message = s_messageSender.makeParallelMessage<MsgCreatePixelShader>(FunctionSize);
+        auto& message = s_messageSender.makeParallelMessage<MsgCreatePixelShader>(FunctionSize);
 
-    message.pixelShaderId = (*ppShader)->getId();
-    memcpy(message.data, pFunction, FunctionSize);
+        message.pixelShaderId = pShader->getId();
+        memcpy(message.data, pFunction, FunctionSize);
 
-    s_messageSender.endParallelMessage();
+        s_messageSender.endParallelMessage();
+    }
+
+    pShader.CopyTo(ppShader);
 
     return S_OK;
 }

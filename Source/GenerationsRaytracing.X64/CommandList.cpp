@@ -40,7 +40,7 @@ void CommandList::close()
     if (m_isOpen)
     {
         for (auto& [resource, states] : m_resourceStates)
-            states.stateAfter = D3D12_RESOURCE_STATE_COMMON;
+            states.stateAfter = states.stateInitial;
 
         dispatchResourceBarriers();
         m_resourceStates.clear();
@@ -52,9 +52,19 @@ void CommandList::close()
     }
 }
 
-void CommandList::setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES resourceState)
+void CommandList::setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter)
 {
-    m_resourceStates[resource].stateAfter = resourceState;
+    const auto result = m_resourceStates.find(resource);
+
+    if (result != m_resourceStates.end())
+    {
+        assert(result->second.stateInitial == stateInitial);
+        result->second.stateAfter = stateAfter;
+    }
+    else
+    {
+        m_resourceStates.emplace(resource, ResourceStates { stateInitial, stateInitial, stateAfter });
+    }
 }
 
 void CommandList::dispatchResourceBarriers()

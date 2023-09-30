@@ -18,6 +18,7 @@ using Microsoft::WRL::ComPtr;
 #include <detours.h>
 #include <Helpers.h>
 #include <INIReader.h>
+#include <xxhash.h>
 
 #define FUNCTION_STUB(RETURN_TYPE, RETURN_VALUE, FUNCTION_NAME, ...) \
     RETURN_TYPE FUNCTION_NAME(__VA_ARGS__) { assert(!#FUNCTION_NAME); return RETURN_VALUE; }

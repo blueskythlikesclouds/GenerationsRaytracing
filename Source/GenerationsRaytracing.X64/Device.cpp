@@ -156,16 +156,11 @@ void Device::flushGraphicsState()
     if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
     {
         if (m_renderTarget != nullptr)
-            m_graphicsCommandList.setResourceState(m_renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+            m_graphicsCommandList.setResourceState(m_renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         if (m_depthStencil != nullptr)
-            m_graphicsCommandList.setResourceState(m_depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-    }
+            m_graphicsCommandList.setResourceState(m_depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-    m_graphicsCommandList.dispatchResourceBarriers();
-
-    if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
-    {
         m_graphicsCommandList.getUnderlyingCommandList()
             ->OMSetRenderTargets(
                 m_renderTargetView.ptr != NULL ? 1 : 0,
@@ -264,6 +259,8 @@ void Device::flushGraphicsState()
             ->IASetPrimitiveTopology(m_primitiveTopology);
     }
 
+    m_graphicsCommandList.dispatchResourceBarriers();
+
     m_dirtyFlags = 0;
 
     m_vertexBufferViewsFirst = ~0;
@@ -284,7 +281,7 @@ void Device::procMsgCreateSwapChain()
         m_textures.resize(m_swapChainTextureId + 1);
 
     m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-    m_graphicsCommandList.setResourceState(m_swapChain.getResource(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+    m_graphicsCommandList.setResourceState(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void Device::procMsgSetRenderTarget()
@@ -626,9 +623,13 @@ void Device::procMsgCreateTexture()
     const HRESULT hr = m_allocator->CreateResource(
         &allocDesc,
         &resourceDesc,
-        D3D12_RESOURCE_STATE_COMMON,
+
+        message.usage & D3DUSAGE_RENDERTARGET ? D3D12_RESOURCE_STATE_RENDER_TARGET :
+        message.usage & D3DUSAGE_DEPTHSTENCIL ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_COMMON,
+
         message.usage & D3DUSAGE_RENDERTARGET ? &renderTargetClearValue : 
         message.usage & D3DUSAGE_DEPTHSTENCIL ? &depthStencilClearValue : nullptr,
+
         texture.allocation.GetAddressOf(),
         IID_ID3D12Resource,
         nullptr);
@@ -677,8 +678,16 @@ void Device::procMsgSetTexture()
                 m_descriptorHeap.getCpuHandle(texture.srvIndex));
         }
 
-        if (texture.rtvIndex != NULL || texture.dsvIndex != NULL)
-            m_graphicsCommandList.setResourceState(texture.allocation->GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        if (texture.rtvIndex != NULL)
+        {
+            m_graphicsCommandList.setResourceState(texture.allocation->GetResource(), 
+                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
+        else if (texture.dsvIndex != NULL)
+        {
+            m_graphicsCommandList.setResourceState(texture.allocation->GetResource(),
+                D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
 
         if (m_globalsPS.textureIndices[message.stage] != texture.srvIndex)
             m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
@@ -751,10 +760,10 @@ void Device::procMsgClear()
     const auto& message = m_messageReceiver.getMessage<MsgClear>();
 
     if ((message.flags & D3DCLEAR_TARGET) && m_renderTarget != nullptr)
-        m_graphicsCommandList.setResourceState(m_renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+        m_graphicsCommandList.setResourceState(m_renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencil != nullptr)
-        m_graphicsCommandList.setResourceState(m_depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        m_graphicsCommandList.setResourceState(m_depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
     m_graphicsCommandList.dispatchResourceBarriers();
 
@@ -1368,10 +1377,6 @@ void Device::procMsgReleaseResource()
         m_releasedBuffers.push_back(std::move(m_vertexBuffers[message.resourceId].allocation));
         break;
 
-    case MsgReleaseResource::ResourceType::VertexDeclaration:
-        m_releasedVertexDeclarations.push_back(std::move(m_vertexDeclarations[message.resourceId]));
-        break;
-
     default: 
         assert(false);
         break;
@@ -1502,56 +1507,12 @@ Device::Device()
 
 void Device::processMessages()
 {
-    m_messageReceiver.reset();
-
-    m_uploadBufferIndex = 0;
-    m_uploadBufferOffset = 0;
-
-    m_renderTargetView = {};
-    m_renderTarget = nullptr;
-
-    m_depthStencilView = {};
-    m_depthStencil = nullptr;
-
-    memset(m_vertexBufferViews, 0, sizeof(m_vertexBufferViews));
-    m_vertexBufferViewsFirst = 0;
-    m_vertexBufferViewsLast = _countof(m_vertexBufferViews) - 1;
-
-    m_indexBufferView = {};
-
-    m_dirtyFlags = ~0;
-
-    m_samplerDescsFirst = 0;
-    m_samplerDescsLast = _countof(m_samplerDescs) - 1;
-
-    // Wait for graphics command list to finish
-    const uint64_t graphicsFenceValue = m_graphicsQueue.getNextFenceValue();
-    m_graphicsQueue.signal(graphicsFenceValue);
-    m_graphicsQueue.wait(graphicsFenceValue);
-
-    // Cleanup
-    for (const auto& texture : m_releasedTextures)
-    {
-        if (texture.srvIndex != NULL)
-            m_descriptorHeap.free(texture.srvIndex);
-
-        if (texture.rtvIndex != NULL)
-            m_rtvDescriptorHeap.free(texture.rtvIndex);
-
-        if (texture.dsvIndex != NULL)
-            m_dsvDescriptorHeap.free(texture.dsvIndex);
-    }
-
-    m_releasedTextures.clear();
-    m_releasedBuffers.clear();
-    m_releasedVertexDeclarations.clear();
-
     m_graphicsCommandList.open();
 
     if (m_swapChainTextureId != 0)
     {
         m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-        m_graphicsCommandList.setResourceState(m_swapChain.getResource(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+        m_graphicsCommandList.setResourceState(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }
 
     ID3D12DescriptorHeap* descriptorHeaps[] =
@@ -1591,7 +1552,7 @@ void Device::processMessages()
                 m_copyQueue.executeCommandList(m_copyCommandList);
 
                 copyFenceValue = m_copyQueue.getNextFenceValue();
-                m_copyQueue.signal(graphicsFenceValue);
+                m_copyQueue.signal(copyFenceValue);
             }
             break;
         }
@@ -1736,6 +1697,8 @@ void Device::processMessages()
     }
     // let Generations know we finished processing messages
     m_gpuEvent.set();
+    m_messageReceiver.reset();
+
     m_graphicsCommandList.close();
 
     // Wait for copy command list
@@ -1749,14 +1712,55 @@ void Device::processMessages()
         m_swapChain.present();
         m_shouldPresent = false;
     }
+
+    // Wait for graphics command list to finish
+    const uint64_t graphicsFenceValue = m_graphicsQueue.getNextFenceValue();
+    m_graphicsQueue.signal(graphicsFenceValue);
+    m_graphicsQueue.wait(graphicsFenceValue);
+
+    // Cleanup
+    for (const auto& texture : m_releasedTextures)
+    {
+        if (texture.srvIndex != NULL)
+            m_descriptorHeap.free(texture.srvIndex);
+
+        if (texture.rtvIndex != NULL)
+            m_rtvDescriptorHeap.free(texture.rtvIndex);
+
+        if (texture.dsvIndex != NULL)
+            m_dsvDescriptorHeap.free(texture.dsvIndex);
+    }
+
+    m_releasedTextures.clear();
+    m_releasedBuffers.clear();
+
+    m_uploadBufferIndex = 0;
+    m_uploadBufferOffset = 0;
+
+    m_renderTargetView = {};
+    m_renderTarget = nullptr;
+
+    m_depthStencilView = {};
+    m_depthStencil = nullptr;
+
+    memset(m_vertexBufferViews, 0, sizeof(m_vertexBufferViews));
+    m_vertexBufferViewsFirst = 0;
+    m_vertexBufferViewsLast = _countof(m_vertexBufferViews) - 1;
+
+    m_indexBufferView = {};
+
+    m_dirtyFlags = ~0;
+
+    m_samplerDescsFirst = 0;
+    m_samplerDescsLast = _countof(m_samplerDescs) - 1;
 }
 
 void Device::runLoop()
 {
     while (!m_swapChain.getWindow().m_shouldExit)
     {
-        m_swapChain.getWindow().processMessages();
         processMessages();
+        m_swapChain.getWindow().processMessages();
     }
 }
 

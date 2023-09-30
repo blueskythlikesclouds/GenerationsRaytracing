@@ -63,6 +63,9 @@
     <ClCompile Include="TriangleStrip.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c">
+      <Filter>Dependencies</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -142,6 +145,9 @@
     </Filter>
     <Filter Include="Patch">
       <UniqueIdentifier>{8ea5ef8a-a980-4416-b44c-43d9e0ae1cba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Dependencies">
+      <UniqueIdentifier>{fd41d354-f37c-4b6e-b329-72e7cad037f2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

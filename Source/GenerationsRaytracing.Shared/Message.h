@@ -280,7 +280,6 @@ struct MsgReleaseResource
         Texture,
         IndexBuffer,
         VertexBuffer,
-        VertexDeclaration,
     };
 
     ResourceType resourceType;
