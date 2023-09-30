@@ -1768,11 +1768,15 @@ void Device::runLoop()
     }
 }
 
-void Device::setShouldExit()
+void Device::setEvents()
 {
     m_cpuEvent.set();
     m_gpuEvent.set();
+}
 
+void Device::setShouldExit()
+{
+    setEvents();
     m_swapChain.getWindow().m_shouldExit = true;
 }
 

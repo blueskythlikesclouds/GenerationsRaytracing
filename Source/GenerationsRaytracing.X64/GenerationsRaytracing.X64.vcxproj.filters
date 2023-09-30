@@ -90,6 +90,7 @@
     <ClInclude Include="Buffer.h">
       <Filter>Resource</Filter>
     </ClInclude>
+    <ClInclude Include="UploadBuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">

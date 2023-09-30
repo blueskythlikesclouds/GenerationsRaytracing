@@ -3,6 +3,18 @@
 
 static constexpr LPCTSTR s_gensProcessName = TEXT("SonicGenerations.exe");
 
+static std::unique_ptr<Device> s_device;
+
+static struct ThreadHolder
+{
+    std::thread processThread;
+
+    ~ThreadHolder()
+    {
+        processThread.join();
+    }
+} s_threadHolder;
+
 int main()
 {
 #ifdef _DEBUG 
@@ -52,22 +64,20 @@ int main()
     if (!process)
         return -1;
 
-    const HANDLE handle = OpenProcess(SYNCHRONIZE, FALSE, *process);
-    if (!handle)
+    const HANDLE processHandle = OpenProcess(SYNCHRONIZE, FALSE, *process);
+    if (!processHandle)
         return -1;
 
-    const auto device = std::make_unique<Device>();
+    s_device = std::make_unique<Device>();
 
-    std::thread processThread([&]
+    s_threadHolder.processThread = std::thread([processHandle]
     {
-        WaitForSingleObject(handle, INFINITE);
-        device->setShouldExit();
+        WaitForSingleObject(processHandle, INFINITE);
+        s_device->setShouldExit();
     });
 
-    device->runLoop();
-
-    processThread.join();
-    CloseHandle(handle);
+    s_device->runLoop();
+    s_device->setEvents();
 
     return 0;
 }

@@ -171,7 +171,9 @@ public:
 
     void runLoop();
 
+    void setEvents();
     void setShouldExit();
+
     ID3D12Device* getUnderlyingDevice() const;
 
     CommandQueue& getGraphicsQueue();

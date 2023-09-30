@@ -13,7 +13,15 @@
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
 static size_t* s_shouldExit = reinterpret_cast<size_t*>(0x1E5E2E8);
 
-static std::thread s_processThread;
+static struct ThreadHolder
+{
+    std::thread processThread;
+
+    ~ThreadHolder()
+    {
+        processThread.join();
+    }
+} s_threadHolder;
 
 static void setShouldExit()
 {
@@ -81,12 +89,10 @@ extern "C" void __declspec(dllexport) Init()
 
     assert(processHandle != nullptr);
 
-    s_processThread = std::thread([processHandle]
+    s_threadHolder.processThread = std::thread([processHandle]
     {
         WaitForSingleObject(processHandle, INFINITE);
         setShouldExit();
         CloseHandle(processHandle);
     });
-
-    std::atexit([] { s_processThread.join(); });
 }
