@@ -47,7 +47,7 @@ inline void* MemoryMappedFile::map() const
 
     assert(result != nullptr);
 
-#if _DEBUG
+#ifdef _DEBUG
     m_mapped = true;
 #endif
     return result;

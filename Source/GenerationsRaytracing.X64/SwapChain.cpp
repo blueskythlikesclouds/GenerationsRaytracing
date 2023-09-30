@@ -88,7 +88,7 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
 
         assert(SUCCEEDED(hr) && resource != nullptr);
 
-#if _DEBUG
+#ifdef _DEBUG
         wchar_t name[0x100];
         _swprintf(name, L"Swap Chain %d", i);
         resource->SetName(name);

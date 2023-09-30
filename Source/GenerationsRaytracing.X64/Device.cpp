@@ -632,7 +632,7 @@ void Device::procMsgCreateTexture()
 
     assert(SUCCEEDED(hr) && texture.allocation != nullptr);
 
-#if _DEBUG
+#ifdef _DEBUG
     wchar_t name[0x100];
 
     if ((message.usage & D3DUSAGE_RENDERTARGET) != 0)
@@ -1134,7 +1134,7 @@ void Device::procMsgCreateVertexBuffer()
 
     vertexBuffer.byteSize = message.length;
 
-#if _DEBUG
+#ifdef _DEBUG
     wchar_t name[0x100];
     _swprintf(name, L"Vertex Buffer %d", message.vertexBufferId);
     vertexBuffer.allocation->GetResource()->SetName(name);
@@ -1170,7 +1170,7 @@ void Device::procMsgCreateIndexBuffer()
     indexBuffer.format = DxgiConverter::convert(static_cast<D3DFORMAT>(message.format));
     indexBuffer.byteSize = message.length;
 
-#if _DEBUG
+#ifdef _DEBUG
     wchar_t name[0x100];
     _swprintf(name, L"Index Buffer %d", message.indexBufferId);
     indexBuffer.allocation->GetResource()->SetName(name);
@@ -1335,7 +1335,7 @@ void Device::procMsgMakeTexture()
         &srvDesc,
         m_descriptorHeap.getCpuHandle(texture.srvIndex));
 
-#if _DEBUG
+#ifdef _DEBUG
     wchar_t name[0x100];
     MultiByteToWideChar(CP_UTF8, 0, message.textureName, -1, name, _countof(name));
     texture.allocation->GetResource()->SetName(name);
