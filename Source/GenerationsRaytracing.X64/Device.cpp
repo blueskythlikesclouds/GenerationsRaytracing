@@ -37,15 +37,15 @@ void Device::writeBuffer(
     uint32_t dataSize, 
     ID3D12Resource* dstResource)
 {
-    if (m_uploadBufferOffset + dataSize <= UPLOAD_BUFFER_SIZE && m_uploadBuffers.size() > m_uploadBufferIndex &&
-        m_uploadBuffers[m_uploadBufferIndex].allocation != nullptr)
+    if (m_uploadBufferOffset + dataSize <= UPLOAD_BUFFER_SIZE && m_uploadBuffers[m_frame].size() > m_uploadBufferIndex &&
+        m_uploadBuffers[m_frame][m_uploadBufferIndex].allocation != nullptr)
     {
-        const auto& uploadBuffer = m_uploadBuffers[m_uploadBufferIndex];
+        const auto& uploadBuffer = m_uploadBuffers[m_frame][m_uploadBufferIndex];
 
         memcpy(uploadBuffer.memory + m_uploadBufferOffset, memory, dataSize);
 
-        m_copyCommandList.open();
-        m_copyCommandList.getUnderlyingCommandList()->CopyBufferRegion(
+        m_copyCommandLists[m_frame].open();
+        m_copyCommandLists[m_frame].getUnderlyingCommandList()->CopyBufferRegion(
             dstResource,
             offset,
             uploadBuffer.allocation->GetResource(),
@@ -56,7 +56,7 @@ void Device::writeBuffer(
     }
     else
     {
-        auto& uploadBuffer = m_tempBuffers.emplace_back();
+        auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
         createBuffer(D3D12_HEAP_TYPE_UPLOAD, dataSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
 
         void* mappedData = nullptr;
@@ -68,8 +68,8 @@ void Device::writeBuffer(
 
         uploadBuffer->GetResource()->Unmap(0, nullptr);
 
-        m_copyCommandList.open();
-        m_copyCommandList.getUnderlyingCommandList()->CopyBufferRegion(
+        m_copyCommandLists[m_frame].open();
+        m_copyCommandLists[m_frame].getUnderlyingCommandList()->CopyBufferRegion(
             dstResource,
             offset,
             uploadBuffer->GetResource(),
@@ -88,10 +88,10 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::makeBuffer(const void* memory, uint32_t dataSi
         ++m_uploadBufferIndex;
     }
 
-    if (m_uploadBuffers.size() <= m_uploadBufferIndex)
-        m_uploadBuffers.resize(m_uploadBufferIndex + 1);
+    if (m_uploadBuffers[m_frame].size() <= m_uploadBufferIndex)
+        m_uploadBuffers[m_frame].resize(m_uploadBufferIndex + 1);
 
-    auto& uploadBuffer = m_uploadBuffers[m_uploadBufferIndex];
+    auto& uploadBuffer = m_uploadBuffers[m_frame][m_uploadBufferIndex];
     if (uploadBuffer.allocation == nullptr)
     {
         D3D12MA::ALLOCATION_DESC allocDesc{};
@@ -176,7 +176,7 @@ void Device::flushGraphicsState()
 {
     if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
     {
-        m_graphicsCommandList.getUnderlyingCommandList()->OMSetRenderTargets(
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->OMSetRenderTargets(
             m_renderTargetView.ptr != NULL ? 1 : 0,
             m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr,
             FALSE,
@@ -192,12 +192,12 @@ void Device::flushGraphicsState()
             const HRESULT hr = m_device->CreateGraphicsPipelineState(&m_pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
             assert(SUCCEEDED(hr));
         }
-        m_graphicsCommandList.getUnderlyingCommandList()->SetPipelineState(pipeline.Get());
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->SetPipelineState(pipeline.Get());
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_VS)
     {
-        m_graphicsCommandList.getUnderlyingCommandList()
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
             ->SetGraphicsRootConstantBufferView(0, makeBuffer(&m_globalsVS, sizeof(m_globalsVS), 0x100));
     }
 
@@ -224,15 +224,15 @@ void Device::flushGraphicsState()
 
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_PS)
     {
-        m_graphicsCommandList.getUnderlyingCommandList()
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
             ->SetGraphicsRootConstantBufferView(1, makeBuffer(&m_globalsPS, sizeof(m_globalsPS), 0x100));
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_VIEWPORT)
-        m_graphicsCommandList.getUnderlyingCommandList()->RSSetViewports(1, &m_viewport);
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->RSSetViewports(1, &m_viewport);
 
     if (m_dirtyFlags & DIRTY_FLAG_SCISSOR_RECT)
-        m_graphicsCommandList.getUnderlyingCommandList()->RSSetScissorRects(1, &m_scissorRect);
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->RSSetScissorRects(1, &m_scissorRect);
 
     if (m_dirtyFlags & DIRTY_FLAG_VERTEX_BUFFER_VIEWS)
     {
@@ -250,16 +250,16 @@ void Device::flushGraphicsState()
             numViews = m_vertexBufferViewsLast - m_vertexBufferViewsFirst + 1;
         }
 
-        m_graphicsCommandList.getUnderlyingCommandList()->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_INDEX_BUFFER_VIEW)
-        m_graphicsCommandList.getUnderlyingCommandList()->IASetIndexBuffer(&m_indexBufferView);
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->IASetIndexBuffer(&m_indexBufferView);
 
     if (m_dirtyFlags & DIRTY_FLAG_PRIMITIVE_TOPOLOGY)
-        m_graphicsCommandList.getUnderlyingCommandList()->IASetPrimitiveTopology(m_primitiveTopology);
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->IASetPrimitiveTopology(m_primitiveTopology);
 
-    m_graphicsCommandList.commitBarriers();
+    m_graphicsCommandLists[m_frame].commitBarriers();
 
     m_dirtyFlags = 0;
 
@@ -286,7 +286,7 @@ void Device::procMsgCreateSwapChain()
         m_textures.resize(m_swapChainTextureId + 1);
 
     m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-    m_graphicsCommandList.transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    m_graphicsCommandLists[m_frame].transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void Device::procMsgSetRenderTarget()
@@ -300,7 +300,7 @@ void Device::procMsgSetRenderTarget()
         auto& texture = m_textures[message.textureId];
 
         if (texture.allocation != nullptr)
-            m_graphicsCommandList.transitionBarrier(texture.allocation->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            m_graphicsCommandLists[m_frame].transitionBarrier(texture.allocation->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         if (texture.rtvIndex == NULL)
         {
@@ -687,12 +687,12 @@ void Device::procMsgSetTexture()
         // NOTE: texture corruption on nvidia with only pixel shader resource
         if (texture.rtvIndex != NULL)
         {
-            m_graphicsCommandList.transitionBarrier(texture.allocation->GetResource(), 
+            m_graphicsCommandLists[m_frame].transitionBarrier(texture.allocation->GetResource(), 
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
         }
         else if (texture.dsvIndex != NULL)
         {
-            m_graphicsCommandList.transitionBarrier(texture.allocation->GetResource(),
+            m_graphicsCommandLists[m_frame].transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
         }
 
@@ -729,7 +729,7 @@ void Device::procMsgSetDepthStencilSurface()
     {
         auto& texture = m_textures[message.depthStencilSurfaceId];
 
-        m_graphicsCommandList.transitionBarrier(texture.allocation->GetResource(),
+        m_graphicsCommandLists[m_frame].transitionBarrier(texture.allocation->GetResource(),
             D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         if (texture.dsvIndex == NULL)
@@ -776,7 +776,7 @@ void Device::procMsgClear()
 {
     const auto& message = m_messageReceiver.getMessage<MsgClear>();
 
-    m_graphicsCommandList.commitBarriers();
+    m_graphicsCommandLists[m_frame].commitBarriers();
 
     if ((message.flags & D3DCLEAR_TARGET) && m_renderTargetView.ptr != NULL)
     {
@@ -786,7 +786,7 @@ void Device::procMsgClear()
         color[0] = static_cast<float>((message.color >> 16) & 0xFF) / 255.0f;
         color[3] = static_cast<float>((message.color >> 24) & 0xFF) / 255.0f;
 
-        m_graphicsCommandList.getUnderlyingCommandList()
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
             ->ClearRenderTargetView(m_renderTargetView, color, 0, nullptr);
     }
 
@@ -800,7 +800,7 @@ void Device::procMsgClear()
         if (message.flags & D3DCLEAR_STENCIL)
             clearFlag |= D3D12_CLEAR_FLAG_STENCIL;
 
-        m_graphicsCommandList.getUnderlyingCommandList()
+        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
             ->ClearDepthStencilView(m_depthStencilView, static_cast<D3D12_CLEAR_FLAGS>(clearFlag), message.z, message.stencil, 0, nullptr);
     }
 }
@@ -1038,7 +1038,7 @@ void Device::procMsgDrawPrimitiveUP()
     setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
     flushGraphicsState();
 
-    m_graphicsCommandList.getUnderlyingCommandList()
+    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
         ->DrawInstanced(message.vertexCount, 1, 0, 0);
 }
 
@@ -1229,7 +1229,7 @@ void Device::procMsgMakeTexture()
 
     assert(SUCCEEDED(hr) && texture.allocation != nullptr);
 
-    auto& uploadBuffer = m_tempBuffers.emplace_back();
+    auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
 
     createBuffer(
         D3D12_HEAP_TYPE_UPLOAD,
@@ -1238,10 +1238,10 @@ void Device::procMsgMakeTexture()
         D3D12_RESOURCE_STATE_GENERIC_READ,
         uploadBuffer);
 
-    m_copyCommandList.open();
+    m_copyCommandLists[m_frame].open();
 
     UpdateSubresources(
-        m_copyCommandList.getUnderlyingCommandList(),
+        m_copyCommandLists[m_frame].getUnderlyingCommandList(),
         texture.allocation->GetResource(),
         uploadBuffer->GetResource(),
         0,
@@ -1358,7 +1358,7 @@ void Device::procMsgDrawIndexedPrimitive()
     setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
     flushGraphicsState();
 
-    m_graphicsCommandList.getUnderlyingCommandList()
+    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
         ->DrawIndexedInstanced(
             message.indexCount,
             1,
@@ -1379,17 +1379,17 @@ void Device::procMsgReleaseResource()
     switch (message.resourceType)
     {
     case MsgReleaseResource::ResourceType::Texture:
-        m_tempTextures.push_back(m_textures[message.resourceId]);
+        m_tempTextures[m_frame].push_back(m_textures[message.resourceId]);
         m_textures[message.resourceId] = {};
 
         break;
 
     case MsgReleaseResource::ResourceType::IndexBuffer:
-        m_tempBuffers.emplace_back(std::move(m_indexBuffers[message.resourceId].allocation));
+        m_tempBuffers[m_frame].emplace_back(std::move(m_indexBuffers[message.resourceId].allocation));
         break;
 
     case MsgReleaseResource::ResourceType::VertexBuffer:
-        m_tempBuffers.emplace_back(std::move(m_vertexBuffers[message.resourceId].allocation));
+        m_tempBuffers[m_frame].emplace_back(std::move(m_vertexBuffers[message.resourceId].allocation));
         break;
 
     default: 
@@ -1405,7 +1405,7 @@ void Device::procMsgDrawPrimitive()
     setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
     flushGraphicsState();
 
-    m_graphicsCommandList.getUnderlyingCommandList()
+    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
         ->DrawInstanced(
             message.vertexCount,
             1,
@@ -1461,8 +1461,11 @@ Device::Device()
     m_graphicsQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
     m_copyQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_COPY);
 
-    m_graphicsCommandList.init(m_device.Get(), m_graphicsQueue);
-    m_copyCommandList.init(m_device.Get(), m_copyQueue);
+    for (auto& graphicsCommandList : m_graphicsCommandLists)
+        graphicsCommandList.init(m_device.Get(), m_graphicsQueue);
+
+    for (auto& copyCommandList : m_copyCommandLists)
+        copyCommandList.init(m_device.Get(), m_copyQueue);
 
     m_descriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     m_samplerDescriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
@@ -1523,12 +1526,12 @@ Device::Device()
 
 void Device::processMessages()
 {
-    m_graphicsCommandList.open();
+    m_graphicsCommandLists[m_frame].open();
 
     if (m_swapChainTextureId != 0)
     {
         m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-        m_graphicsCommandList.transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        m_graphicsCommandLists[m_frame].transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }
 
     ID3D12DescriptorHeap* descriptorHeaps[] =
@@ -1537,10 +1540,10 @@ void Device::processMessages()
         m_samplerDescriptorHeap.getUnderlyingHeap()
     };
 
-    m_graphicsCommandList.getUnderlyingCommandList()
+    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
         ->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-    m_graphicsCommandList.getUnderlyingCommandList()
+    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
         ->SetGraphicsRootSignature(m_rootSignature.Get());
 
     bool stop = false;
@@ -1607,10 +1610,10 @@ void Device::processMessages()
     m_gpuEvent.set();
     m_messageReceiver.reset();
 
-    if (m_copyCommandList.isOpen())
+    if (m_copyCommandLists[m_frame].isOpen())
     {
-        m_copyCommandList.close();
-        m_copyQueue.executeCommandList(m_copyCommandList);
+        m_copyCommandLists[m_frame].close();
+        m_copyQueue.executeCommandList(m_copyCommandLists[m_frame]);
 
         // Wait for copy command list to finish
         const uint64_t fenceValue = m_copyQueue.getNextFenceValue();
@@ -1618,14 +1621,17 @@ void Device::processMessages()
         m_graphicsQueue.wait(fenceValue, m_copyQueue);
     }
 
-    m_graphicsCommandList.close();
-    m_graphicsQueue.executeCommandList(m_graphicsCommandList);
+    m_graphicsCommandLists[m_frame].close();
+    m_graphicsQueue.executeCommandList(m_graphicsCommandLists[m_frame]);
 
     if (m_shouldPresent)
     {
         m_swapChain.present();
         m_shouldPresent = false;
     }
+
+    m_fenceValues[m_frame] = m_graphicsQueue.getNextFenceValue();
+    m_graphicsQueue.signal(m_fenceValues[m_frame]);
 
     m_uploadBufferIndex = 0;
     m_uploadBufferOffset = 0;
@@ -1644,13 +1650,13 @@ void Device::processMessages()
     m_samplerDescsFirst = 0;
     m_samplerDescsLast = _countof(m_samplerDescs) - 1;
 
+    m_frame = (m_frame + 1) % NUM_FRAMES;
+
     // Wait for graphics command list to finish
-    const uint64_t fenceValue = m_graphicsQueue.getNextFenceValue();
-    m_graphicsQueue.signal(fenceValue);
-    m_graphicsQueue.wait(fenceValue);
+    m_graphicsQueue.wait(m_fenceValues[m_frame]);
 
     // Cleanup
-    for (const auto& texture : m_tempTextures)
+    for (const auto& texture : m_tempTextures[m_frame])
     {
         if (texture.srvIndex != NULL)
             m_descriptorHeap.free(texture.srvIndex);
@@ -1662,8 +1668,8 @@ void Device::processMessages()
             m_dsvDescriptorHeap.free(texture.dsvIndex);
     }
 
-    m_tempTextures.clear();
-    m_tempBuffers.clear();
+    m_tempTextures[m_frame].clear();
+    m_tempBuffers[m_frame].clear();
 }
 
 void Device::runLoop()
@@ -1673,6 +1679,11 @@ void Device::runLoop()
         processMessages();
         m_swapChain.getWindow().processMessages();
     }
+
+    // Let the GPU finish its work before we quit
+    const uint64_t fenceValue = m_graphicsQueue.getNextFenceValue();
+    m_graphicsQueue.signal(fenceValue);
+    m_graphicsQueue.wait(fenceValue);
 }
 
 void Device::setEvents()

@@ -41,6 +41,8 @@ enum DirtyFlags
     DIRTY_FLAG_SAMPLER_DESC = 1 << 9
 };
 
+static constexpr size_t NUM_FRAMES = 2;
+
 class Device
 {
 protected:
@@ -50,6 +52,7 @@ protected:
 
     SwapChain m_swapChain;
     uint32_t m_swapChainTextureId = 0;
+    uint32_t m_frame = 0;
     bool m_shouldPresent = false;
 
     ComPtr<ID3D12Device5> m_device;
@@ -58,8 +61,10 @@ protected:
     CommandQueue m_graphicsQueue;
     CommandQueue m_copyQueue;
 
-    CommandList m_graphicsCommandList;
-    CommandList m_copyCommandList;
+    CommandList m_graphicsCommandLists[NUM_FRAMES];
+    CommandList m_copyCommandLists[NUM_FRAMES];
+
+    uint64_t m_fenceValues[NUM_FRAMES]{};
 
     DescriptorHeap m_descriptorHeap;
     DescriptorHeap m_samplerDescriptorHeap;
@@ -76,12 +81,12 @@ protected:
     std::vector<Buffer> m_vertexBuffers;
     std::vector<Buffer> m_indexBuffers;
 
-    std::vector<UploadBuffer> m_uploadBuffers;
+    std::vector<UploadBuffer> m_uploadBuffers[NUM_FRAMES];
     uint32_t m_uploadBufferIndex = 0;
     uint32_t m_uploadBufferOffset = 0;
 
-    std::vector<Texture> m_tempTextures;
-    std::vector<ComPtr<D3D12MA::Allocation>> m_tempBuffers;
+    std::vector<Texture> m_tempTextures[NUM_FRAMES];
+    std::vector<ComPtr<D3D12MA::Allocation>> m_tempBuffers[NUM_FRAMES];
 
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
     D3D12_CPU_DESCRIPTOR_HANDLE m_depthStencilView{};
