@@ -113,6 +113,7 @@
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="D3D9.cpp" />
     <ClCompile Include="HalfPixel.cpp" />
+    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="PictureData.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="FillTexture.cpp" />
@@ -142,6 +143,7 @@
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="D3D9.h" />
     <ClInclude Include="HalfPixel.h" />
+    <ClInclude Include="Memory.h" />
     <ClInclude Include="PictureData.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="FillTexture.h" />

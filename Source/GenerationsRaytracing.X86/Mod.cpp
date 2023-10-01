@@ -4,6 +4,7 @@
 #include "PictureData.h"
 #include "FillTexture.h"
 #include "HalfPixel.h"
+#include "Memory.h"
 #include "MessageSender.h"
 #include "ProcessUtil.h"
 #include "Sky.h"
@@ -41,6 +42,7 @@ extern "C" void __declspec(dllexport) Init()
     HalfPixel::init();
     TriangleStrip::init();
     Sky::init();
+    Memory::init();
     BottomLevelAccelStruct::init();
 
 #ifdef _DEBUG

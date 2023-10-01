@@ -27,7 +27,7 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
         triangles.IndexCount = srcGeometryDesc.indexCount;
         triangles.VertexCount = srcGeometryDesc.vertexCount;
-        triangles.IndexBuffer = m_indexBuffers[srcGeometryDesc.indexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + srcGeometryDesc.indexOffset;
+        triangles.IndexBuffer = m_indexBuffers[srcGeometryDesc.indexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
         triangles.VertexBuffer.StartAddress = m_vertexBuffers[srcGeometryDesc.vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + srcGeometryDesc.vertexOffset;
         triangles.VertexBuffer.StrideInBytes = srcGeometryDesc.vertexStride;
     }
