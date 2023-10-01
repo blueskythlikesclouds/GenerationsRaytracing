@@ -9,20 +9,22 @@
 
 #pragma pack(push, 1)
 
-struct MsgSerialTerminator
+struct MsgEof
 {
     static constexpr uint32_t s_id = 0;
     uint8_t id = 0;
 };
 
-struct MsgParallelTerminator
+struct MsgPadding
 {
-    MSG_DEFINE_MESSAGE(MsgSerialTerminator);
+    MSG_DEFINE_MESSAGE(MsgEof);
+    uint8_t dataSize;
+    uint8_t data[1u];
 };
 
 struct MsgCreateSwapChain
 {
-    MSG_DEFINE_MESSAGE(MsgParallelTerminator);
+    MSG_DEFINE_MESSAGE(MsgPadding);
     uint32_t postHandle;
     uint32_t style;
     uint16_t x;

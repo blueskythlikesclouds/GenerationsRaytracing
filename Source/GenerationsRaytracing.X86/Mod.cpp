@@ -26,7 +26,7 @@ static struct ThreadHolder
 
 static void setShouldExit()
 {
-    s_messageSender.setEvents();
+    s_messageSender.notifyShouldExit();
     *s_shouldExit = true;
 }
 

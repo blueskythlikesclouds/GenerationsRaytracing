@@ -56,7 +56,7 @@ void Device::writeBuffer(
     }
     else
     {
-        auto& uploadBuffer = m_releasedBuffers.emplace_back();
+        auto& uploadBuffer = m_tempBuffers.emplace_back();
         createBuffer(D3D12_HEAP_TYPE_UPLOAD, dataSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
 
         void* mappedData = nullptr;
@@ -268,6 +268,11 @@ void Device::flushGraphicsState()
 
     m_samplerDescsFirst = ~0;
     m_samplerDescsLast = 0;
+}
+
+void Device::procMsgPadding()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgPadding>();
 }
 
 void Device::procMsgCreateSwapChain()
@@ -1224,7 +1229,7 @@ void Device::procMsgMakeTexture()
 
     assert(SUCCEEDED(hr) && texture.allocation != nullptr);
 
-    auto& uploadBuffer = m_releasedBuffers.emplace_back();
+    auto& uploadBuffer = m_tempBuffers.emplace_back();
 
     createBuffer(
         D3D12_HEAP_TYPE_UPLOAD,
@@ -1374,17 +1379,17 @@ void Device::procMsgReleaseResource()
     switch (message.resourceType)
     {
     case MsgReleaseResource::ResourceType::Texture:
-        m_releasedTextures.push_back(m_textures[message.resourceId]);
+        m_tempTextures.push_back(m_textures[message.resourceId]);
         m_textures[message.resourceId] = {};
 
         break;
 
     case MsgReleaseResource::ResourceType::IndexBuffer:
-        m_releasedBuffers.push_back(std::move(m_indexBuffers[message.resourceId].allocation));
+        m_tempBuffers.emplace_back(std::move(m_indexBuffers[message.resourceId].allocation));
         break;
 
     case MsgReleaseResource::ResourceType::VertexBuffer:
-        m_releasedBuffers.push_back(std::move(m_vertexBuffers[message.resourceId].allocation));
+        m_tempBuffers.emplace_back(std::move(m_vertexBuffers[message.resourceId].allocation));
         break;
 
     default: 
@@ -1538,188 +1543,82 @@ void Device::processMessages()
     m_graphicsCommandList.getUnderlyingCommandList()
         ->SetGraphicsRootSignature(m_rootSignature.Get());
 
-    // wait for Generations to copy the messages
+    bool stop = false;
+
+    // Wait for Generations to copy messages
     m_cpuEvent.wait();
     m_cpuEvent.reset();
-
-    bool stop = false;
-    uint64_t copyFenceValue = 0;
 
     while (!stop && !m_swapChain.getWindow().m_shouldExit)
     {
         switch (m_messageReceiver.getId())
         {
-        case MsgSerialTerminator::s_id:
+        case MsgEof::s_id:
             stop = true;
-            break;
-
-        case MsgParallelTerminator::s_id:
-        {
-            const auto& message = m_messageReceiver.getMessage<MsgParallelTerminator>();
-
-            if (m_copyCommandList.isOpen())
-            {
-                m_copyCommandList.close();
-                m_copyQueue.executeCommandList(m_copyCommandList);
-
-                copyFenceValue = m_copyQueue.getNextFenceValue();
-                m_copyQueue.signal(copyFenceValue);
-            }
-            break;
-        }
-
-        case MsgCreateSwapChain::s_id:
-            procMsgCreateSwapChain();
-            break;
-
-        case MsgSetRenderTarget::s_id:
-            procMsgSetRenderTarget();
-            break;
-
-        case MsgCreateVertexDeclaration::s_id:
-            procMsgCreateVertexDeclaration();
-            break;
-
-        case MsgCreatePixelShader::s_id:
-            procMsgCreatePixelShader();
-            break;
-
-        case MsgCreateVertexShader::s_id:
-            procMsgCreateVertexShader();
-            break;
-
-        case MsgSetRenderState::s_id:
-            procMsgSetRenderState();
-            break;
-
-        case MsgCreateTexture::s_id:
-            procMsgCreateTexture();
-            break;
-
-        case MsgSetTexture::s_id:
-            procMsgSetTexture();
-            break;
-
-        case MsgSetDepthStencilSurface::s_id:
-            procMsgSetDepthStencilSurface();
-            break;
-
-        case MsgClear::s_id:
-            procMsgClear();
-            break;
-
-        case MsgSetVertexShader::s_id:
-            procMsgSetVertexShader();
-            break;
-
-        case MsgSetPixelShader::s_id:
-            procMsgSetPixelShader();
-            break;
-
-        case MsgSetPixelShaderConstantF::s_id:
-            procMsgSetPixelShaderConstantF();
-            break;
-
-        case MsgSetVertexShaderConstantF::s_id:
-            procMsgSetVertexShaderConstantF();
-            break;
-
-        case MsgSetVertexShaderConstantB::s_id:
-            procMsgSetVertexShaderConstantB();
-            break;
-
-        case MsgSetSamplerState::s_id:
-            procMsgSetSamplerState();
-            break;
-
-        case MsgSetViewport::s_id:
-            procMsgSetViewport();
-            break;
-
-        case MsgSetScissorRect::s_id:
-            procMsgSetScissorRect();
-            break;
-
-        case MsgSetVertexDeclaration::s_id:
-            procMsgSetVertexDeclaration();
-            break;
-
-        case MsgDrawPrimitiveUP::s_id:
-            procMsgDrawPrimitiveUP();
-            break;
-
-        case MsgSetStreamSource::s_id:
-            procMsgSetStreamSource();
-            break;
-
-        case MsgSetIndices::s_id:
-            procMsgSetIndices();
-            break;
-
-        case MsgPresent::s_id:
-            procMsgPresent();
-            break;
-
-        case MsgCreateVertexBuffer::s_id:
-            procMsgCreateVertexBuffer();
-            break;
-
-        case MsgWriteVertexBuffer::s_id:
-            procMsgWriteVertexBuffer();
-            break;
-
-        case MsgCreateIndexBuffer::s_id:
-            procMsgCreateIndexBuffer();
-            break;
-
-        case MsgWriteIndexBuffer::s_id:
-            procMsgWriteIndexBuffer();
-            break;
-
-        case MsgWriteTexture::s_id:
-            procMsgWriteTexture();
-            break;
-
-        case MsgMakeTexture::s_id:
-            procMsgMakeTexture();
-            break;
-
-        case MsgDrawIndexedPrimitive::s_id:
-            procMsgDrawIndexedPrimitive();
-            break;
-
-        case MsgSetStreamSourceFreq::s_id:
-            procMsgSetStreamSourceFreq();
-            break;
-
-        case MsgReleaseResource::s_id:
-            procMsgReleaseResource();
-            break;
-
-        case MsgDrawPrimitive::s_id:
-            procMsgDrawPrimitive();
             break;
 
         default:
-        {
             if (!processRaytracingMessage())
+            {
                 assert(!"Unknown message type");
-
-            stop = true;
+                stop = true;
+            }
             break;
-        }
+
+        case MsgPadding::s_id: procMsgPadding(); break;
+        case MsgCreateSwapChain::s_id: procMsgCreateSwapChain(); break;
+        case MsgSetRenderTarget::s_id: procMsgSetRenderTarget(); break;
+        case MsgCreateVertexDeclaration::s_id: procMsgCreateVertexDeclaration(); break;
+        case MsgCreatePixelShader::s_id: procMsgCreatePixelShader(); break;
+        case MsgCreateVertexShader::s_id: procMsgCreateVertexShader(); break;
+        case MsgSetRenderState::s_id: procMsgSetRenderState(); break;
+        case MsgCreateTexture::s_id: procMsgCreateTexture(); break;
+        case MsgSetTexture::s_id: procMsgSetTexture(); break;
+        case MsgSetDepthStencilSurface::s_id: procMsgSetDepthStencilSurface(); break;
+        case MsgClear::s_id: procMsgClear(); break;
+        case MsgSetVertexShader::s_id: procMsgSetVertexShader(); break;
+        case MsgSetPixelShader::s_id: procMsgSetPixelShader(); break;
+        case MsgSetPixelShaderConstantF::s_id: procMsgSetPixelShaderConstantF(); break;
+        case MsgSetVertexShaderConstantF::s_id: procMsgSetVertexShaderConstantF(); break;
+        case MsgSetVertexShaderConstantB::s_id: procMsgSetVertexShaderConstantB(); break;
+        case MsgSetSamplerState::s_id: procMsgSetSamplerState(); break;
+        case MsgSetViewport::s_id: procMsgSetViewport(); break;
+        case MsgSetScissorRect::s_id: procMsgSetScissorRect(); break;
+        case MsgSetVertexDeclaration::s_id: procMsgSetVertexDeclaration(); break;
+        case MsgDrawPrimitiveUP::s_id: procMsgDrawPrimitiveUP(); break;
+        case MsgSetStreamSource::s_id: procMsgSetStreamSource(); break;
+        case MsgSetIndices::s_id: procMsgSetIndices(); break;
+        case MsgPresent::s_id: procMsgPresent(); break;
+        case MsgCreateVertexBuffer::s_id: procMsgCreateVertexBuffer(); break;
+        case MsgWriteVertexBuffer::s_id: procMsgWriteVertexBuffer(); break;
+        case MsgCreateIndexBuffer::s_id: procMsgCreateIndexBuffer(); break;
+        case MsgWriteIndexBuffer::s_id: procMsgWriteIndexBuffer(); break;
+        case MsgWriteTexture::s_id: procMsgWriteTexture(); break;
+        case MsgMakeTexture::s_id: procMsgMakeTexture(); break;
+        case MsgDrawIndexedPrimitive::s_id: procMsgDrawIndexedPrimitive(); break;
+        case MsgSetStreamSourceFreq::s_id: procMsgSetStreamSourceFreq(); break;
+        case MsgReleaseResource::s_id: procMsgReleaseResource(); break;
+        case MsgDrawPrimitive::s_id: procMsgDrawPrimitive(); break;
+
         }
     }
-    // let Generations know we finished processing messages
+
+    // Let Generations know we finished processing messages
     m_gpuEvent.set();
     m_messageReceiver.reset();
 
+    if (m_copyCommandList.isOpen())
+    {
+        m_copyCommandList.close();
+        m_copyQueue.executeCommandList(m_copyCommandList);
+
+        // Wait for copy command list to finish
+        const uint64_t fenceValue = m_copyQueue.getNextFenceValue();
+        m_copyQueue.signal(fenceValue);
+        m_graphicsQueue.wait(fenceValue, m_copyQueue);
+    }
+
     m_graphicsCommandList.close();
-
-    // Wait for copy command list
-    if (copyFenceValue != 0)
-        m_graphicsQueue.wait(copyFenceValue, m_copyQueue);
-
     m_graphicsQueue.executeCommandList(m_graphicsCommandList);
 
     if (m_shouldPresent)
@@ -1727,27 +1626,6 @@ void Device::processMessages()
         m_swapChain.present();
         m_shouldPresent = false;
     }
-
-    // Wait for graphics command list to finish
-    const uint64_t graphicsFenceValue = m_graphicsQueue.getNextFenceValue();
-    m_graphicsQueue.signal(graphicsFenceValue);
-    m_graphicsQueue.wait(graphicsFenceValue);
-
-    // Cleanup
-    for (const auto& texture : m_releasedTextures)
-    {
-        if (texture.srvIndex != NULL)
-            m_descriptorHeap.free(texture.srvIndex);
-
-        if (texture.rtvIndex != NULL)
-            m_rtvDescriptorHeap.free(texture.rtvIndex);
-
-        if (texture.dsvIndex != NULL)
-            m_dsvDescriptorHeap.free(texture.dsvIndex);
-    }
-
-    m_releasedTextures.clear();
-    m_releasedBuffers.clear();
 
     m_uploadBufferIndex = 0;
     m_uploadBufferOffset = 0;
@@ -1765,6 +1643,27 @@ void Device::processMessages()
 
     m_samplerDescsFirst = 0;
     m_samplerDescsLast = _countof(m_samplerDescs) - 1;
+
+    // Wait for graphics command list to finish
+    const uint64_t fenceValue = m_graphicsQueue.getNextFenceValue();
+    m_graphicsQueue.signal(fenceValue);
+    m_graphicsQueue.wait(fenceValue);
+
+    // Cleanup
+    for (const auto& texture : m_tempTextures)
+    {
+        if (texture.srvIndex != NULL)
+            m_descriptorHeap.free(texture.srvIndex);
+
+        if (texture.rtvIndex != NULL)
+            m_rtvDescriptorHeap.free(texture.rtvIndex);
+
+        if (texture.dsvIndex != NULL)
+            m_dsvDescriptorHeap.free(texture.dsvIndex);
+    }
+
+    m_tempTextures.clear();
+    m_tempBuffers.clear();
 }
 
 void Device::runLoop()

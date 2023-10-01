@@ -50,8 +50,10 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::Reset, D3DPRESENT_PARAMETERS* pPresent
 
 HRESULT Device::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion)
 {
-    s_messageSender.makeSerialMessage<MsgPresent>();
-    s_messageSender.sendAllMessages();
+    s_messageSender.makeMessage<MsgPresent>();
+    s_messageSender.endMessage();
+
+    s_messageSender.commitMessages();
 
     return S_OK;
 }
@@ -82,7 +84,7 @@ HRESULT Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage,
     {
         *ppTexture = new Texture(Width, Height, Levels);
 
-        auto& message = s_messageSender.makeParallelMessage<MsgCreateTexture>();
+        auto& message = s_messageSender.makeMessage<MsgCreateTexture>();
 
         message.width = Width;
         message.height = Height;
@@ -91,7 +93,7 @@ HRESULT Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage,
         message.format = Format;
         message.textureId = (*ppTexture)->getId();
 
-        s_messageSender.endParallelMessage();
+        s_messageSender.endMessage();
     }
 
     return S_OK;
@@ -105,12 +107,12 @@ HRESULT Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL 
 {
     *ppVertexBuffer = new VertexBuffer(Length);
 
-    auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexBuffer>();
+    auto& message = s_messageSender.makeMessage<MsgCreateVertexBuffer>();
 
     message.length = Length;
     message.vertexBufferId = (*ppVertexBuffer)->getId();
 
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     return S_OK;
 }
@@ -119,13 +121,13 @@ HRESULT Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3
 {
     *ppIndexBuffer = new IndexBuffer(Length);
 
-    auto& message = s_messageSender.makeParallelMessage<MsgCreateIndexBuffer>();
+    auto& message = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
 
     message.length = Length;
     message.format = Format;
     message.indexBufferId = (*ppIndexBuffer)->getId();
 
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     return S_OK;
 }
@@ -156,11 +158,13 @@ HRESULT Device::SetRenderTarget(DWORD RenderTargetIndex, Surface* pRenderTarget)
     if (m_renderTargets[RenderTargetIndex].Get() != texture || 
         m_renderTargetLevels[RenderTargetIndex] != level)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetRenderTarget>();
+        auto& message = s_messageSender.makeMessage<MsgSetRenderTarget>();
 
         message.renderTargetIndex = static_cast<uint8_t>(RenderTargetIndex);
         message.textureId = texture != nullptr ? texture->getId() : NULL;
         message.textureLevel = static_cast<uint8_t>(level);
+
+        s_messageSender.endMessage();
 
         m_renderTargets[RenderTargetIndex] = texture;
         m_renderTargetLevels[RenderTargetIndex] = level;
@@ -177,10 +181,12 @@ HRESULT Device::SetDepthStencilSurface(Surface* pNewZStencil)
 
     if (m_depthStencil.Get() != texture || m_depthStencilLevel != level)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetDepthStencilSurface>();
+        auto& message = s_messageSender.makeMessage<MsgSetDepthStencilSurface>();
 
         message.depthStencilSurfaceId = texture != nullptr ? texture->getId() : NULL;
         message.level = level;
+
+        s_messageSender.endMessage();
 
         m_depthStencil = texture;
         m_depthStencilLevel = level;
@@ -211,12 +217,14 @@ HRESULT Device::EndScene()
 
 HRESULT Device::Clear(DWORD Count, const D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil)
 {
-    auto& message = s_messageSender.makeSerialMessage<MsgClear>();
+    auto& message = s_messageSender.makeMessage<MsgClear>();
 
     message.flags = Flags;
     message.color = Color;
     message.z = Z;
     message.stencil = static_cast<uint8_t>(Stencil);
+
+    s_messageSender.endMessage();
 
     return S_OK;
 }
@@ -231,7 +239,7 @@ HRESULT Device::SetViewport(const D3DVIEWPORT9* pViewport)
 {
     if (memcmp(&viewport, pViewport, sizeof(D3DVIEWPORT9)) != 0)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetViewport>();
+        auto& message = s_messageSender.makeMessage<MsgSetViewport>();
 
         message.x = static_cast<uint16_t>(pViewport->X);
         message.y = static_cast<uint16_t>(pViewport->Y);
@@ -239,6 +247,8 @@ HRESULT Device::SetViewport(const D3DVIEWPORT9* pViewport)
         message.height = static_cast<uint16_t>(pViewport->Height);
         message.minZ = pViewport->MinZ;
         message.maxZ = pViewport->MaxZ;
+
+        s_messageSender.endMessage();
 
         viewport = *pViewport;
     }
@@ -297,10 +307,12 @@ HRESULT Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value)
         case D3DRS_DESTBLENDALPHA:
         case D3DRS_BLENDOPALPHA:
         {
-            auto& message = s_messageSender.makeSerialMessage<MsgSetRenderState>();
+            auto& message = s_messageSender.makeMessage<MsgSetRenderState>();
 
             message.state = State;
             message.value = Value;
+
+            s_messageSender.endMessage();
 
             break;
         }
@@ -330,10 +342,12 @@ HRESULT Device::SetTexture(DWORD Stage, BaseTexture* pTexture)
 {
     if (m_textures[Stage].Get() != pTexture)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetTexture>();
+        auto& message = s_messageSender.makeMessage<MsgSetTexture>();
 
         message.stage = static_cast<uint8_t>(Stage);
         message.textureId = pTexture != nullptr ? pTexture->getId() : NULL;
+
+        s_messageSender.endMessage();
 
         m_textures[Stage] = pTexture;
     }
@@ -356,11 +370,13 @@ HRESULT Device::SetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD V
 
     if (m_samplerStates[Sampler][Type] != Value)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetSamplerState>();
+        auto& message = s_messageSender.makeMessage<MsgSetSamplerState>();
 
         message.sampler = static_cast<uint8_t>(Sampler);
         message.type = static_cast<uint8_t>(Type);
         message.value = Value;
+
+        s_messageSender.endMessage();
 
         m_samplerStates[Sampler][Type] = Value;
     }
@@ -381,12 +397,14 @@ HRESULT Device::SetScissorRect(const RECT* pRect)
 {
     if (memcmp(&m_scissorRect, pRect, sizeof(RECT)) != 0)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetScissorRect>();
+        auto& message = s_messageSender.makeMessage<MsgSetScissorRect>();
 
         message.left = static_cast<uint16_t>(pRect->left);
         message.top = static_cast<uint16_t>(pRect->top);
         message.right = static_cast<uint16_t>(pRect->right);
         message.bottom = static_cast<uint16_t>(pRect->bottom);
+
+        s_messageSender.endMessage();
 
         m_scissorRect = *pRect;
     }
@@ -432,23 +450,27 @@ UINT calculateVertexCount(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount)
 
 HRESULT Device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount)
 {
-    auto& message = s_messageSender.makeSerialMessage<MsgDrawPrimitive>();
+    auto& message = s_messageSender.makeMessage<MsgDrawPrimitive>();
 
     message.primitiveType = PrimitiveType;
     message.startVertex = StartVertex;
     message.vertexCount = calculateVertexCount(PrimitiveType, PrimitiveCount);
+
+    s_messageSender.endMessage();
 
     return S_OK;
 }
 
 HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount)
 {
-    auto& message = s_messageSender.makeSerialMessage<MsgDrawIndexedPrimitive>();
+    auto& message = s_messageSender.makeMessage<MsgDrawIndexedPrimitive>();
 
     message.primitiveType = PrimitiveType;
     message.baseVertexIndex = BaseVertexIndex;
     message.startIndex = startIndex;
     message.indexCount = calculateVertexCount(PrimitiveType, primCount);
+
+    s_messageSender.endMessage();
 
     return S_OK;
 }
@@ -457,12 +479,14 @@ HRESULT Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCo
 {
     const uint32_t vertexCount = calculateVertexCount(PrimitiveType, PrimitiveCount);
 
-    auto& message = s_messageSender.makeSerialMessage<MsgDrawPrimitiveUP>(vertexCount * VertexStreamZeroStride);
+    auto& message = s_messageSender.makeMessage<MsgDrawPrimitiveUP>(vertexCount * VertexStreamZeroStride);
 
     message.primitiveType = PrimitiveType;
     message.vertexCount = vertexCount;
     message.vertexStreamZeroStride = VertexStreamZeroStride;
     memcpy(message.data, pVertexStreamZeroData, vertexCount * VertexStreamZeroStride);
+
+    s_messageSender.endMessage();
 
     return S_OK;
 }
@@ -489,13 +513,13 @@ HRESULT Device::CreateVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements
     {
         pDecl.Attach(new VertexDeclaration(pVertexElements));
 
-        auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexDeclaration>(
+        auto& message = s_messageSender.makeMessage<MsgCreateVertexDeclaration>(
             pDecl->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
 
         message.vertexDeclarationId = pDecl->getId();
         memcpy(message.data, pDecl->getVertexElements(), pDecl->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
 
-        s_messageSender.endParallelMessage();
+        s_messageSender.endMessage();
     }
 
     pDecl.CopyTo(ppDecl);
@@ -507,8 +531,9 @@ HRESULT Device::SetVertexDeclaration(VertexDeclaration* pDecl)
 {
     if (m_vertexDeclaration.Get() != pDecl)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetVertexDeclaration>();
+        auto& message = s_messageSender.makeMessage<MsgSetVertexDeclaration>();
         message.vertexDeclarationId = pDecl != nullptr ? pDecl->getId() : NULL;
+        s_messageSender.endMessage();
 
         m_vertexDeclaration = pDecl;
     }
@@ -561,12 +586,12 @@ HRESULT Device::CreateVertexShader(const DWORD* pFunction, VertexShader** ppShad
     {
         pShader.Attach(new VertexShader());
 
-        auto& message = s_messageSender.makeParallelMessage<MsgCreateVertexShader>(FunctionSize);
+        auto& message = s_messageSender.makeMessage<MsgCreateVertexShader>(FunctionSize);
 
         message.vertexShaderId = pShader->getId();
         memcpy(message.data, pFunction, FunctionSize);
 
-        s_messageSender.endParallelMessage();
+        s_messageSender.endMessage();
     }
 
     pShader.CopyTo(ppShader);
@@ -578,8 +603,9 @@ HRESULT Device::SetVertexShader(VertexShader* pShader)
 {
     if (m_vertexShader.Get() != pShader)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetVertexShader>();
+        auto& message = s_messageSender.makeMessage<MsgSetVertexShader>();
         message.vertexShaderId = pShader != nullptr ? pShader->getId() : NULL;
+        s_messageSender.endMessage();
 
         m_vertexShader = pShader;
     }
@@ -590,10 +616,12 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetVertexShader, VertexShader** ppShad
 
 HRESULT Device::SetVertexShaderConstantF(UINT StartRegister, const float* pConstantData, UINT Vector4fCount)
 {
-    auto& message = s_messageSender.makeSerialMessage<MsgSetVertexShaderConstantF>(Vector4fCount * sizeof(float[4]));
+    auto& message = s_messageSender.makeMessage<MsgSetVertexShaderConstantF>(Vector4fCount * sizeof(float[4]));
 
     message.startRegister = StartRegister;
     memcpy(message.data, pConstantData, Vector4fCount * sizeof(float[4]));
+
+    s_messageSender.endMessage();
 
     return S_OK;
 }
@@ -606,10 +634,12 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetVertexShaderConstantI, UINT StartRe
 
 HRESULT Device::SetVertexShaderConstantB(UINT StartRegister, const BOOL* pConstantData, UINT BoolCount)
 {
-    auto& message = s_messageSender.makeSerialMessage<MsgSetVertexShaderConstantB>(BoolCount * sizeof(BOOL));
+    auto& message = s_messageSender.makeMessage<MsgSetVertexShaderConstantB>(BoolCount * sizeof(BOOL));
 
     message.startRegister = StartRegister;
     memcpy(message.data, pConstantData, BoolCount * sizeof(BOOL));
+
+    s_messageSender.endMessage();
 
     return S_OK;
 }
@@ -622,12 +652,14 @@ HRESULT Device::SetStreamSource(UINT StreamNumber, VertexBuffer* pStreamData, UI
         m_offsetsInBytes[StreamNumber] != OffsetInBytes ||
         m_strides[StreamNumber] != Stride)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetStreamSource>();
+        auto& message = s_messageSender.makeMessage<MsgSetStreamSource>();
 
         message.streamNumber = StreamNumber;
         message.streamDataId = pStreamData != nullptr ? pStreamData->getId() : NULL;
         message.offsetInBytes = OffsetInBytes;
         message.stride = Stride;
+
+        s_messageSender.endMessage();
 
         m_streamData[StreamNumber] = pStreamData;
         m_offsetsInBytes[StreamNumber] = OffsetInBytes;
@@ -642,10 +674,12 @@ HRESULT Device::SetStreamSourceFreq(UINT StreamNumber, UINT Setting)
 {
     if (m_settings[StreamNumber] != Setting)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetStreamSourceFreq>();
+        auto& message = s_messageSender.makeMessage<MsgSetStreamSourceFreq>();
 
         message.streamNumber = StreamNumber;
         message.setting = Setting;
+
+        s_messageSender.endMessage();
 
         m_settings[StreamNumber] = Setting;
     }
@@ -658,8 +692,9 @@ HRESULT Device::SetIndices(IndexBuffer* pIndexData)
 {
     if (m_indexData.Get() != pIndexData)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetIndices>();
+        auto& message = s_messageSender.makeMessage<MsgSetIndices>();
         message.indexDataId = pIndexData != nullptr ? pIndexData->getId() : NULL;
+        s_messageSender.endMessage();
 
         m_indexData = pIndexData;
     }
@@ -675,12 +710,12 @@ HRESULT Device::CreatePixelShader(const DWORD* pFunction, PixelShader** ppShader
     {
         pShader.Attach(new PixelShader());
 
-        auto& message = s_messageSender.makeParallelMessage<MsgCreatePixelShader>(FunctionSize);
+        auto& message = s_messageSender.makeMessage<MsgCreatePixelShader>(FunctionSize);
 
         message.pixelShaderId = pShader->getId();
         memcpy(message.data, pFunction, FunctionSize);
 
-        s_messageSender.endParallelMessage();
+        s_messageSender.endMessage();
     }
 
     pShader.CopyTo(ppShader);
@@ -692,8 +727,9 @@ HRESULT Device::SetPixelShader(PixelShader* pShader)
 {
     if (m_pixelShader.Get() != pShader)
     {
-        auto& message = s_messageSender.makeSerialMessage<MsgSetPixelShader>();
+        auto& message = s_messageSender.makeMessage<MsgSetPixelShader>();
         message.pixelShaderId = pShader != nullptr ? pShader->getId() : NULL;
+        s_messageSender.endMessage();
 
         m_pixelShader = pShader;
     }
@@ -704,10 +740,12 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetPixelShader, PixelShader** ppShader
 
 HRESULT Device::SetPixelShaderConstantF(UINT StartRegister, const float* pConstantData, UINT Vector4fCount)
 {
-    auto& message = s_messageSender.makeSerialMessage<MsgSetPixelShaderConstantF>(Vector4fCount * sizeof(float[4]));
+    auto& message = s_messageSender.makeMessage<MsgSetPixelShaderConstantF>(Vector4fCount * sizeof(float[4]));
 
     message.startRegister = StartRegister;
     memcpy(message.data, pConstantData, Vector4fCount * sizeof(float[4]));
+
+    s_messageSender.endMessage();
 
     return S_OK;
 }

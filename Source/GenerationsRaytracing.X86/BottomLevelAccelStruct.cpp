@@ -27,12 +27,12 @@ HOOK(void, __fastcall, TerrainModelDataDestructor, 0x717230, TerrainModelDataEx*
 {
     if (This->m_bottomLevelAccelStructId != NULL)
     {
-        auto& message = s_messageSender.makeParallelMessage<MsgReleaseRaytracingResource>();
+        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
 
         message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
         message.resourceId = This->m_bottomLevelAccelStructId;
 
-        s_messageSender.endParallelMessage();
+        s_messageSender.endMessage();
 
         s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
     }
@@ -135,7 +135,7 @@ static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* terrainMod
 
     const size_t geometryCount = getGeometryCount(*terrainModelData);
 
-    auto& message = s_messageSender.makeParallelMessage<MsgCreateBottomLevelAccelStruct>(
+    auto& message = s_messageSender.makeMessage<MsgCreateBottomLevelAccelStruct>(
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     message.bottomLevelAccelStructId = terrainModelData->m_bottomLevelAccelStructId;
@@ -145,18 +145,18 @@ static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* terrainMod
 
     assert(reinterpret_cast<uint8_t*>(geometryDesc - geometryCount) == message.data);
 
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     terrainModelData->SetMadeOne();
 }
 
 void BottomLevelAccelStruct::init()
 {
-    WRITE_MEMORY(0x72FCDC, uint8_t, sizeof(TerrainModelDataEx));
+    //WRITE_MEMORY(0x72FCDC, uint8_t, sizeof(TerrainModelDataEx));
 
-    INSTALL_HOOK(TerrainModelDataConstructor);
-    INSTALL_HOOK(TerrainModelDataDestructor);
+    //INSTALL_HOOK(TerrainModelDataConstructor);
+    //INSTALL_HOOK(TerrainModelDataDestructor);
 
-    WRITE_CALL(0x73A6D3, terrainModelDataSetMadeOne);
-    WRITE_CALL(0x739AB4, terrainModelDataSetMadeOne);
+    //WRITE_CALL(0x73A6D3, terrainModelDataSetMadeOne);
+    //WRITE_CALL(0x739AB4, terrainModelDataSetMadeOne);
 }

@@ -47,7 +47,7 @@ HRESULT Texture::GetSurfaceLevel(UINT Level, Surface** ppSurfaceLevel)
 HRESULT Texture::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags)
 {
     // TODO: is it safe to assume RGBA8 here??
-    auto& message = s_messageSender.makeParallelMessage<MsgWriteTexture>((m_width >> Level) * (m_height >> Level) * 4);
+    auto& message = s_messageSender.makeMessage<MsgWriteTexture>((m_width >> Level) * (m_height >> Level) * 4);
 
     message.textureId = m_id;
     message.level = Level;
@@ -60,7 +60,7 @@ HRESULT Texture::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* p
 
 HRESULT Texture::UnlockRect(UINT Level)
 {
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     return S_OK;
 }

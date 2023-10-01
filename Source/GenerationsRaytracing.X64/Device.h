@@ -80,8 +80,8 @@ protected:
     uint32_t m_uploadBufferIndex = 0;
     uint32_t m_uploadBufferOffset = 0;
 
-    std::vector<Texture> m_releasedTextures;
-    std::vector<ComPtr<D3D12MA::Allocation>> m_releasedBuffers;
+    std::vector<Texture> m_tempTextures;
+    std::vector<ComPtr<D3D12MA::Allocation>> m_tempBuffers;
 
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
     D3D12_CPU_DESCRIPTOR_HANDLE m_depthStencilView{};
@@ -131,6 +131,7 @@ protected:
 
     void flushGraphicsState();
 
+    void procMsgPadding();
     void procMsgCreateSwapChain();
     void procMsgSetRenderTarget();
     void procMsgCreateVertexDeclaration();

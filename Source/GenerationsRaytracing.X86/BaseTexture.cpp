@@ -14,12 +14,12 @@ BaseTexture::BaseTexture(uint32_t levelCount)
 
 BaseTexture::~BaseTexture()
 {
-    auto& message = s_messageSender.makeParallelMessage<MsgReleaseResource>();
+    auto& message = s_messageSender.makeMessage<MsgReleaseResource>();
 
     message.resourceType = MsgReleaseResource::ResourceType::Texture;
     message.resourceId = m_id;
 
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     s_freeListAllocator.free(m_id);
 }

@@ -137,7 +137,7 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
 
     *ppReturnedDeviceInterface = new Device(pPresentationParameters->BackBufferWidth, pPresentationParameters->BackBufferHeight);
 
-    auto& message = s_messageSender.makeSerialMessage<MsgCreateSwapChain>();
+    auto& message = s_messageSender.makeMessage<MsgCreateSwapChain>();
 
     message.postHandle = reinterpret_cast<uint32_t>(pPresentationParameters->hDeviceWindow);
     message.style = style;
@@ -149,6 +149,8 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
     message.renderHeight = pPresentationParameters->BackBufferHeight;
     message.bufferCount = pPresentationParameters->BackBufferCount;
     message.textureId = (*ppReturnedDeviceInterface)->getBackBuffer()->getId();
+
+    s_messageSender.endMessage();
 
     return S_OK;
 }

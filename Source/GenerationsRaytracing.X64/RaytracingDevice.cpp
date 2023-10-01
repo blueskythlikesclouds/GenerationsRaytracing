@@ -55,7 +55,7 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
         bottomLevelAccelStruct);
 
-    auto& scratchBuffer = m_releasedBuffers.emplace_back();
+    auto& scratchBuffer = m_tempBuffers.emplace_back();
 
     createBuffer(
         D3D12_HEAP_TYPE_DEFAULT,
@@ -78,7 +78,7 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
     switch (message.resourceType)
     {
     case MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct:
-        m_releasedBuffers.emplace_back(std::move(m_bottomLevelAccelStructs[message.resourceId]));
+        m_tempBuffers.emplace_back(std::move(m_bottomLevelAccelStructs[message.resourceId]));
         break;
 
     default:

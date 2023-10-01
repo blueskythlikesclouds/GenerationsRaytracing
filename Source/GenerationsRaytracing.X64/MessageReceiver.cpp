@@ -12,13 +12,7 @@ MessageReceiver::~MessageReceiver()
 
 uint8_t MessageReceiver::getId()
 {
-    uint8_t id = *(m_messageBuffer + m_offset);
-    if ((id & 0x80) != 0)
-    {
-        m_offset += id & 0x7F;
-        id = *(m_messageBuffer + m_offset);
-    }
-    return id;
+    return m_messageBuffer[m_offset];
 }
 
 void MessageReceiver::reset()

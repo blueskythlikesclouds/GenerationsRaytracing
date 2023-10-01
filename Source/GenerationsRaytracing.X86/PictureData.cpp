@@ -14,7 +14,7 @@ HOOK(void, __cdecl, CPictureDataMake, Hedgehog::Mirage::fpCPictureDataMake0,
     {
         Texture* texture = new Texture(NULL, NULL, NULL);
 
-        auto& message = s_messageSender.makeParallelMessage<MsgMakeTexture>(dataSize);
+        auto& message = s_messageSender.makeMessage<MsgMakeTexture>(dataSize);
 
         message.textureId = texture->getId();
 #if _DEBUG
@@ -22,7 +22,7 @@ HOOK(void, __cdecl, CPictureDataMake, Hedgehog::Mirage::fpCPictureDataMake0,
 #endif
         memcpy(message.data, data, dataSize);
 
-        s_messageSender.endParallelMessage();
+        s_messageSender.endMessage();
 
         pictureData->m_pD3DTexture = reinterpret_cast<DX_PATCH::IDirect3DBaseTexture9*>(texture);
         pictureData->m_Type = Hedgehog::Mirage::ePictureType_Texture;

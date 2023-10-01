@@ -14,12 +14,12 @@ VertexBuffer::VertexBuffer(uint32_t byteSize)
 
 VertexBuffer::~VertexBuffer()
 {
-    auto& message = s_messageSender.makeParallelMessage<MsgReleaseResource>();
+    auto& message = s_messageSender.makeMessage<MsgReleaseResource>();
 
     message.resourceType = MsgReleaseResource::ResourceType::VertexBuffer;
     message.resourceId = m_id;
 
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     s_freeListAllocator.free(m_id);
 }
@@ -34,7 +34,7 @@ HRESULT VertexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, D
     if (SizeToLock == 0)
         SizeToLock = m_byteSize - OffsetToLock;
 
-    auto& message = s_messageSender.makeParallelMessage<MsgWriteVertexBuffer>(SizeToLock);
+    auto& message = s_messageSender.makeMessage<MsgWriteVertexBuffer>(SizeToLock);
 
     message.vertexBufferId = m_id;
     message.offset = OffsetToLock;
@@ -45,7 +45,7 @@ HRESULT VertexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, D
 
 HRESULT VertexBuffer::Unlock()
 {
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     return S_OK;
 }

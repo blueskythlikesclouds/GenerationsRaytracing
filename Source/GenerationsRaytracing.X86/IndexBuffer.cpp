@@ -14,12 +14,12 @@ IndexBuffer::IndexBuffer(uint32_t byteSize)
 
 IndexBuffer::~IndexBuffer()
 {
-    auto& message = s_messageSender.makeParallelMessage<MsgReleaseResource>();
+    auto& message = s_messageSender.makeMessage<MsgReleaseResource>();
 
     message.resourceType = MsgReleaseResource::ResourceType::IndexBuffer;
     message.resourceId = m_id;
 
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     s_freeListAllocator.free(m_id);
 }
@@ -34,7 +34,7 @@ HRESULT IndexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DW
     if (SizeToLock == 0)
         SizeToLock = m_byteSize - OffsetToLock;
 
-    auto& message = s_messageSender.makeParallelMessage<MsgWriteIndexBuffer>(SizeToLock);
+    auto& message = s_messageSender.makeMessage<MsgWriteIndexBuffer>(SizeToLock);
 
     message.indexBufferId = m_id;
     message.offset = OffsetToLock;
@@ -45,7 +45,7 @@ HRESULT IndexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DW
 
 HRESULT IndexBuffer::Unlock()
 {
-    s_messageSender.endParallelMessage();
+    s_messageSender.endMessage();
 
     return S_OK;
 }
