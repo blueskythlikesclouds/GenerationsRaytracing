@@ -674,12 +674,15 @@ HRESULT Device::SetStreamSourceFreq(UINT StreamNumber, UINT Setting)
 {
     if (m_settings[StreamNumber] != Setting)
     {
-        auto& message = s_messageSender.makeMessage<MsgSetStreamSourceFreq>();
+        if (StreamNumber == 0)
+        {
+            auto& message = s_messageSender.makeMessage<MsgSetStreamSourceFreq>();
 
-        message.streamNumber = StreamNumber;
-        message.setting = Setting;
+            message.streamNumber = StreamNumber;
+            message.setting = Setting;
 
-        s_messageSender.endMessage();
+            s_messageSender.endMessage();
+        }
 
         m_settings[StreamNumber] = Setting;
     }

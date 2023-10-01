@@ -183,6 +183,28 @@ void Device::flushGraphicsState()
             m_depthStencilView.ptr != NULL ? &m_depthStencilView : nullptr);
     }
 
+    if (m_dirtyFlags & DIRTY_FLAG_VERTEX_DECLARATION)
+    {
+        const D3D12_INPUT_ELEMENT_DESC* inputElements = nullptr;
+        uint32_t inputElementsSize = 0;
+
+        if (m_vertexDeclarationId != NULL)
+        {
+            const auto& vertexDeclaration = m_vertexDeclarations[m_vertexDeclarationId];
+            inputElements = &vertexDeclaration.inputElements[vertexDeclaration.inputElementsSize * m_instancing];
+            inputElementsSize = vertexDeclaration.inputElementsSize;
+        }
+
+        if (m_pipelineDesc.InputLayout.pInputElementDescs != inputElements || 
+            m_pipelineDesc.InputLayout.NumElements != inputElementsSize)
+        {
+            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+        }
+
+        m_pipelineDesc.InputLayout.pInputElementDescs = inputElements;
+        m_pipelineDesc.InputLayout.NumElements = inputElementsSize;
+    }
+
     if (m_dirtyFlags & DIRTY_FLAG_PIPELINE_DESC)
     {
         const XXH64_hash_t pipelineHash = XXH3_64bits(&m_pipelineDesc, sizeof(m_pipelineDesc));
@@ -417,10 +439,25 @@ void Device::procMsgCreateVertexDeclaration()
 
     auto& vertexDeclaration = m_vertexDeclarations[message.vertexDeclarationId];
 
-    vertexDeclaration.inputElements = std::make_unique<D3D12_INPUT_ELEMENT_DESC[]>(inputElements.size());
+    vertexDeclaration.inputElements = std::make_unique<D3D12_INPUT_ELEMENT_DESC[]>(inputElements.size() * 2);
     vertexDeclaration.inputElementsSize = static_cast<uint32_t>(inputElements.size());
 
-    memcpy(vertexDeclaration.inputElements.get(), inputElements.data(), inputElements.size() * sizeof(D3D12_INPUT_ELEMENT_DESC));
+    memcpy(vertexDeclaration.inputElements.get(), 
+        inputElements.data(), inputElements.size() * sizeof(D3D12_INPUT_ELEMENT_DESC));
+
+    // create an instanced version in the second half
+    memcpy(&vertexDeclaration.inputElements[inputElements.size()], 
+        inputElements.data(), inputElements.size() * sizeof(D3D12_INPUT_ELEMENT_DESC));
+
+    for (size_t i = 0; i < inputElements.size(); i++)
+    {
+        auto& inputElement = vertexDeclaration.inputElements[inputElements.size() + i];
+        if (inputElement.InputSlot > 0)
+        {
+            inputElement.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+            inputElement.InstanceDataStepRate = 1;
+        }
+    }
 }
 
 void Device::procMsgCreatePixelShader()
@@ -1004,24 +1041,10 @@ void Device::procMsgSetVertexDeclaration()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetVertexDeclaration>();
 
-    if (message.vertexDeclarationId != NULL)
-    {
-        const auto& vertexDeclaration = m_vertexDeclarations[message.vertexDeclarationId];
+    if (m_vertexDeclarationId != message.vertexDeclarationId)
+        m_dirtyFlags |= DIRTY_FLAG_VERTEX_DECLARATION;
 
-        if (m_pipelineDesc.InputLayout.pInputElementDescs != vertexDeclaration.inputElements.get())
-            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
-
-        m_pipelineDesc.InputLayout.pInputElementDescs = vertexDeclaration.inputElements.get();
-        m_pipelineDesc.InputLayout.NumElements = static_cast<UINT>(vertexDeclaration.inputElementsSize);
-    }
-    else
-    {
-        if (m_pipelineDesc.InputLayout.pInputElementDescs != nullptr)
-            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
-
-        m_pipelineDesc.InputLayout.pInputElementDescs = nullptr;
-        m_pipelineDesc.InputLayout.NumElements = 0;
-    }
+    m_vertexDeclarationId = message.vertexDeclarationId;
 }
 
 void Device::procMsgDrawPrimitiveUP()
@@ -1039,7 +1062,7 @@ void Device::procMsgDrawPrimitiveUP()
     flushGraphicsState();
 
     m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-        ->DrawInstanced(message.vertexCount, 1, 0, 0);
+        ->DrawInstanced(message.vertexCount, m_instanceCount, 0, 0);
 }
 
 void Device::procMsgSetStreamSource()
@@ -1361,7 +1384,7 @@ void Device::procMsgDrawIndexedPrimitive()
     m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
         ->DrawIndexedInstanced(
             message.indexCount,
-            1,
+            m_instanceCount,
             message.startIndex,
             message.baseVertexIndex,
             0);
@@ -1370,6 +1393,16 @@ void Device::procMsgDrawIndexedPrimitive()
 void Device::procMsgSetStreamSourceFreq()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetStreamSourceFreq>();
+
+    assert(message.streamNumber == 0);
+
+    const bool instancing = (message.setting & D3DSTREAMSOURCE_INDEXEDDATA) != 0;
+
+    if (instancing != m_instancing)
+        m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+    
+    m_instancing = instancing;
+    m_instanceCount = instancing ? message.setting & 0x3FFFFFFF : 1;
 }
 
 void Device::procMsgReleaseResource()
@@ -1408,7 +1441,7 @@ void Device::procMsgDrawPrimitive()
     m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
         ->DrawInstanced(
             message.vertexCount,
-            1,
+            m_instanceCount,
             message.startVertex,
             0);
 }

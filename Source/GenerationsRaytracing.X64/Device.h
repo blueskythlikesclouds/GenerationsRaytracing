@@ -35,10 +35,11 @@ enum DirtyFlags
     DIRTY_FLAG_GLOBALS_VS = 1 << 3,
     DIRTY_FLAG_VIEWPORT = 1 << 4,
     DIRTY_FLAG_SCISSOR_RECT = 1 << 5,
-    DIRTY_FLAG_VERTEX_BUFFER_VIEWS = 1 << 6,
-    DIRTY_FLAG_INDEX_BUFFER_VIEW = 1 << 7,
-    DIRTY_FLAG_PRIMITIVE_TOPOLOGY = 1 << 8,
-    DIRTY_FLAG_SAMPLER_DESC = 1 << 9
+    DIRTY_FLAG_VERTEX_DECLARATION = 1 << 6,
+    DIRTY_FLAG_VERTEX_BUFFER_VIEWS = 1 << 7,
+    DIRTY_FLAG_INDEX_BUFFER_VIEW = 1 << 8,
+    DIRTY_FLAG_PRIMITIVE_TOPOLOGY = 1 << 9,
+    DIRTY_FLAG_SAMPLER_DESC = 1 << 10
 };
 
 static constexpr size_t NUM_FRAMES = 2;
@@ -103,7 +104,7 @@ protected:
 
     D3D12_VIEWPORT m_viewport{};
     RECT m_scissorRect{};
-    bool m_scissorEnable = false;
+    uint32_t m_vertexDeclarationId = 0;
 
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferViews[16]{};
     uint32_t m_vertexBufferViewsFirst = 0;
@@ -111,6 +112,9 @@ protected:
 
     D3D12_INDEX_BUFFER_VIEW m_indexBufferView{};
     D3D12_PRIMITIVE_TOPOLOGY m_primitiveTopology{};
+
+    bool m_instancing = false;
+    uint32_t m_instanceCount = 1;
 
     uint32_t m_dirtyFlags = ~0;
 
