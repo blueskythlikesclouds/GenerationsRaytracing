@@ -1,9 +1,9 @@
-#include "Device.h"
 #include "ProcessUtil.h"
+#include "RaytracingDevice.h"
 
 static constexpr LPCTSTR s_gensProcessName = TEXT("SonicGenerations.exe");
 
-static std::unique_ptr<Device> s_device;
+static std::unique_ptr<RaytracingDevice> s_device;
 
 static struct ThreadHolder
 {
@@ -68,7 +68,7 @@ int main()
     if (!processHandle)
         return -1;
 
-    s_device = std::make_unique<Device>();
+    s_device = std::make_unique<RaytracingDevice>();
 
     s_threadHolder.processThread = std::thread([processHandle]
     {

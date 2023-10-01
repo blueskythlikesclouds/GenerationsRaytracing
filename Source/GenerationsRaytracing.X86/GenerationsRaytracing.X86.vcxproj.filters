@@ -69,6 +69,9 @@
     <ClCompile Include="Sky.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
+    <ClCompile Include="BottomLevelAccelStruct.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -135,6 +138,9 @@
     <ClInclude Include="Sky.h">
       <Filter>Patch</Filter>
     </ClInclude>
+    <ClInclude Include="BottomLevelAccelStruct.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">
@@ -154,6 +160,9 @@
     </Filter>
     <Filter Include="Dependencies">
       <UniqueIdentifier>{fd41d354-f37c-4b6e-b329-72e7cad037f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Raytracing">
+      <UniqueIdentifier>{17261374-f330-4cb6-988a-7287e02ccc17}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

@@ -120,6 +120,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="RaytracingDevice.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="DxgiConverter.cpp" />
     <ClCompile Include="Window.cpp" />
@@ -133,6 +134,7 @@
     <ClInclude Include="MessageReceiver.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="PixelShader.h" />
+    <ClInclude Include="RaytracingDevice.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SwapChain.h" />
     <ClInclude Include="Texture.h" />

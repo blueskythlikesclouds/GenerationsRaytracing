@@ -26,8 +26,8 @@ const HMODULE MODULE_HANDLE = GetModuleHandle(nullptr);
 
 #define HOOK(returnType, callingConvention, functionName, location, ...) \
     typedef returnType callingConvention functionName##Delegate(__VA_ARGS__); \
-    functionName##Delegate* original##functionName = (functionName##Delegate*)(location); \
-    returnType callingConvention implOf##functionName(__VA_ARGS__)
+    static functionName##Delegate* original##functionName = (functionName##Delegate*)(location); \
+    static returnType callingConvention implOf##functionName(__VA_ARGS__)
 
 #define INSTALL_HOOK(functionName) \
     do { \
@@ -38,30 +38,30 @@ const HMODULE MODULE_HANDLE = GetModuleHandle(nullptr);
     } while(0)
 
 #define VTABLE_HOOK(returnType, callingConvention, className, functionName, ...) \
-    typedef returnType callingConvention className##functionName(className* This, __VA_ARGS__); \
-    className##functionName* original##className##functionName; \
-    returnType callingConvention implOf##className##functionName(className* This, __VA_ARGS__)
+    typedef returnType callingConvention className##functionName##Delegate(className* This, __VA_ARGS__); \
+    static className##functionName##Delegate* original##className##functionName; \
+    static returnType callingConvention implOf##className##functionName(className* This, __VA_ARGS__)
 
 #define INSTALL_VTABLE_HOOK(className, object, functionName, functionIndex) \
     do { \
-        void** addr = &(*(void***)object)[functionIndex]; \
-        if (*addr != implOf##className##functionName) \
+        if (original##className##functionName == nullptr) \
         { \
-            original##className##functionName = (className##functionName*)*addr; \
-            DWORD oldProtect; \
-            VirtualProtect(addr, sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProtect); \
-            *addr = implOf##className##functionName; \
-            VirtualProtect(addr, sizeof(void*), oldProtect, &oldProtect); \
+            original##className##functionName = (*(className##functionName##Delegate***)object)[functionIndex]; \
+            DetourTransactionBegin(); \
+            DetourUpdateThread(GetCurrentThread()); \
+            DetourAttach((void**)&original##className##functionName, implOf##className##functionName); \
+            DetourTransactionCommit(); \
         } \
     } while(0)
 
 #define WRITE_MEMORY(location, type, ...) \
     do { \
-        const type data[] = { __VA_ARGS__ }; \
-        DWORD oldProtect; \
-        VirtualProtect((void*)(location), sizeof(data), PAGE_EXECUTE_READWRITE, &oldProtect); \
-        memcpy((void*)(location), data, sizeof(data)); \
-        VirtualProtect((void*)(location), sizeof(data), oldProtect, &oldProtect); \
+        void* writeMemLoc = (void*)(location); \
+        const type writeMemData[] = { __VA_ARGS__ }; \
+        DWORD writeMemOldProtect; \
+        VirtualProtect(writeMemLoc, sizeof(writeMemData), PAGE_EXECUTE_READWRITE, &writeMemOldProtect); \
+        memcpy(writeMemLoc, writeMemData, sizeof(writeMemData)); \
+        VirtualProtect(writeMemLoc, sizeof(writeMemData), writeMemOldProtect, &writeMemOldProtect); \
     } while(0)
 
 #define WRITE_JUMP(location, function) \
@@ -78,9 +78,11 @@ const HMODULE MODULE_HANDLE = GetModuleHandle(nullptr);
 
 #define WRITE_NOP(location, count) \
     do { \
-        DWORD oldProtect; \
-        VirtualProtect((void*)(location), (size_t)(count), PAGE_EXECUTE_READWRITE, &oldProtect); \
-        for (size_t i = 0; i < (size_t)(count); i++) \
-            *((uint8_t*)(location) + i) = 0x90; \
-        VirtualProtect((void*)(location), (size_t)(count), oldProtect, &oldProtect); \
+        void* writeNopLoc = (void*)(location); \
+        size_t writeNopCount = (size_t)(count); \
+        DWORD writeNopOldProtect; \
+        VirtualProtect(writeNopLoc, writeNopCount, PAGE_EXECUTE_READWRITE, &writeNopOldProtect); \
+        for (size_t i = 0; i < writeNopCount; i++) \
+            *((uint8_t*)writeNopLoc + i) = 0x90; \
+        VirtualProtect(writeNopLoc, writeNopCount, writeNopOldProtect, &writeNopOldProtect); \
     } while(0)

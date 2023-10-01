@@ -297,4 +297,36 @@ struct MsgDrawPrimitive
     uint32_t vertexCount;
 };
 
+struct MsgCreateBottomLevelAccelStruct
+{
+    MSG_DEFINE_MESSAGE(MsgDrawPrimitive);
+
+    struct GeometryDesc
+    {
+        uint32_t indexCount;
+        uint32_t vertexCount;
+        uint32_t indexBufferId;
+        uint32_t indexOffset;
+        uint32_t vertexBufferId;
+        uint32_t vertexOffset;
+        uint32_t vertexStride;
+    };
+
+    uint32_t bottomLevelAccelStructId;
+    uint32_t dataSize;
+    uint8_t data[1u];
+};
+
+struct MsgReleaseRaytracingResource
+{
+    MSG_DEFINE_MESSAGE(MsgCreateBottomLevelAccelStruct);
+
+    enum class ResourceType : uint8_t
+    {
+        BottomLevelAccelStruct
+    };
+    ResourceType resourceType;
+    uint32_t resourceId;
+};
+
 #pragma pack(pop)

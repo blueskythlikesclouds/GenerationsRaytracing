@@ -7,7 +7,7 @@ class CommandList
 {
 protected:
     ComPtr<ID3D12CommandAllocator> m_commandAllocator;
-    ComPtr<ID3D12GraphicsCommandList> m_commandList;
+    ComPtr<ID3D12GraphicsCommandList4> m_commandList;
     bool m_isOpen = true;
 
     struct ResourceStates
@@ -23,13 +23,14 @@ protected:
 public:
     void init(ID3D12Device* device, const CommandQueue& commandQueue);
 
-    ID3D12GraphicsCommandList* getUnderlyingCommandList() const;
+    ID3D12GraphicsCommandList4* getUnderlyingCommandList() const;
 
     bool isOpen() const;
 
     void open();
     void close();
 
-    void setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
+    void transitionBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
+    void uavBarrier(ID3D12Resource* resource);
     void commitBarriers();
 };

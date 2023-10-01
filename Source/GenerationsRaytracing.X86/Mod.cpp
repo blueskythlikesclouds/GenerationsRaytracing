@@ -1,3 +1,4 @@
+#include "BottomLevelAccelStruct.h"
 #include "Configuration.h"
 #include "D3D9.h"
 #include "PictureData.h"
@@ -40,6 +41,7 @@ extern "C" void __declspec(dllexport) Init()
     HalfPixel::init();
     TriangleStrip::init();
     Sky::init();
+    BottomLevelAccelStruct::init();
 
 #ifdef _DEBUG
     MessageBox(NULL, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_ICONINFORMATION | MB_OK);

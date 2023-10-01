@@ -8,13 +8,14 @@
 void Device::createBuffer(
     D3D12_HEAP_TYPE type,
     uint32_t dataSize,
+    D3D12_RESOURCE_FLAGS flags,
     D3D12_RESOURCE_STATES initialState,
     ComPtr<D3D12MA::Allocation>& allocation) const
 {
     D3D12MA::ALLOCATION_DESC allocDesc{};
     allocDesc.HeapType = type;
 
-    const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(dataSize);
+    const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(dataSize, flags);
 
     assert(allocation == nullptr);
 
@@ -56,7 +57,7 @@ void Device::writeBuffer(
     else
     {
         auto& uploadBuffer = m_releasedBuffers.emplace_back();
-        createBuffer(D3D12_HEAP_TYPE_UPLOAD, dataSize, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
+        createBuffer(D3D12_HEAP_TYPE_UPLOAD, dataSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
 
         void* mappedData = nullptr;
         const HRESULT hr = uploadBuffer->GetResource()->Map(0, nullptr, &mappedData);
@@ -280,7 +281,7 @@ void Device::procMsgCreateSwapChain()
         m_textures.resize(m_swapChainTextureId + 1);
 
     m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-    m_graphicsCommandList.setResourceState(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    m_graphicsCommandList.transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void Device::procMsgSetRenderTarget()
@@ -294,7 +295,7 @@ void Device::procMsgSetRenderTarget()
         auto& texture = m_textures[message.textureId];
 
         if (texture.allocation != nullptr)
-            m_graphicsCommandList.setResourceState(texture.allocation->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            m_graphicsCommandList.transitionBarrier(texture.allocation->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         if (texture.rtvIndex == NULL)
         {
@@ -681,12 +682,12 @@ void Device::procMsgSetTexture()
         // NOTE: texture corruption on nvidia with only pixel shader resource
         if (texture.rtvIndex != NULL)
         {
-            m_graphicsCommandList.setResourceState(texture.allocation->GetResource(), 
+            m_graphicsCommandList.transitionBarrier(texture.allocation->GetResource(), 
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
         }
         else if (texture.dsvIndex != NULL)
         {
-            m_graphicsCommandList.setResourceState(texture.allocation->GetResource(),
+            m_graphicsCommandList.transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
         }
 
@@ -723,7 +724,7 @@ void Device::procMsgSetDepthStencilSurface()
     {
         auto& texture = m_textures[message.depthStencilSurfaceId];
 
-        m_graphicsCommandList.setResourceState(texture.allocation->GetResource(),
+        m_graphicsCommandList.transitionBarrier(texture.allocation->GetResource(),
             D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         if (texture.dsvIndex == NULL)
@@ -1128,7 +1129,8 @@ void Device::procMsgCreateVertexBuffer()
 
     createBuffer(
         D3D12_HEAP_TYPE_DEFAULT,
-        message.length, 
+        message.length,
+        D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_COMMON, 
         vertexBuffer.allocation);
 
@@ -1164,6 +1166,7 @@ void Device::procMsgCreateIndexBuffer()
     createBuffer(
         D3D12_HEAP_TYPE_DEFAULT,
         message.length,
+        D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_COMMON,
         indexBuffer.allocation);
 
@@ -1226,6 +1229,7 @@ void Device::procMsgMakeTexture()
     createBuffer(
         D3D12_HEAP_TYPE_UPLOAD,
         static_cast<uint32_t>(GetRequiredIntermediateSize(texture.allocation->GetResource(), 0, static_cast<UINT>(subResources.size()))),
+        D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         uploadBuffer);
 
@@ -1519,7 +1523,7 @@ void Device::processMessages()
     if (m_swapChainTextureId != 0)
     {
         m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-        m_graphicsCommandList.setResourceState(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        m_graphicsCommandList.transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }
 
     ID3D12DescriptorHeap* descriptorHeaps[] =
@@ -1697,9 +1701,13 @@ void Device::processMessages()
             break;
 
         default:
-            assert(!"Unknown message type");
+        {
+            if (!processRaytracingMessage())
+                assert(!"Unknown message type");
+
             stop = true;
             break;
+        }
         }
     }
     // let Generations know we finished processing messages
@@ -1776,8 +1784,8 @@ void Device::setEvents()
 
 void Device::setShouldExit()
 {
-    setEvents();
     m_swapChain.getWindow().m_shouldExit = true;
+    setEvents();
 }
 
 ID3D12Device* Device::getUnderlyingDevice() const

@@ -52,7 +52,7 @@ protected:
     uint32_t m_swapChainTextureId = 0;
     bool m_shouldPresent = false;
 
-    ComPtr<ID3D12Device> m_device;
+    ComPtr<ID3D12Device5> m_device;
     ComPtr<D3D12MA::Allocator> m_allocator;
 
     CommandQueue m_graphicsQueue;
@@ -112,6 +112,7 @@ protected:
     void createBuffer(
         D3D12_HEAP_TYPE type,
         uint32_t dataSize,
+        D3D12_RESOURCE_FLAGS flags,
         D3D12_RESOURCE_STATES initialState,
         ComPtr<D3D12MA::Allocation>& allocation) const;
 
@@ -165,6 +166,7 @@ protected:
     void procMsgDrawPrimitive();
 
     void processMessages();
+    virtual bool processRaytracingMessage() = 0;
 
 public:
     Device();

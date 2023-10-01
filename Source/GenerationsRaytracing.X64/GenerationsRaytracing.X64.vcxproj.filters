@@ -27,6 +27,9 @@
     <ClCompile Include="DxgiConverter.cpp">
       <Filter>Resource</Filter>
     </ClCompile>
+    <ClCompile Include="RaytracingDevice.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -91,6 +94,9 @@
       <Filter>Resource</Filter>
     </ClInclude>
     <ClInclude Include="UploadBuffer.h" />
+    <ClInclude Include="RaytracingDevice.h">
+      <Filter>Device</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">

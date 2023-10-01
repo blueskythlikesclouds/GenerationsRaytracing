@@ -11,7 +11,7 @@ void CommandList::init(ID3D12Device* device, const CommandQueue& commandQueue)
     assert(SUCCEEDED(hr) && m_commandList != nullptr);
 }
 
-ID3D12GraphicsCommandList* CommandList::getUnderlyingCommandList() const
+ID3D12GraphicsCommandList4* CommandList::getUnderlyingCommandList() const
 {
     return m_commandList.Get();
 }
@@ -52,7 +52,7 @@ void CommandList::close()
     }
 }
 
-void CommandList::setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter)
+void CommandList::transitionBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter)
 {
     const auto result = m_resourceStates.find(resource);
 
@@ -67,10 +67,13 @@ void CommandList::setResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STAT
     }
 }
 
+void CommandList::uavBarrier(ID3D12Resource* resource)
+{
+    m_resourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::UAV(resource));
+}
+
 void CommandList::commitBarriers()
 {
-    m_resourceBarriers.clear();
-
     for (auto& [resource, states] : m_resourceStates)
     {
         if (states.stateBefore != states.stateAfter)
@@ -82,4 +85,6 @@ void CommandList::commitBarriers()
 
     if (!m_resourceBarriers.empty())
         m_commandList->ResourceBarrier(static_cast<UINT>(m_resourceBarriers.size()), m_resourceBarriers.data());
+
+    m_resourceBarriers.clear();
 }

@@ -17,7 +17,9 @@ void DescriptorHeap::init(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type)
     assert(SUCCEEDED(hr) && m_heap != nullptr);
 
     m_cpuDescriptorHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
-    m_gpuDescriptorHandle = m_heap->GetGPUDescriptorHandleForHeapStart();
+
+    if (desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+        m_gpuDescriptorHandle = m_heap->GetGPUDescriptorHandleForHeapStart();
 
     m_incrementSize = device->GetDescriptorHandleIncrementSize(type);
 }

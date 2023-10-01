@@ -109,6 +109,7 @@
       </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="BaseTexture.cpp" />
+    <ClCompile Include="BottomLevelAccelStruct.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="D3D9.cpp" />
     <ClCompile Include="HalfPixel.cpp" />
@@ -137,6 +138,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseTexture.h" />
+    <ClInclude Include="BottomLevelAccelStruct.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="D3D9.h" />
     <ClInclude Include="HalfPixel.h" />
