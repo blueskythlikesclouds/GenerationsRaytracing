@@ -8,6 +8,7 @@
 #include "MessageSender.h"
 #include "ProcessUtil.h"
 #include "Sky.h"
+#include "TopLevelAccelStruct.h"
 #include "TriangleFan.h"
 #include "TriangleStrip.h"
 #include "Window.h"
@@ -44,6 +45,7 @@ extern "C" void __declspec(dllexport) Init()
     Sky::init();
     Memory::init();
     BottomLevelAccelStruct::init();
+    TopLevelAccelStruct::init();
 
 #ifdef _DEBUG
     MessageBox(NULL, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_ICONINFORMATION | MB_OK);

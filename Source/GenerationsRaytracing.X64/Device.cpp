@@ -80,6 +80,8 @@ void Device::writeBuffer(
 
 D3D12_GPU_VIRTUAL_ADDRESS Device::makeBuffer(const void* memory, uint32_t dataSize, uint32_t dataAlignment)
 {
+    assert(dataSize <= UPLOAD_BUFFER_SIZE);
+
     m_uploadBufferOffset = (m_uploadBufferOffset + dataAlignment - 1) & ~(dataAlignment - 1);
 
     if (m_uploadBufferOffset + dataSize > UPLOAD_BUFFER_SIZE)
@@ -1143,6 +1145,7 @@ void Device::procMsgSetIndices()
 void Device::procMsgPresent()
 {
     const auto& message = m_messageReceiver.getMessage<MsgPresent>();
+    updateRaytracing();
     m_shouldPresent = true;
 }
 

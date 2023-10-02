@@ -129,6 +129,7 @@
     <ClCompile Include="Sky.cpp" />
     <ClCompile Include="Surface.cpp" />
     <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="TopLevelAccelStruct.cpp" />
     <ClCompile Include="TriangleFan.cpp" />
     <ClCompile Include="TriangleStrip.cpp" />
     <ClCompile Include="Unknown.cpp" />
@@ -155,6 +156,7 @@
     <ClInclude Include="Sky.h" />
     <ClInclude Include="Surface.h" />
     <ClInclude Include="Texture.h" />
+    <ClInclude Include="TopLevelAccelStruct.h" />
     <ClInclude Include="TriangleFan.h" />
     <ClInclude Include="TriangleStrip.h" />
     <ClInclude Include="Unknown.h" />

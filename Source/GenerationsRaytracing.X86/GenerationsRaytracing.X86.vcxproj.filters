@@ -75,6 +75,9 @@
     <ClCompile Include="Memory.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
+    <ClCompile Include="TopLevelAccelStruct.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -146,6 +149,9 @@
     </ClInclude>
     <ClInclude Include="Memory.h">
       <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="TopLevelAccelStruct.h">
+      <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

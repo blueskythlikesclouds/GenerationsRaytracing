@@ -177,6 +177,7 @@ protected:
 
     void processMessages();
     virtual bool processRaytracingMessage() = 0;
+    virtual void updateRaytracing() = 0; // NOTE: This is temporary
 
 public:
     Device();

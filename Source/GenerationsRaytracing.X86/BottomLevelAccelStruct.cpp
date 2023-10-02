@@ -6,7 +6,7 @@
 #include "MessageSender.h"
 #include "VertexBuffer.h"
 
-struct MeshDataEx : public Hedgehog::Mirage::CMeshData
+class MeshDataEx : public Hedgehog::Mirage::CMeshData
 {
 public:
     DX_PATCH::IDirect3DIndexBuffer9* m_indices;
@@ -225,12 +225,6 @@ static void createBottomLevelAccelStruct(const T& modelData)
 
 static FreeListAllocator s_freeListAllocator;
 
-class TerrainModelDataEx : public Hedgehog::Mirage::CTerrainModelData
-{
-public:
-    uint32_t m_bottomLevelAccelStructId;
-};
-
 HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, TerrainModelDataEx* This)
 {
     const auto result = originalTerrainModelDataConstructor(This);
@@ -242,37 +236,34 @@ HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, Ter
 
 HOOK(void, __fastcall, TerrainModelDataDestructor, 0x717230, TerrainModelDataEx* This)
 {
-    if (This->m_bottomLevelAccelStructId != NULL)
-    {
-        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+    auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
 
-        message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
-        message.resourceId = This->m_bottomLevelAccelStructId;
+    message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
+    message.resourceId = This->m_bottomLevelAccelStructId;
 
-        s_messageSender.endMessage();
+    s_messageSender.endMessage();
 
-        s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
-    }
+    s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
 
     originalTerrainModelDataDestructor(This);
 }
 
 static std::vector<TerrainModelDataEx*> s_terrainModelList;
 
-static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* terrainModelData)
+static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* This)
 {
-    assert(terrainModelData->m_bottomLevelAccelStructId != NULL);
+    assert(This->m_bottomLevelAccelStructId != NULL);
 
     if (*reinterpret_cast<uint32_t*>(0x1B244D4) != NULL) // Share vertex buffer
     {
-        s_terrainModelList.push_back(terrainModelData);
+        s_terrainModelList.push_back(This);
     }
     else
     {
-        createBottomLevelAccelStruct(*terrainModelData);
+        createBottomLevelAccelStruct(*This);
     }
 
-    terrainModelData->SetMadeOne();
+    This->SetMadeOne();
 }
 
 HOOK(void, __fastcall, CreateShareVertexBuffer, 0x72EBD0, void* This)

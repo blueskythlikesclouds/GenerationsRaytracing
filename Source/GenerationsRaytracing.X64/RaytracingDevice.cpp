@@ -81,9 +81,38 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
         m_tempBuffers[m_frame].emplace_back(std::move(m_bottomLevelAccelStructs[message.resourceId]));
         break;
 
+    case MsgReleaseRaytracingResource::ResourceType::Instance:
+        m_instanceDescs[message.resourceId].AccelerationStructure = NULL;
+        break;
+
     default:
         assert(false);
         break;
+    }
+}
+
+void RaytracingDevice::procMsgCreateInstance()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCreateInstance>();
+
+    if (m_instanceDescs.size() <= message.instanceId)
+        m_instanceDescs.resize(message.instanceId + 1);
+
+    auto& instanceDesc = m_instanceDescs[message.instanceId];
+
+    memcpy(instanceDesc.Transform, message.transform, sizeof(message.transform));
+    instanceDesc.InstanceID = message.instanceId;
+
+    if (m_bottomLevelAccelStructs.size() <= message.bottomLevelAccelStructId ||
+        m_bottomLevelAccelStructs[message.bottomLevelAccelStructId] == nullptr)
+    {
+        // Not loaded yet, defer assignment to top level acceleration structure creation
+        m_deferredInstances.emplace_back(message.instanceId, message.bottomLevelAccelStructId);
+    }
+    else
+    {
+        instanceDesc.AccelerationStructure = 
+            m_bottomLevelAccelStructs[message.bottomLevelAccelStructId]->GetResource()->GetGPUVirtualAddress();
     }
 }
 
@@ -99,9 +128,79 @@ bool RaytracingDevice::processRaytracingMessage()
         procMsgReleaseRaytracingResource();
         break;
 
+    case MsgCreateInstance::s_id:
+        procMsgCreateInstance();
+        break;
+
     default:
         return false;
     }
 
     return true;
+}
+
+void RaytracingDevice::createTopLevelAccelStruct()
+{
+    if (m_instanceDescs.empty())
+        return;
+
+    for (const auto&[instanceId, bottomLevelAccelStructId] : m_deferredInstances)
+    {
+        if (m_bottomLevelAccelStructs.size() > bottomLevelAccelStructId && 
+            m_bottomLevelAccelStructs[bottomLevelAccelStructId] != nullptr)
+        {
+            m_instanceDescs[instanceId].AccelerationStructure =
+                m_bottomLevelAccelStructs[bottomLevelAccelStructId]->GetResource()->GetGPUVirtualAddress();
+        }
+        else
+        {
+            // Still not loaded, leave it for next creation
+            m_tempDeferredInstances.emplace_back(instanceId, bottomLevelAccelStructId);
+        }
+    }
+
+    m_deferredInstances.clear();
+    std::swap(m_deferredInstances, m_tempDeferredInstances);
+
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
+    accelStructDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+    accelStructDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+    accelStructDesc.Inputs.NumDescs = static_cast<UINT>(m_instanceDescs.size());
+    accelStructDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+    accelStructDesc.Inputs.InstanceDescs = makeBuffer(m_instanceDescs.data(),
+        static_cast<uint32_t>(m_instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), 0x10);
+
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
+    m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
+
+    // TODO: Duplicate code is bad!
+
+    auto& topLevelAccelStruct = m_tempBuffers[m_frame].emplace_back();
+
+    createBuffer(
+        D3D12_HEAP_TYPE_DEFAULT,
+        static_cast<uint32_t>(preBuildInfo.ResultDataMaxSizeInBytes),
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+        topLevelAccelStruct);
+
+    auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
+
+    createBuffer(
+        D3D12_HEAP_TYPE_DEFAULT,
+        static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes),
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+        scratchBuffer);
+
+    accelStructDesc.DestAccelerationStructureData = topLevelAccelStruct->GetResource()->GetGPUVirtualAddress();
+    accelStructDesc.ScratchAccelerationStructureData = scratchBuffer->GetResource()->GetGPUVirtualAddress();
+
+    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
+    m_graphicsCommandLists[m_frame].uavBarrier(topLevelAccelStruct->GetResource());
+}
+
+void RaytracingDevice::updateRaytracing()
+{
+    createTopLevelAccelStruct();
 }

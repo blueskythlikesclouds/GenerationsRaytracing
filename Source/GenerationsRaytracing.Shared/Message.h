@@ -4,7 +4,6 @@
 
 #define MSG_DEFINE_MESSAGE(PREVIOUS_MESSAGE) \
     static constexpr uint8_t s_id = PREVIOUS_MESSAGE::s_id + 1; \
-    static_assert(s_id < 128); \
     uint8_t id = s_id
 
 #pragma pack(push, 1)
@@ -324,10 +323,20 @@ struct MsgReleaseRaytracingResource
 
     enum class ResourceType : uint8_t
     {
-        BottomLevelAccelStruct
+        BottomLevelAccelStruct,
+        Instance
     };
     ResourceType resourceType;
     uint32_t resourceId;
+};
+
+struct MsgCreateInstance
+{
+    MSG_DEFINE_MESSAGE(MsgReleaseRaytracingResource);
+
+    float transform[3][4];
+    uint32_t instanceId;
+    uint32_t bottomLevelAccelStructId;
 };
 
 #pragma pack(pop)
