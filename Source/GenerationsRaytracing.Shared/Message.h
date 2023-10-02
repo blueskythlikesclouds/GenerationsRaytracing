@@ -339,4 +339,12 @@ struct MsgCreateInstance
     uint32_t bottomLevelAccelStructId;
 };
 
+struct MsgTraceRays
+{
+    MSG_DEFINE_MESSAGE(MsgCreateInstance);
+
+    uint16_t width;
+    uint16_t height;
+};
+
 #pragma pack(pop)

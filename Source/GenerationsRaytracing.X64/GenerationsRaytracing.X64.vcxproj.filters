@@ -30,6 +30,9 @@
     <ClCompile Include="RaytracingDevice.cpp">
       <Filter>Device</Filter>
     </ClCompile>
+    <ClCompile Include="RootSignature.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -44,7 +47,7 @@
     <Filter Include="Base">
       <UniqueIdentifier>{8c952580-0bed-48d3-9f2d-3094e9e39818}</UniqueIdentifier>
     </Filter>
-    <Filter Include="FVF">
+    <Filter Include="Shader">
       <UniqueIdentifier>{3c57636c-5d7c-4abd-9860-06eba5ae7c9a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -97,6 +100,9 @@
     <ClInclude Include="RaytracingDevice.h">
       <Filter>Device</Filter>
     </ClInclude>
+    <ClInclude Include="RootSignature.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
@@ -108,10 +114,19 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="FVFPixelShader.hlsl">
-      <Filter>FVF</Filter>
+      <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="FVFVertexShader.hlsl">
-      <Filter>FVF</Filter>
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="DXILLibrary.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="CopyTexturePixelShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="CopyTextureVertexShader.hlsl">
+      <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

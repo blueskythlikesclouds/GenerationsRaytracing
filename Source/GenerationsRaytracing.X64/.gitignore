@@ -1,2 +1,5 @@
+CopyTexturePixelShader.h
+CopyTextureVertexShader.h
+DXILLibrary.h
 FVFVertexShader.h
 FVFPixelShader.h

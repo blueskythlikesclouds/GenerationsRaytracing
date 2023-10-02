@@ -7,7 +7,7 @@
 #include "Memory.h"
 #include "MessageSender.h"
 #include "ProcessUtil.h"
-#include "Sky.h"
+#include "RaytracingRendering.h"
 #include "TopLevelAccelStruct.h"
 #include "TriangleFan.h"
 #include "TriangleStrip.h"
@@ -42,18 +42,20 @@ extern "C" void __declspec(dllexport) Init()
     TriangleFan::init();
     HalfPixel::init();
     TriangleStrip::init();
-    Sky::init();
     Memory::init();
     BottomLevelAccelStruct::init();
     TopLevelAccelStruct::init();
+    RaytracingRendering::init();
 
 #ifdef _DEBUG
+#if 0
     MessageBox(NULL, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_ICONINFORMATION | MB_OK);
 
     if (!GetConsoleWindow())
         AllocConsole();
 
     freopen("CONOUT$", "w", stdout);
+#endif
 #else
     terminateProcess(s_bridgeProcessName);
 #endif

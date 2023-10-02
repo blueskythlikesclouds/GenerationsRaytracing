@@ -66,9 +66,6 @@
     <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c">
       <Filter>Dependencies</Filter>
     </ClCompile>
-    <ClCompile Include="Sky.cpp">
-      <Filter>Patch</Filter>
-    </ClCompile>
     <ClCompile Include="BottomLevelAccelStruct.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
@@ -76,6 +73,9 @@
       <Filter>Patch</Filter>
     </ClCompile>
     <ClCompile Include="TopLevelAccelStruct.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="RaytracingRendering.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
   </ItemGroup>
@@ -141,9 +141,6 @@
     <ClInclude Include="TriangleStrip.h">
       <Filter>Patch</Filter>
     </ClInclude>
-    <ClInclude Include="Sky.h">
-      <Filter>Patch</Filter>
-    </ClInclude>
     <ClInclude Include="BottomLevelAccelStruct.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
@@ -151,6 +148,9 @@
       <Filter>Patch</Filter>
     </ClInclude>
     <ClInclude Include="TopLevelAccelStruct.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="RaytracingRendering.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>

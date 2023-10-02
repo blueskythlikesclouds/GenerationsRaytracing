@@ -4,6 +4,7 @@
 #include "Message.h"
 #include "FVFVertexShader.h"
 #include "FVFPixelShader.h"
+#include "RootSignature.h"
 
 void Device::createBuffer(
     D3D12_HEAP_TYPE type,
@@ -44,8 +45,8 @@ void Device::writeBuffer(
 
         memcpy(uploadBuffer.memory + m_uploadBufferOffset, memory, dataSize);
 
-        m_copyCommandLists[m_frame].open();
-        m_copyCommandLists[m_frame].getUnderlyingCommandList()->CopyBufferRegion(
+        getCopyCommandList().open();
+        getUnderlyingCopyCommandList()->CopyBufferRegion(
             dstResource,
             offset,
             uploadBuffer.allocation->GetResource(),
@@ -68,8 +69,8 @@ void Device::writeBuffer(
 
         uploadBuffer->GetResource()->Unmap(0, nullptr);
 
-        m_copyCommandLists[m_frame].open();
-        m_copyCommandLists[m_frame].getUnderlyingCommandList()->CopyBufferRegion(
+        getCopyCommandList().open();
+        getUnderlyingCopyCommandList()->CopyBufferRegion(
             dstResource,
             offset,
             uploadBuffer->GetResource(),
@@ -176,9 +177,12 @@ void Device::setPrimitiveType(D3DPRIMITIVETYPE primitiveType)
 
 void Device::flushGraphicsState()
 {
+    if (m_dirtyFlags & DIRTY_FLAG_ROOT_SIGNATURE)
+        getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
+
     if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
     {
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->OMSetRenderTargets(
+        getUnderlyingGraphicsCommandList()->OMSetRenderTargets(
             m_renderTargetView.ptr != NULL ? 1 : 0,
             m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr,
             FALSE,
@@ -216,13 +220,13 @@ void Device::flushGraphicsState()
             const HRESULT hr = m_device->CreateGraphicsPipelineState(&m_pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
             assert(SUCCEEDED(hr));
         }
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->SetPipelineState(pipeline.Get());
+        getUnderlyingGraphicsCommandList()->SetPipelineState(pipeline.Get());
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_VS)
     {
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-            ->SetGraphicsRootConstantBufferView(0, makeBuffer(&m_globalsVS, sizeof(m_globalsVS), 0x100));
+        getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0,
+            makeBuffer(&m_globalsVS, sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_SAMPLER_DESC)
@@ -248,15 +252,15 @@ void Device::flushGraphicsState()
 
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_PS)
     {
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-            ->SetGraphicsRootConstantBufferView(1, makeBuffer(&m_globalsPS, sizeof(m_globalsPS), 0x100));
+        getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(1,
+            makeBuffer(&m_globalsPS, sizeof(m_globalsPS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_VIEWPORT)
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->RSSetViewports(1, &m_viewport);
+        getUnderlyingGraphicsCommandList()->RSSetViewports(1, &m_viewport);
 
     if (m_dirtyFlags & DIRTY_FLAG_SCISSOR_RECT)
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->RSSetScissorRects(1, &m_scissorRect);
+        getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &m_scissorRect);
 
     if (m_dirtyFlags & DIRTY_FLAG_VERTEX_BUFFER_VIEWS)
     {
@@ -274,16 +278,16 @@ void Device::flushGraphicsState()
             numViews = m_vertexBufferViewsLast - m_vertexBufferViewsFirst + 1;
         }
 
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
+        getUnderlyingGraphicsCommandList()->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_INDEX_BUFFER_VIEW)
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->IASetIndexBuffer(&m_indexBufferView);
+        getUnderlyingGraphicsCommandList()->IASetIndexBuffer(&m_indexBufferView);
 
     if (m_dirtyFlags & DIRTY_FLAG_PRIMITIVE_TOPOLOGY)
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()->IASetPrimitiveTopology(m_primitiveTopology);
+        getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(m_primitiveTopology);
 
-    m_graphicsCommandLists[m_frame].commitBarriers();
+    getGraphicsCommandList().commitBarriers();
 
     m_dirtyFlags = 0;
 
@@ -310,7 +314,9 @@ void Device::procMsgCreateSwapChain()
         m_textures.resize(m_swapChainTextureId + 1);
 
     m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-    m_graphicsCommandLists[m_frame].transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+    getGraphicsCommandList().transitionBarrier(m_swapChain.getResource(), 
+        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void Device::procMsgSetRenderTarget()
@@ -324,7 +330,10 @@ void Device::procMsgSetRenderTarget()
         auto& texture = m_textures[message.textureId];
 
         if (texture.allocation != nullptr)
-            m_graphicsCommandLists[m_frame].transitionBarrier(texture.allocation->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        {
+            getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
+                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        }
 
         if (texture.rtvIndex == NULL)
         {
@@ -726,12 +735,12 @@ void Device::procMsgSetTexture()
         // NOTE: texture corruption on nvidia with only pixel shader resource
         if (texture.rtvIndex != NULL)
         {
-            m_graphicsCommandLists[m_frame].transitionBarrier(texture.allocation->GetResource(), 
+            getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(), 
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
         }
         else if (texture.dsvIndex != NULL)
         {
-            m_graphicsCommandLists[m_frame].transitionBarrier(texture.allocation->GetResource(),
+            getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
         }
 
@@ -768,7 +777,7 @@ void Device::procMsgSetDepthStencilSurface()
     {
         auto& texture = m_textures[message.depthStencilSurfaceId];
 
-        m_graphicsCommandLists[m_frame].transitionBarrier(texture.allocation->GetResource(),
+        getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
             D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         if (texture.dsvIndex == NULL)
@@ -815,7 +824,7 @@ void Device::procMsgClear()
 {
     const auto& message = m_messageReceiver.getMessage<MsgClear>();
 
-    m_graphicsCommandLists[m_frame].commitBarriers();
+    getGraphicsCommandList().commitBarriers();
 
     if ((message.flags & D3DCLEAR_TARGET) && m_renderTargetView.ptr != NULL)
     {
@@ -825,8 +834,7 @@ void Device::procMsgClear()
         color[0] = static_cast<float>((message.color >> 16) & 0xFF) / 255.0f;
         color[3] = static_cast<float>((message.color >> 24) & 0xFF) / 255.0f;
 
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-            ->ClearRenderTargetView(m_renderTargetView, color, 0, nullptr);
+        getUnderlyingGraphicsCommandList()->ClearRenderTargetView(m_renderTargetView, color, 0, nullptr);
     }
 
     if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencilView.ptr != NULL)
@@ -839,8 +847,8 @@ void Device::procMsgClear()
         if (message.flags & D3DCLEAR_STENCIL)
             clearFlag |= D3D12_CLEAR_FLAG_STENCIL;
 
-        m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-            ->ClearDepthStencilView(m_depthStencilView, static_cast<D3D12_CLEAR_FLAGS>(clearFlag), message.z, message.stencil, 0, nullptr);
+        getUnderlyingGraphicsCommandList()->ClearDepthStencilView(m_depthStencilView, 
+            static_cast<D3D12_CLEAR_FLAGS>(clearFlag), message.z, message.stencil, 0, nullptr);
     }
 }
 
@@ -1053,7 +1061,7 @@ void Device::procMsgDrawPrimitiveUP()
 {
     const auto& message = m_messageReceiver.getMessage<MsgDrawPrimitiveUP>();
 
-    m_vertexBufferViews[0].BufferLocation = makeBuffer(message.data, message.dataSize, 0x4);
+    m_vertexBufferViews[0].BufferLocation = makeBuffer(message.data, message.dataSize, alignof(float));
     m_vertexBufferViews[0].SizeInBytes = message.dataSize;
     m_vertexBufferViews[0].StrideInBytes = message.vertexStreamZeroStride;
 
@@ -1063,8 +1071,7 @@ void Device::procMsgDrawPrimitiveUP()
     setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
     flushGraphicsState();
 
-    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-        ->DrawInstanced(message.vertexCount, m_instanceCount, 0, 0);
+    getUnderlyingGraphicsCommandList()->DrawInstanced(message.vertexCount, m_instanceCount, 0, 0);
 }
 
 void Device::procMsgSetStreamSource()
@@ -1145,7 +1152,6 @@ void Device::procMsgSetIndices()
 void Device::procMsgPresent()
 {
     const auto& message = m_messageReceiver.getMessage<MsgPresent>();
-    updateRaytracing();
     m_shouldPresent = true;
 }
 
@@ -1264,10 +1270,10 @@ void Device::procMsgMakeTexture()
         D3D12_RESOURCE_STATE_GENERIC_READ,
         uploadBuffer);
 
-    m_copyCommandLists[m_frame].open();
+    getCopyCommandList().open();
 
     UpdateSubresources(
-        m_copyCommandLists[m_frame].getUnderlyingCommandList(),
+        getUnderlyingCopyCommandList(),
         texture.allocation->GetResource(),
         uploadBuffer->GetResource(),
         0,
@@ -1384,13 +1390,12 @@ void Device::procMsgDrawIndexedPrimitive()
     setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
     flushGraphicsState();
 
-    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-        ->DrawIndexedInstanced(
-            message.indexCount,
-            m_instanceCount,
-            message.startIndex,
-            message.baseVertexIndex,
-            0);
+    getUnderlyingGraphicsCommandList()->DrawIndexedInstanced(
+        message.indexCount,
+        m_instanceCount,
+        message.startIndex,
+        message.baseVertexIndex,
+        0);
 }
 
 void Device::procMsgSetStreamSourceFreq()
@@ -1441,12 +1446,11 @@ void Device::procMsgDrawPrimitive()
     setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
     flushGraphicsState();
 
-    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-        ->DrawInstanced(
-            message.vertexCount,
-            m_instanceCount,
-            message.startVertex,
-            0);
+    getUnderlyingGraphicsCommandList()->DrawInstanced(
+        message.vertexCount,
+        m_instanceCount,
+        message.startVertex,
+        0);
 }
 
 Device::Device()
@@ -1512,32 +1516,14 @@ Device::Device()
     rootParameters[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
     rootParameters[1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
-    rootSignatureDesc.NumParameters = _countof(rootParameters);
-    rootSignatureDesc.pParameters = rootParameters;
-    rootSignatureDesc.Flags = 
+    RootSignature::create(
+        m_device.Get(),
+        rootParameters,
+        _countof(rootParameters),
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
-        D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
-
-    ComPtr<ID3DBlob> blob;
-    ComPtr<ID3DBlob> errorBlob;
-
-    hr = D3D12SerializeRootSignature(
-        &rootSignatureDesc,
-        D3D_ROOT_SIGNATURE_VERSION_1, 
-        blob.GetAddressOf(),
-        errorBlob.GetAddressOf());
-
-    assert(SUCCEEDED(hr) && blob != nullptr);
-
-    hr = m_device->CreateRootSignature(
-        0,
-        blob->GetBufferPointer(),
-        blob->GetBufferSize(),
-        IID_PPV_ARGS(m_rootSignature.GetAddressOf()));
-
-    assert(SUCCEEDED(hr) && m_rootSignature != nullptr);
+        D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED,
+        m_rootSignature);
 
     m_pipelineDesc.pRootSignature = m_rootSignature.Get();
     m_pipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -1562,12 +1548,12 @@ Device::Device()
 
 void Device::processMessages()
 {
-    m_graphicsCommandLists[m_frame].open();
+    getGraphicsCommandList().open();
 
     if (m_swapChainTextureId != 0)
     {
         m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-        m_graphicsCommandLists[m_frame].transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        getGraphicsCommandList().transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }
 
     ID3D12DescriptorHeap* descriptorHeaps[] =
@@ -1576,11 +1562,7 @@ void Device::processMessages()
         m_samplerDescriptorHeap.getUnderlyingHeap()
     };
 
-    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-        ->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
-    m_graphicsCommandLists[m_frame].getUnderlyingCommandList()
-        ->SetGraphicsRootSignature(m_rootSignature.Get());
+    getUnderlyingGraphicsCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
     bool stop = false;
 
@@ -1646,10 +1628,10 @@ void Device::processMessages()
     m_gpuEvent.set();
     m_messageReceiver.reset();
 
-    if (m_copyCommandLists[m_frame].isOpen())
+    if (getCopyCommandList().isOpen())
     {
-        m_copyCommandLists[m_frame].close();
-        m_copyQueue.executeCommandList(m_copyCommandLists[m_frame]);
+        getCopyCommandList().close();
+        m_copyQueue.executeCommandList(getCopyCommandList());
 
         // Wait for copy command list to finish
         const uint64_t fenceValue = m_copyQueue.getNextFenceValue();
@@ -1657,8 +1639,8 @@ void Device::processMessages()
         m_graphicsQueue.wait(fenceValue, m_copyQueue);
     }
 
-    m_graphicsCommandLists[m_frame].close();
-    m_graphicsQueue.executeCommandList(m_graphicsCommandLists[m_frame]);
+    getGraphicsCommandList().close();
+    m_graphicsQueue.executeCommandList(getGraphicsCommandList());
 
     if (m_shouldPresent)
     {
@@ -1722,7 +1704,7 @@ void Device::runLoop()
     m_graphicsQueue.wait(fenceValue);
 }
 
-void Device::setEvents()
+void Device::setEvents() const
 {
     m_cpuEvent.set();
     m_gpuEvent.set();
@@ -1747,6 +1729,26 @@ CommandQueue& Device::getGraphicsQueue()
 CommandQueue& Device::getCopyQueue()
 {
     return m_copyQueue;
+}
+
+CommandList& Device::getGraphicsCommandList()
+{
+    return m_graphicsCommandLists[m_frame];
+}
+
+ID3D12GraphicsCommandList4* Device::getUnderlyingGraphicsCommandList() const
+{
+    return m_graphicsCommandLists[m_frame].getUnderlyingCommandList();
+}
+
+CommandList& Device::getCopyCommandList()
+{
+    return m_copyCommandLists[m_frame];
+}
+
+ID3D12GraphicsCommandList4* Device::getUnderlyingCopyCommandList() const
+{
+    return m_copyCommandLists[m_frame].getUnderlyingCommandList();
 }
 
 DescriptorHeap& Device::getDescriptorHeap()

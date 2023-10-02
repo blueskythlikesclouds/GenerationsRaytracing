@@ -1,6 +1,6 @@
 #pragma once
 
-struct Sky
+struct RaytracingRendering
 {
     static void init();
 };

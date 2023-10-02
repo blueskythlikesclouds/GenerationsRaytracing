@@ -29,17 +29,18 @@ struct GlobalsPS
 enum DirtyFlags
 {
     DIRTY_FLAG_NONE = 0,
-    DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL = 1 << 0,
-    DIRTY_FLAG_PIPELINE_DESC = 1 << 1,
-    DIRTY_FLAG_GLOBALS_PS = 1 << 2,
-    DIRTY_FLAG_GLOBALS_VS = 1 << 3,
-    DIRTY_FLAG_VIEWPORT = 1 << 4,
-    DIRTY_FLAG_SCISSOR_RECT = 1 << 5,
-    DIRTY_FLAG_VERTEX_DECLARATION = 1 << 6,
-    DIRTY_FLAG_VERTEX_BUFFER_VIEWS = 1 << 7,
-    DIRTY_FLAG_INDEX_BUFFER_VIEW = 1 << 8,
-    DIRTY_FLAG_PRIMITIVE_TOPOLOGY = 1 << 9,
-    DIRTY_FLAG_SAMPLER_DESC = 1 << 10
+    DIRTY_FLAG_ROOT_SIGNATURE = 1 << 0,
+    DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL = 1 << 1,
+    DIRTY_FLAG_PIPELINE_DESC = 1 << 2,
+    DIRTY_FLAG_GLOBALS_PS = 1 << 3,
+    DIRTY_FLAG_GLOBALS_VS = 1 << 4,
+    DIRTY_FLAG_VIEWPORT = 1 << 5,
+    DIRTY_FLAG_SCISSOR_RECT = 1 << 6,
+    DIRTY_FLAG_VERTEX_DECLARATION = 1 << 7,
+    DIRTY_FLAG_VERTEX_BUFFER_VIEWS = 1 << 8,
+    DIRTY_FLAG_INDEX_BUFFER_VIEW = 1 << 9,
+    DIRTY_FLAG_PRIMITIVE_TOPOLOGY = 1 << 10,
+    DIRTY_FLAG_SAMPLER_DESC = 1 << 11
 };
 
 static constexpr size_t NUM_FRAMES = 2;
@@ -177,20 +178,25 @@ protected:
 
     void processMessages();
     virtual bool processRaytracingMessage() = 0;
-    virtual void updateRaytracing() = 0; // NOTE: This is temporary
 
 public:
     Device();
 
     void runLoop();
 
-    void setEvents();
+    void setEvents() const;
     void setShouldExit();
 
     ID3D12Device* getUnderlyingDevice() const;
 
     CommandQueue& getGraphicsQueue();
     CommandQueue& getCopyQueue();
+
+    CommandList& getGraphicsCommandList();
+    ID3D12GraphicsCommandList4* getUnderlyingGraphicsCommandList() const;
+
+    CommandList& getCopyCommandList();
+    ID3D12GraphicsCommandList4* getUnderlyingCopyCommandList() const;
 
     DescriptorHeap& getDescriptorHeap();
     DescriptorHeap& getSamplerDescriptorHeap();
