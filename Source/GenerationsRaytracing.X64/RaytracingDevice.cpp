@@ -6,33 +6,115 @@
 #include "Message.h"
 #include "RootSignature.h"
 
+uint32_t RaytracingDevice::allocateGeometryDescs(uint32_t count)
+{
+    const auto it = m_freeCounts.lower_bound(count);
+    if (it != m_freeCounts.end())
+    {
+        const uint32_t remnant = it->first - count;
+        const uint32_t index = it->second + remnant;
+
+        const auto it2 = m_freeIndices.find(it->second);
+        assert(it2 != m_freeIndices.end());
+
+        if (remnant > 0)
+        {
+            auto node = m_freeCounts.extract(it);
+            node.key() = remnant;
+            it2->second = m_freeCounts.insert(std::move(node));
+        }
+        else
+        {
+            m_freeIndices.erase(it2);
+            m_freeCounts.erase(it);
+        }
+
+        return index;
+    }
+    else
+    {
+        const uint32_t index = static_cast<uint32_t>(m_geometryDescs.size());
+        m_geometryDescs.resize(m_geometryDescs.size() + count);
+        return index;
+    }
+}
+
+void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
+{
+    const auto next = m_freeIndices.lower_bound(id);
+    if (next != m_freeIndices.end())
+    {
+        if (next != m_freeIndices.begin())
+        {
+            const auto prev = std::prev(next);
+
+            // Merge previous range (prevId + prevCount) == id
+            if ((prev->first + prev->second->first) == id)
+            {
+                id = prev->first;
+                count += prev->second->first;
+
+                m_freeCounts.erase(prev->second);
+                m_freeIndices.erase(prev->first);
+            }
+        }
+        // Merge next range (id + count) == nextId
+        if ((id + count) == next->first)
+        {
+            count += next->second->first;
+            m_freeCounts.erase(next->second);
+            m_freeIndices.erase(next->first);
+        }
+    }
+    m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
+}
+
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createTopLevelAccelStruct()
 {
     if (m_instanceDescs.empty())
         return NULL;
 
-    for (const auto& [instanceId, bottomLevelAccelStructId] : m_deferredInstances)
+    for (const auto& [textureId, textureIdOffset] : m_delayedTextures)
     {
-        if (m_bottomLevelAccelStructs.size() > bottomLevelAccelStructId &&
-            m_bottomLevelAccelStructs[bottomLevelAccelStructId] != nullptr)
+        if (m_textures.size() > textureId &&
+            m_textures[textureId].allocation != nullptr)
         {
-            m_instanceDescs[instanceId].InstanceMask = 1;
-            m_instanceDescs[instanceId].AccelerationStructure =
-                m_bottomLevelAccelStructs[bottomLevelAccelStructId]->GetResource()->GetGPUVirtualAddress();
+            *reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(m_materials.data()) + textureIdOffset) = m_textures[textureId].srvIndex;
         }
         else
         {
             // Still not loaded, leave it for next creation
-            m_tempDeferredInstances.emplace_back(instanceId, bottomLevelAccelStructId);
+            m_tempDelayedTextures.emplace_back(textureId, textureIdOffset);
         }
     }
 
-    m_deferredInstances.clear();
-    std::swap(m_deferredInstances, m_tempDeferredInstances);
+    for (const auto& [instanceId, bottomLevelAccelStructId] : m_delayedInstances)
+    {
+        if (m_bottomLevelAccelStructs.size() > bottomLevelAccelStructId &&
+            m_bottomLevelAccelStructs[bottomLevelAccelStructId].allocation != nullptr)
+        {
+            auto& instanceDesc = m_instanceDescs[instanceId];
+            auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[bottomLevelAccelStructId];
+            instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
+            instanceDesc.InstanceMask = 1;
+            instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
+        }
+        else
+        {
+            // Still not loaded, leave it for next creation
+            m_tempDelayedInstances.emplace_back(instanceId, bottomLevelAccelStructId);
+        }
+    }
+
+    m_delayedTextures.clear();
+    m_delayedInstances.clear();
+
+    std::swap(m_delayedTextures, m_tempDelayedTextures);
+    std::swap(m_delayedInstances, m_tempDelayedInstances);
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
     accelStructDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-    accelStructDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+    accelStructDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
     accelStructDesc.Inputs.NumDescs = static_cast<UINT>(m_instanceDescs.size());
     accelStructDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
     accelStructDesc.Inputs.InstanceDescs = makeBuffer(m_instanceDescs.data(),
@@ -93,13 +175,17 @@ void RaytracingDevice::createRenderTargetAndDepthStencil()
     {
         DXGI_FORMAT format;
         ComPtr<D3D12MA::Allocation>& allocation;
-        uint32_t& uavId;
     }
     const textureDescs[] =
     {
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_renderTargetTexture, m_renderTargetTextureId },
-        { DXGI_FORMAT_R32_FLOAT, m_depthStencilTexture, m_depthStencilTextureId }
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_renderTargetTexture },
+        { DXGI_FORMAT_R32_FLOAT, m_depthStencilTexture }
     };
+
+    if (m_uavId == NULL)
+        m_uavId = m_descriptorHeap.allocateMany(_countof(textureDescs));
+
+    auto cpuHandle = m_descriptorHeap.getCpuHandle(m_uavId);
 
     for (const auto& textureDesc : textureDescs)
     {
@@ -116,14 +202,13 @@ void RaytracingDevice::createRenderTargetAndDepthStencil()
 
         assert(SUCCEEDED(hr) && textureDesc.allocation != nullptr);
 
-        if (textureDesc.uavId == NULL)
-            textureDesc.uavId = m_descriptorHeap.allocate();
-
         m_device->CreateUnorderedAccessView(
             textureDesc.allocation->GetResource(),
             nullptr,
             nullptr,
-            m_descriptorHeap.getCpuHandle(textureDesc.uavId));
+            cpuHandle);
+
+        cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
     }
 }
 
@@ -133,8 +218,7 @@ void RaytracingDevice::copyRenderTargetAndDepthStencil()
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_renderTargetTextureId));
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(1, m_descriptorHeap.getGpuHandle(m_depthStencilTextureId));
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_uavId));
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipelineState.Get());
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
@@ -162,26 +246,56 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs(
         message.dataSize / sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
+    if (m_bottomLevelAccelStructs.size() <= message.bottomLevelAccelStructId)
+        m_bottomLevelAccelStructs.resize(message.bottomLevelAccelStructId + 1);
+
+    auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
+
+    bottomLevelAccelStruct.geometryCount = static_cast<uint32_t>(geometryDescs.size());
+    bottomLevelAccelStruct.geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
+
     for (size_t i = 0; i < geometryDescs.size(); i++)
     {
-        const auto& srcGeometryDesc =
+        const auto& geometryDesc =
             reinterpret_cast<const MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data)[i];
 
-        auto& dstGeometryDesc = geometryDescs[i];
+        // BVH GeometryDesc
+        {
+            auto& dstGeometryDesc = geometryDescs[i];
 
-        dstGeometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-        dstGeometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+            dstGeometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+            dstGeometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 
-        auto& triangles = dstGeometryDesc.Triangles;
+            auto& triangles = dstGeometryDesc.Triangles;
 
-        triangles.Transform3x4 = NULL;
-        triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
-        triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-        triangles.IndexCount = srcGeometryDesc.indexCount;
-        triangles.VertexCount = srcGeometryDesc.vertexCount;
-        triangles.IndexBuffer = m_indexBuffers[srcGeometryDesc.indexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
-        triangles.VertexBuffer.StartAddress = m_vertexBuffers[srcGeometryDesc.vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + srcGeometryDesc.vertexOffset;
-        triangles.VertexBuffer.StrideInBytes = srcGeometryDesc.vertexStride;
+            triangles.Transform3x4 = NULL;
+            triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
+            triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+            triangles.IndexCount = geometryDesc.indexCount;
+            triangles.VertexCount = geometryDesc.vertexCount;
+            triangles.IndexBuffer = m_indexBuffers[geometryDesc.indexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
+            triangles.VertexBuffer.StartAddress = m_vertexBuffers[geometryDesc.vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc.positionOffset;
+            triangles.VertexBuffer.StrideInBytes = geometryDesc.vertexStride;
+        }
+
+        // GPU GeometryDesc
+        {
+            auto& dstGeometryDesc = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
+
+            dstGeometryDesc.indexBufferId = m_indexBuffers[geometryDesc.indexBufferId].srvIndex;
+            dstGeometryDesc.vertexBufferId = m_vertexBuffers[geometryDesc.vertexBufferId].srvIndex;
+            dstGeometryDesc.vertexStride = geometryDesc.vertexStride;
+            dstGeometryDesc.positionOffset = geometryDesc.positionOffset;
+            dstGeometryDesc.normalOffset = geometryDesc.normalOffset;
+            dstGeometryDesc.tangentOffset = geometryDesc.tangentOffset;
+            dstGeometryDesc.binormalOffset = geometryDesc.binormalOffset;
+            dstGeometryDesc.texCoordOffsets[0] = geometryDesc.texCoordOffsets[0];
+            dstGeometryDesc.texCoordOffsets[1] = geometryDesc.texCoordOffsets[1];
+            dstGeometryDesc.texCoordOffsets[2] = geometryDesc.texCoordOffsets[2];
+            dstGeometryDesc.texCoordOffsets[3] = geometryDesc.texCoordOffsets[3];
+            dstGeometryDesc.colorOffset = geometryDesc.colorOffset;
+            dstGeometryDesc.materialId = geometryDesc.materialId;
+        }
     }
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
@@ -195,17 +309,13 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
 
     // TODO: suballocate all of this
-    if (m_bottomLevelAccelStructs.size() <= message.bottomLevelAccelStructId)
-        m_bottomLevelAccelStructs.resize(message.bottomLevelAccelStructId + 1);
-
-    auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
 
     createBuffer(
         D3D12_HEAP_TYPE_DEFAULT,
         static_cast<uint32_t>(preBuildInfo.ResultDataMaxSizeInBytes),
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-        bottomLevelAccelStruct);
+        bottomLevelAccelStruct.allocation);
 
     auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
 
@@ -216,11 +326,11 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
         scratchBuffer);
 
-    accelStructDesc.DestAccelerationStructureData = bottomLevelAccelStruct->GetResource()->GetGPUVirtualAddress();
+    accelStructDesc.DestAccelerationStructureData = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
     accelStructDesc.ScratchAccelerationStructureData = scratchBuffer->GetResource()->GetGPUVirtualAddress();
 
     getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
-    m_bottomLevelAccelStructBarriers.push_back(CD3DX12_RESOURCE_BARRIER::UAV(bottomLevelAccelStruct->GetResource()));
+    m_bottomLevelAccelStructBarriers.push_back(CD3DX12_RESOURCE_BARRIER::UAV(bottomLevelAccelStruct.allocation->GetResource()));
 }
 
 void RaytracingDevice::procMsgReleaseRaytracingResource()
@@ -230,11 +340,16 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
     switch (message.resourceType)
     {
     case MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct:
-        m_tempBuffers[m_frame].emplace_back(std::move(m_bottomLevelAccelStructs[message.resourceId]));
+        m_tempBuffers[m_frame].emplace_back(std::move(m_bottomLevelAccelStructs[message.resourceId].allocation));
+        freeGeometryDescs(m_bottomLevelAccelStructs[message.resourceId].geometryId, m_bottomLevelAccelStructs[message.resourceId].geometryCount);
         break;
 
     case MsgReleaseRaytracingResource::ResourceType::Instance:
         memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+        break;
+
+    case MsgReleaseRaytracingResource::ResourceType::Material:
+        memset(&m_materials[message.resourceId], 0, sizeof(Material));
         break;
 
     default:
@@ -253,19 +368,19 @@ void RaytracingDevice::procMsgCreateInstance()
     auto& instanceDesc = m_instanceDescs[message.instanceId];
 
     memcpy(instanceDesc.Transform, message.transform, sizeof(message.transform));
-    instanceDesc.InstanceID = message.instanceId;
 
     if (m_bottomLevelAccelStructs.size() <= message.bottomLevelAccelStructId ||
-        m_bottomLevelAccelStructs[message.bottomLevelAccelStructId] == nullptr)
+        m_bottomLevelAccelStructs[message.bottomLevelAccelStructId].allocation == nullptr)
     {
         // Not loaded yet, defer assignment to top level acceleration structure creation
-        m_deferredInstances.emplace_back(message.instanceId, message.bottomLevelAccelStructId);
+        m_delayedInstances.emplace_back(message.instanceId, message.bottomLevelAccelStructId);
     }
     else
     {
+        auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
+        instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
         instanceDesc.InstanceMask = 1;
-        instanceDesc.AccelerationStructure = m_bottomLevelAccelStructs[
-            message.bottomLevelAccelStructId]->GetResource()->GetGPUVirtualAddress();
+        instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
     }
 }
 
@@ -280,19 +395,27 @@ void RaytracingDevice::procMsgTraceRays()
         createRenderTargetAndDepthStencil();
     }
 
+    const auto globalsVS = makeBuffer(&m_globalsVS,
+        sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+
+    const auto globalsPS = makeBuffer(&m_globalsPS, 
+        offsetof(GlobalsPS, textureIndices), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+
+    const auto geometryDescs = makeBuffer(m_geometryDescs.data(), 
+        static_cast<uint32_t>(m_geometryDescs.size() * sizeof(GeometryDesc)), 0x4);
+
+    const auto materials = makeBuffer(m_materials.data(),
+        static_cast<uint32_t>(m_materials.size() * sizeof(Material)), 0x4);
+
     getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_raytracingRootSignature.Get());
     getUnderlyingGraphicsCommandList()->SetPipelineState1(m_stateObject.Get());
 
-    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0, 
-        makeBuffer(&m_globalsVS, sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
-
-    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1,
-        makeBuffer(&m_globalsPS, offsetof(GlobalsPS, textureIndices), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
-
+    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0, globalsVS);
+    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1, globalsPS);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2, createTopLevelAccelStruct());
-
-    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(3, m_descriptorHeap.getGpuHandle(m_renderTargetTextureId));
-    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(4, m_descriptorHeap.getGpuHandle(m_depthStencilTextureId));
+    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(3, m_descriptorHeap.getGpuHandle(m_uavId));
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(4, geometryDescs);
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, materials);
 
     const auto shaderTable = makeBuffer(
         m_shaderTable.data(), static_cast<uint32_t>(m_shaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -319,6 +442,55 @@ void RaytracingDevice::procMsgTraceRays()
     copyRenderTargetAndDepthStencil();
 }
 
+void RaytracingDevice::procMsgCreateMaterial()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCreateMaterial>();
+
+    if (m_materials.size() <= message.materialId)
+        m_materials.resize(message.materialId + 1);
+
+    auto& material = m_materials[message.materialId];
+
+    const std::pair<const MsgCreateMaterial::Texture&, Material::Texture&> textures[] =
+    {
+        { message.diffuseTexture, material.diffuseTexture }
+    };
+
+    D3D12_SAMPLER_DESC samplerDesc{};
+    samplerDesc.Filter = D3D12_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT;
+    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+
+    for (const auto& [srcTexture, dstTexture] : textures)
+    {
+        if (m_textures.size() <= srcTexture.id || m_textures[srcTexture.id].allocation == nullptr)
+        {
+            // Delay texture assignment if the texture is not loaded yet
+            m_delayedTextures.emplace_back(srcTexture.id,
+                reinterpret_cast<uintptr_t>(&dstTexture.id) - reinterpret_cast<uintptr_t>(m_materials.data()));
+        }
+        else
+        {
+            dstTexture.id = m_textures[srcTexture.id].srvIndex;
+        }
+
+        samplerDesc.AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeU);
+        samplerDesc.AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeV);
+
+        auto& sampler = m_samplers[XXH3_64bits(&samplerDesc, sizeof(samplerDesc))];
+        if (!sampler)
+        {
+            sampler = m_samplerDescriptorHeap.allocate();
+
+            m_device->CreateSampler(&samplerDesc, 
+                m_samplerDescriptorHeap.getCpuHandle(sampler));
+        }
+
+        dstTexture.samplerId = sampler;
+    }
+}
+
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -339,6 +511,10 @@ bool RaytracingDevice::processRaytracingMessage()
         procMsgTraceRays();
         break;
 
+    case MsgCreateMaterial::s_id:
+        procMsgCreateMaterial();
+        break;
+
     default:
         return false;
     }
@@ -348,18 +524,16 @@ bool RaytracingDevice::processRaytracingMessage()
 
 RaytracingDevice::RaytracingDevice()
 {
-    CD3DX12_DESCRIPTOR_RANGE renderTargetDescriptorRanges[1];
-    renderTargetDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+    CD3DX12_DESCRIPTOR_RANGE descriptorRanges[1];
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0);
 
-    CD3DX12_DESCRIPTOR_RANGE depthStencilDescriptorRanges[1];
-    depthStencilDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
-
-    CD3DX12_ROOT_PARAMETER raytracingRootParams[5];
-    raytracingRootParams[0].InitAsConstantBufferView(0);
-    raytracingRootParams[1].InitAsConstantBufferView(1);
-    raytracingRootParams[2].InitAsShaderResourceView(0);
-    raytracingRootParams[3].InitAsDescriptorTable(_countof(renderTargetDescriptorRanges), renderTargetDescriptorRanges);
-    raytracingRootParams[4].InitAsDescriptorTable(_countof(depthStencilDescriptorRanges), depthStencilDescriptorRanges);
+    CD3DX12_ROOT_PARAMETER raytracingRootParams[6];
+    raytracingRootParams[0].InitAsConstantBufferView(0, 0);
+    raytracingRootParams[1].InitAsConstantBufferView(1, 0);
+    raytracingRootParams[2].InitAsShaderResourceView(0, 0);
+    raytracingRootParams[3].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges);
+    raytracingRootParams[4].InitAsShaderResourceView(1, 0);
+    raytracingRootParams[5].InitAsShaderResourceView(2, 0);
 
     RootSignature::create(
         m_device.Get(),
@@ -381,7 +555,7 @@ RaytracingDevice::RaytracingDevice()
     hitGroupSubobject.SetClosestHitShaderImport(L"ClosestHit");
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
-    shaderConfigSubobject.Config(sizeof(float) * 2, sizeof(float) * 2);
+    shaderConfigSubobject.Config(sizeof(uint32_t), sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
     pipelineConfigSubobject.Config(1);
@@ -403,9 +577,8 @@ RaytracingDevice::RaytracingDevice()
     memcpy(&m_shaderTable[0x40], properties->GetShaderIdentifier(L"Miss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     memcpy(&m_shaderTable[0x80], properties->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-    CD3DX12_ROOT_PARAMETER copyRootParams[2];
-    copyRootParams[0].InitAsDescriptorTable(_countof(renderTargetDescriptorRanges), renderTargetDescriptorRanges);
-    copyRootParams[1].InitAsDescriptorTable(_countof(depthStencilDescriptorRanges), depthStencilDescriptorRanges);
+    CD3DX12_ROOT_PARAMETER copyRootParams[1];
+    copyRootParams[0].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
     RootSignature::create(
         m_device.Get(),

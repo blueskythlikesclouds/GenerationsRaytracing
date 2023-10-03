@@ -14,6 +14,7 @@ using Microsoft::WRL::ComPtr;
 
 #include <type_traits>
 #include <vector>
+#include <map>
 
 #include <D3D12MemAlloc.h>
 #include <DDSTextureLoader12.h>

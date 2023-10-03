@@ -140,11 +140,14 @@
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BottomLevelAccelStruct.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="CommandList.h" />
     <ClInclude Include="CommandQueue.h" />
     <ClInclude Include="DescriptorHeap.h" />
     <ClInclude Include="Device.h" />
+    <ClInclude Include="GeometryDesc.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="MessageReceiver.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="PixelShader.h" />

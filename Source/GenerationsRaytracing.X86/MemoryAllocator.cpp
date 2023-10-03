@@ -1,4 +1,4 @@
-﻿#include "Memory.h"
+﻿#include "MemoryAllocator.h"
 
 #define MEMORY_SIGNATURE " GensRT "
 
@@ -44,7 +44,7 @@ static void __cdecl dealloc(void* memory)
     }
 }
 
-void Memory::init()
+void MemoryAllocator::init()
 {
     // Don't init the memory allocator.
     WRITE_MEMORY(0x660C00, uint8_t, 0xC3);

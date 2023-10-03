@@ -14,12 +14,12 @@
 #include "VertexShader.h"
 #include "xxHashMap.h"
 
-struct GlobalsVS
+struct alignas(0x10) GlobalsVS
 {
     float floatConstants[256][4]{};
 };
 
-struct GlobalsPS
+struct alignas(0x10) GlobalsPS
 {
     float floatConstants[224][4]{};
     uint32_t textureIndices[16]{};
@@ -89,17 +89,13 @@ protected:
 
     std::vector<Texture> m_tempTextures[NUM_FRAMES];
     std::vector<ComPtr<D3D12MA::Allocation>> m_tempBuffers[NUM_FRAMES];
+    std::vector<uint32_t> m_tempDescriptorIds[NUM_FRAMES];
 
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
     D3D12_CPU_DESCRIPTOR_HANDLE m_depthStencilView{};
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC m_pipelineDesc{};
     xxHashMap<ComPtr<ID3D12PipelineState>> m_pipelines;
 
-    GlobalsPS m_globalsPS{};
-    GlobalsVS m_globalsVS{};
-
-    D3D12_SAMPLER_DESC m_samplerDescs[16]{};
     uint32_t m_samplerDescsFirst = 0;
     uint32_t m_samplerDescsLast = _countof(m_samplerDescs) - 1;
 
@@ -118,6 +114,12 @@ protected:
     uint32_t m_instanceCount = 1;
 
     uint32_t m_dirtyFlags = ~0;
+
+    // Place chonky variables at the end.
+    GlobalsVS m_globalsVS{};
+    GlobalsPS m_globalsPS{};
+    D3D12_SAMPLER_DESC m_samplerDescs[16]{};
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC m_pipelineDesc{};
 
     void createBuffer(
         D3D12_HEAP_TYPE type,

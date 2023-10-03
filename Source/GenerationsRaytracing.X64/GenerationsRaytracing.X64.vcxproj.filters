@@ -44,11 +44,11 @@
     <Filter Include="Resource">
       <UniqueIdentifier>{e5e147b1-dbdc-4ff6-9246-95c12226f27a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Base">
-      <UniqueIdentifier>{8c952580-0bed-48d3-9f2d-3094e9e39818}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shader">
       <UniqueIdentifier>{3c57636c-5d7c-4abd-9860-06eba5ae7c9a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Base">
+      <UniqueIdentifier>{8c952580-0bed-48d3-9f2d-3094e9e39818}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -101,6 +101,15 @@
       <Filter>Device</Filter>
     </ClInclude>
     <ClInclude Include="RootSignature.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="BottomLevelAccelStruct.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryDesc.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
       <Filter>Resource</Filter>
     </ClInclude>
   </ItemGroup>

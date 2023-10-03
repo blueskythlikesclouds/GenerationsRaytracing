@@ -45,11 +45,41 @@ cbuffer cbGlobalsPS : register(b1)
 }
 
 RaytracingAccelerationStructure g_BVH : register(t0);
+
+struct GeometryDesc
+{
+    uint IndexBufferId;
+    uint VertexBufferId;
+    uint VertexStride;
+    uint PositionOffset;
+    uint NormalOffset;
+    uint TangentOffset;
+    uint BinormalOffset;
+    uint TexCoordOffsets[4];
+    uint ColorOffset;
+    uint MaterialId;
+};
+
+StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t1);
+
+struct MaterialTexture
+{
+    uint Id;
+    uint SamplerId;
+};
+
+struct Material
+{
+    MaterialTexture DiffuseTexture;
+};
+
+StructuredBuffer<Material> g_Materials : register(t2);
+
 RWTexture2D<float4> g_ColorTexture : register(u0);
 
 struct Payload
 {
-    float2 uv;
+    uint dummy;
 };
 
 [shader("raygeneration")]
@@ -74,18 +104,48 @@ void RayGeneration()
         0,
         ray,
         payload);
-
-    g_ColorTexture[DispatchRaysIndex().xy].xy = payload.uv;
 }
 
 [shader("miss")]
 void Miss(inout Payload payload : SV_RayPayload)
 {
-    payload.uv = 0.0;
+    g_ColorTexture[DispatchRaysIndex().xy] = 0.0;
 }
 
 [shader("closesthit")]
 void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
-    payload.uv = attributes.barycentrics;
+    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
+    Material material = g_Materials[NonUniformResourceIndex(geometryDesc.MaterialId)];
+    ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
+    Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
+
+    float3 uv = float3(
+        1.0 - attributes.barycentrics.x - attributes.barycentrics.y, 
+        attributes.barycentrics.x, 
+        attributes.barycentrics.y);
+
+    uint3 offsets;
+    offsets.x = indexBuffer[PrimitiveIndex() * 3 + 0];
+    offsets.y = indexBuffer[PrimitiveIndex() * 3 + 1];
+    offsets.z = indexBuffer[PrimitiveIndex() * 3 + 2];
+    offsets *= geometryDesc.VertexStride;
+
+    uint3 normalOffsets = geometryDesc.NormalOffset + offsets;
+    uint3 texCoordOffsets = geometryDesc.TexCoordOffsets[0] + offsets;
+
+    float3 normal =
+        asfloat(vertexBuffer.Load3(normalOffsets.x)) * uv.x +
+        asfloat(vertexBuffer.Load3(normalOffsets.y)) * uv.y +
+        asfloat(vertexBuffer.Load3(normalOffsets.z)) * uv.z;
+
+    float2 texCoord =
+        asfloat(vertexBuffer.Load2(texCoordOffsets.x)) * uv.x +
+        asfloat(vertexBuffer.Load2(texCoordOffsets.y)) * uv.y +
+        asfloat(vertexBuffer.Load2(texCoordOffsets.z)) * uv.z;
+
+    Texture2D diffuseTexture = ResourceDescriptorHeap[NonUniformResourceIndex(material.DiffuseTexture.Id)];
+    SamplerState diffuseSampler = SamplerDescriptorHeap[NonUniformResourceIndex(material.DiffuseTexture.SamplerId)];
+
+    g_ColorTexture[DispatchRaysIndex().xy] = diffuseTexture.SampleLevel(diffuseSampler, texCoord, 0);
 }

@@ -308,8 +308,14 @@ struct MsgCreateBottomLevelAccelStruct
         uint32_t vertexCount;
         uint32_t indexBufferId;
         uint32_t vertexBufferId;
-        uint32_t vertexOffset;
         uint32_t vertexStride;
+        uint32_t positionOffset;
+        uint32_t normalOffset;
+        uint32_t tangentOffset;
+        uint32_t binormalOffset;
+        uint32_t texCoordOffsets[4];
+        uint32_t colorOffset;
+        uint32_t materialId;
     };
 
     uint32_t bottomLevelAccelStructId;
@@ -324,7 +330,8 @@ struct MsgReleaseRaytracingResource
     enum class ResourceType : uint8_t
     {
         BottomLevelAccelStruct,
-        Instance
+        Instance,
+        Material
     };
     ResourceType resourceType;
     uint32_t resourceId;
@@ -345,6 +352,21 @@ struct MsgTraceRays
 
     uint16_t width;
     uint16_t height;
+};
+
+struct MsgCreateMaterial
+{
+    MSG_DEFINE_MESSAGE(MsgTraceRays);
+
+    struct Texture
+    {
+        uint32_t id;
+        uint8_t addressModeU;
+        uint8_t addressModeV;
+    };
+
+    uint32_t materialId;
+    Texture diffuseTexture;
 };
 
 #pragma pack(pop)

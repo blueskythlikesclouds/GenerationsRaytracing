@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-class Memory
+class MemoryAllocator
 {
 public:
     static void init();

@@ -15,6 +15,10 @@ public:
 
     ID3D12DescriptorHeap* getUnderlyingHeap() const;
 
+    // Permanent allocation, cannot free!
+    uint32_t allocateMany(uint32_t count);
+
     D3D12_CPU_DESCRIPTOR_HANDLE getCpuHandle(uint32_t index) const;
     D3D12_GPU_DESCRIPTOR_HANDLE getGpuHandle(uint32_t index) const;
+    uint32_t getIncrementSize() const;
 };

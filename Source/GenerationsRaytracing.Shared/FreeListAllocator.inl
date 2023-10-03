@@ -2,7 +2,9 @@
 
 inline uint32_t FreeListAllocator::allocate()
 {
+#ifndef _WIN64
     LockGuard lock(m_mutex);
+#endif
 
     uint32_t index;
 
@@ -22,7 +24,9 @@ inline uint32_t FreeListAllocator::allocate()
 
 inline void FreeListAllocator::free(uint32_t index)
 {
+#ifndef _WIN64
     LockGuard lock(m_mutex);
+#endif
     m_indices.push_back(index);
 }
 

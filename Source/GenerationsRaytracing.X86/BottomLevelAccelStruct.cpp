@@ -2,9 +2,11 @@
 
 #include "FreeListAllocator.h"
 #include "IndexBuffer.h"
+#include "MaterialData.h"
 #include "Message.h"
 #include "MessageSender.h"
 #include "VertexBuffer.h"
+#include "VertexDeclaration.h"
 
 class MeshDataEx : public Hedgehog::Mirage::CMeshData
 {
@@ -172,8 +174,49 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometry
         geometryDesc->vertexCount = meshData->m_VertexNum;
         geometryDesc->indexBufferId = reinterpret_cast<const IndexBuffer*>(meshDataEx.m_indices)->getId();
         geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshData->m_pD3DVertexBuffer)->getId();
-        geometryDesc->vertexOffset = meshData->m_VertexOffset;
         geometryDesc->vertexStride = meshData->m_VertexSize;
+
+        const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
+            meshData->m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
+
+        auto vertexElement = vertexDeclaration->getVertexElements();
+
+        while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
+        {
+            const uint32_t offset = meshData->m_VertexOffset + vertexElement->Offset;
+
+            switch (vertexElement->Usage)
+            {
+            case D3DDECLUSAGE_POSITION:
+                geometryDesc->positionOffset = offset;
+                break;
+
+            case D3DDECLUSAGE_NORMAL: 
+                geometryDesc->normalOffset = offset;
+                break;
+
+            case D3DDECLUSAGE_TANGENT: 
+                geometryDesc->tangentOffset = offset;
+                break;
+
+            case D3DDECLUSAGE_BINORMAL: 
+                geometryDesc->binormalOffset = offset;
+                break;
+
+            case D3DDECLUSAGE_TEXCOORD:
+                geometryDesc->texCoordOffsets[vertexElement->UsageIndex] = offset;
+                break;
+
+            case D3DDECLUSAGE_COLOR:
+                geometryDesc->colorOffset = offset;
+                break;
+            }
+
+            ++vertexElement;
+        }
+
+        geometryDesc->materialId = reinterpret_cast<MaterialDataEx*>(
+            meshData->m_spMaterial.get())->m_materialId;
 
         ++geometryDesc;
     }
@@ -214,6 +257,7 @@ static void createBottomLevelAccelStruct(const T& modelData)
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     message.bottomLevelAccelStructId = modelData.m_bottomLevelAccelStructId;
+    memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     const auto geometryDesc = convertModelToGeometryDescs(modelData,
         reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data));

@@ -706,7 +706,9 @@ void Device::procMsgSetTexture()
 
     bool isShadowMap = false;
 
-    if (message.textureId != NULL)
+    if (message.textureId != NULL &&
+        m_textures.size() > message.textureId &&
+        m_textures[message.textureId].allocation != nullptr)
     {
         auto& texture = m_textures[message.textureId];
 
@@ -1178,6 +1180,20 @@ void Device::procMsgCreateVertexBuffer()
     _swprintf(name, L"Vertex Buffer %d", message.vertexBufferId);
     vertexBuffer.allocation->GetResource()->SetName(name);
 #endif
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Buffer.NumElements = vertexBuffer.byteSize / sizeof(float);
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+
+    vertexBuffer.srvIndex = m_descriptorHeap.allocate();
+
+    m_device->CreateShaderResourceView(
+        vertexBuffer.allocation->GetResource(),
+        &srvDesc,
+        m_descriptorHeap.getCpuHandle(vertexBuffer.srvIndex));
 }
 
 void Device::procMsgWriteVertexBuffer()
@@ -1215,6 +1231,19 @@ void Device::procMsgCreateIndexBuffer()
     _swprintf(name, L"Index Buffer %d", message.indexBufferId);
     indexBuffer.allocation->GetResource()->SetName(name);
 #endif
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Format = indexBuffer.format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Buffer.NumElements = indexBuffer.byteSize / (message.format == D3DFMT_INDEX32 ? sizeof(uint32_t) : sizeof(uint16_t));
+
+    indexBuffer.srvIndex = m_descriptorHeap.allocate();
+
+    m_device->CreateShaderResourceView(
+        indexBuffer.allocation->GetResource(),
+        &srvDesc,
+        m_descriptorHeap.getCpuHandle(indexBuffer.srvIndex));
 }
 
 void Device::procMsgWriteIndexBuffer()
@@ -1427,10 +1456,12 @@ void Device::procMsgReleaseResource()
 
     case MsgReleaseResource::ResourceType::IndexBuffer:
         m_tempBuffers[m_frame].emplace_back(std::move(m_indexBuffers[message.resourceId].allocation));
+        m_tempDescriptorIds[m_frame].push_back(m_indexBuffers[message.resourceId].srvIndex);
         break;
 
     case MsgReleaseResource::ResourceType::VertexBuffer:
         m_tempBuffers[m_frame].emplace_back(std::move(m_vertexBuffers[message.resourceId].allocation));
+        m_tempDescriptorIds[m_frame].push_back(m_vertexBuffers[message.resourceId].srvIndex);
         break;
 
     default: 
@@ -1688,6 +1719,11 @@ void Device::processMessages()
 
     m_tempTextures[m_frame].clear();
     m_tempBuffers[m_frame].clear();
+
+    for (const auto id : m_tempDescriptorIds[m_frame])
+        m_descriptorHeap.free(id);
+
+    m_tempDescriptorIds[m_frame].clear();
 }
 
 void Device::runLoop()

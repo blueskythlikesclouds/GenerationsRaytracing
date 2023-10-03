@@ -29,6 +29,13 @@ ID3D12DescriptorHeap* DescriptorHeap::getUnderlyingHeap() const
     return m_heap.Get();
 }
 
+uint32_t DescriptorHeap::allocateMany(uint32_t count)
+{
+    const uint32_t index = m_capacity;
+    m_capacity += count;
+    return index;
+}
+
 D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getCpuHandle(uint32_t index) const
 {
     return { m_cpuDescriptorHandle.ptr + m_incrementSize * static_cast<SIZE_T>(index) };
@@ -37,4 +44,9 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getCpuHandle(uint32_t index) const
 D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::getGpuHandle(uint32_t index) const
 {
     return { m_gpuDescriptorHandle.ptr + m_incrementSize * static_cast<SIZE_T>(index) };
+}
+
+uint32_t DescriptorHeap::getIncrementSize() const
+{
+    return m_incrementSize;
 }
