@@ -134,7 +134,7 @@ protected:
         uint32_t dataSize,
         ID3D12Resource* dstResource);
 
-    D3D12_GPU_VIRTUAL_ADDRESS makeBuffer(
+    D3D12_GPU_VIRTUAL_ADDRESS createBuffer(
         const void* memory,
         uint32_t dataSize,
         uint32_t dataAlignment);

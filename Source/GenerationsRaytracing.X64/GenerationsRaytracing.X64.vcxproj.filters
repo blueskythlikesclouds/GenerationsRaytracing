@@ -33,6 +33,9 @@
     <ClCompile Include="RootSignature.cpp">
       <Filter>Resource</Filter>
     </ClCompile>
+    <ClCompile Include="EnvironmentColor.cpp">
+      <Filter>Shader</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -111,6 +114,9 @@
     </ClInclude>
     <ClInclude Include="Material.h">
       <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="EnvironmentColor.h">
+      <Filter>Shader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -82,7 +82,9 @@ void RaytracingRendering::init()
     WRITE_MEMORY(0x13DDB20, size_t, 0); // Disable sky render
     WRITE_MEMORY(0x13DDBA0, size_t, 0); // Disable reflection map 1
     WRITE_MEMORY(0x13DDC20, size_t, 0); // Disable reflection map 2
-    WRITE_MEMORY(0x13DDCA0, size_t, 1); // Override game scene child count
+    WRITE_MEMORY(0x13DDCA0, size_t, 2); // Override game scene child count
     WRITE_MEMORY(0x13DC2D8, void*, &implOfSceneRender); // Override scene render function
+    WRITE_MEMORY(0x13DC330, uint32_t, 0xB); // Render sky after raytracing
+    WRITE_MEMORY(0x13DC338, uint32_t, 0x80107); // ^^ 
     WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
 }

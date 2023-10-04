@@ -36,6 +36,13 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
 
     message.materialId = This->m_materialId;
 
+    const Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
+    const Hedgehog::Base::CStringSymbol specularSymbol("specular");
+    const Hedgehog::Base::CStringSymbol glossSymbol("gloss");
+    const Hedgehog::Base::CStringSymbol normalSymbol("normal");
+    const Hedgehog::Base::CStringSymbol displacementSymbol("displacement");
+    const Hedgehog::Base::CStringSymbol reflectionSymbol("reflection");
+
     struct
     {
         Hedgehog::Base::CStringSymbol type;
@@ -43,16 +50,19 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
         MsgCreateMaterial::Texture& dstTexture;
     } const textureDescs[] = 
     {
-        { "diffuse", 0, message.diffuseTexture },
-        { "specular", 0, message.specularTexture },
-        { "gloss", 0, message.powerTexture },
-        { "normal", 0, message.normalTexture },
-        { "displacement", 0, message.emissionTexture },
-        { "diffuse", 1, message.diffuseBlendTexture },
-        { "gloss", 1, message.powerBlendTexture },
-        { "normal", 1, message.normalBlendTexture },
-        { "reflection", 0, message.environmentTexture },
+        { diffuseSymbol, 0, message.diffuseTexture },
+        { specularSymbol, 0, message.specularTexture },
+        { glossSymbol, 0, message.powerTexture },
+        { normalSymbol, 0, message.normalTexture },
+        { displacementSymbol, 0, message.emissionTexture },
+        { diffuseSymbol, 1, message.diffuseBlendTexture },
+        { glossSymbol, 1, message.powerBlendTexture },
+        { normalSymbol, 1, message.normalBlendTexture },
+        { reflectionSymbol, 0, message.environmentTexture },
     };
+
+    bool hasSpecular = false;
+    bool hasGloss = false;
 
     for (const auto& textureDesc : textureDescs)
     {
@@ -80,6 +90,9 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
                     textureDesc.dstTexture.addressModeU = srcTexture->m_SamplerState.AddressU;
                     textureDesc.dstTexture.addressModeV = srcTexture->m_SamplerState.AddressV;
 
+                    if (srcTexture->m_Type == specularSymbol) hasSpecular = true;
+                    if (srcTexture->m_Type == glossSymbol) hasGloss = true;
+
                     break;
                 }
             }
@@ -90,8 +103,6 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     float specularColor[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
     float specularPower = 0.0f;
 
-    const Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
-    const Hedgehog::Base::CStringSymbol specularSymbol("specular");
     const Hedgehog::Base::CStringSymbol opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
     const Hedgehog::Base::CStringSymbol powerGlossLevelSymbol("power_gloss_level");
 
@@ -124,6 +135,12 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
 
             specularPower = float4Param->m_spValue[1] * 500.0f;
         }
+    }
+    if (!hasSpecular && !hasGloss)
+    {
+        specularColor[0] = 0.0f;
+        specularColor[1] = 0.0f;
+        specularColor[2] = 0.0f;
     }
 
     memcpy(message.diffuseColor, diffuseColor, sizeof(message.diffuseColor));

@@ -3,6 +3,7 @@
 #include "DXILLibrary.h"
 #include "CopyTextureVertexShader.h"
 #include "CopyTexturePixelShader.h"
+#include "EnvironmentColor.h"
 #include "Message.h"
 #include "RootSignature.h"
 
@@ -69,6 +70,22 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
     m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
 }
 
+D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
+{
+    EnvironmentColor::get(m_globalsPS, m_globalsRT.environmentColor);
+
+    // TODO: Preferably do this check in Generations
+    static float prevMatrices[32];
+    if (memcmp(prevMatrices, &m_globalsVS, sizeof(prevMatrices)) == 0)
+        ++m_globalsRT.currentFrame;
+    else
+        m_globalsRT.currentFrame = 1;
+
+    memcpy(prevMatrices, &m_globalsVS, sizeof(prevMatrices));
+
+    return createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+}
+
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createTopLevelAccelStruct()
 {
     if (m_instanceDescs.empty())
@@ -117,7 +134,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createTopLevelAccelStruct()
     accelStructDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
     accelStructDesc.Inputs.NumDescs = static_cast<UINT>(m_instanceDescs.size());
     accelStructDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-    accelStructDesc.Inputs.InstanceDescs = makeBuffer(m_instanceDescs.data(),
+    accelStructDesc.Inputs.InstanceDescs = createBuffer(m_instanceDescs.data(),
         static_cast<uint32_t>(m_instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
@@ -398,18 +415,20 @@ void RaytracingDevice::procMsgTraceRays()
         createRenderTargetAndDepthStencil();
     }
 
-    const auto globalsVS = makeBuffer(&m_globalsVS,
+    const auto globalsVS = createBuffer(&m_globalsVS,
         sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
-    const auto globalsPS = makeBuffer(&m_globalsPS, 
+    const auto globalsPS = createBuffer(&m_globalsPS, 
         offsetof(GlobalsPS, textureIndices), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+
+    const auto globalsRT = createGlobalsRT();
 
     const auto topLevelAccelStruct = createTopLevelAccelStruct();
 
-    const auto geometryDescs = makeBuffer(m_geometryDescs.data(), 
+    const auto geometryDescs = createBuffer(m_geometryDescs.data(), 
         static_cast<uint32_t>(m_geometryDescs.size() * sizeof(GeometryDesc)), 0x4);
 
-    const auto materials = makeBuffer(m_materials.data(),
+    const auto materials = createBuffer(m_materials.data(),
         static_cast<uint32_t>(m_materials.size() * sizeof(Material)), 0x4);
 
     getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_raytracingRootSignature.Get());
@@ -417,12 +436,13 @@ void RaytracingDevice::procMsgTraceRays()
 
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0, globalsVS);
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1, globalsPS);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2, topLevelAccelStruct);
-    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(3, m_descriptorHeap.getGpuHandle(m_uavId));
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(4, geometryDescs);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, materials);
+    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(2, globalsRT);
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(3, topLevelAccelStruct);
+    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(4, m_descriptorHeap.getGpuHandle(m_uavId));
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, geometryDescs);
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(6, materials);
 
-    const auto shaderTable = makeBuffer(
+    const auto shaderTable = createBuffer(
         m_shaderTable.data(), static_cast<uint32_t>(m_shaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
     D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc{};
@@ -547,13 +567,14 @@ RaytracingDevice::RaytracingDevice()
     CD3DX12_DESCRIPTOR_RANGE descriptorRanges[1];
     descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0);
 
-    CD3DX12_ROOT_PARAMETER raytracingRootParams[6];
+    CD3DX12_ROOT_PARAMETER raytracingRootParams[7];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0);
     raytracingRootParams[1].InitAsConstantBufferView(1, 0);
-    raytracingRootParams[2].InitAsShaderResourceView(0, 0);
-    raytracingRootParams[3].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges);
-    raytracingRootParams[4].InitAsShaderResourceView(1, 0);
-    raytracingRootParams[5].InitAsShaderResourceView(2, 0);
+    raytracingRootParams[2].InitAsConstantBufferView(2, 0);
+    raytracingRootParams[3].InitAsShaderResourceView(0, 0);
+    raytracingRootParams[4].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges);
+    raytracingRootParams[5].InitAsShaderResourceView(1, 0);
+    raytracingRootParams[6].InitAsShaderResourceView(2, 0);
 
     RootSignature::create(
         m_device.Get(),

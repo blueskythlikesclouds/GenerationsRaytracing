@@ -5,12 +5,20 @@
 #include "GeometryDesc.h"
 #include "Material.h"
 
+struct alignas(0x10) GlobalsRT
+{
+    float environmentColor[3];
+    uint32_t currentFrame = 0;
+};
+
 class RaytracingDevice final : public Device
 {
 protected:
     ComPtr<ID3D12RootSignature> m_raytracingRootSignature;
     ComPtr<ID3D12StateObject> m_stateObject;
     std::vector<uint8_t> m_shaderTable;
+
+    GlobalsRT m_globalsRT;
 
     std::vector<BottomLevelAccelStruct> m_bottomLevelAccelStructs;
     std::vector<D3D12_RESOURCE_BARRIER> m_bottomLevelAccelStructBarriers;
@@ -38,6 +46,7 @@ protected:
 
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
+    D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT();
     D3D12_GPU_VIRTUAL_ADDRESS createTopLevelAccelStruct();
     void createRenderTargetAndDepthStencil();
     void copyRenderTargetAndDepthStencil();

@@ -97,7 +97,8 @@ cbuffer GlobalsPS : register(b1)
 
 cbuffer GlobalsRT : register(b2)
 {
-    
+    float3 g_EnvironmentColor;
+    uint g_CurrentFrame;
 }
 
 struct Vertex
@@ -394,7 +395,15 @@ void RayGeneration()
         ray,
         payload);
 
-    g_ColorTexture[DispatchRaysIndex().xy] = float4(payload.Color, 1.0);
+    if (g_CurrentFrame > 1)
+    {
+        float3 prevColor = g_ColorTexture[DispatchRaysIndex().xy].rgb;
+        g_ColorTexture[DispatchRaysIndex().xy] = float4(lerp(prevColor, payload.Color, 1.0 / g_CurrentFrame), 1.0);
+    }
+    else
+    {
+        g_ColorTexture[DispatchRaysIndex().xy] = float4(payload.Color, 1.0);
+    }
 
     if (payload.T >= 0.0)
     {
@@ -413,7 +422,7 @@ void RayGeneration()
 [shader("miss")]
 void Miss(inout Payload payload : SV_RayPayload)
 {
-    payload.Color = float3(135, 181, 237) / 255.0;
+    payload.Color = g_EnvironmentColor;
     payload.T = -1.0;
 }
 
@@ -423,7 +432,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
     Vertex vertex = LoadVertex(attributes);
     ShadingParams shadingParams = LoadShadingParams(vertex);
 
-    uint random = InitializeRandom(DispatchRaysIndex().x, DispatchRaysIndex().y);
+    uint random = InitializeRandom(DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x, g_CurrentFrame - 1);
 
     payload.Color = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, 
         mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
@@ -497,12 +506,13 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
 [shader("anyhit")]
 void AnyHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
-    Vertex vertex = LoadVertex(attributes);
     Material material = LoadMaterial();
 
-    Texture2D diffuseTexture = ResourceDescriptorHeap[NonUniformResourceIndex(material.DiffuseTexture.Id)];
-    SamplerState diffuseSampler = SamplerDescriptorHeap[NonUniformResourceIndex(material.DiffuseTexture.SamplerId)];
+    if (material.DiffuseTexture.Id != 0)
+    {
+        Vertex vertex = LoadVertex(attributes);
 
-    if (diffuseTexture.SampleLevel(diffuseSampler, vertex.TexCoord, 0).a < 0.5)
-        IgnoreHit();
+        if (SampleMaterialTexture2D(vertex, material.DiffuseTexture).a < 0.5)
+            IgnoreHit();
+    }
 }

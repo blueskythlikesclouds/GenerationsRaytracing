@@ -127,6 +127,7 @@
     <ClCompile Include="CommandQueue.cpp" />
     <ClCompile Include="DescriptorHeap.cpp" />
     <ClCompile Include="Device.cpp" />
+    <ClCompile Include="EnvironmentColor.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MessageReceiver.cpp" />
     <ClCompile Include="Pch.cpp">
@@ -146,6 +147,7 @@
     <ClInclude Include="CommandQueue.h" />
     <ClInclude Include="DescriptorHeap.h" />
     <ClInclude Include="Device.h" />
+    <ClInclude Include="EnvironmentColor.h" />
     <ClInclude Include="GeometryDesc.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="MessageReceiver.h" />

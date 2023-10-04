@@ -79,7 +79,7 @@ void Device::writeBuffer(
     }
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS Device::makeBuffer(const void* memory, uint32_t dataSize, uint32_t dataAlignment)
+D3D12_GPU_VIRTUAL_ADDRESS Device::createBuffer(const void* memory, uint32_t dataSize, uint32_t dataAlignment)
 {
     assert(dataSize <= UPLOAD_BUFFER_SIZE);
 
@@ -226,7 +226,7 @@ void Device::flushGraphicsState()
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_VS)
     {
         getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0,
-            makeBuffer(&m_globalsVS, sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+            createBuffer(&m_globalsVS, sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_SAMPLER_DESC)
@@ -253,7 +253,7 @@ void Device::flushGraphicsState()
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_PS)
     {
         getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(1,
-            makeBuffer(&m_globalsPS, sizeof(m_globalsPS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+            createBuffer(&m_globalsPS, sizeof(m_globalsPS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_VIEWPORT)
@@ -1063,7 +1063,7 @@ void Device::procMsgDrawPrimitiveUP()
 {
     const auto& message = m_messageReceiver.getMessage<MsgDrawPrimitiveUP>();
 
-    m_vertexBufferViews[0].BufferLocation = makeBuffer(message.data, message.dataSize, alignof(float));
+    m_vertexBufferViews[0].BufferLocation = createBuffer(message.data, message.dataSize, alignof(float));
     m_vertexBufferViews[0].SizeInBytes = message.dataSize;
     m_vertexBufferViews[0].StrideInBytes = message.vertexStreamZeroStride;
 
