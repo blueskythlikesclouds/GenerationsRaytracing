@@ -6,14 +6,6 @@
 #include "FVFPixelShader.h"
 #include "RootSignature.h"
 
-void Device::checkDeviceRemovedReason() const
-{
-#ifdef _DEBUG
-    HRESULT hr = m_device->GetDeviceRemovedReason();
-    assert(SUCCEEDED(hr));
-#endif
-}
-
 void Device::createBuffer(
     D3D12_HEAP_TYPE type,
     uint32_t dataSize,

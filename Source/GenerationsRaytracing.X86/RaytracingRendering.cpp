@@ -19,9 +19,6 @@ static void traverseRenderable(Hedgehog::Mirage::CRenderable* renderable)
             const auto modelDataEx = 
                 reinterpret_cast<ModelDataEx*>(element->m_spModel.get());
 
-            if (modelDataEx->m_bottomLevelAccelStructId == NULL)
-                return;
-
             uint32_t bottomLevelAccelStructId = BottomLevelAccelStruct::create(*modelDataEx, nullptr);
 
             auto& message = s_messageSender.makeMessage<MsgCreateInstance>();

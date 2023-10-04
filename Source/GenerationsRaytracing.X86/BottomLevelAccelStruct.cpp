@@ -43,35 +43,50 @@ struct MeshResource
 
 static void convertToTriangles(MeshDataEx& meshData, const MeshResource* data)
 {
-    if (meshData.m_VertexNum == 0 || meshData.m_IndexNum <= 2)
+    assert(meshData.m_indices == nullptr);
+
+    const uint32_t indexNum = _byteswap_ulong(data->indexCount);
+    if (indexNum <= 2)
         return;
 
     std::vector<uint16_t> indices;
-    indices.reserve((meshData.m_IndexNum - 2) * 3);
+    indices.reserve((indexNum - 2) * 3);
 
-    size_t start = 0;
+    uint16_t a = _byteswap_ushort(data->indices[0]);
+    uint16_t b = _byteswap_ushort(data->indices[1]);
+    bool direction = false;
 
-    for (size_t i = 0; i < _byteswap_ulong(data->indexCount); ++i)
+    for (uint32_t i = 2; i < indexNum; i++)
     {
-        if (data->indices[i] == 0xFFFF)
+        uint16_t c = _byteswap_ushort(data->indices[i]);
+
+        if (c == 0xFFFF)
         {
-            start = i + 1;
+            a = _byteswap_ushort(data->indices[++i]);
+            b = _byteswap_ushort(data->indices[++i]);
+            direction = false;
         }
-        else if (i - start >= 2)
+        else
         {
-            uint16_t a = _byteswap_ushort(data->indices[i - 2]);
-            uint16_t b = _byteswap_ushort(data->indices[i - 1]);
-            uint16_t c = _byteswap_ushort(data->indices[i]);
-
-            if ((i - start) & 1)
-                std::swap(a, b);
-
-            if (a != b && a != c && b != c)
+            direction = !direction;
+            if (a != b && b != c && c != a)
             {
-                indices.push_back(a);
-                indices.push_back(b);
-                indices.push_back(c);
+                if (direction)
+                {
+                    indices.push_back(a);
+                    indices.push_back(b);
+                    indices.push_back(c);
+                }
+                else
+                {
+                    indices.push_back(a);
+                    indices.push_back(c);
+                    indices.push_back(b);
+                }
             }
+
+            a = b;
+            b = c;
         }
     }
 
@@ -103,8 +118,9 @@ HOOK(void, __cdecl, MakeMeshData, 0x744A00,
     const Hedgehog::Mirage::CMirageDatabaseWrapper& databaseWrapper,
     Hedgehog::Mirage::CRenderingInfrastructure& renderingInfrastructure)
 {
+    if (!meshData.IsMadeOne())
+        convertToTriangles(meshData, data);
     originalMakeMeshData(meshData, data, databaseWrapper, renderingInfrastructure);
-    convertToTriangles(meshData, data);
 }
 
 HOOK(void, __cdecl, MakeMeshData2, 0x744CC0,
@@ -113,8 +129,9 @@ HOOK(void, __cdecl, MakeMeshData2, 0x744CC0,
     const Hedgehog::Mirage::CMirageDatabaseWrapper& databaseWrapper,
     Hedgehog::Mirage::CRenderingInfrastructure& renderingInfrastructure)
 {
+    if (!meshData.IsMadeOne())
+        convertToTriangles(meshData, data);
     originalMakeMeshData2(meshData, data, databaseWrapper, renderingInfrastructure);
-    convertToTriangles(meshData, data);
 }
 
 static bool checkMeshValidity(const MeshDataEx& meshData)
@@ -331,7 +348,7 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
 {
     const auto result = originalModelDataConstructor(This);
 
-    This->m_bottomLevelAccelStructId = s_freeListAllocator.allocate();;
+    This->m_bottomLevelAccelStructId = NULL;
 
     return result;
 }
@@ -351,13 +368,6 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
     }
 
     originalModelDataDestructor(This);
-}
-
-static void __fastcall modelDataSetMadeOne(ModelDataEx* This)
-{
-    createBottomLevelAccelStruct(*This, This->m_bottomLevelAccelStructId);
-
-    This->SetMadeOne();
 }
 
 uint32_t BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, Hedgehog::Mirage::CPose* pose)
@@ -420,7 +430,4 @@ void BottomLevelAccelStruct::init()
 
     INSTALL_HOOK(ModelDataConstructor);
     INSTALL_HOOK(ModelDataDestructor);
-    WRITE_MEMORY(0x722760, uint8_t, 0xC3); // Disable shared buffer
-
-    //WRITE_CALL(0x74018C, modelDataSetMadeOne);
 }
