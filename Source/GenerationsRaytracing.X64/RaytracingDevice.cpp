@@ -76,10 +76,17 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
 
     // TODO: Preferably do this check in Generations
     static float prevMatrices[32];
-    if (memcmp(prevMatrices, &m_globalsVS, sizeof(prevMatrices)) == 0)
+    bool allMatch = true;
+
+    for (size_t i = 0; i < 32; i++)
+    {
+        allMatch &= abs(prevMatrices[i] - (&m_globalsVS.floatConstants[0][0])[i]) < 0.001f;
+        prevMatrices[i] = (&m_globalsVS.floatConstants[0][0])[i];
+    }
+    if (allMatch)
         ++m_globalsRT.currentFrame;
     else
-        m_globalsRT.currentFrame = 1;
+        m_globalsRT.currentFrame = 0;
 
     memcpy(prevMatrices, &m_globalsVS, sizeof(prevMatrices));
 

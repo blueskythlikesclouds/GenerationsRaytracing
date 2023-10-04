@@ -274,7 +274,7 @@ ShadingParams LoadShadingParams(Vertex vertex)
         shadingParams.SpecularPower *= specularPower;
     }
 
-    shadingParams.SpecularPower = min(shadingParams.SpecularPower, 1024.0);
+    shadingParams.SpecularPower = clamp(shadingParams.SpecularPower, 1.0, 1024.0);
 
     if (material.NormalTexture.Id != 0)
     {
@@ -287,16 +287,15 @@ ShadingParams LoadShadingParams(Vertex vertex)
             normalBlend.x *= normalBlend.w;
 
             normal = lerp(normal, normalBlend, vertex.Color.x);
-
-            normal.xy *= 2.0;
-            normal.xy -= 1.0;
-            normal.z = sqrt(1.0 - saturate(dot(normal.xy, normal.xy)));
-
-            shadingParams.Normal = normalize(
-                vertex.Tangent * normal.x +
-                vertex.Binormal * normal.y +
-                vertex.Normal * normal.z);
         }
+
+        normal.xy = normal.xy * 2.0 - 1.0;
+        normal.z = sqrt(1.0 - saturate(dot(normal.xy, normal.xy)));
+
+        shadingParams.Normal = normalize(
+            vertex.Tangent * normal.x +
+            vertex.Binormal * normal.y +
+            vertex.Normal * normal.z);
     }
 
     shadingParams.EyeDirection = normalize(g_EyePosition.xyz - vertex.Position);
@@ -395,10 +394,10 @@ void RayGeneration()
         ray,
         payload);
 
-    if (g_CurrentFrame > 1)
+    if (g_CurrentFrame > 0)
     {
         float3 prevColor = g_ColorTexture[DispatchRaysIndex().xy].rgb;
-        g_ColorTexture[DispatchRaysIndex().xy] = float4(lerp(prevColor, payload.Color, 1.0 / g_CurrentFrame), 1.0);
+        g_ColorTexture[DispatchRaysIndex().xy] = float4(lerp(prevColor, payload.Color, 1.0 / (g_CurrentFrame + 1.0)), 1.0);
     }
     else
     {
@@ -432,10 +431,9 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
     Vertex vertex = LoadVertex(attributes);
     ShadingParams shadingParams = LoadShadingParams(vertex);
 
-    uint random = InitializeRandom(DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x, g_CurrentFrame - 1);
+    uint random = InitializeRandom(DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x, g_CurrentFrame);
 
-    payload.Color = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, 
-        mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+    payload.Color = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
 
     {
         float3 normal = -mrgGlobalLight_Direction.xyz;
@@ -480,7 +478,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
         RayDesc ray;
 
         ray.Origin = vertex.Position;
-        ray.Direction = GetCosHemisphereSample(vertex.Normal, random);
+        ray.Direction = GetCosHemisphereSample(shadingParams.Normal, random);
         ray.TMin = 0.001;
         ray.TMax = 10000.0;
 
