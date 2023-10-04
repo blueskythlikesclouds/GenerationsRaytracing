@@ -99,6 +99,7 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::createBuffer(const void* memory, uint32_t data
     {
         D3D12MA::ALLOCATION_DESC allocDesc{};
         allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
         const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(UPLOAD_BUFFER_SIZE);
 
@@ -1724,6 +1725,8 @@ void Device::processMessages()
         m_descriptorHeap.free(id);
 
     m_tempDescriptorIds[m_frame].clear();
+
+    releaseRaytracingResources();
 }
 
 void Device::runLoop()

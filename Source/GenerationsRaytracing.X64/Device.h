@@ -180,6 +180,7 @@ protected:
 
     void processMessages();
     virtual bool processRaytracingMessage() = 0;
+    virtual void releaseRaytracingResources() = 0;
 
 public:
     Device();

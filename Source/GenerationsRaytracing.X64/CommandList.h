@@ -19,6 +19,7 @@ protected:
 
     ankerl::unordered_dense::map<ID3D12Resource*, ResourceStates> m_resourceStates;
     std::vector<D3D12_RESOURCE_BARRIER> m_resourceBarriers;
+    ankerl::unordered_dense::set<ID3D12Resource*> m_uavResources;
 
 public:
     void init(ID3D12Device* device, const CommandQueue& commandQueue);

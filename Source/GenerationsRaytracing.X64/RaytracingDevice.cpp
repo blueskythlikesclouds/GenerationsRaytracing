@@ -8,6 +8,8 @@
 #include "Message.h"
 #include "RootSignature.h"
 
+static constexpr uint32_t SCRATCH_BUFFER_SIZE = 16 * 1024 * 1024;
+
 uint32_t RaytracingDevice::allocateGeometryDescs(uint32_t count)
 {
     const auto it = m_freeCounts.lower_bound(count);
@@ -71,6 +73,37 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
     m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
 }
 
+void RaytracingDevice::buildRaytracingAccelerationStructure(ComPtr<D3D12MA::Allocation>& allocation,
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc)
+{
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
+    m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
+
+    if (allocation == nullptr || allocation->GetSize() < preBuildInfo.ResultDataMaxSizeInBytes)
+    {
+        if (allocation != nullptr)
+            m_tempBuffers[m_frame].push_back(std::move(allocation));
+
+        createBuffer(
+            D3D12_HEAP_TYPE_DEFAULT,
+            static_cast<uint32_t>(preBuildInfo.ResultDataMaxSizeInBytes),
+            D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+            D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+            allocation);
+    }
+
+    assert(m_uploadBufferOffset + preBuildInfo.ScratchDataSizeInBytes <= SCRATCH_BUFFER_SIZE);
+
+    accelStructDesc.DestAccelerationStructureData = allocation->GetResource()->GetGPUVirtualAddress();
+    accelStructDesc.ScratchAccelerationStructureData = m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+
+    m_scratchBufferOffset = static_cast<uint32_t>((m_scratchBufferOffset + preBuildInfo.ScratchDataSizeInBytes 
+        + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1));
+
+    getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
+    getGraphicsCommandList().uavBarrier(allocation->GetResource());
+}
+
 static float haltonSequence(int i, int b)
 {
     float f = 1.0;
@@ -117,10 +150,10 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
     return createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createTopLevelAccelStruct()
+void RaytracingDevice::createTopLevelAccelStruct()
 {
     if (m_instanceDescs.empty())
-        return NULL;
+        return;
 
     for (const auto& [textureId, textureIdOffset] : m_delayedTextures)
     {
@@ -168,44 +201,8 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createTopLevelAccelStruct()
     accelStructDesc.Inputs.InstanceDescs = createBuffer(m_instanceDescs.data(),
         static_cast<uint32_t>(m_instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
-    m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
-
-    // TODO: Duplicate code is bad!
-
-    auto& topLevelAccelStruct = m_tempBuffers[m_frame].emplace_back();
-
-    createBuffer(
-        D3D12_HEAP_TYPE_DEFAULT,
-        static_cast<uint32_t>(preBuildInfo.ResultDataMaxSizeInBytes),
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-        topLevelAccelStruct);
-
-    auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
-
-    createBuffer(
-        D3D12_HEAP_TYPE_DEFAULT,
-        static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes),
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-        D3D12_RESOURCE_STATE_COMMON,
-        scratchBuffer);
-
-    accelStructDesc.DestAccelerationStructureData = topLevelAccelStruct->GetResource()->GetGPUVirtualAddress();
-    accelStructDesc.ScratchAccelerationStructureData = scratchBuffer->GetResource()->GetGPUVirtualAddress();
-
-    if (!m_bottomLevelAccelStructBarriers.empty())
-    {
-        getUnderlyingGraphicsCommandList()->ResourceBarrier(
-            static_cast<uint32_t>(m_bottomLevelAccelStructBarriers.size()), m_bottomLevelAccelStructBarriers.data());
-
-        m_bottomLevelAccelStructBarriers.clear();
-    }
-
-    getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
-    getGraphicsCommandList().uavBarrier(topLevelAccelStruct->GetResource());
-
-    return topLevelAccelStruct->GetResource()->GetGPUVirtualAddress();
+    getGraphicsCommandList().commitBarriers();
+    buildRaytracingAccelerationStructure(m_topLevelAccelStruct, accelStructDesc);
 }
 
 void RaytracingDevice::createRenderTargetAndDepthStencil()
@@ -357,32 +354,7 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     accelStructDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
     accelStructDesc.Inputs.pGeometryDescs = geometryDescs.data();
 
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
-    m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
-
-    // TODO: suballocate all of this
-
-    createBuffer(
-        D3D12_HEAP_TYPE_DEFAULT,
-        static_cast<uint32_t>(preBuildInfo.ResultDataMaxSizeInBytes),
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-        bottomLevelAccelStruct.allocation);
-
-    auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
-
-    createBuffer(
-        D3D12_HEAP_TYPE_DEFAULT,
-        static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes),
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-        D3D12_RESOURCE_STATE_COMMON,
-        scratchBuffer);
-
-    accelStructDesc.DestAccelerationStructureData = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
-    accelStructDesc.ScratchAccelerationStructureData = scratchBuffer->GetResource()->GetGPUVirtualAddress();
-
-    getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
-    m_bottomLevelAccelStructBarriers.push_back(CD3DX12_RESOURCE_BARRIER::UAV(bottomLevelAccelStruct.allocation->GetResource()));
+    buildRaytracingAccelerationStructure(bottomLevelAccelStruct.allocation, accelStructDesc);
 }
 
 void RaytracingDevice::procMsgReleaseRaytracingResource()
@@ -451,6 +423,8 @@ void RaytracingDevice::procMsgTraceRays()
         createRenderTargetAndDepthStencil();
     }
 
+    createTopLevelAccelStruct();
+
     const auto globalsVS = createBuffer(&m_globalsVS,
         sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
@@ -459,7 +433,8 @@ void RaytracingDevice::procMsgTraceRays()
 
     const auto globalsRT = createGlobalsRT();
 
-    const auto topLevelAccelStruct = createTopLevelAccelStruct();
+    const auto topLevelAccelStruct = m_topLevelAccelStruct != nullptr ? 
+        m_topLevelAccelStruct->GetResource()->GetGPUVirtualAddress() : NULL;
 
     const auto geometryDescs = createBuffer(m_geometryDescs.data(), 
         static_cast<uint32_t>(m_geometryDescs.size() * sizeof(GeometryDesc)), 0x4);
@@ -599,6 +574,11 @@ bool RaytracingDevice::processRaytracingMessage()
     return true;
 }
 
+void RaytracingDevice::releaseRaytracingResources()
+{
+    m_scratchBufferOffset = 0;
+}
+
 RaytracingDevice::RaytracingDevice()
 {
     CD3DX12_DESCRIPTOR_RANGE descriptorRanges[1];
@@ -655,6 +635,27 @@ RaytracingDevice::RaytracingDevice()
     memcpy(&m_shaderTable[0x00], properties->GetShaderIdentifier(L"RayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     memcpy(&m_shaderTable[0x40], properties->GetShaderIdentifier(L"Miss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     memcpy(&m_shaderTable[0x80], properties->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+    for (auto& scratchBuffer : m_scratchBuffers)
+    {
+        D3D12MA::ALLOCATION_DESC allocDesc{};
+        allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
+
+        const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(
+            SCRATCH_BUFFER_SIZE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+
+        HRESULT hr = m_allocator->CreateResource(
+            &allocDesc,
+            &resourceDesc,
+            D3D12_RESOURCE_STATE_COMMON,
+            nullptr,
+            scratchBuffer.GetAddressOf(),
+            IID_ID3D12Resource,
+            nullptr);
+
+        assert(SUCCEEDED(hr) && scratchBuffer != nullptr);
+    }
 
     CD3DX12_ROOT_PARAMETER copyRootParams[1];
     copyRootParams[0].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);

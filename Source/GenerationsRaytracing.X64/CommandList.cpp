@@ -69,7 +69,11 @@ void CommandList::transitionBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STA
 
 void CommandList::uavBarrier(ID3D12Resource* resource)
 {
-    m_resourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::UAV(resource));
+    if (!m_uavResources.contains(resource))
+    {
+        m_resourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::UAV(resource));
+        m_uavResources.emplace(resource);
+    }
 }
 
 void CommandList::commitBarriers()
@@ -87,4 +91,5 @@ void CommandList::commitBarriers()
         m_commandList->ResourceBarrier(static_cast<UINT>(m_resourceBarriers.size()), m_resourceBarriers.data());
 
     m_resourceBarriers.clear();
+    m_uavResources.clear();
 }
