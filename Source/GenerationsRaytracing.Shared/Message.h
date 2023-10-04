@@ -211,6 +211,7 @@ struct MsgCreateVertexBuffer
     MSG_DEFINE_MESSAGE(MsgPresent);
     uint32_t length;
     uint32_t vertexBufferId;
+    bool allowUnorderedAccess;
 };
 
 struct MsgWriteVertexBuffer
@@ -368,6 +369,17 @@ struct MsgCreateMaterial
 
     uint32_t materialId;
     Texture diffuseTexture;
+    Texture specularTexture;
+    Texture powerTexture;
+    Texture normalTexture;
+    Texture emissionTexture;
+    Texture diffuseBlendTexture;
+    Texture powerBlendTexture;
+    Texture normalBlendTexture;
+    Texture environmentTexture;
+    float diffuseColor[4];
+    float specularColor[4];
+    float specularPower;
 };
 
 #pragma pack(pop)

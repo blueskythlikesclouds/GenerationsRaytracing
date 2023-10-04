@@ -21,6 +21,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ProcessUtil.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)FreeListAllocator.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ShaderFlags.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)Event.inl" />

@@ -111,6 +111,7 @@ HRESULT Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL 
 
     message.length = Length;
     message.vertexBufferId = (*ppVertexBuffer)->getId();
+    message.allowUnorderedAccess = false;
 
     s_messageSender.endMessage();
 

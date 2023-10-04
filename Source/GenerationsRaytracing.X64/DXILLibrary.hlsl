@@ -100,7 +100,15 @@ cbuffer GlobalsRT : register(b2)
     
 }
 
-RaytracingAccelerationStructure g_BVH : register(t0);
+struct Vertex
+{
+    float3 Position;
+    float3 Normal;
+    float3 Tangent;
+    float3 Binormal;
+    float2 TexCoord;
+    float4 Color;
+};
 
 struct GeometryDesc
 {
@@ -115,8 +123,6 @@ struct GeometryDesc
     uint MaterialId;
 };
 
-StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t1);
-
 struct MaterialTexture
 {
     uint Id;
@@ -126,22 +132,38 @@ struct MaterialTexture
 struct Material
 {
     MaterialTexture DiffuseTexture;
+    MaterialTexture SpecularTexture;
+    MaterialTexture PowerTexture;
+    MaterialTexture NormalTexture;
+    MaterialTexture EmissionTexture;
+    MaterialTexture DiffuseBlendTexture;
+    MaterialTexture PowerBlendTexture;
+    MaterialTexture NormalBlendTexture;
+    MaterialTexture EnvironmentTexture;
+
+    float4 DiffuseColor;
+    float4 SpecularColor;
+    float SpecularPower;
+    uint Padding0;
+    uint Padding1;
+    uint Padding2;
 };
 
-StructuredBuffer<Material> g_Materials : register(t2);
-
-RWTexture2D<float4> g_ColorTexture : register(u0);
-RWTexture2D<float> g_DepthTexture : register(u1);
-
-struct Vertex
+struct ShadingParams
 {
     float3 Position;
+    float4 DiffuseColor;
+    float4 SpecularColor;
+    float SpecularPower;
     float3 Normal;
-    float3 Tangent;
-    float3 Binormal;
-    float2 TexCoord;
-    float4 Color;
+    float3 EyeDirection;
 };
+
+RaytracingAccelerationStructure g_BVH : register(t0);
+StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t1);
+StructuredBuffer<Material> g_Materials : register(t2);
+RWTexture2D<float4> g_ColorTexture : register(u0);
+RWTexture2D<float> g_DepthTexture : register(u1);
 
 Vertex LoadVertex(in BuiltInTriangleIntersectionAttributes attributes)
 {
@@ -204,6 +226,93 @@ Vertex LoadVertex(in BuiltInTriangleIntersectionAttributes attributes)
 Material LoadMaterial()
 {
     return g_Materials[NonUniformResourceIndex(g_GeometryDescs[InstanceID() + GeometryIndex()].MaterialId)];
+}
+
+float4 SampleMaterialTexture2D(Vertex vertex, MaterialTexture materialTexture)
+{
+    Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(materialTexture.Id)];
+    SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(materialTexture.SamplerId)];
+
+    return texture.SampleLevel(samplerState, vertex.TexCoord, 0);
+}
+
+ShadingParams LoadShadingParams(Vertex vertex)
+{
+    Material material = LoadMaterial();
+    ShadingParams shadingParams = (ShadingParams) 0;
+
+    shadingParams.Position = vertex.Position;
+    shadingParams.DiffuseColor = material.DiffuseColor;
+    shadingParams.SpecularColor = material.SpecularColor;
+    shadingParams.SpecularPower = material.SpecularPower;
+    shadingParams.Normal = vertex.Normal;
+
+    if (material.DiffuseTexture.Id != 0)
+    {
+        float4 diffuseColor = SampleMaterialTexture2D(vertex, material.DiffuseTexture);
+
+        if (material.DiffuseBlendTexture.Id != 0)
+            diffuseColor = lerp(diffuseColor, SampleMaterialTexture2D(vertex, material.DiffuseBlendTexture), vertex.Color.x);
+        else
+            diffuseColor *= vertex.Color;
+
+        shadingParams.DiffuseColor *= diffuseColor;
+    }
+
+    if (material.SpecularTexture.Id != 0)
+        shadingParams.SpecularColor *= SampleMaterialTexture2D(vertex, material.SpecularTexture);
+
+    if (material.PowerTexture.Id != 0)
+    {
+        float specularPower = SampleMaterialTexture2D(vertex, material.PowerTexture).x;
+
+        if (material.PowerBlendTexture.Id != 0)
+            specularPower = lerp(specularPower, SampleMaterialTexture2D(vertex, material.PowerBlendTexture).x, vertex.Color.x);
+
+        shadingParams.SpecularColor.rgb *= specularPower;
+        shadingParams.SpecularPower *= specularPower;
+    }
+
+    shadingParams.SpecularPower = min(shadingParams.SpecularPower, 1024.0);
+
+    if (material.NormalTexture.Id != 0)
+    {
+        float4 normal = SampleMaterialTexture2D(vertex, material.NormalTexture);
+        normal.x *= normal.w;
+
+        if (material.NormalBlendTexture.Id != 0)
+        {
+            float4 normalBlend = SampleMaterialTexture2D(vertex, material.NormalBlendTexture);
+            normalBlend.x *= normalBlend.w;
+
+            normal = lerp(normal, normalBlend, vertex.Color.x);
+
+            normal.xy *= 2.0;
+            normal.xy -= 1.0;
+            normal.z = sqrt(1.0 - saturate(dot(normal.xy, normal.xy)));
+
+            shadingParams.Normal = normalize(
+                vertex.Tangent * normal.x +
+                vertex.Binormal * normal.y +
+                vertex.Normal * normal.z);
+        }
+    }
+
+    shadingParams.EyeDirection = normalize(g_EyePosition.xyz - vertex.Position);
+
+    return shadingParams;
+}
+
+float3 ComputeDirectLighting(ShadingParams shadingParams, float3 lightDirection, float3 diffuseColor, float3 specularColor)
+{
+    diffuseColor *= shadingParams.DiffuseColor.rgb;
+
+    float3 halfwayDirection = normalize(shadingParams.EyeDirection + lightDirection);
+    float specular = pow(saturate(dot(shadingParams.Normal, halfwayDirection)), shadingParams.SpecularPower);
+    float fresnel = saturate(dot(shadingParams.EyeDirection, halfwayDirection)) * 0.6 + 0.4;
+    specularColor *= shadingParams.SpecularColor.rgb * specular * fresnel;
+
+    return (diffuseColor + specularColor) * saturate(dot(shadingParams.Normal, lightDirection));
 }
 
 uint InitializeRandom(uint val0, uint val1, uint backoff = 16)
@@ -312,14 +421,13 @@ void Miss(inout Payload payload : SV_RayPayload)
 void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
     Vertex vertex = LoadVertex(attributes);
-    Material material = LoadMaterial();
+    ShadingParams shadingParams = LoadShadingParams(vertex);
 
     uint random = InitializeRandom(DispatchRaysIndex().x, DispatchRaysIndex().y);
 
-    Texture2D diffuseTexture = ResourceDescriptorHeap[NonUniformResourceIndex(material.DiffuseTexture.Id)];
-    SamplerState diffuseSampler = SamplerDescriptorHeap[NonUniformResourceIndex(material.DiffuseTexture.SamplerId)];
+    payload.Color = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, 
+        mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
 
-    float3 diffuse = diffuseTexture.SampleLevel(diffuseSampler, vertex.TexCoord, 0).rgb;
     {
         float3 normal = -mrgGlobalLight_Direction.xyz;
         float3 binormal = GetPerpendicularVector(normal);
@@ -355,7 +463,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
             ray,
             payload1);
 
-        payload.Color += diffuse * mrgGlobalLight_Diffuse.rgb * saturate(dot(-mrgGlobalLight_Direction.xyz, vertex.Normal)) * -payload1.T;
+        payload.Color *= -payload1.T;
     }
 
     if (payload.Depth < 2)
@@ -380,7 +488,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
             ray,
             payload1);
 
-        payload.Color += diffuse * payload1.Color;
+        payload.Color += shadingParams.DiffuseColor.rgb * payload1.Color;
     }
 
     payload.T = RayTCurrent();

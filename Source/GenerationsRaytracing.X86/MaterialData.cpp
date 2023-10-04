@@ -35,27 +35,100 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     auto& message = s_messageSender.makeMessage<MsgCreateMaterial>();
 
     message.materialId = This->m_materialId;
-    message.diffuseTexture.id = NULL;
-    message.diffuseTexture.addressModeU = D3DTADDRESS_WRAP;
-    message.diffuseTexture.addressModeV = D3DTADDRESS_WRAP;
 
-    Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
-
-    for (const auto& textureData : This->m_spTexsetData->m_TextureList)
+    struct
     {
-        if (textureData->m_Type == diffuseSymbol && 
-            textureData->m_spPictureData != nullptr &&
-            textureData->m_spPictureData->m_pD3DTexture != nullptr)
+        Hedgehog::Base::CStringSymbol type;
+        uint32_t offset;
+        MsgCreateMaterial::Texture& dstTexture;
+    } const textureDescs[] = 
+    {
+        { "diffuse", 0, message.diffuseTexture },
+        { "specular", 0, message.specularTexture },
+        { "gloss", 0, message.powerTexture },
+        { "normal", 0, message.normalTexture },
+        { "displacement", 0, message.emissionTexture },
+        { "diffuse", 1, message.diffuseBlendTexture },
+        { "gloss", 1, message.powerBlendTexture },
+        { "normal", 1, message.normalBlendTexture },
+        { "reflection", 0, message.environmentTexture },
+    };
+
+    for (const auto& textureDesc : textureDescs)
+    {
+        textureDesc.dstTexture.id = 0;
+        textureDesc.dstTexture.addressModeU = D3DTADDRESS_WRAP;
+        textureDesc.dstTexture.addressModeV = D3DTADDRESS_WRAP;
+
+        uint32_t offset = 0;
+        for (const auto& srcTexture : This->m_spTexsetData->m_TextureList)
         {
-            message.diffuseTexture.id = reinterpret_cast<const Texture*>(
-                textureData->m_spPictureData->m_pD3DTexture)->getId();
+            if (srcTexture->m_Type == textureDesc.type)
+            {
+                if (textureDesc.offset != offset)
+                {
+                    ++offset;
+                }
+                else
+                {
+                    if (srcTexture->m_spPictureData != nullptr && 
+                        srcTexture->m_spPictureData->m_pD3DTexture != nullptr)
+                    {
+                        textureDesc.dstTexture.id = reinterpret_cast<const Texture*>(
+                            srcTexture->m_spPictureData->m_pD3DTexture)->getId();
+                    }
+                    textureDesc.dstTexture.addressModeU = srcTexture->m_SamplerState.AddressU;
+                    textureDesc.dstTexture.addressModeV = srcTexture->m_SamplerState.AddressV;
 
-            message.diffuseTexture.addressModeU = textureData->m_SamplerState.AddressU;
-            message.diffuseTexture.addressModeV = textureData->m_SamplerState.AddressV;
-
-            break;
+                    break;
+                }
+            }
         }
     }
+
+    float diffuseColor[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
+    float specularColor[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
+    float specularPower = 0.0f;
+
+    const Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
+    const Hedgehog::Base::CStringSymbol specularSymbol("specular");
+    const Hedgehog::Base::CStringSymbol opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
+    const Hedgehog::Base::CStringSymbol powerGlossLevelSymbol("power_gloss_level");
+
+    for (const auto& float4Param : This->m_Float4Params)
+    {
+        if (float4Param->m_Name == diffuseSymbol)
+        {
+            diffuseColor[0] = float4Param->m_spValue[0];
+            diffuseColor[1] = float4Param->m_spValue[1];
+            diffuseColor[2] = float4Param->m_spValue[2];
+        }
+        else if (float4Param->m_Name == specularSymbol)
+        {
+            specularColor[0] *= float4Param->m_spValue[0];
+            specularColor[1] *= float4Param->m_spValue[1];
+            specularColor[2] *= float4Param->m_spValue[2];
+            specularColor[3] = float4Param->m_spValue[3];
+        }
+        else if (float4Param->m_Name == opacityReflectionRefractionSpectypeSymbol)
+        {
+            diffuseColor[3] = float4Param->m_spValue[0];
+        }
+        else if (float4Param->m_Name == powerGlossLevelSymbol)
+        {
+            const float level = float4Param->m_spValue[2] * 5.0f;
+
+            specularColor[0] *= level;
+            specularColor[1] *= level;
+            specularColor[2] *= level;
+
+            specularPower = float4Param->m_spValue[1] * 500.0f;
+        }
+    }
+
+    memcpy(message.diffuseColor, diffuseColor, sizeof(message.diffuseColor));
+    memcpy(message.specularColor, specularColor, sizeof(message.diffuseColor));
+    message.specularPower = specularPower;
 
     s_messageSender.endMessage();
 

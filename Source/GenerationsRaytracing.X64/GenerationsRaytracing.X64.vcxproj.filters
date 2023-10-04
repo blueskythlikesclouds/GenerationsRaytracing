@@ -33,9 +33,6 @@
     <ClCompile Include="RootSignature.cpp">
       <Filter>Resource</Filter>
     </ClCompile>
-    <ClCompile Include="MemoryPool.cpp">
-      <Filter>Resource</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -113,9 +110,6 @@
       <Filter>Resource</Filter>
     </ClInclude>
     <ClInclude Include="Material.h">
-      <Filter>Resource</Filter>
-    </ClInclude>
-    <ClInclude Include="MemoryPool.h">
       <Filter>Resource</Filter>
     </ClInclude>
   </ItemGroup>

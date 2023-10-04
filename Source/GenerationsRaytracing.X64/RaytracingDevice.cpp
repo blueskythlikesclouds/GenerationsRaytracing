@@ -458,7 +458,15 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     const std::pair<const MsgCreateMaterial::Texture&, Material::Texture&> textures[] =
     {
-        { message.diffuseTexture, material.diffuseTexture }
+        { message.diffuseTexture,      material.diffuseTexture },
+        { message.specularTexture,     material.specularTexture },
+        { message.powerTexture,        material.powerTexture },
+        { message.normalTexture,       material.normalTexture },
+        { message.emissionTexture,     material.emissionTexture },
+        { message.diffuseBlendTexture, material.diffuseBlendTexture },
+        { message.powerBlendTexture,   material.powerBlendTexture },
+        { message.normalBlendTexture,  material.normalBlendTexture },
+        { message.environmentTexture,  material.environmentTexture },
     };
 
     D3D12_SAMPLER_DESC samplerDesc{};
@@ -469,15 +477,18 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     for (const auto& [srcTexture, dstTexture] : textures)
     {
-        if (m_textures.size() <= srcTexture.id || m_textures[srcTexture.id].allocation == nullptr)
+        if (srcTexture.id != NULL)
         {
-            // Delay texture assignment if the texture is not loaded yet
-            m_delayedTextures.emplace_back(srcTexture.id,
-                reinterpret_cast<uintptr_t>(&dstTexture.id) - reinterpret_cast<uintptr_t>(m_materials.data()));
-        }
-        else
-        {
-            dstTexture.id = m_textures[srcTexture.id].srvIndex;
+            if (m_textures.size() <= srcTexture.id || m_textures[srcTexture.id].allocation == nullptr)
+            {
+                // Delay texture assignment if the texture is not loaded yet
+                m_delayedTextures.emplace_back(srcTexture.id,
+                    reinterpret_cast<uintptr_t>(&dstTexture.id) - reinterpret_cast<uintptr_t>(m_materials.data()));
+            }
+            else
+            {
+                dstTexture.id = m_textures[srcTexture.id].srvIndex;
+            }
         }
 
         samplerDesc.AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeU);
@@ -494,6 +505,10 @@ void RaytracingDevice::procMsgCreateMaterial()
 
         dstTexture.samplerId = sampler;
     }
+
+    memcpy(material.diffuseColor, message.diffuseColor, sizeof(material.diffuseColor));
+    memcpy(material.specularColor, message.specularColor, sizeof(material.specularColor));
+    material.specularPower = message.specularPower;
 }
 
 bool RaytracingDevice::processRaytracingMessage()
