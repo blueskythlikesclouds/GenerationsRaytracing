@@ -316,6 +316,7 @@ struct MsgCreateBottomLevelAccelStruct
         uint32_t texCoordOffsets[4];
         uint32_t colorOffset;
         uint32_t materialId;
+        bool isOpaque;
     };
 
     uint32_t bottomLevelAccelStructId;

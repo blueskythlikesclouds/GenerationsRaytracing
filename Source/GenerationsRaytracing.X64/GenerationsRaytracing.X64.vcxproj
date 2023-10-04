@@ -123,6 +123,7 @@
     <None Include="MessageReceiver.inl" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MemoryPool.cpp" />
     <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="CommandQueue.cpp" />
     <ClCompile Include="DescriptorHeap.cpp" />
@@ -142,6 +143,7 @@
   <ItemGroup>
     <ClInclude Include="BottomLevelAccelStruct.h" />
     <ClInclude Include="Buffer.h" />
+    <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="CommandList.h" />
     <ClInclude Include="CommandQueue.h" />
     <ClInclude Include="DescriptorHeap.h" />

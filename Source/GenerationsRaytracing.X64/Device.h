@@ -121,6 +121,8 @@ protected:
     D3D12_SAMPLER_DESC m_samplerDescs[16]{};
     D3D12_GRAPHICS_PIPELINE_STATE_DESC m_pipelineDesc{};
 
+    void checkDeviceRemovedReason() const;
+
     void createBuffer(
         D3D12_HEAP_TYPE type,
         uint32_t dataSize,

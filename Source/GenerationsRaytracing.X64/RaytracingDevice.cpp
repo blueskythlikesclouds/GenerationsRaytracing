@@ -140,7 +140,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createTopLevelAccelStruct()
         D3D12_HEAP_TYPE_DEFAULT,
         static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes),
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_COMMON,
         scratchBuffer);
 
     accelStructDesc.DestAccelerationStructureData = topLevelAccelStruct->GetResource()->GetGPUVirtualAddress();
@@ -259,12 +259,17 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         const auto& geometryDesc =
             reinterpret_cast<const MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data)[i];
 
+        assert((geometryDesc.indexCount % 3) == 0 && 
+            m_indexBuffers[geometryDesc.indexBufferId].byteSize >= geometryDesc.indexCount * sizeof(uint16_t) &&
+            m_vertexBuffers[geometryDesc.vertexBufferId].byteSize - geometryDesc.positionOffset >= geometryDesc.vertexCount * geometryDesc.vertexStride &&
+            (geometryDesc.positionOffset % 4) == 0);
+
         // BVH GeometryDesc
         {
             auto& dstGeometryDesc = geometryDescs[i];
 
             dstGeometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-            dstGeometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+            dstGeometryDesc.Flags = geometryDesc.isOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 
             auto& triangles = dstGeometryDesc.Triangles;
 
@@ -285,14 +290,10 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
             dstGeometryDesc.indexBufferId = m_indexBuffers[geometryDesc.indexBufferId].srvIndex;
             dstGeometryDesc.vertexBufferId = m_vertexBuffers[geometryDesc.vertexBufferId].srvIndex;
             dstGeometryDesc.vertexStride = geometryDesc.vertexStride;
-            dstGeometryDesc.positionOffset = geometryDesc.positionOffset;
             dstGeometryDesc.normalOffset = geometryDesc.normalOffset;
             dstGeometryDesc.tangentOffset = geometryDesc.tangentOffset;
             dstGeometryDesc.binormalOffset = geometryDesc.binormalOffset;
-            dstGeometryDesc.texCoordOffsets[0] = geometryDesc.texCoordOffsets[0];
-            dstGeometryDesc.texCoordOffsets[1] = geometryDesc.texCoordOffsets[1];
-            dstGeometryDesc.texCoordOffsets[2] = geometryDesc.texCoordOffsets[2];
-            dstGeometryDesc.texCoordOffsets[3] = geometryDesc.texCoordOffsets[3];
+            dstGeometryDesc.texCoordOffset = geometryDesc.texCoordOffsets[0];
             dstGeometryDesc.colorOffset = geometryDesc.colorOffset;
             dstGeometryDesc.materialId = geometryDesc.materialId;
         }
@@ -323,7 +324,7 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         D3D12_HEAP_TYPE_DEFAULT,
         static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes),
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_COMMON,
         scratchBuffer);
 
     accelStructDesc.DestAccelerationStructureData = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
@@ -345,11 +346,13 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
         break;
 
     case MsgReleaseRaytracingResource::ResourceType::Instance:
-        memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+        if (message.resourceId < m_instanceDescs.size())
+            memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
         break;
 
     case MsgReleaseRaytracingResource::ResourceType::Material:
-        memset(&m_materials[message.resourceId], 0, sizeof(Material));
+        if (message.resourceId < m_materials.size())
+            memset(&m_materials[message.resourceId], 0, sizeof(Material));
         break;
 
     default:
@@ -401,6 +404,8 @@ void RaytracingDevice::procMsgTraceRays()
     const auto globalsPS = makeBuffer(&m_globalsPS, 
         offsetof(GlobalsPS, textureIndices), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
+    const auto topLevelAccelStruct = createTopLevelAccelStruct();
+
     const auto geometryDescs = makeBuffer(m_geometryDescs.data(), 
         static_cast<uint32_t>(m_geometryDescs.size() * sizeof(GeometryDesc)), 0x4);
 
@@ -412,7 +417,7 @@ void RaytracingDevice::procMsgTraceRays()
 
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0, globalsVS);
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1, globalsPS);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2, createTopLevelAccelStruct());
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2, topLevelAccelStruct);
     getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(3, m_descriptorHeap.getGpuHandle(m_uavId));
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(4, geometryDescs);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, materials);
@@ -457,7 +462,7 @@ void RaytracingDevice::procMsgCreateMaterial()
     };
 
     D3D12_SAMPLER_DESC samplerDesc{};
-    samplerDesc.Filter = D3D12_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT;
+    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
     samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
     samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
@@ -552,13 +557,14 @@ RaytracingDevice::RaytracingDevice()
     CD3DX12_HIT_GROUP_SUBOBJECT hitGroupSubobject(stateObject);
     hitGroupSubobject.SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
     hitGroupSubobject.SetHitGroupExport(L"HitGroup");
+    hitGroupSubobject.SetAnyHitShaderImport(L"AnyHit");
     hitGroupSubobject.SetClosestHitShaderImport(L"ClosestHit");
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
-    shaderConfigSubobject.Config(sizeof(uint32_t), sizeof(float) * 2);
+    shaderConfigSubobject.Config(sizeof(float) * 5, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
-    pipelineConfigSubobject.Config(1);
+    pipelineConfigSubobject.Config(4);
 
     CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT rootSignatureSubobject(stateObject);
     rootSignatureSubobject.SetRootSignature(m_raytracingRootSignature.Get());

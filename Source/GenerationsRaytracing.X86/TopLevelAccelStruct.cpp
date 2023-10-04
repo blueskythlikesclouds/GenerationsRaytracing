@@ -60,6 +60,29 @@ static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoData
     This->SetMadeOne();
 }
 
+HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInfoEx* This)
+{
+    const auto result = originalInstanceInfoConstructor(This);
+
+    This->m_instanceId = s_freeListAllocator.allocate();
+
+    return result;
+}
+
+HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
+{
+    auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+
+    message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
+    message.resourceId = This->m_instanceId;
+
+    s_messageSender.endMessage();
+
+    s_freeListAllocator.free(This->m_instanceId);
+
+    originalInstanceInfoDestructor(This);
+}
+
 void TopLevelAccelStruct::init()
 {
     WRITE_MEMORY(0x7176AC, uint32_t, sizeof(TerrainInstanceInfoDataEx));
@@ -75,4 +98,10 @@ void TopLevelAccelStruct::init()
     WRITE_JUMP(0x738AA5, terrainInstanceInfoDataSetMadeOne);
     WRITE_JUMP(0x736990, terrainInstanceInfoDataSetMadeOne);
     WRITE_JUMP(0x738F6B, terrainInstanceInfoDataSetMadeOne);
+
+    WRITE_MEMORY(0x701D4E, uint32_t, sizeof(InstanceInfoEx));
+    WRITE_MEMORY(0x713089, uint32_t, sizeof(InstanceInfoEx));
+
+    INSTALL_HOOK(InstanceInfoConstructor);
+    INSTALL_HOOK(InstanceInfoDestructor);
 }

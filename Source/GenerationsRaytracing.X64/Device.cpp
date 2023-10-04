@@ -6,6 +6,14 @@
 #include "FVFPixelShader.h"
 #include "RootSignature.h"
 
+void Device::checkDeviceRemovedReason() const
+{
+#ifdef _DEBUG
+    HRESULT hr = m_device->GetDeviceRemovedReason();
+    assert(SUCCEEDED(hr));
+#endif
+}
+
 void Device::createBuffer(
     D3D12_HEAP_TYPE type,
     uint32_t dataSize,
@@ -1170,7 +1178,7 @@ void Device::procMsgCreateVertexBuffer()
         D3D12_HEAP_TYPE_DEFAULT,
         message.length,
         D3D12_RESOURCE_FLAG_NONE,
-        D3D12_RESOURCE_STATE_COMMON, 
+        D3D12_RESOURCE_STATE_COMMON,
         vertexBuffer.allocation);
 
     vertexBuffer.byteSize = message.length;

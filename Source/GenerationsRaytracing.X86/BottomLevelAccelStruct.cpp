@@ -128,7 +128,7 @@ static size_t getGeometryCount(const hh::vector<boost::shared_ptr<Hedgehog::Mira
     size_t geometryCount = 0;
     for (const auto& meshData : meshGroup)
     {
-        if (checkMeshValidity(static_cast<MeshDataEx&>(*meshData)))
+        if (checkMeshValidity(static_cast<const MeshDataEx&>(*meshData)))
             ++geometryCount;
     }
     return geometryCount;
@@ -161,11 +161,12 @@ static size_t getGeometryCount(const T& modelData)
 
 static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometryDescs(
     const hh::vector<boost::shared_ptr<Hedgehog::Mirage::CMeshData>>& meshGroup,
-    MsgCreateBottomLevelAccelStruct::GeometryDesc* geometryDesc)
+    MsgCreateBottomLevelAccelStruct::GeometryDesc* geometryDesc,
+    bool isOpaque)
 {
     for (const auto& meshData : meshGroup)
     {
-        auto& meshDataEx = static_cast<MeshDataEx&>(*meshData);
+        const auto& meshDataEx = static_cast<const MeshDataEx&>(*meshData);
 
         if (!checkMeshValidity(meshDataEx))
             continue;
@@ -204,6 +205,7 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometry
                 break;
 
             case D3DDECLUSAGE_TEXCOORD:
+                assert(vertexElement->UsageIndex < 4);
                 geometryDesc->texCoordOffsets[vertexElement->UsageIndex] = offset;
                 break;
 
@@ -217,6 +219,8 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometry
 
         geometryDesc->materialId = reinterpret_cast<MaterialDataEx*>(
             meshData->m_spMaterial.get())->m_materialId;
+
+        geometryDesc->isOpaque = isOpaque;
 
         ++geometryDesc;
     }
@@ -233,30 +237,33 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertModelToGeometryDesc
         if (!nodeGroupModelData->m_Visible)
             continue;
 
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_OpaqueMeshes, geometryDesc);
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_TransparentMeshes, geometryDesc);
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_PunchThroughMeshes, geometryDesc);
+        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_OpaqueMeshes, geometryDesc, true);
+        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_TransparentMeshes, geometryDesc, false);
+        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_PunchThroughMeshes, geometryDesc, false);
 
         for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
-            geometryDesc = convertMeshGroupToGeometryDescs(specialMeshGroup, geometryDesc);
+            geometryDesc = convertMeshGroupToGeometryDescs(specialMeshGroup, geometryDesc, false);
     }
 
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_OpaqueMeshes, geometryDesc);
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_TransparentMeshes, geometryDesc);
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_PunchThroughMeshes, geometryDesc);
+    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_OpaqueMeshes, geometryDesc, true);
+    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_TransparentMeshes, geometryDesc, false);
+    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_PunchThroughMeshes, geometryDesc, false);
 
     return geometryDesc;
 }
 
 template<typename T>
-static void createBottomLevelAccelStruct(const T& modelData)
+static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLevelAccelStructId)
 {
     const size_t geometryCount = getGeometryCount(modelData);
+
+    if (geometryCount == 0)
+        return;
 
     auto& message = s_messageSender.makeMessage<MsgCreateBottomLevelAccelStruct>(
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
-    message.bottomLevelAccelStructId = modelData.m_bottomLevelAccelStructId;
+    message.bottomLevelAccelStructId = bottomLevelAccelStructId;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     const auto geometryDesc = convertModelToGeometryDescs(modelData,
@@ -304,7 +311,7 @@ static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* This)
     }
     else
     {
-        createBottomLevelAccelStruct(*This);
+        createBottomLevelAccelStruct(*This, This->m_bottomLevelAccelStructId);
     }
 
     This->SetMadeOne();
@@ -315,9 +322,54 @@ HOOK(void, __fastcall, CreateShareVertexBuffer, 0x72EBD0, void* This)
     originalCreateShareVertexBuffer(This);
 
     for (const auto terrainModelData : s_terrainModelList)
-        createBottomLevelAccelStruct(*terrainModelData);
+        createBottomLevelAccelStruct(*terrainModelData, terrainModelData->m_bottomLevelAccelStructId);
 
     s_terrainModelList.clear();
+}
+
+HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This)
+{
+    const auto result = originalModelDataConstructor(This);
+
+    This->m_bottomLevelAccelStructId = s_freeListAllocator.allocate();;
+
+    return result;
+}
+
+HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
+{
+    if (This->m_bottomLevelAccelStructId != NULL)
+    {
+        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+
+        message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
+        message.resourceId = This->m_bottomLevelAccelStructId;
+
+        s_messageSender.endMessage();
+
+        s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
+    }
+
+    originalModelDataDestructor(This);
+}
+
+static void __fastcall modelDataSetMadeOne(ModelDataEx* This)
+{
+    createBottomLevelAccelStruct(*This, This->m_bottomLevelAccelStructId);
+
+    This->SetMadeOne();
+}
+
+uint32_t BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, Hedgehog::Mirage::CPose* pose)
+{
+    if (modelDataEx.m_bottomLevelAccelStructId == NULL)
+    {
+        modelDataEx.m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+
+        createBottomLevelAccelStruct(modelDataEx, modelDataEx.m_bottomLevelAccelStructId);
+    }
+
+    return modelDataEx.m_bottomLevelAccelStructId;
 }
 
 void BottomLevelAccelStruct::init()
@@ -362,4 +414,13 @@ void BottomLevelAccelStruct::init()
     WRITE_CALL(0x739AB4, terrainModelDataSetMadeOne);
 
     INSTALL_HOOK(CreateShareVertexBuffer);
+
+    WRITE_MEMORY(0x4FA1FC, uint32_t, sizeof(ModelDataEx));
+    WRITE_MEMORY(0xE993F1, uint32_t, sizeof(ModelDataEx));
+
+    INSTALL_HOOK(ModelDataConstructor);
+    INSTALL_HOOK(ModelDataDestructor);
+    WRITE_MEMORY(0x722760, uint8_t, 0xC3); // Disable shared buffer
+
+    //WRITE_CALL(0x74018C, modelDataSetMadeOne);
 }
