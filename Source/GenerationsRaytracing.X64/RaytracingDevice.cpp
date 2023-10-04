@@ -4,6 +4,7 @@
 #include "CopyTextureVertexShader.h"
 #include "CopyTexturePixelShader.h"
 #include "EnvironmentColor.h"
+#include "GeometryFlags.h"
 #include "Message.h"
 #include "RootSignature.h"
 
@@ -70,9 +71,32 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
     m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
 }
 
+static float haltonSequence(int i, int b)
+{
+    float f = 1.0;
+    float r = 0.0;
+
+    while (i > 0)
+    {
+        f = f / float(b);
+        r = r + f * float(i % b);
+        i = i / b;
+    }
+
+    return r;
+}
+
+static void haltonJitter(int frame, int phases, float& jitterX, float& jitterY)
+{
+    jitterX = haltonSequence(frame % phases + 1, 2) - 0.5f;
+    jitterY = haltonSequence(frame % phases + 1, 3) - 0.5f;
+}
+
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
 {
     EnvironmentColor::get(m_globalsPS, m_globalsRT.environmentColor);
+
+    haltonJitter(m_globalsRT.currentFrame, 64, m_globalsRT.pixelJitterX, m_globalsRT.pixelJitterY);
 
     // TODO: Preferably do this check in Generations
     static float prevMatrices[32];
@@ -293,7 +317,9 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
             auto& dstGeometryDesc = geometryDescs[i];
 
             dstGeometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-            dstGeometryDesc.Flags = geometryDesc.isOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+
+            dstGeometryDesc.Flags = (geometryDesc.flags & GEOMETRY_FLAG_TRANSPARENT) ? D3D12_RAYTRACING_GEOMETRY_FLAG_NONE :
+                D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
             auto& triangles = dstGeometryDesc.Triangles;
 
@@ -311,13 +337,14 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         {
             auto& dstGeometryDesc = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
 
+            dstGeometryDesc.flags = geometryDesc.flags;
             dstGeometryDesc.indexBufferId = m_indexBuffers[geometryDesc.indexBufferId].srvIndex;
             dstGeometryDesc.vertexBufferId = m_vertexBuffers[geometryDesc.vertexBufferId].srvIndex;
             dstGeometryDesc.vertexStride = geometryDesc.vertexStride;
             dstGeometryDesc.normalOffset = geometryDesc.normalOffset;
             dstGeometryDesc.tangentOffset = geometryDesc.tangentOffset;
             dstGeometryDesc.binormalOffset = geometryDesc.binormalOffset;
-            dstGeometryDesc.texCoordOffset = geometryDesc.texCoordOffsets[0];
+            memcpy(dstGeometryDesc.texCoordOffsets, geometryDesc.texCoordOffsets, sizeof(dstGeometryDesc.texCoordOffsets));
             dstGeometryDesc.colorOffset = geometryDesc.colorOffset;
             dstGeometryDesc.materialId = geometryDesc.materialId;
         }
@@ -414,6 +441,8 @@ void RaytracingDevice::procMsgCreateInstance()
 void RaytracingDevice::procMsgTraceRays()
 {
     const auto& message = m_messageReceiver.getMessage<MsgTraceRays>();
+
+    m_globalsRT.blueNoiseTextureId = m_textures[message.blueNoiseTextureId].srvIndex;
 
     if (m_width != message.width || m_height != message.height)
     {
@@ -531,6 +560,7 @@ void RaytracingDevice::procMsgCreateMaterial()
         }
 
         dstTexture.samplerId = sampler;
+        dstTexture.texCoordIndex = srcTexture.texCoordIndex;
     }
 
     memcpy(material.diffuseColor, message.diffuseColor, sizeof(material.diffuseColor));

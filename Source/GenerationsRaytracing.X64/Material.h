@@ -6,6 +6,7 @@ struct Material
     {
         uint32_t id;
         uint32_t samplerId;
+        uint32_t texCoordIndex;
     };
 
     Texture diffuseTexture;

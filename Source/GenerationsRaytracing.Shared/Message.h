@@ -305,6 +305,7 @@ struct MsgCreateBottomLevelAccelStruct
 
     struct GeometryDesc
     {
+        uint32_t flags;
         uint32_t indexCount;
         uint32_t vertexCount;
         uint32_t indexBufferId;
@@ -317,7 +318,6 @@ struct MsgCreateBottomLevelAccelStruct
         uint32_t texCoordOffsets[4];
         uint32_t colorOffset;
         uint32_t materialId;
-        bool isOpaque;
     };
 
     uint32_t bottomLevelAccelStructId;
@@ -354,6 +354,7 @@ struct MsgTraceRays
 
     uint16_t width;
     uint16_t height;
+    uint32_t blueNoiseTextureId;
 };
 
 struct MsgCreateMaterial
@@ -365,6 +366,7 @@ struct MsgCreateMaterial
         uint32_t id;
         uint8_t addressModeU;
         uint8_t addressModeV;
+        uint32_t texCoordIndex;
     };
 
     uint32_t materialId;

@@ -69,6 +69,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
         textureDesc.dstTexture.id = 0;
         textureDesc.dstTexture.addressModeU = D3DTADDRESS_WRAP;
         textureDesc.dstTexture.addressModeV = D3DTADDRESS_WRAP;
+        textureDesc.dstTexture.texCoordIndex = 0;
 
         uint32_t offset = 0;
         for (const auto& srcTexture : This->m_spTexsetData->m_TextureList)
@@ -81,14 +82,20 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
                 }
                 else
                 {
-                    if (srcTexture->m_spPictureData != nullptr && 
-                        srcTexture->m_spPictureData->m_pD3DTexture != nullptr)
+                    if (srcTexture->m_spPictureData != nullptr)
                     {
+                        if (srcTexture->m_spPictureData->m_pD3DTexture == nullptr)
+                        {
+                            srcTexture->m_spPictureData->m_pD3DTexture = 
+                                reinterpret_cast<DX_PATCH::IDirect3DBaseTexture9*>(new Texture(NULL, NULL, NULL));
+                        }
+
                         textureDesc.dstTexture.id = reinterpret_cast<const Texture*>(
                             srcTexture->m_spPictureData->m_pD3DTexture)->getId();
                     }
                     textureDesc.dstTexture.addressModeU = srcTexture->m_SamplerState.AddressU;
                     textureDesc.dstTexture.addressModeV = srcTexture->m_SamplerState.AddressV;
+                    textureDesc.dstTexture.texCoordIndex = srcTexture->m_TexcoordIndex;
 
                     if (srcTexture->m_Type == specularSymbol) hasSpecular = true;
                     if (srcTexture->m_Type == glossSymbol) hasGloss = true;

@@ -9,6 +9,9 @@ struct alignas(0x10) GlobalsRT
 {
     float environmentColor[3];
     uint32_t currentFrame = 0;
+    float pixelJitterX;
+    float pixelJitterY;
+    uint32_t blueNoiseTextureId;
 };
 
 class RaytracingDevice final : public Device

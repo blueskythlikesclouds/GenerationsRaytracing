@@ -73,6 +73,10 @@ static void __cdecl implOfSceneRender(void* a1)
     traceRaysMessage.width = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 4);
     traceRaysMessage.height = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 6);
 
+    traceRaysMessage.blueNoiseTextureId = reinterpret_cast<const Texture*>(
+        Hedgehog::Mirage::CMirageDatabaseWrapper(Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spApplicationDatabase.get())
+            .GetPictureData("blue_noise")->m_pD3DTexture)->getId();
+
     s_messageSender.endMessage();
 }
 

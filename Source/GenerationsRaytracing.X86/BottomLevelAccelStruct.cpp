@@ -1,6 +1,7 @@
 #include "BottomLevelAccelStruct.h"
 
 #include "FreeListAllocator.h"
+#include "GeometryFlags.h"
 #include "IndexBuffer.h"
 #include "MaterialData.h"
 #include "Message.h"
@@ -179,7 +180,7 @@ static size_t getGeometryCount(const T& modelData)
 static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometryDescs(
     const hh::vector<boost::shared_ptr<Hedgehog::Mirage::CMeshData>>& meshGroup,
     MsgCreateBottomLevelAccelStruct::GeometryDesc* geometryDesc,
-    bool isOpaque)
+    uint32_t flags)
 {
     for (const auto& meshData : meshGroup)
     {
@@ -188,6 +189,7 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometry
         if (!checkMeshValidity(meshDataEx))
             continue;
 
+        geometryDesc->flags = flags;
         geometryDesc->indexCount = meshDataEx.m_indexCount;
         geometryDesc->vertexCount = meshData->m_VertexNum;
         geometryDesc->indexBufferId = reinterpret_cast<const IndexBuffer*>(meshDataEx.m_indices)->getId();
@@ -237,8 +239,6 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometry
         geometryDesc->materialId = reinterpret_cast<MaterialDataEx*>(
             meshData->m_spMaterial.get())->m_materialId;
 
-        geometryDesc->isOpaque = isOpaque;
-
         ++geometryDesc;
     }
     return geometryDesc;
@@ -254,17 +254,17 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertModelToGeometryDesc
         if (!nodeGroupModelData->m_Visible)
             continue;
 
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_OpaqueMeshes, geometryDesc, true);
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_TransparentMeshes, geometryDesc, false);
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_PunchThroughMeshes, geometryDesc, false);
+        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_OpaqueMeshes, geometryDesc, NULL);
+        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_TransparentMeshes, geometryDesc, GEOMETRY_FLAG_TRANSPARENT);
+        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_PunchThroughMeshes, geometryDesc, GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH);
 
         for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
-            geometryDesc = convertMeshGroupToGeometryDescs(specialMeshGroup, geometryDesc, false);
+            geometryDesc = convertMeshGroupToGeometryDescs(specialMeshGroup, geometryDesc, GEOMETRY_FLAG_TRANSPARENT);
     }
 
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_OpaqueMeshes, geometryDesc, true);
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_TransparentMeshes, geometryDesc, false);
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_PunchThroughMeshes, geometryDesc, false);
+    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_OpaqueMeshes, geometryDesc, NULL);
+    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_TransparentMeshes, geometryDesc, GEOMETRY_FLAG_TRANSPARENT);
+    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_PunchThroughMeshes, geometryDesc, GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH);
 
     return geometryDesc;
 }

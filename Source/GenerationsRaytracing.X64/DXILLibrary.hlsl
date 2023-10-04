@@ -1,3 +1,5 @@
+#include "GeometryFlags.h"
+
 cbuffer GlobalsVS : register(b0)
 {
     row_major float4x4 g_MtxProjection : packoffset(c0);
@@ -99,6 +101,8 @@ cbuffer GlobalsRT : register(b2)
 {
     float3 g_EnvironmentColor;
     uint g_CurrentFrame;
+    float2 g_PixelJitter;
+    uint g_BlueNoiseTextureId;
 }
 
 struct Vertex
@@ -107,19 +111,20 @@ struct Vertex
     float3 Normal;
     float3 Tangent;
     float3 Binormal;
-    float2 TexCoord;
+    float2 TexCoords[4];
     float4 Color;
 };
 
 struct GeometryDesc
 {
+    uint Flags;
     uint IndexBufferId;
     uint VertexBufferId;
     uint VertexStride;
     uint NormalOffset;
     uint TangentOffset;
     uint BinormalOffset;
-    uint TexCoordOffset;
+    uint TexCoordOffsets[4];
     uint ColorOffset;
     uint MaterialId;
 };
@@ -128,6 +133,7 @@ struct MaterialTexture
 {
     uint Id;
     uint SamplerId;
+    uint TexCoordIndex;
 };
 
 struct Material
@@ -186,7 +192,6 @@ Vertex LoadVertex(in BuiltInTriangleIntersectionAttributes attributes)
     uint3 normalOffsets = offsets + geometryDesc.NormalOffset;
     uint3 tangentOffsets = offsets + geometryDesc.TangentOffset;
     uint3 binormalOffsets = offsets + geometryDesc.BinormalOffset;
-    uint3 texCoordOffsets = offsets + geometryDesc.TexCoordOffset;
     uint3 colorOffsets = offsets + geometryDesc.ColorOffset;
 
     Vertex vertex;
@@ -207,10 +212,15 @@ Vertex LoadVertex(in BuiltInTriangleIntersectionAttributes attributes)
         asfloat(vertexBuffer.Load3(binormalOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load3(binormalOffsets.z)) * uv.z;
 
-    vertex.TexCoord =
-        asfloat(vertexBuffer.Load2(texCoordOffsets.x)) * uv.x +
-        asfloat(vertexBuffer.Load2(texCoordOffsets.y)) * uv.y +
-        asfloat(vertexBuffer.Load2(texCoordOffsets.z)) * uv.z;
+    [unroll] for (uint i = 0; i < 4; i++)
+    {
+        uint3 texCoordOffsets = offsets + geometryDesc.TexCoordOffsets[i];
+
+        vertex.TexCoords[i] =
+            asfloat(vertexBuffer.Load2(texCoordOffsets.x)) * uv.x +
+            asfloat(vertexBuffer.Load2(texCoordOffsets.y)) * uv.y +
+            asfloat(vertexBuffer.Load2(texCoordOffsets.z)) * uv.z;
+    }
 
     vertex.Color =
         asfloat(vertexBuffer.Load4(colorOffsets.x)) * uv.x +
@@ -226,7 +236,7 @@ Vertex LoadVertex(in BuiltInTriangleIntersectionAttributes attributes)
 
 Material LoadMaterial()
 {
-    return g_Materials[NonUniformResourceIndex(g_GeometryDescs[InstanceID() + GeometryIndex()].MaterialId)];
+    return g_Materials[g_GeometryDescs[InstanceID() + GeometryIndex()].MaterialId];
 }
 
 float4 SampleMaterialTexture2D(Vertex vertex, MaterialTexture materialTexture)
@@ -234,7 +244,7 @@ float4 SampleMaterialTexture2D(Vertex vertex, MaterialTexture materialTexture)
     Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(materialTexture.Id)];
     SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(materialTexture.SamplerId)];
 
-    return texture.SampleLevel(samplerState, vertex.TexCoord, 0);
+    return texture.SampleLevel(samplerState, vertex.TexCoords[materialTexture.TexCoordIndex], 0);
 }
 
 ShadingParams LoadShadingParams(Vertex vertex)
@@ -315,28 +325,40 @@ float3 ComputeDirectLighting(ShadingParams shadingParams, float3 lightDirection,
     return (diffuseColor + specularColor) * saturate(dot(shadingParams.Normal, lightDirection));
 }
 
-uint InitializeRandom(uint val0, uint val1, uint backoff = 16)
+float2 ComputeLightScattering(float3 position, float3 viewPosition)
 {
-    uint v0 = val0, v1 = val1, s0 = 0;
-    [unroll]
-    for (uint n = 0; n < backoff; n++)
-    {
-        s0 += 0x9e3779b9;
-        v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
-        v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + s0) ^ ((v0 >> 5) + 0x7e95761e);
-    }
-    return v0;
+    float4 r0, r3, r4;
+
+    r0.x = -viewPosition.z + -g_LightScatteringFarNearScale.y;
+    r0.x = saturate(r0.x * g_LightScatteringFarNearScale.x);
+    r0.x = r0.x * g_LightScatteringFarNearScale.z;
+    r0.y = g_LightScattering_Ray_Mie_Ray2_Mie2.y + g_LightScattering_Ray_Mie_Ray2_Mie2.x;
+    r0.z = rcp(r0.y);
+    r0.x = r0.x * -r0.y;
+    r0.x = exp(r0.x);
+    r0.y = -r0.x + 1;
+    r3.xyz = -position + g_EyePosition.xyz;
+    r4.xyz = normalize(r3.xyz);
+    r3.x = dot(-mrgGlobalLight_Direction.xyz, r4.xyz);
+    r3.y = g_LightScattering_ConstG_FogDensity.z * r3.x + g_LightScattering_ConstG_FogDensity.y;
+    r4.x = pow(abs(r3.y), 1.5);
+    r3.y = rcp(r4.x);
+    r3.y = r3.y * g_LightScattering_ConstG_FogDensity.x;
+    r3.y = r3.y * g_LightScattering_Ray_Mie_Ray2_Mie2.w;
+    r3.x = r3.x * r3.x + 1;
+    r3.x = g_LightScattering_Ray_Mie_Ray2_Mie2.z * r3.x + r3.y;
+    r0.z = r0.z * r3.x;
+    r0.y = r0.y * r0.z;
+
+    return float2(r0.x, r0.y * g_LightScatteringFarNearScale.w);
 }
 
-uint NextRandomUint(inout uint s)
+float4 GetBlueNoise()
 {
-    s = (1664525u * s + 1013904223u);
-    return s;
-}
+    uint2 index = DispatchRaysIndex().xy + uint2(17, 31) * g_CurrentFrame;
 
-float NextRandom(inout uint s)
-{
-    return float(NextRandomUint(s) & 0x00FFFFFF) / float(0x01000000);
+    Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
+    return texture.Load(int3(index % 1024, 0));
 }
 
 float3 GetPerpendicularVector(float3 u)
@@ -359,9 +381,9 @@ float3 GetCosHemisphereSample(float3 normal, float2 random)
     return tangent * (radius * cos(angle)) + binormal * (radius * sin(angle)) + normal * sqrt(max(0.0, 1.0 - random.x));
 }
 
-float3 GetCosHemisphereSample(float3 normal, inout uint random)
+float3 GetCosHemisphereSample(float3 normal)
 {
-    return GetCosHemisphereSample(normal, float2(NextRandom(random), NextRandom(random)));
+    return GetCosHemisphereSample(normal, GetBlueNoise().xy);
 }
 
 struct Payload
@@ -374,7 +396,7 @@ struct Payload
 [shader("raygeneration")]
 void RayGeneration()
 {
-    float2 ndc = (DispatchRaysIndex().xy + 0.5) / DispatchRaysDimensions().xy * 2.0 - 1.0;
+    float2 ndc = (DispatchRaysIndex().xy - g_PixelJitter + 0.5) / DispatchRaysDimensions().xy * 2.0 - 1.0;
 
     RayDesc ray;
     ray.Origin = g_EyePosition.xyz;
@@ -394,19 +416,25 @@ void RayGeneration()
         ray,
         payload);
 
-    if (g_CurrentFrame > 0)
-    {
-        float3 prevColor = g_ColorTexture[DispatchRaysIndex().xy].rgb;
-        g_ColorTexture[DispatchRaysIndex().xy] = float4(lerp(prevColor, payload.Color, 1.0 / (g_CurrentFrame + 1.0)), 1.0);
-    }
-    else
-    {
-        g_ColorTexture[DispatchRaysIndex().xy] = float4(payload.Color, 1.0);
-    }
-
     if (payload.T >= 0.0)
     {
+        float3 color = payload.Color;
         float3 position = ray.Origin + ray.Direction * payload.T;
+
+        float2 lightScattering = ComputeLightScattering(position, mul(float4(position, 1.0), g_MtxView).xyz);
+        color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+
+        if (g_CurrentFrame > 0)
+        {
+            float3 prevColor = g_ColorTexture[DispatchRaysIndex().xy].rgb;
+            g_ColorTexture[DispatchRaysIndex().xy] = float4(lerp(prevColor, color, 1.0 / (g_CurrentFrame + 1.0)), 1.0);
+        }
+        else
+        {
+            g_ColorTexture[DispatchRaysIndex().xy] = float4(color, 1.0);
+        }
+
+        
         float3 viewPosition = mul(float4(position, 1.0), g_MtxView).xyz;
         float4 projectedPosition = mul(float4(viewPosition, 1.0), g_MtxProjection);
 
@@ -414,6 +442,7 @@ void RayGeneration()
     }
     else
     {
+        g_ColorTexture[DispatchRaysIndex().xy] = 0.0;
         g_DepthTexture[DispatchRaysIndex().xy] = 1.0;
     }
 }
@@ -431,20 +460,18 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
     Vertex vertex = LoadVertex(attributes);
     ShadingParams shadingParams = LoadShadingParams(vertex);
 
-    uint random = InitializeRandom(DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x, g_CurrentFrame);
-
     payload.Color = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+    payload.Color += ComputeDirectLighting(shadingParams, shadingParams.EyeDirection, mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
 
     {
         float3 normal = -mrgGlobalLight_Direction.xyz;
         float3 binormal = GetPerpendicularVector(normal);
         float3 tangent = cross(binormal, normal);
 
-        float x = NextRandom(random);
-        float y = NextRandom(random);
+        float2 random = GetBlueNoise().xy;
 
-        float angle = x * 6.28318530718;
-        float radius = sqrt(y) * 0.01;
+        float angle = random.x * 6.28318530718;
+        float radius = sqrt(random.y) * 0.01;
 
         float3 direction;
         direction.x = cos(angle) * radius;
@@ -478,7 +505,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
         RayDesc ray;
 
         ray.Origin = vertex.Position;
-        ray.Direction = GetCosHemisphereSample(shadingParams.Normal, random);
+        ray.Direction = GetCosHemisphereSample(shadingParams.Normal);
         ray.TMin = 0.001;
         ray.TMax = 10000.0;
 
@@ -497,7 +524,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
 
         payload.Color += shadingParams.DiffuseColor.rgb * payload1.Color;
     }
-
+    
     payload.T = RayTCurrent();
 }
 
@@ -508,9 +535,13 @@ void AnyHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectio
 
     if (material.DiffuseTexture.Id != 0)
     {
+        GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
         Vertex vertex = LoadVertex(attributes);
 
-        if (SampleMaterialTexture2D(vertex, material.DiffuseTexture).a < 0.5)
+        float alpha = SampleMaterialTexture2D(vertex, material.DiffuseTexture).a * vertex.Color.a;
+        float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : GetBlueNoise().x;
+
+        if (alpha < alphaThreshold)
             IgnoreHit();
     }
 }
