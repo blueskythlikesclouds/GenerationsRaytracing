@@ -380,7 +380,7 @@ struct MsgCreateMaterial
     Texture normalBlendTexture;
     Texture environmentTexture;
     float diffuseColor[4];
-    float specularColor[4];
+    float specularColor[3];
     float specularPower;
 };
 

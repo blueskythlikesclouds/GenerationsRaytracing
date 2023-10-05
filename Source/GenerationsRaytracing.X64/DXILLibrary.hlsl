@@ -1,5 +1,7 @@
 #include "GeometryFlags.h"
 
+#define PI 3.14159265358979323846
+
 cbuffer GlobalsVS : register(b0)
 {
     row_major float4x4 g_MtxProjection : packoffset(c0);
@@ -140,29 +142,27 @@ struct Material
 {
     MaterialTexture DiffuseTexture;
     MaterialTexture SpecularTexture;
-    MaterialTexture PowerTexture;
+    MaterialTexture SpecularPowerTexture;
     MaterialTexture NormalTexture;
     MaterialTexture EmissionTexture;
     MaterialTexture DiffuseBlendTexture;
-    MaterialTexture PowerBlendTexture;
+    MaterialTexture SpecularPowerBlendTexture;
     MaterialTexture NormalBlendTexture;
     MaterialTexture EnvironmentTexture;
 
     float4 DiffuseColor;
-    float4 SpecularColor;
+    float3 SpecularColor;
     float SpecularPower;
-    uint Padding0;
-    uint Padding1;
-    uint Padding2;
 };
 
 struct ShadingParams
 {
     float3 Position;
     float4 DiffuseColor;
-    float4 SpecularColor;
+    float3 SpecularColor;
     float SpecularPower;
     float3 Normal;
+    float3 EnvironmentColor;
 };
 
 RaytracingAccelerationStructure g_BVH : register(t0);
@@ -253,9 +253,10 @@ ShadingParams LoadShadingParams(Vertex vertex)
 
     shadingParams.Position = vertex.Position;
     shadingParams.DiffuseColor = material.DiffuseColor;
-    shadingParams.SpecularColor = material.SpecularColor;
+    shadingParams.SpecularColor.rgb = material.SpecularColor;
     shadingParams.SpecularPower = material.SpecularPower;
     shadingParams.Normal = vertex.Normal;
+    shadingParams.EnvironmentColor = 1.0;
 
     if (material.DiffuseTexture.Id != 0)
     {
@@ -263,21 +264,26 @@ ShadingParams LoadShadingParams(Vertex vertex)
 
         if (material.DiffuseBlendTexture.Id != 0)
             diffuseColor = lerp(diffuseColor, SampleMaterialTexture2D(vertex, material.DiffuseBlendTexture), vertex.Color.x);
-        else
-            diffuseColor *= vertex.Color;
 
         shadingParams.DiffuseColor *= diffuseColor;
     }
 
     if (material.SpecularTexture.Id != 0)
-        shadingParams.SpecularColor *= SampleMaterialTexture2D(vertex, material.SpecularTexture);
-
-    if (material.PowerTexture.Id != 0)
     {
-        float specularPower = SampleMaterialTexture2D(vertex, material.PowerTexture).x;
+        float4 specularColor = SampleMaterialTexture2D(vertex, material.SpecularTexture);
 
-        if (material.PowerBlendTexture.Id != 0)
-            specularPower = lerp(specularPower, SampleMaterialTexture2D(vertex, material.PowerBlendTexture).x, vertex.Color.x);
+        shadingParams.SpecularColor *= specularColor.rgb;
+        shadingParams.EnvironmentColor *= specularColor.rgb;
+
+        shadingParams.EnvironmentColor *= specularColor.a;
+    }
+
+    if (material.SpecularPowerTexture.Id != 0)
+    {
+        float specularPower = SampleMaterialTexture2D(vertex, material.SpecularPowerTexture).x;
+
+        if (material.SpecularPowerBlendTexture.Id != 0)
+            specularPower = lerp(specularPower, SampleMaterialTexture2D(vertex, material.SpecularPowerBlendTexture).x, vertex.Color.x);
 
         shadingParams.SpecularColor.rgb *= specularPower;
         shadingParams.SpecularPower *= specularPower;
@@ -302,24 +308,38 @@ ShadingParams LoadShadingParams(Vertex vertex)
         normal.z = sqrt(1.0 - saturate(dot(normal.xy, normal.xy)));
 
         shadingParams.Normal = normalize(
-            vertex.Tangent * normal.x +
+            vertex.Tangent * normal.x -
             vertex.Binormal * normal.y +
             vertex.Normal * normal.z);
     }
+
+    float fresnel = dot(vertex.Normal, -WorldRayDirection());
+    fresnel = pow(saturate(1.0 - fresnel), 5.0);
+    fresnel = fresnel * 0.6 + 0.4;
+    shadingParams.SpecularColor *= fresnel;
 
     return shadingParams;
 }
 
 float3 ComputeDirectLighting(ShadingParams shadingParams, float3 lightDirection, float3 diffuseColor, float3 specularColor)
 {
+    // Diffuse Shading
     diffuseColor *= shadingParams.DiffuseColor.rgb;
 
-    float3 halfwayDirection = normalize(lightDirection - WorldRayDirection());
-    float specular = pow(saturate(dot(shadingParams.Normal, halfwayDirection)), shadingParams.SpecularPower);
-    float fresnel = pow(1.0 - saturate(dot(shadingParams.Normal, -WorldRayDirection())), 5.0) * 0.6 + 0.4;
-    specularColor *= shadingParams.SpecularColor.rgb * specular * fresnel;
+    // Specular Shading
+    specularColor *= shadingParams.SpecularColor.rgb;
 
-    return (diffuseColor + specularColor) * saturate(dot(shadingParams.Normal, lightDirection));
+    float3 halfwayDirection = normalize(lightDirection + -WorldRayDirection());
+
+    float specular = dot(shadingParams.Normal, halfwayDirection);
+    specular = pow(saturate(specular), shadingParams.SpecularPower);
+    specularColor *= specular;
+
+    // Resolve
+    float3 resolvedColor = diffuseColor + specularColor;
+    resolvedColor *= saturate(dot(shadingParams.Normal, lightDirection));
+
+    return resolvedColor;
 }
 
 float2 ComputeLightScattering(float3 position, float3 viewPosition)
@@ -358,6 +378,23 @@ float4 GetBlueNoise()
     return texture.Load(int3(index % 1024, 0));
 }
 
+float3 GetCosineWeightedHemisphereSample(float2 random)
+{
+    float radius = sqrt(random.x);
+    float angle = 2.0 * PI * random.y;
+
+    return float3(radius * cos(angle), radius * sin(angle), sqrt(max(0.0, 1.0 - random.x)));
+}
+
+float3 GetPhongSample(float2 random, float specularPower)
+{
+    float cosTheta = pow(random.x, 1.0 / (specularPower + 2.0));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    float phi = 2.0 * PI * random.y;
+
+    return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+}
+
 float3 GetPerpendicularVector(float3 u)
 {
     float3 a = abs(u);
@@ -367,20 +404,11 @@ float3 GetPerpendicularVector(float3 u)
     return cross(u, float3(xm, ym, zm));
 }
 
-float3 GetCosHemisphereSample(float3 normal, float2 random)
+float3 TangentToWorld(float3 normal, float3 value)
 {
     float3 binormal = GetPerpendicularVector(normal);
     float3 tangent = cross(binormal, normal);
-
-    float radius = sqrt(random.x);
-    float angle = 2.0 * 3.14159265 * random.y;
-
-    return tangent * (radius * cos(angle)) + binormal * (radius * sin(angle)) + normal * sqrt(max(0.0, 1.0 - random.x));
-}
-
-float3 GetCosHemisphereSample(float3 normal)
-{
-    return GetCosHemisphereSample(normal, GetBlueNoise().xy);
+    return normalize(value.x * tangent + value.y * binormal + value.z * normal);
 }
 
 struct Payload
@@ -389,6 +417,118 @@ struct Payload
     float T;
     uint Depth;
 };
+
+float TraceShadow(float3 position)
+{
+    float3 normal = -mrgGlobalLight_Direction.xyz;
+    float3 binormal = GetPerpendicularVector(normal);
+    float3 tangent = cross(binormal, normal);
+
+    float2 random = GetBlueNoise().xy;
+
+    float angle = random.x * 2.0 * PI;
+    float radius = sqrt(random.y) * 0.01;
+
+    float3 direction;
+    direction.x = cos(angle) * radius;
+    direction.y = sin(angle) * radius;
+    direction.z = sqrt(1.0 - saturate(dot(direction.xy, direction.xy)));
+
+    RayDesc ray;
+
+    ray.Origin = position;
+    ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
+    ray.TMin = 0.001;
+    ray.TMax = 10000.0;
+
+    Payload payload1 = (Payload) 0;
+
+    TraceRay(
+            g_BVH,
+            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
+            1,
+            0,
+            0,
+            0,
+            ray,
+            payload1);
+
+    return payload1.T >= 0.0 ? 0.0 : 1.0;
+}
+
+float3 TraceGlobalIllumination(uint depth, ShadingParams shadingParams)
+{
+    if (depth > 1)
+        return 0.0;
+
+    float3 cosineWeightedHemisphereSample = GetCosineWeightedHemisphereSample(GetBlueNoise().xy);
+    float3 rayDirection = TangentToWorld(shadingParams.Normal, cosineWeightedHemisphereSample);
+
+    RayDesc ray;
+
+    ray.Origin = shadingParams.Position;
+    ray.Direction = rayDirection;
+    ray.TMin = 0.001;
+    ray.TMax = 10000.0;
+
+    Payload payload = (Payload) 0;
+    payload.Depth = depth + 1;
+
+    TraceRay(
+            g_BVH,
+            0,
+            1,
+            0,
+            0,
+            0,
+            ray,
+            payload);
+
+    return payload.Color * shadingParams.DiffuseColor.rgb;
+}
+
+float3 TraceEnvironmentColor(uint depth, ShadingParams shadingParams)
+{
+    if (depth != 0 || dot(shadingParams.SpecularColor, shadingParams.SpecularColor) < 0.001)
+        return 0.0;
+
+    float3 phongSample = GetPhongSample(GetBlueNoise().xy, shadingParams.SpecularPower);
+    float3 halfwayDirection = TangentToWorld(shadingParams.Normal, phongSample);
+    float3 reflectionDirection = normalize(reflect(WorldRayDirection(), halfwayDirection));
+
+    RayDesc ray;
+
+    ray.Origin = shadingParams.Position;
+    ray.Direction = reflectionDirection;
+    ray.TMin = 0.001;
+    ray.TMax = 10000.0;
+
+    Payload payload = (Payload) 0;
+    payload.Depth = depth + 1;
+
+    TraceRay(
+        g_BVH,
+        0,
+        1,
+        0,
+        0,
+        0,
+        ray,
+        payload);
+
+    float3 environmentColor = payload.Color;
+    environmentColor *= shadingParams.SpecularColor.rgb;
+
+    float specular = dot(shadingParams.Normal, halfwayDirection);
+    specular = pow(saturate(specular), shadingParams.SpecularPower);
+    environmentColor *= specular;
+
+    environmentColor *= saturate(dot(shadingParams.Normal, reflectionDirection));
+
+    // TODO: I'm probably missing a PDF here somewhere...
+
+    return environmentColor;
+}
 
 [shader("raygeneration")]
 void RayGeneration()
@@ -457,72 +597,13 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
     Vertex vertex = LoadVertex(attributes);
     ShadingParams shadingParams = LoadShadingParams(vertex);
 
-    payload.Color = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+    float3 globalLight = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+    float shadow = TraceShadow(vertex.Position);
+    float3 eyeLight = ComputeDirectLighting(shadingParams, -WorldRayDirection(), mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
+    float3 globalIllumination = TraceGlobalIllumination(payload.Depth, shadingParams);
+    float3 environmentColor = TraceEnvironmentColor(payload.Depth, shadingParams);
 
-    {
-        float3 normal = -mrgGlobalLight_Direction.xyz;
-        float3 binormal = GetPerpendicularVector(normal);
-        float3 tangent = cross(binormal, normal);
-
-        float2 random = GetBlueNoise().xy;
-
-        float angle = random.x * 6.28318530718;
-        float radius = sqrt(random.y) * 0.01;
-
-        float3 direction;
-        direction.x = cos(angle) * radius;
-        direction.y = sin(angle) * radius;
-        direction.z = sqrt(1.0 - saturate(dot(direction.xy, direction.xy)));
-
-        RayDesc ray;
-
-        ray.Origin = vertex.Position + vertex.Normal * 0.001;
-        ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
-        ray.TMin = 0.0;
-        ray.TMax = 10000.0;
-
-        Payload payload1 = (Payload)0;
-
-        TraceRay(
-            g_BVH,
-            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-            1,
-            0,
-            0,
-            0,
-            ray,
-            payload1);
-
-        payload.Color *= payload1.T >= 0.0 ? 0.0 : 1.0;
-    }
-
-    payload.Color += ComputeDirectLighting(shadingParams, -WorldRayDirection(), mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
-
-    if (payload.Depth < 2)
-    {
-        RayDesc ray;
-
-        ray.Origin = vertex.Position;
-        ray.Direction = GetCosHemisphereSample(shadingParams.Normal);
-        ray.TMin = 0.001;
-        ray.TMax = 10000.0;
-
-        Payload payload1 = (Payload)0;
-        payload1.Depth = payload.Depth + 1;
-
-        TraceRay(
-            g_BVH,
-            0,
-            1,
-            0,
-            0,
-            0,
-            ray,
-            payload1);
-
-        payload.Color += shadingParams.DiffuseColor.rgb * payload1.Color;
-    }
-    
+    payload.Color = (globalLight * shadow) + eyeLight + globalIllumination + environmentColor;
     payload.T = RayTCurrent();
 }
 

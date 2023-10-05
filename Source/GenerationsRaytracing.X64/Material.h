@@ -20,9 +20,6 @@ struct Material
     Texture environmentTexture;
 
     float diffuseColor[4];
-    float specularColor[4];
+    float specularColor[3];
     float specularPower;
-    uint32_t padding0;
-    uint32_t padding1;
-    uint32_t padding2;
 };

@@ -107,7 +107,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     }
 
     float diffuseColor[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
-    float specularColor[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
+    float specularColor[3]{ 1.0f, 1.0f, 1.0f };
     float specularPower = 0.0f;
 
     const Hedgehog::Base::CStringSymbol opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
@@ -126,7 +126,6 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
             specularColor[0] *= float4Param->m_spValue[0];
             specularColor[1] *= float4Param->m_spValue[1];
             specularColor[2] *= float4Param->m_spValue[2];
-            specularColor[3] = float4Param->m_spValue[3];
         }
         else if (float4Param->m_Name == opacityReflectionRefractionSpectypeSymbol)
         {
@@ -151,7 +150,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     }
 
     memcpy(message.diffuseColor, diffuseColor, sizeof(message.diffuseColor));
-    memcpy(message.specularColor, specularColor, sizeof(message.diffuseColor));
+    memcpy(message.specularColor, specularColor, sizeof(message.specularColor));
     message.specularPower = specularPower;
 
     s_messageSender.endMessage();
