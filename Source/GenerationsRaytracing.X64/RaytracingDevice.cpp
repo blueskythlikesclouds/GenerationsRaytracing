@@ -541,6 +541,7 @@ void RaytracingDevice::procMsgCreateMaterial()
     memcpy(material.diffuseColor, message.diffuseColor, sizeof(material.diffuseColor));
     memcpy(material.specularColor, message.specularColor, sizeof(material.specularColor));
     material.specularPower = message.specularPower;
+    memcpy(material.falloffParam, message.falloffParam, sizeof(material.falloffParam));
 }
 
 bool RaytracingDevice::processRaytracingMessage()

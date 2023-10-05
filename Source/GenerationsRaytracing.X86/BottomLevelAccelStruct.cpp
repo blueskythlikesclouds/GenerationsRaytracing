@@ -230,6 +230,8 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometry
 
             case D3DDECLUSAGE_COLOR:
                 geometryDesc->colorOffset = offset;
+                if (vertexElement->Type != D3DDECLTYPE_FLOAT4)
+                    geometryDesc->flags |= GEOMETRY_FLAG_D3DCOLOR;
                 break;
             }
 

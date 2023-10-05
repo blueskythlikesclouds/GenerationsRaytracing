@@ -153,6 +153,8 @@ struct Material
     float4 DiffuseColor;
     float3 SpecularColor;
     float SpecularPower;
+    float3 FalloffParam;
+    uint Padding0;
 };
 
 struct ShadingParams
@@ -163,6 +165,7 @@ struct ShadingParams
     float SpecularPower;
     float3 Normal;
     float3 EnvironmentColor;
+    float3 Falloff;
 };
 
 RaytracingAccelerationStructure g_BVH : register(t0);
@@ -170,6 +173,15 @@ StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t1);
 StructuredBuffer<Material> g_Materials : register(t2);
 RWTexture2D<float4> g_ColorTexture : register(u0);
 RWTexture2D<float> g_DepthTexture : register(u1);
+
+float4 DecodeColor(uint color)
+{
+    return float4(
+        ((color >> 0) & 0xFF) / 255.0,
+        ((color >> 8) & 0xFF) / 255.0,
+        ((color >> 16) & 0xFF) / 255.0,
+        ((color >> 24) & 0xFF) / 255.0);
+}
 
 Vertex LoadVertex(in BuiltInTriangleIntersectionAttributes attributes)
 {
@@ -221,10 +233,20 @@ Vertex LoadVertex(in BuiltInTriangleIntersectionAttributes attributes)
             asfloat(vertexBuffer.Load2(texCoordOffsets.z)) * uv.z;
     }
 
-    vertex.Color =
-        asfloat(vertexBuffer.Load4(colorOffsets.x)) * uv.x +
-        asfloat(vertexBuffer.Load4(colorOffsets.y)) * uv.y +
-        asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
+    if (geometryDesc.Flags & GEOMETRY_FLAG_D3DCOLOR)
+    {
+        vertex.Color =
+            DecodeColor(vertexBuffer.Load(colorOffsets.x)) * uv.x +
+            DecodeColor(vertexBuffer.Load(colorOffsets.y)) * uv.y +
+            DecodeColor(vertexBuffer.Load(colorOffsets.z)) * uv.z;
+    }
+    else
+    {
+        vertex.Color =
+            asfloat(vertexBuffer.Load4(colorOffsets.x)) * uv.x +
+            asfloat(vertexBuffer.Load4(colorOffsets.y)) * uv.y +
+            asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
+    }
 
     vertex.Normal = normalize(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
     vertex.Tangent = normalize(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
@@ -314,7 +336,14 @@ ShadingParams LoadShadingParams(Vertex vertex)
     }
 
     float fresnel = dot(vertex.Normal, -WorldRayDirection());
-    fresnel = pow(saturate(1.0 - fresnel), 5.0);
+    fresnel = saturate(1.0 - fresnel);
+
+    shadingParams.Falloff = pow(fresnel, material.FalloffParam.z) * material.FalloffParam.y + material.FalloffParam.x;
+
+    if (material.EmissionTexture.Id != 0)
+        shadingParams.Falloff *= SampleMaterialTexture2D(vertex, material.EmissionTexture).rgb;
+
+    fresnel = pow(fresnel, 5.0);
     fresnel = fresnel * 0.6 + 0.4;
     shadingParams.SpecularColor *= fresnel;
 
@@ -388,7 +417,7 @@ float3 GetCosineWeightedHemisphereSample(float2 random)
 
 float3 GetPhongSample(float2 random, float specularPower)
 {
-    float cosTheta = pow(random.x, 1.0 / (specularPower + 2.0));
+    float cosTheta = pow(random.x, 1.0 / specularPower);
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
     float phi = 2.0 * PI * random.y;
 
@@ -484,7 +513,7 @@ float3 TraceGlobalIllumination(uint depth, ShadingParams shadingParams)
             ray,
             payload);
 
-    return payload.Color * shadingParams.DiffuseColor.rgb;
+    return payload.Color * (shadingParams.DiffuseColor.rgb + shadingParams.Falloff.rgb);
 }
 
 float3 TraceEnvironmentColor(uint depth, ShadingParams shadingParams)
@@ -603,7 +632,12 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
     float3 globalIllumination = TraceGlobalIllumination(payload.Depth, shadingParams);
     float3 environmentColor = TraceEnvironmentColor(payload.Depth, shadingParams);
 
-    payload.Color = (globalLight * shadow) + eyeLight + globalIllumination + environmentColor;
+    payload.Color =
+        (globalLight * shadow) +
+        eyeLight +
+        globalIllumination +
+        environmentColor;
+
     payload.T = RayTCurrent();
 }
 

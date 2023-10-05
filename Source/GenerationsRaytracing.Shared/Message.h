@@ -382,6 +382,8 @@ struct MsgCreateMaterial
     float diffuseColor[4];
     float specularColor[3];
     float specularPower;
+    float falloffParam[3];
+    uint32_t padding0;
 };
 
 #pragma pack(pop)

@@ -109,9 +109,11 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     float diffuseColor[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
     float specularColor[3]{ 1.0f, 1.0f, 1.0f };
     float specularPower = 0.0f;
+    float falloffParam[3]{ 0.0f, 0.0f, 0.0f };
 
     const Hedgehog::Base::CStringSymbol opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
     const Hedgehog::Base::CStringSymbol powerGlossLevelSymbol("power_gloss_level");
+    const Hedgehog::Base::CStringSymbol falloffParamSymbol("g_SonicSkinFalloffParam");
 
     for (const auto& float4Param : This->m_Float4Params)
     {
@@ -141,6 +143,12 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
 
             specularPower = float4Param->m_spValue[1] * 500.0f;
         }
+        else if (float4Param->m_Name == falloffParamSymbol)
+        {
+            falloffParam[0] = float4Param->m_spValue[0];
+            falloffParam[1] = float4Param->m_spValue[1];
+            falloffParam[2] = float4Param->m_spValue[2];
+        }
     }
     if (!hasSpecular && !hasGloss)
     {
@@ -152,6 +160,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     memcpy(message.diffuseColor, diffuseColor, sizeof(message.diffuseColor));
     memcpy(message.specularColor, specularColor, sizeof(message.specularColor));
     message.specularPower = specularPower;
+    memcpy(message.falloffParam, falloffParam, sizeof(message.falloffParam));
 
     s_messageSender.endMessage();
 
