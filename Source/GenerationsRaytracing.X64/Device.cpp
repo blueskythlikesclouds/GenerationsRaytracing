@@ -707,9 +707,7 @@ void Device::procMsgSetTexture()
 
     bool isShadowMap = false;
 
-    if (message.textureId != NULL &&
-        m_textures.size() > message.textureId &&
-        m_textures[message.textureId].allocation != nullptr)
+    if (message.textureId != NULL)
     {
         auto& texture = m_textures[message.textureId];
 

@@ -163,7 +163,6 @@ struct ShadingParams
     float4 SpecularColor;
     float SpecularPower;
     float3 Normal;
-    float3 EyeDirection;
 };
 
 RaytracingAccelerationStructure g_BVH : register(t0);
@@ -308,8 +307,6 @@ ShadingParams LoadShadingParams(Vertex vertex)
             vertex.Normal * normal.z);
     }
 
-    shadingParams.EyeDirection = normalize(g_EyePosition.xyz - vertex.Position);
-
     return shadingParams;
 }
 
@@ -317,9 +314,9 @@ float3 ComputeDirectLighting(ShadingParams shadingParams, float3 lightDirection,
 {
     diffuseColor *= shadingParams.DiffuseColor.rgb;
 
-    float3 halfwayDirection = normalize(shadingParams.EyeDirection + lightDirection);
+    float3 halfwayDirection = normalize(lightDirection - WorldRayDirection());
     float specular = pow(saturate(dot(shadingParams.Normal, halfwayDirection)), shadingParams.SpecularPower);
-    float fresnel = saturate(dot(shadingParams.EyeDirection, halfwayDirection)) * 0.6 + 0.4;
+    float fresnel = pow(1.0 - saturate(dot(shadingParams.Normal, -WorldRayDirection())), 5.0) * 0.6 + 0.4;
     specularColor *= shadingParams.SpecularColor.rgb * specular * fresnel;
 
     return (diffuseColor + specularColor) * saturate(dot(shadingParams.Normal, lightDirection));
@@ -461,7 +458,6 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
     ShadingParams shadingParams = LoadShadingParams(vertex);
 
     payload.Color = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
-    payload.Color += ComputeDirectLighting(shadingParams, shadingParams.EyeDirection, mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
 
     {
         float3 normal = -mrgGlobalLight_Direction.xyz;
@@ -480,9 +476,9 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
 
         RayDesc ray;
 
-        ray.Origin = vertex.Position;
+        ray.Origin = vertex.Position + vertex.Normal * 0.001;
         ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
-        ray.TMin = 0.001;
+        ray.TMin = 0.0;
         ray.TMax = 10000.0;
 
         Payload payload1 = (Payload)0;
@@ -497,8 +493,10 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
             ray,
             payload1);
 
-        payload.Color *= -payload1.T;
+        payload.Color *= payload1.T >= 0.0 ? 0.0 : 1.0;
     }
+
+    payload.Color += ComputeDirectLighting(shadingParams, -WorldRayDirection(), mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
 
     if (payload.Depth < 2)
     {
@@ -538,7 +536,10 @@ void AnyHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectio
         GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
         Vertex vertex = LoadVertex(attributes);
 
-        float alpha = SampleMaterialTexture2D(vertex, material.DiffuseTexture).a * vertex.Color.a;
+        Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(material.DiffuseTexture.Id)];
+        SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(material.DiffuseTexture.SamplerId)];
+
+        float alpha = texture.SampleLevel(samplerState, vertex.TexCoords[0], 0).a * vertex.Color.a;
         float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : GetBlueNoise().x;
 
         if (alpha < alphaThreshold)
