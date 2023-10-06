@@ -16,23 +16,9 @@ static void traverseRenderable(Hedgehog::Mirage::CRenderable* renderable)
     {
         if (element->m_spModel->IsMadeAll() && (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
         {
-            const auto modelDataEx = 
-                reinterpret_cast<ModelDataEx*>(element->m_spModel.get());
-
-            uint32_t bottomLevelAccelStructId = BottomLevelAccelStruct::create(*modelDataEx, nullptr);
-
-            auto& message = s_messageSender.makeMessage<MsgCreateInstance>();
-
-            for (size_t i = 0; i < 3; i++)
-            {
-                for (size_t j = 0; j < 4; j++)
-                    message.transform[i][j] = element->m_spInstanceInfo->m_Transform(i, j);
-            }
-
-            message.instanceId = reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get())->m_instanceId;
-            message.bottomLevelAccelStructId = bottomLevelAccelStructId;
-
-            s_messageSender.endMessage();
+            BottomLevelAccelStruct::create(
+                *reinterpret_cast<ModelDataEx*>(element->m_spModel.get()),
+                *reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get()));
         }
     }
     else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))

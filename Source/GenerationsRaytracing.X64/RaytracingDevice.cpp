@@ -7,6 +7,7 @@
 #include "GeometryFlags.h"
 #include "Message.h"
 #include "RootSignature.h"
+#include "PoseComputeShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 16 * 1024 * 1024;
 
@@ -73,8 +74,8 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
     m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
 }
 
-void RaytracingDevice::buildRaytracingAccelerationStructure(ComPtr<D3D12MA::Allocation>& allocation,
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc)
+uint32_t RaytracingDevice::buildRaytracingAccelerationStructure(ComPtr<D3D12MA::Allocation>& allocation,
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate)
 {
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
     m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
@@ -92,16 +93,47 @@ void RaytracingDevice::buildRaytracingAccelerationStructure(ComPtr<D3D12MA::Allo
             allocation);
     }
 
-    assert(m_uploadBufferOffset + preBuildInfo.ScratchDataSizeInBytes <= SCRATCH_BUFFER_SIZE);
-
     accelStructDesc.DestAccelerationStructureData = allocation->GetResource()->GetGPUVirtualAddress();
-    accelStructDesc.ScratchAccelerationStructureData = m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
 
-    m_scratchBufferOffset = static_cast<uint32_t>((m_scratchBufferOffset + preBuildInfo.ScratchDataSizeInBytes 
-        + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1));
+    if (buildImmediate)
+    {
+        assert(m_uploadBufferOffset + preBuildInfo.ScratchDataSizeInBytes <= SCRATCH_BUFFER_SIZE);
 
-    getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
-    getGraphicsCommandList().uavBarrier(allocation->GetResource());
+        accelStructDesc.ScratchAccelerationStructureData = m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+
+        m_scratchBufferOffset = static_cast<uint32_t>((m_scratchBufferOffset + preBuildInfo.ScratchDataSizeInBytes
+            + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1));
+
+        getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
+        getGraphicsCommandList().uavBarrier(allocation->GetResource());
+    }
+
+    return static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
+}
+
+void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
+{
+    for (const auto pendingPose : m_pendingPoses)
+        getGraphicsCommandList().uavBarrier(m_vertexBuffers[pendingPose].allocation->GetResource());
+
+    getGraphicsCommandList().commitBarriers();
+
+    for (const auto pendingBuild : m_pendingBuilds)
+    {
+        auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[pendingBuild];
+
+        bottomLevelAccelStruct.desc.ScratchAccelerationStructureData =
+            m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+
+        m_scratchBufferOffset = m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize
+            + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1 & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
+
+        getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
+        getGraphicsCommandList().uavBarrier(bottomLevelAccelStruct.allocation->GetResource());
+    }
+
+    m_pendingPoses.clear();
+    m_pendingBuilds.clear();
 }
 
 static float haltonSequence(int i, int b)
@@ -152,6 +184,8 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
 
 void RaytracingDevice::createTopLevelAccelStruct()
 {
+    handlePendingBottomLevelAccelStructBuilds();
+
     if (m_instanceDescs.empty())
         return;
 
@@ -202,7 +236,7 @@ void RaytracingDevice::createTopLevelAccelStruct()
         static_cast<uint32_t>(m_instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
     getGraphicsCommandList().commitBarriers();
-    buildRaytracingAccelerationStructure(m_topLevelAccelStruct, accelStructDesc);
+    buildRaytracingAccelerationStructure(m_topLevelAccelStruct, accelStructDesc, true);
 }
 
 void RaytracingDevice::createRenderTargetAndDepthStencil()
@@ -265,7 +299,7 @@ void RaytracingDevice::copyRenderTargetAndDepthStencil()
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
     getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_uavId));
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
-    getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipelineState.Get());
+    getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipeline.Get());
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
     getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &scissorRect);
     getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -288,30 +322,28 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCreateBottomLevelAccelStruct>();
 
-    std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs(
-        message.dataSize / sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
-
     if (m_bottomLevelAccelStructs.size() <= message.bottomLevelAccelStructId)
         m_bottomLevelAccelStructs.resize(message.bottomLevelAccelStructId + 1);
 
     auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
 
-    bottomLevelAccelStruct.geometryCount = static_cast<uint32_t>(geometryDescs.size());
+    bottomLevelAccelStruct.geometryDescs.resize(message.dataSize / sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
+    bottomLevelAccelStruct.geometryCount = static_cast<uint32_t>(bottomLevelAccelStruct.geometryDescs.size());
     bottomLevelAccelStruct.geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
 
-    for (size_t i = 0; i < geometryDescs.size(); i++)
+    for (size_t i = 0; i < bottomLevelAccelStruct.geometryDescs.size(); i++)
     {
         const auto& geometryDesc =
             reinterpret_cast<const MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data)[i];
 
-        assert((geometryDesc.indexCount % 3) == 0 && 
-            m_indexBuffers[geometryDesc.indexBufferId].byteSize >= geometryDesc.indexCount * sizeof(uint16_t) &&
-            m_vertexBuffers[geometryDesc.vertexBufferId].byteSize - geometryDesc.positionOffset >= geometryDesc.vertexCount * geometryDesc.vertexStride &&
-            (geometryDesc.positionOffset % 4) == 0);
+        assert((geometryDesc.indexCount % 3) == 0);
+        assert(m_indexBuffers[geometryDesc.indexBufferId].byteSize >= geometryDesc.indexCount * sizeof(uint16_t));
+        assert(m_vertexBuffers[geometryDesc.vertexBufferId].byteSize - geometryDesc.positionOffset >= geometryDesc.vertexCount * geometryDesc.vertexStride);
+        assert((geometryDesc.positionOffset % 4) == 0);
 
         // BVH GeometryDesc
         {
-            auto& dstGeometryDesc = geometryDescs[i];
+            auto& dstGeometryDesc = bottomLevelAccelStruct.geometryDescs[i];
 
             dstGeometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 
@@ -347,14 +379,13 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         }
     }
 
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
-    accelStructDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-    accelStructDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-    accelStructDesc.Inputs.NumDescs = static_cast<UINT>(geometryDescs.size());
-    accelStructDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-    accelStructDesc.Inputs.pGeometryDescs = geometryDescs.data();
-
-    buildRaytracingAccelerationStructure(bottomLevelAccelStruct.allocation, accelStructDesc);
+    bottomLevelAccelStruct.desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+    bottomLevelAccelStruct.desc.Inputs.Flags = message.preferFastBuild ? D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD : D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+    bottomLevelAccelStruct.desc.Inputs.NumDescs = static_cast<UINT>(bottomLevelAccelStruct.geometryDescs.size());
+    bottomLevelAccelStruct.desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+    bottomLevelAccelStruct.desc.Inputs.pGeometryDescs = bottomLevelAccelStruct.geometryDescs.data();
+    bottomLevelAccelStruct.scratchBufferSize = buildRaytracingAccelerationStructure(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
+    m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
 }
 
 void RaytracingDevice::procMsgReleaseRaytracingResource()
@@ -442,7 +473,11 @@ void RaytracingDevice::procMsgTraceRays()
     const auto materials = createBuffer(m_materials.data(),
         static_cast<uint32_t>(m_materials.size() * sizeof(Material)), 0x4);
 
-    getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_raytracingRootSignature.Get());
+    if (m_curRootSignature != m_raytracingRootSignature.Get())
+    {
+        getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_raytracingRootSignature.Get());
+        m_curRootSignature = m_raytracingRootSignature.Get();
+    }
     getUnderlyingGraphicsCommandList()->SetPipelineState1(m_stateObject.Get());
 
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0, globalsVS);
@@ -491,7 +526,7 @@ void RaytracingDevice::procMsgCreateMaterial()
     {
         { message.diffuseTexture,      material.diffuseTexture },
         { message.specularTexture,     material.specularTexture },
-        { message.powerTexture,        material.powerTexture },
+        { message.specularPowerTexture,        material.specularPowerTexture },
         { message.normalTexture,       material.normalTexture },
         { message.emissionTexture,     material.emissionTexture },
         { message.diffuseBlendTexture, material.diffuseBlendTexture },
@@ -544,6 +579,80 @@ void RaytracingDevice::procMsgCreateMaterial()
     memcpy(material.falloffParam, message.falloffParam, sizeof(material.falloffParam));
 }
 
+void RaytracingDevice::procMsgBuildBottomLevelAccelStruct()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgBuildBottomLevelAccelStruct>();
+    m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
+}
+
+void RaytracingDevice::procMsgComputePose()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgComputePose>();
+
+    if (m_curRootSignature != m_poseRootSignature.Get())
+    {
+        getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_poseRootSignature.Get());
+        m_curRootSignature = m_poseRootSignature.Get();
+    }
+    if (m_curPipeline != m_posePipeline.Get())
+    {
+        getUnderlyingGraphicsCommandList()->SetPipelineState(m_posePipeline.Get());
+        m_curPipeline = m_posePipeline.Get();
+        m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+    }
+
+    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0,
+        createBuffer(message.data, message.nodeCount * sizeof(float[4][4]), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+
+    auto geometryDesc = reinterpret_cast<const MsgComputePose::GeometryDesc*>(
+        message.data + message.nodeCount * sizeof(float[4][4]));
+
+    const auto destVertexBuffer = m_vertexBuffers[message.vertexBufferId].allocation->GetResource();
+    auto destVirtualAddress = destVertexBuffer->GetGPUVirtualAddress();
+
+    for (size_t i = 0; i < message.geometryCount; i++)
+    {
+        struct GeometryDesc
+        {
+            uint32_t vertexCount;
+            uint32_t vertexStride;
+            uint32_t normalOffset;
+            uint32_t tangentOffset;
+            uint32_t binormalOffset;
+            uint32_t blendWeightOffset;
+            uint32_t blendIndicesOffset;
+            uint32_t padding0;
+            uint32_t nodePalette[25];
+        };
+
+        GeometryDesc dstGeometryDesc;
+        dstGeometryDesc.vertexCount = geometryDesc->vertexCount;
+        dstGeometryDesc.vertexStride = geometryDesc->vertexStride;
+        dstGeometryDesc.normalOffset = geometryDesc->normalOffset;
+        dstGeometryDesc.tangentOffset = geometryDesc->tangentOffset;
+        dstGeometryDesc.binormalOffset = geometryDesc->binormalOffset;
+        dstGeometryDesc.blendWeightOffset = geometryDesc->blendWeightOffset;
+        dstGeometryDesc.blendIndicesOffset = geometryDesc->blendIndicesOffset;
+
+        for (size_t j = 0; j < 25; j++)
+            dstGeometryDesc.nodePalette[j] = geometryDesc->nodePalette[j];
+
+        getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1,
+            createBuffer(&dstGeometryDesc, sizeof(GeometryDesc), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+
+        getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2,
+            m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress());
+
+        getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(3, destVirtualAddress);
+
+        getUnderlyingGraphicsCommandList()->Dispatch((geometryDesc->vertexCount + 63) / 64, 1, 1);
+
+        destVirtualAddress += geometryDesc->vertexCount * geometryDesc->vertexStride;
+        ++geometryDesc;
+    }
+    m_pendingPoses.push_back(message.vertexBufferId);
+}
+
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -568,6 +677,14 @@ bool RaytracingDevice::processRaytracingMessage()
         procMsgCreateMaterial();
         break;
 
+    case MsgComputePose::s_id:
+        procMsgComputePose();
+        break;
+
+    case MsgBuildBottomLevelAccelStruct::s_id:
+        procMsgBuildBottomLevelAccelStruct();
+        break;
+
     default:
         return false;
     }
@@ -577,6 +694,8 @@ bool RaytracingDevice::processRaytracingMessage()
 
 void RaytracingDevice::releaseRaytracingResources()
 {
+    m_curRootSignature = nullptr;
+    m_curPipeline = nullptr;
     m_scratchBufferOffset = 0;
 }
 
@@ -686,7 +805,29 @@ RaytracingDevice::RaytracingDevice()
     pipelineDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     pipelineDesc.SampleDesc.Count = 1;
 
-    hr = m_device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(m_copyTexturePipelineState.GetAddressOf()));
+    hr = m_device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
 
-    assert(SUCCEEDED(hr) && m_copyTexturePipelineState != nullptr);
+    assert(SUCCEEDED(hr) && m_copyTexturePipeline != nullptr);
+
+    CD3DX12_ROOT_PARAMETER poseRootParams[4];
+    poseRootParams[0].InitAsConstantBufferView(0);
+    poseRootParams[1].InitAsConstantBufferView(1);
+    poseRootParams[2].InitAsShaderResourceView(0);
+    poseRootParams[3].InitAsUnorderedAccessView(0);
+
+    RootSignature::create(
+        m_device.Get(),
+        poseRootParams,
+        _countof(poseRootParams),
+        D3D12_ROOT_SIGNATURE_FLAG_NONE,
+        m_poseRootSignature);
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC posePipelineDesc{};
+    posePipelineDesc.pRootSignature = m_poseRootSignature.Get();
+    posePipelineDesc.CS.pShaderBytecode = PoseComputeShader;
+    posePipelineDesc.CS.BytecodeLength = sizeof(PoseComputeShader);
+
+    hr = m_device->CreateComputePipelineState(&posePipelineDesc, IID_PPV_ARGS(m_posePipeline.GetAddressOf()));
+
+    assert(SUCCEEDED(hr) && m_posePipeline != nullptr);
 }

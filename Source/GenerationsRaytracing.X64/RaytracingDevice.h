@@ -18,6 +18,7 @@ class RaytracingDevice final : public Device
 {
 protected:
     // Global
+    ID3D12RootSignature* m_curRootSignature = nullptr;
     ComPtr<ID3D12RootSignature> m_raytracingRootSignature;
     ComPtr<ID3D12StateObject> m_stateObject;
     std::vector<uint8_t> m_shaderTable;
@@ -32,6 +33,7 @@ protected:
     std::vector<GeometryDesc> m_geometryDescs;
     std::multimap<uint32_t, uint32_t> m_freeCounts;
     std::map<uint32_t, std::multimap<uint32_t, uint32_t>::iterator> m_freeIndices;
+    std::vector<uint32_t> m_pendingBuilds;
 
     // Material
     std::vector<Material> m_materials;
@@ -53,13 +55,20 @@ protected:
 
     // Resolve
     ComPtr<ID3D12RootSignature> m_copyTextureRootSignature;
-    ComPtr<ID3D12PipelineState> m_copyTexturePipelineState;
+    ComPtr<ID3D12PipelineState> m_copyTexturePipeline;
+
+    // Compute Pose
+    ComPtr<ID3D12RootSignature> m_poseRootSignature;
+    ComPtr<ID3D12PipelineState> m_posePipeline;
+    std::vector<uint32_t> m_pendingPoses;
 
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
-    void buildRaytracingAccelerationStructure(ComPtr<D3D12MA::Allocation>& allocation, 
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc);
+    uint32_t buildRaytracingAccelerationStructure(ComPtr<D3D12MA::Allocation>& allocation, 
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate);
+
+    void handlePendingBottomLevelAccelStructBuilds();
 
     D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT();
     void createTopLevelAccelStruct();
@@ -71,6 +80,8 @@ protected:
     void procMsgCreateInstance();
     void procMsgTraceRays();
     void procMsgCreateMaterial();
+    void procMsgBuildBottomLevelAccelStruct();
+    void procMsgComputePose();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

@@ -95,6 +95,7 @@ protected:
     D3D12_CPU_DESCRIPTOR_HANDLE m_depthStencilView{};
 
     xxHashMap<ComPtr<ID3D12PipelineState>> m_pipelines;
+    ID3D12PipelineState* m_curPipeline = nullptr;
 
     uint32_t m_samplerDescsFirst = 0;
     uint32_t m_samplerDescsLast = _countof(m_samplerDescs) - 1;
@@ -177,6 +178,7 @@ protected:
     void procMsgSetStreamSourceFreq();
     void procMsgReleaseResource();
     void procMsgDrawPrimitive();
+    void procMsgCopyVertexBuffer();
 
     void processMessages();
     virtual bool processRaytracingMessage() = 0;

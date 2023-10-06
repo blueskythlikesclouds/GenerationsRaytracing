@@ -6,6 +6,7 @@
 #include "MaterialData.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "TopLevelAccelStruct.h"
 #include "VertexBuffer.h"
 #include "VertexDeclaration.h"
 
@@ -135,75 +136,90 @@ HOOK(void, __cdecl, MakeMeshData2, 0x744CC0,
     originalMakeMeshData2(meshData, data, databaseWrapper, renderingInfrastructure);
 }
 
-static bool checkMeshValidity(const MeshDataEx& meshData)
+template<typename T>
+static void traverseMeshGroup(const hh::vector<boost::shared_ptr<Hedgehog::Mirage::CMeshData>>& meshGroup, uint32_t flags, const T& function)
 {
-    return meshData.m_indexCount > 2 && meshData.m_VertexNum > 2 &&
-        meshData.m_indices != nullptr && meshData.m_pD3DVertexBuffer != nullptr;
-}
-
-static size_t getGeometryCount(const hh::vector<boost::shared_ptr<Hedgehog::Mirage::CMeshData>>& meshGroup)
-{
-    size_t geometryCount = 0;
     for (const auto& meshData : meshGroup)
     {
-        if (checkMeshValidity(static_cast<const MeshDataEx&>(*meshData)))
-            ++geometryCount;
+        const auto& meshDataEx = *reinterpret_cast<const MeshDataEx*>(meshData.get());
+
+        if (meshDataEx.m_indexCount > 2 && meshDataEx.m_VertexNum > 2 &&
+            meshDataEx.m_indices != nullptr && meshDataEx.m_pD3DVertexBuffer != nullptr)
+        {
+            function(meshDataEx, flags);
+        }
     }
-    return geometryCount;
 }
 
-template<typename T>
-static size_t getGeometryCount(const T& modelData)
+template<typename TModelData, typename TFunction>
+static void traverseModelData(const TModelData& modelData, const TFunction& function)
 {
-    size_t geometryCount = 0;
-
     for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
     {
         if (!nodeGroupModelData->m_Visible)
             continue;
 
-        geometryCount += getGeometryCount(nodeGroupModelData->m_OpaqueMeshes);
-        geometryCount += getGeometryCount(nodeGroupModelData->m_TransparentMeshes);
-        geometryCount += getGeometryCount(nodeGroupModelData->m_PunchThroughMeshes);
+        traverseMeshGroup(nodeGroupModelData->m_OpaqueMeshes, NULL, function);
+        traverseMeshGroup(nodeGroupModelData->m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
+        traverseMeshGroup(nodeGroupModelData->m_PunchThroughMeshes, GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH, function);
 
         for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
-            geometryCount += getGeometryCount(specialMeshGroup);
+            traverseMeshGroup(specialMeshGroup, GEOMETRY_FLAG_TRANSPARENT, function);
     }
 
-    geometryCount += getGeometryCount(modelData.m_OpaqueMeshes);
-    geometryCount += getGeometryCount(modelData.m_TransparentMeshes);
-    geometryCount += getGeometryCount(modelData.m_PunchThroughMeshes);
-
-    return geometryCount;
+    traverseMeshGroup(modelData.m_OpaqueMeshes, NULL, function);
+    traverseMeshGroup(modelData.m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
+    traverseMeshGroup(modelData.m_PunchThroughMeshes, GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH, function);
 }
 
-static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometryDescs(
-    const hh::vector<boost::shared_ptr<Hedgehog::Mirage::CMeshData>>& meshGroup,
-    MsgCreateBottomLevelAccelStruct::GeometryDesc* geometryDesc,
-    uint32_t flags)
+template<typename T>
+static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLevelAccelStructId, uint32_t poseVertexBufferId)
 {
-    for (const auto& meshData : meshGroup)
+    size_t geometryCount = 0;
+
+    traverseModelData(modelData, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
+
+    if (geometryCount == 0)
+        return;
+
+    auto& message = s_messageSender.makeMessage<MsgCreateBottomLevelAccelStruct>(
+        geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
+
+    message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+    message.preferFastBuild = poseVertexBufferId != NULL;
+    memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
+
+    auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
+    uint32_t poseVertexOffset = 0;
+
+    traverseModelData(modelData, [&](const MeshDataEx& meshDataEx, uint32_t flags)
     {
-        const auto& meshDataEx = static_cast<const MeshDataEx&>(*meshData);
-
-        if (!checkMeshValidity(meshDataEx))
-            continue;
-
         geometryDesc->flags = flags;
         geometryDesc->indexCount = meshDataEx.m_indexCount;
-        geometryDesc->vertexCount = meshData->m_VertexNum;
+        geometryDesc->vertexCount = meshDataEx.m_VertexNum;
         geometryDesc->indexBufferId = reinterpret_cast<const IndexBuffer*>(meshDataEx.m_indices)->getId();
-        geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshData->m_pD3DVertexBuffer)->getId();
-        geometryDesc->vertexStride = meshData->m_VertexSize;
+
+        uint32_t vertexOffset = meshDataEx.m_VertexOffset;
+        if (poseVertexBufferId != NULL)
+        {
+            geometryDesc->vertexBufferId = poseVertexBufferId;
+            vertexOffset = poseVertexOffset;
+            poseVertexOffset += meshDataEx.m_VertexNum * meshDataEx.m_VertexSize;
+        }
+        else
+        {
+            geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
+        }
+        geometryDesc->vertexStride = meshDataEx.m_VertexSize;
 
         const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
-            meshData->m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
+            meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
 
         auto vertexElement = vertexDeclaration->getVertexElements();
 
         while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
         {
-            const uint32_t offset = meshData->m_VertexOffset + vertexElement->Offset;
+            const uint32_t offset = vertexOffset + vertexElement->Offset;
 
             switch (vertexElement->Usage)
             {
@@ -211,15 +227,15 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometry
                 geometryDesc->positionOffset = offset;
                 break;
 
-            case D3DDECLUSAGE_NORMAL: 
+            case D3DDECLUSAGE_NORMAL:
                 geometryDesc->normalOffset = offset;
                 break;
 
-            case D3DDECLUSAGE_TANGENT: 
+            case D3DDECLUSAGE_TANGENT:
                 geometryDesc->tangentOffset = offset;
                 break;
 
-            case D3DDECLUSAGE_BINORMAL: 
+            case D3DDECLUSAGE_BINORMAL:
                 geometryDesc->binormalOffset = offset;
                 break;
 
@@ -239,54 +255,10 @@ static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertMeshGroupToGeometry
         }
 
         geometryDesc->materialId = reinterpret_cast<MaterialDataEx*>(
-            meshData->m_spMaterial.get())->m_materialId;
+            meshDataEx.m_spMaterial.get())->m_materialId;
 
         ++geometryDesc;
-    }
-    return geometryDesc;
-}
-
-template<typename T>
-static MsgCreateBottomLevelAccelStruct::GeometryDesc* convertModelToGeometryDescs(
-    const T& modelData,
-    MsgCreateBottomLevelAccelStruct::GeometryDesc* geometryDesc)
-{
-    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
-    {
-        if (!nodeGroupModelData->m_Visible)
-            continue;
-
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_OpaqueMeshes, geometryDesc, NULL);
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_TransparentMeshes, geometryDesc, GEOMETRY_FLAG_TRANSPARENT);
-        geometryDesc = convertMeshGroupToGeometryDescs(nodeGroupModelData->m_PunchThroughMeshes, geometryDesc, GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH);
-
-        for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
-            geometryDesc = convertMeshGroupToGeometryDescs(specialMeshGroup, geometryDesc, GEOMETRY_FLAG_TRANSPARENT);
-    }
-
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_OpaqueMeshes, geometryDesc, NULL);
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_TransparentMeshes, geometryDesc, GEOMETRY_FLAG_TRANSPARENT);
-    geometryDesc = convertMeshGroupToGeometryDescs(modelData.m_PunchThroughMeshes, geometryDesc, GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH);
-
-    return geometryDesc;
-}
-
-template<typename T>
-static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLevelAccelStructId)
-{
-    const size_t geometryCount = getGeometryCount(modelData);
-
-    if (geometryCount == 0)
-        return;
-
-    auto& message = s_messageSender.makeMessage<MsgCreateBottomLevelAccelStruct>(
-        geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
-
-    message.bottomLevelAccelStructId = bottomLevelAccelStructId;
-    memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
-
-    const auto geometryDesc = convertModelToGeometryDescs(modelData,
-        reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data));
+    });
 
     assert(reinterpret_cast<uint8_t*>(geometryDesc - geometryCount) == message.data);
 
@@ -330,7 +302,7 @@ static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* This)
     }
     else
     {
-        createBottomLevelAccelStruct(*This, This->m_bottomLevelAccelStructId);
+        createBottomLevelAccelStruct(*This, This->m_bottomLevelAccelStructId, NULL);
     }
 
     This->SetMadeOne();
@@ -341,7 +313,7 @@ HOOK(void, __fastcall, CreateShareVertexBuffer, 0x72EBD0, void* This)
     originalCreateShareVertexBuffer(This);
 
     for (const auto terrainModelData : s_terrainModelList)
-        createBottomLevelAccelStruct(*terrainModelData, terrainModelData->m_bottomLevelAccelStructId);
+        createBottomLevelAccelStruct(*terrainModelData, terrainModelData->m_bottomLevelAccelStructId, NULL);
 
     s_terrainModelList.clear();
 }
@@ -360,10 +332,8 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
     if (This->m_bottomLevelAccelStructId != NULL)
     {
         auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-
         message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
         message.resourceId = This->m_bottomLevelAccelStructId;
-
         s_messageSender.endMessage();
 
         s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
@@ -372,16 +342,159 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
     originalModelDataDestructor(This);
 }
 
-uint32_t BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, Hedgehog::Mirage::CPose* pose)
+void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx)
 {
-    if (modelDataEx.m_bottomLevelAccelStructId == NULL)
+    auto transform = instanceInfoEx.m_Transform;
+    uint32_t bottomLevelAccelStructId;
+    
+    if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > 1)
     {
-        modelDataEx.m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+        if (instanceInfoEx.m_poseVertexBuffer == nullptr)
+        {
+            instanceInfoEx.m_poseVertexBuffer.Attach(new VertexBuffer(NULL));
 
-        createBottomLevelAccelStruct(modelDataEx, modelDataEx.m_bottomLevelAccelStructId);
+            auto& message = s_messageSender.makeMessage<MsgCreateVertexBuffer>();
+            message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
+            message.allowUnorderedAccess = true;
+
+            uint32_t length = 0;
+            traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+            {
+                auto& copyMessage = s_messageSender.makeMessage<MsgCopyVertexBuffer>();
+                copyMessage.dstVertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
+                copyMessage.dstOffset = length;
+                copyMessage.srcVertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
+                copyMessage.srcOffset = meshDataEx.m_VertexOffset;
+                copyMessage.numBytes = meshDataEx.m_VertexNum * meshDataEx.m_VertexSize;
+                s_messageSender.endMessage();
+
+                length += meshDataEx.m_VertexNum * meshDataEx.m_VertexSize;
+                
+            });
+
+            message.length = length;
+            s_messageSender.endMessage();
+        }
+
+        uint32_t geometryCount = 0;
+        traverseModelData(modelDataEx, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
+
+        auto& message = s_messageSender.makeMessage<MsgComputePose>(
+            instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix) +
+            geometryCount * sizeof(MsgComputePose::GeometryDesc));
+
+        message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
+        message.nodeCount = static_cast<uint8_t>(instanceInfoEx.m_spPose->GetMatrixNum());
+        message.geometryCount = geometryCount;
+
+        memcpy(message.data, instanceInfoEx.m_spPose->GetMatrixList(),
+            instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix));
+
+        auto geometryDesc = reinterpret_cast<MsgComputePose::GeometryDesc*>(message.data +
+            instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix));
+
+        memset(geometryDesc, 0, geometryCount * sizeof(MsgComputePose::GeometryDesc));
+
+        traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+        {
+            assert(meshDataEx.m_VertexOffset == 0);
+
+            geometryDesc->vertexCount = meshDataEx.m_VertexNum;
+            geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
+            geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
+
+            if (meshDataEx.m_pNodeIndices != nullptr)
+                memcpy(geometryDesc->nodePalette, meshDataEx.m_pNodeIndices, std::min(25u, meshDataEx.m_NodeNum));
+
+            const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
+                meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
+
+            auto vertexElement = vertexDeclaration->getVertexElements();
+
+            while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
+            {
+                const uint8_t offset = static_cast<uint8_t>(vertexElement->Offset);
+
+                switch (vertexElement->Usage)
+                {
+                case D3DDECLUSAGE_NORMAL:
+                    geometryDesc->normalOffset = offset;
+                    break;
+
+                case D3DDECLUSAGE_TANGENT:
+                    geometryDesc->tangentOffset = offset;
+                    break;
+
+                case D3DDECLUSAGE_BINORMAL:
+                    geometryDesc->binormalOffset = offset;
+                    break;
+
+                case D3DDECLUSAGE_BLENDWEIGHT:
+                    geometryDesc->blendWeightOffset = offset;
+                    break;
+
+                case D3DDECLUSAGE_BLENDINDICES:
+                    geometryDesc->blendIndicesOffset = offset;
+                    break;
+                }
+
+                ++vertexElement;
+            }
+
+            ++geometryDesc;
+        });
+
+        s_messageSender.endMessage();
+
+        if (instanceInfoEx.m_bottomLevelAccelStructId == NULL)
+        {
+            instanceInfoEx.m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+            createBottomLevelAccelStruct(modelDataEx,
+                instanceInfoEx.m_bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId());
+        }
+        else
+        {
+            auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
+            buildMessage.bottomLevelAccelStructId = instanceInfoEx.m_bottomLevelAccelStructId;
+            s_messageSender.endMessage();
+        }
+        bottomLevelAccelStructId = instanceInfoEx.m_bottomLevelAccelStructId;
+    }
+    else
+    {
+        if (instanceInfoEx.m_spPose != nullptr)
+            transform = transform * (*instanceInfoEx.m_spPose->GetMatrixList());
+
+        if (modelDataEx.m_bottomLevelAccelStructId == NULL)
+        {
+            modelDataEx.m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+            createBottomLevelAccelStruct(modelDataEx, modelDataEx.m_bottomLevelAccelStructId, NULL);
+        }
+        bottomLevelAccelStructId = modelDataEx.m_bottomLevelAccelStructId;
     }
 
-    return modelDataEx.m_bottomLevelAccelStructId;
+    auto& message = s_messageSender.makeMessage<MsgCreateInstance>();
+
+    for (size_t i = 0; i < 3; i++)
+    {
+        for (size_t j = 0; j < 4; j++)
+            message.transform[i][j] = transform(i, j);
+    }
+
+    message.instanceId = instanceInfoEx.m_instanceId;
+    message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+
+    s_messageSender.endMessage();
+}
+
+void BottomLevelAccelStruct::release(uint32_t bottomLevelAccelStructId)
+{
+    auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+    message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
+    message.resourceId = bottomLevelAccelStructId;
+    s_messageSender.endMessage();
+
+    s_freeListAllocator.free(bottomLevelAccelStructId);
 }
 
 void BottomLevelAccelStruct::init()

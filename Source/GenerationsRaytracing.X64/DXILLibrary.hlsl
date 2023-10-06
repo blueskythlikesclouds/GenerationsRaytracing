@@ -311,6 +311,7 @@ ShadingParams LoadShadingParams(Vertex vertex)
         shadingParams.SpecularPower *= specularPower;
     }
 
+    shadingParams.SpecularColor = min(shadingParams.SpecularColor, 4.0);
     shadingParams.SpecularPower = clamp(shadingParams.SpecularPower, 1.0, 1024.0);
 
     if (material.NormalTexture.Id != 0)

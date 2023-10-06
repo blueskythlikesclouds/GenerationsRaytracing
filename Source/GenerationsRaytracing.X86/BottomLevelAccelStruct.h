@@ -1,5 +1,7 @@
 #pragma once
 
+class InstanceInfoEx;
+
 class TerrainModelDataEx : public Hedgehog::Mirage::CTerrainModelData
 {
 public:
@@ -14,7 +16,8 @@ public:
 
 struct BottomLevelAccelStruct
 {
-    static uint32_t create(ModelDataEx& modelDataEx, Hedgehog::Mirage::CPose* pose);
+    static void create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx);
+    static void release(uint32_t bottomLevelAccelStructId);
 
     static void init();
 };

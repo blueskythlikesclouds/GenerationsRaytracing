@@ -52,7 +52,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     {
         { diffuseSymbol, 0, message.diffuseTexture },
         { specularSymbol, 0, message.specularTexture },
-        { glossSymbol, 0, message.powerTexture },
+        { glossSymbol, 0, message.specularPowerTexture },
         { normalSymbol, 0, message.normalTexture },
         { displacementSymbol, 0, message.emissionTexture },
         { diffuseSymbol, 1, message.diffuseBlendTexture },

@@ -321,6 +321,7 @@ struct MsgCreateBottomLevelAccelStruct
     };
 
     uint32_t bottomLevelAccelStructId;
+    bool preferFastBuild;
     uint32_t dataSize;
     uint8_t data[1u];
 };
@@ -372,7 +373,7 @@ struct MsgCreateMaterial
     uint32_t materialId;
     Texture diffuseTexture;
     Texture specularTexture;
-    Texture powerTexture;
+    Texture specularPowerTexture;
     Texture normalTexture;
     Texture emissionTexture;
     Texture diffuseBlendTexture;
@@ -384,6 +385,46 @@ struct MsgCreateMaterial
     float specularPower;
     float falloffParam[3];
     uint32_t padding0;
+};
+
+struct MsgComputePose
+{
+    MSG_DEFINE_MESSAGE(MsgCreateMaterial);
+
+    struct GeometryDesc
+    {
+        uint32_t vertexCount;
+        uint32_t vertexBufferId;
+        uint8_t vertexStride;
+        uint8_t normalOffset;
+        uint8_t tangentOffset;
+        uint8_t binormalOffset;
+        uint8_t blendWeightOffset;
+        uint8_t blendIndicesOffset;
+        uint8_t nodePalette[25];
+    };
+
+    uint32_t vertexBufferId;
+    uint8_t nodeCount;
+    uint32_t geometryCount;
+    uint32_t dataSize;
+    uint8_t data[1u];
+};
+
+struct MsgBuildBottomLevelAccelStruct
+{
+    MSG_DEFINE_MESSAGE(MsgComputePose);
+    uint32_t bottomLevelAccelStructId;
+};
+
+struct MsgCopyVertexBuffer
+{
+    MSG_DEFINE_MESSAGE(MsgBuildBottomLevelAccelStruct);
+    uint32_t dstVertexBufferId;
+    uint32_t dstOffset;
+    uint32_t srcVertexBufferId;
+    uint32_t srcOffset;
+    uint32_t numBytes;
 };
 
 #pragma pack(pop)

@@ -222,6 +222,7 @@ void Device::flushGraphicsState()
             assert(SUCCEEDED(hr));
         }
         getUnderlyingGraphicsCommandList()->SetPipelineState(pipeline.Get());
+        m_curPipeline = pipeline.Get();
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_VS)
@@ -1168,7 +1169,7 @@ void Device::procMsgCreateVertexBuffer()
     createBuffer(
         D3D12_HEAP_TYPE_DEFAULT,
         message.length,
-        D3D12_RESOURCE_FLAG_NONE,
+        message.allowUnorderedAccess ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_COMMON,
         vertexBuffer.allocation);
 
@@ -1483,6 +1484,19 @@ void Device::procMsgDrawPrimitive()
         0);
 }
 
+void Device::procMsgCopyVertexBuffer()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCopyVertexBuffer>();
+
+    getCopyCommandList().open();
+    getUnderlyingCopyCommandList()->CopyBufferRegion(
+        m_vertexBuffers[message.dstVertexBufferId].allocation->GetResource(),
+        message.dstOffset,
+        m_vertexBuffers[message.srcVertexBufferId].allocation->GetResource(),
+        message.srcOffset,
+        message.numBytes);
+}
+
 Device::Device()
 {
     HRESULT hr;
@@ -1650,6 +1664,7 @@ void Device::processMessages()
         case MsgSetStreamSourceFreq::s_id: procMsgSetStreamSourceFreq(); break;
         case MsgReleaseResource::s_id: procMsgReleaseResource(); break;
         case MsgDrawPrimitive::s_id: procMsgDrawPrimitive(); break;
+        case MsgCopyVertexBuffer::s_id: procMsgCopyVertexBuffer(); break;
 
         }
     }

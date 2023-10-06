@@ -11,7 +11,7 @@ struct Material
 
     Texture diffuseTexture;
     Texture specularTexture;
-    Texture powerTexture;
+    Texture specularPowerTexture;
     Texture normalTexture;
     Texture emissionTexture;
     Texture diffuseBlendTexture;

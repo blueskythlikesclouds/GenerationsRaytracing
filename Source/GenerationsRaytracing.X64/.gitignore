@@ -3,3 +3,4 @@ CopyTextureVertexShader.h
 DXILLibrary.h
 FVFVertexShader.h
 FVFPixelShader.h
+PoseComputeShader.h

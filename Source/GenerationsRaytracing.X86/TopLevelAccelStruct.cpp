@@ -65,6 +65,8 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     const auto result = originalInstanceInfoConstructor(This);
 
     This->m_instanceId = s_freeListAllocator.allocate();
+    This->m_bottomLevelAccelStructId = NULL;
+    new (std::addressof(This->m_poseVertexBuffer)) ComPtr<VertexBuffer>();
 
     return result;
 }
@@ -72,13 +74,16 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
 {
     auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-
     message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
     message.resourceId = This->m_instanceId;
-
     s_messageSender.endMessage();
 
     s_freeListAllocator.free(This->m_instanceId);
+
+    if (This->m_bottomLevelAccelStructId != NULL)
+        BottomLevelAccelStruct::release(This->m_bottomLevelAccelStructId);
+
+    This->m_poseVertexBuffer.~ComPtr();
 
     originalInstanceInfoDestructor(This);
 }
