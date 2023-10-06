@@ -1,4 +1,5 @@
 #include "LockGuard.h"
+#include <cassert>
 
 inline uint32_t FreeListAllocator::allocate()
 {
@@ -24,6 +25,7 @@ inline uint32_t FreeListAllocator::allocate()
 
 inline void FreeListAllocator::free(uint32_t index)
 {
+    assert(index != NULL);
 #ifndef _WIN64
     LockGuard lock(m_mutex);
 #endif

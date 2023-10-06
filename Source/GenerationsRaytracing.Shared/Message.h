@@ -384,7 +384,7 @@ struct MsgCreateMaterial
     float specularColor[3];
     float specularPower;
     float falloffParam[3];
-    uint32_t padding0;
+    uint32_t shaderFlags;
 };
 
 struct MsgComputePose

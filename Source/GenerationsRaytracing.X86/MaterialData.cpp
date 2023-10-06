@@ -11,30 +11,31 @@ HOOK(MaterialDataEx*, __fastcall, MaterialDataConstructor, 0x704CA0, MaterialDat
 {
     const auto result = originalMaterialDataConstructor(This);
 
-    This->m_materialId = s_freeListAllocator.allocate();
+    This->m_materialId = NULL;
 
     return result;
 }
 
 HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
 {
-    auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+    if (This->m_materialId != NULL)
+    {
+        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+        message.resourceType = MsgReleaseRaytracingResource::ResourceType::Material;
+        message.resourceId = This->m_materialId;
+        s_messageSender.endMessage();
 
-    message.resourceType = MsgReleaseRaytracingResource::ResourceType::Material;
-    message.resourceId = This->m_materialId;
-
-    s_messageSender.endMessage();
-
-    s_freeListAllocator.free(This->m_materialId);
+        s_freeListAllocator.free(This->m_materialId);
+    }
 
     originalMaterialDataDestructor(This);
 }
 
-static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
+static void createMaterial(MaterialDataEx& materialDataEx)
 {
     auto& message = s_messageSender.makeMessage<MsgCreateMaterial>();
 
-    message.materialId = This->m_materialId;
+    message.materialId = materialDataEx.m_materialId;
 
     const Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
     const Hedgehog::Base::CStringSymbol specularSymbol("specular");
@@ -48,7 +49,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
         Hedgehog::Base::CStringSymbol type;
         uint32_t offset;
         MsgCreateMaterial::Texture& dstTexture;
-    } const textureDescs[] = 
+    } const textureDescs[] =
     {
         { diffuseSymbol, 0, message.diffuseTexture },
         { specularSymbol, 0, message.specularTexture },
@@ -72,7 +73,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
         textureDesc.dstTexture.texCoordIndex = 0;
 
         uint32_t offset = 0;
-        for (const auto& srcTexture : This->m_spTexsetData->m_TextureList)
+        for (const auto& srcTexture : materialDataEx.m_spTexsetData->m_TextureList)
         {
             if (srcTexture->m_Type == textureDesc.type)
             {
@@ -86,7 +87,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
                     {
                         if (srcTexture->m_spPictureData->m_pD3DTexture == nullptr)
                         {
-                            srcTexture->m_spPictureData->m_pD3DTexture = 
+                            srcTexture->m_spPictureData->m_pD3DTexture =
                                 reinterpret_cast<DX_PATCH::IDirect3DBaseTexture9*>(new Texture(NULL, NULL, NULL));
                         }
 
@@ -115,7 +116,7 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     const Hedgehog::Base::CStringSymbol powerGlossLevelSymbol("power_gloss_level");
     const Hedgehog::Base::CStringSymbol falloffParamSymbol("g_SonicSkinFalloffParam");
 
-    for (const auto& float4Param : This->m_Float4Params)
+    for (const auto& float4Param : materialDataEx.m_Float4Params)
     {
         if (float4Param->m_Name == diffuseSymbol)
         {
@@ -163,8 +164,21 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     memcpy(message.falloffParam, falloffParam, sizeof(message.falloffParam));
 
     s_messageSender.endMessage();
+}
+
+static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
+{
+    if (This->m_materialId == NULL)
+        This->m_materialId = s_freeListAllocator.allocate();
+
+    createMaterial(*This);
 
     This->SetMadeOne();
+}
+
+uint32_t MaterialData::allocate()
+{
+    return s_freeListAllocator.allocate();
 }
 
 void MaterialData::init()

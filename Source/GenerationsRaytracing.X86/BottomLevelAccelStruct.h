@@ -16,6 +16,7 @@ public:
 
 struct BottomLevelAccelStruct
 {
+    static uint32_t allocate();
     static void create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx);
     static void release(uint32_t bottomLevelAccelStructId);
 

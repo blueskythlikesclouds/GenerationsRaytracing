@@ -8,5 +8,7 @@ public:
 
 struct MaterialData
 {
+    static uint32_t allocate();
+
     static void init();
 };

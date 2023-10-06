@@ -13,15 +13,16 @@ struct Material
     Texture specularTexture;
     Texture specularPowerTexture;
     Texture normalTexture;
-    Texture emissionTexture;
+    Texture displacementTexture;
     Texture diffuseBlendTexture;
     Texture powerBlendTexture;
     Texture normalBlendTexture;
     Texture environmentTexture;
+    uint32_t padding0;
 
     float diffuseColor[4];
     float specularColor[3];
     float specularPower;
     float falloffParam[3];
-    uint32_t padding0;
+    uint32_t shaderFlags;
 };

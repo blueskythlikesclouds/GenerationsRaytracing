@@ -186,9 +186,6 @@ void RaytracingDevice::createTopLevelAccelStruct()
 {
     handlePendingBottomLevelAccelStructBuilds();
 
-    if (m_instanceDescs.empty())
-        return;
-
     for (const auto& [textureId, textureIdOffset] : m_delayedTextures)
     {
         if (m_textures.size() > textureId &&
@@ -226,6 +223,9 @@ void RaytracingDevice::createTopLevelAccelStruct()
 
     std::swap(m_delayedTextures, m_tempDelayedTextures);
     std::swap(m_delayedInstances, m_tempDelayedInstances);
+
+    if (m_instanceDescs.empty())
+        return;
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
     accelStructDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
@@ -395,18 +395,21 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
     switch (message.resourceType)
     {
     case MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct:
-        m_tempBuffers[m_frame].emplace_back(std::move(m_bottomLevelAccelStructs[message.resourceId].allocation));
+    {
+        auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.resourceId];
+        m_tempBuffers[m_frame].emplace_back(std::move(bottomLevelAccelStruct.allocation));
         freeGeometryDescs(m_bottomLevelAccelStructs[message.resourceId].geometryId, m_bottomLevelAccelStructs[message.resourceId].geometryCount);
+        bottomLevelAccelStruct.desc = {};
+        bottomLevelAccelStruct.geometryDescs.clear();
         break;
+    }
 
     case MsgReleaseRaytracingResource::ResourceType::Instance:
-        if (message.resourceId < m_instanceDescs.size())
-            memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+        memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
         break;
 
     case MsgReleaseRaytracingResource::ResourceType::Material:
-        if (message.resourceId < m_materials.size())
-            memset(&m_materials[message.resourceId], 0, sizeof(Material));
+        memset(&m_materials[message.resourceId], 0, sizeof(Material));
         break;
 
     default:
@@ -524,15 +527,15 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     const std::pair<const MsgCreateMaterial::Texture&, Material::Texture&> textures[] =
     {
-        { message.diffuseTexture,      material.diffuseTexture },
-        { message.specularTexture,     material.specularTexture },
-        { message.specularPowerTexture,        material.specularPowerTexture },
-        { message.normalTexture,       material.normalTexture },
-        { message.emissionTexture,     material.emissionTexture },
-        { message.diffuseBlendTexture, material.diffuseBlendTexture },
-        { message.powerBlendTexture,   material.powerBlendTexture },
-        { message.normalBlendTexture,  material.normalBlendTexture },
-        { message.environmentTexture,  material.environmentTexture },
+        { message.diffuseTexture,       material.diffuseTexture },
+        { message.specularTexture,      material.specularTexture },
+        { message.specularPowerTexture, material.specularPowerTexture },
+        { message.normalTexture,        material.normalTexture },
+        { message.emissionTexture,      material.displacementTexture },
+        { message.diffuseBlendTexture,  material.diffuseBlendTexture },
+        { message.powerBlendTexture,    material.powerBlendTexture },
+        { message.normalBlendTexture,   material.normalBlendTexture },
+        { message.environmentTexture,   material.environmentTexture },
     };
 
     D3D12_SAMPLER_DESC samplerDesc{};
@@ -657,36 +660,14 @@ bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
     {
-    case MsgCreateBottomLevelAccelStruct::s_id:
-        procMsgCreateBottomLevelAccelStruct();
-        break;
-
-    case MsgReleaseRaytracingResource::s_id:
-        procMsgReleaseRaytracingResource();
-        break;
-
-    case MsgCreateInstance::s_id:
-        procMsgCreateInstance();
-        break;
-
-    case MsgTraceRays::s_id:
-        procMsgTraceRays();
-        break;
-
-    case MsgCreateMaterial::s_id:
-        procMsgCreateMaterial();
-        break;
-
-    case MsgComputePose::s_id:
-        procMsgComputePose();
-        break;
-
-    case MsgBuildBottomLevelAccelStruct::s_id:
-        procMsgBuildBottomLevelAccelStruct();
-        break;
-
-    default:
-        return false;
+    case MsgCreateBottomLevelAccelStruct::s_id: procMsgCreateBottomLevelAccelStruct(); break;
+    case MsgReleaseRaytracingResource::s_id: procMsgReleaseRaytracingResource(); break;
+    case MsgCreateInstance::s_id: procMsgCreateInstance(); break;
+    case MsgTraceRays::s_id: procMsgTraceRays(); break;
+    case MsgCreateMaterial::s_id: procMsgCreateMaterial(); break;
+    case MsgComputePose::s_id: procMsgComputePose(); break;
+    case MsgBuildBottomLevelAccelStruct::s_id: procMsgBuildBottomLevelAccelStruct(); break;
+    default: return false;
     }
 
     return true;

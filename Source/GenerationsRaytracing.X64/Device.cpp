@@ -1451,7 +1451,6 @@ void Device::procMsgReleaseResource()
     case MsgReleaseResource::ResourceType::Texture:
         m_tempTextures[m_frame].push_back(m_textures[message.resourceId]);
         m_textures[message.resourceId] = {};
-
         break;
 
     case MsgReleaseResource::ResourceType::IndexBuffer:

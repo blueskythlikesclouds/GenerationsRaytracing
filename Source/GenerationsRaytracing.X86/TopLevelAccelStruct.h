@@ -12,5 +12,6 @@ public:
 
 struct TopLevelAccelStruct
 {
+    static uint32_t allocate();
     static void init();
 };

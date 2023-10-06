@@ -254,8 +254,13 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
             ++vertexElement;
         }
 
-        geometryDesc->materialId = reinterpret_cast<MaterialDataEx*>(
-            meshDataEx.m_spMaterial.get())->m_materialId;
+        const auto materialDataEx = reinterpret_cast<MaterialDataEx*>(
+            meshDataEx.m_spMaterial.get());
+
+        if (materialDataEx->m_materialId == NULL)
+            materialDataEx->m_materialId = MaterialData::allocate();
+
+        geometryDesc->materialId = materialDataEx->m_materialId;
 
         ++geometryDesc;
     });
@@ -271,21 +276,24 @@ HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, Ter
 {
     const auto result = originalTerrainModelDataConstructor(This);
 
-    This->m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+    This->m_bottomLevelAccelStructId = NULL;
 
     return result;
 }
 
 HOOK(void, __fastcall, TerrainModelDataDestructor, 0x717230, TerrainModelDataEx* This)
 {
-    auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+    if (This->m_bottomLevelAccelStructId != NULL)
+    {
+        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
 
-    message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
-    message.resourceId = This->m_bottomLevelAccelStructId;
+        message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
+        message.resourceId = This->m_bottomLevelAccelStructId;
 
-    s_messageSender.endMessage();
+        s_messageSender.endMessage();
 
-    s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
+        s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
+    }
 
     originalTerrainModelDataDestructor(This);
 }
@@ -294,14 +302,15 @@ static std::vector<TerrainModelDataEx*> s_terrainModelList;
 
 static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* This)
 {
-    assert(This->m_bottomLevelAccelStructId != NULL);
-
     if (*reinterpret_cast<uint32_t*>(0x1B244D4) != NULL) // Share vertex buffer
     {
         s_terrainModelList.push_back(This);
     }
     else
     {
+        if (This->m_bottomLevelAccelStructId == NULL)
+            This->m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+
         createBottomLevelAccelStruct(*This, This->m_bottomLevelAccelStructId, NULL);
     }
 
@@ -313,7 +322,12 @@ HOOK(void, __fastcall, CreateShareVertexBuffer, 0x72EBD0, void* This)
     originalCreateShareVertexBuffer(This);
 
     for (const auto terrainModelData : s_terrainModelList)
+    {
+        if (terrainModelData->m_bottomLevelAccelStructId == NULL)
+            terrainModelData->m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+
         createBottomLevelAccelStruct(*terrainModelData, terrainModelData->m_bottomLevelAccelStructId, NULL);
+    }
 
     s_terrainModelList.clear();
 }
@@ -340,6 +354,11 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
     }
 
     originalModelDataDestructor(This);
+}
+
+uint32_t BottomLevelAccelStruct::allocate()
+{
+    return s_freeListAllocator.allocate();
 }
 
 void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx)
@@ -480,6 +499,9 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
         for (size_t j = 0; j < 4; j++)
             message.transform[i][j] = transform(i, j);
     }
+
+    if (instanceInfoEx.m_instanceId == NULL)
+        instanceInfoEx.m_instanceId = TopLevelAccelStruct::allocate();
 
     message.instanceId = instanceInfoEx.m_instanceId;
     message.bottomLevelAccelStructId = bottomLevelAccelStructId;

@@ -144,17 +144,18 @@ struct Material
     MaterialTexture SpecularTexture;
     MaterialTexture SpecularPowerTexture;
     MaterialTexture NormalTexture;
-    MaterialTexture EmissionTexture;
+    MaterialTexture DisplacementTexture;
     MaterialTexture DiffuseBlendTexture;
     MaterialTexture SpecularPowerBlendTexture;
     MaterialTexture NormalBlendTexture;
     MaterialTexture EnvironmentTexture;
+    uint Padding0;
 
     float4 DiffuseColor;
     float3 SpecularColor;
     float SpecularPower;
     float3 FalloffParam;
-    uint Padding0;
+    uint ShaderFlags;
 };
 
 struct ShadingParams
@@ -341,8 +342,8 @@ ShadingParams LoadShadingParams(Vertex vertex)
 
     shadingParams.Falloff = pow(fresnel, material.FalloffParam.z) * material.FalloffParam.y + material.FalloffParam.x;
 
-    if (material.EmissionTexture.Id != 0)
-        shadingParams.Falloff *= SampleMaterialTexture2D(vertex, material.EmissionTexture).rgb;
+    if (material.DisplacementTexture.Id != 0)
+        shadingParams.Falloff *= SampleMaterialTexture2D(vertex, material.DisplacementTexture).rgb;
 
     fresnel = pow(fresnel, 5.0);
     fresnel = fresnel * 0.6 + 0.4;
@@ -468,7 +469,7 @@ float TraceShadow(float3 position)
 
     ray.Origin = position;
     ray.Direction = normalize(direction.x * tangent + direction.y * binormal + direction.z * normal);
-    ray.TMin = 0.001;
+    ray.TMin = 0.0;
     ray.TMax = 10000.0;
 
     Payload payload1 = (Payload) 0;
@@ -628,7 +629,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
     ShadingParams shadingParams = LoadShadingParams(vertex);
 
     float3 globalLight = ComputeDirectLighting(shadingParams, -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
-    float shadow = TraceShadow(vertex.Position);
+    float shadow = TraceShadow(vertex.Position + vertex.Normal * 0.01);
     float3 eyeLight = ComputeDirectLighting(shadingParams, -WorldRayDirection(), mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
     float3 globalIllumination = TraceGlobalIllumination(payload.Depth, shadingParams);
     float3 environmentColor = TraceEnvironmentColor(payload.Depth, shadingParams);

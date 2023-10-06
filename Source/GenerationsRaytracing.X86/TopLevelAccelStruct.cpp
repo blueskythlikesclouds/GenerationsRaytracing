@@ -17,21 +17,24 @@ HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor,
 {
     const auto result = originalTerrainInstanceInfoDataConstructor(This);
 
-    This->m_instanceId = s_freeListAllocator.allocate();
+    This->m_instanceId = NULL;
 
     return result;
 }
 
 HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInstanceInfoDataEx* This)
 {
-    auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+    if (This->m_instanceId != NULL)
+    {
+        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
 
-    message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
-    message.resourceId = This->m_instanceId;
+        message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
+        message.resourceId = This->m_instanceId;
 
-    s_messageSender.endMessage();
+        s_messageSender.endMessage();
 
-    s_freeListAllocator.free(This->m_instanceId);
+        s_freeListAllocator.free(This->m_instanceId);
+    }
 
     originalTerrainInstanceInfoDataDestructor(This);
 }
@@ -43,6 +46,9 @@ static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoData
         const auto terrainModelEx = 
             reinterpret_cast<TerrainModelDataEx*>(This->m_spTerrainModel.get());
 
+        if (terrainModelEx->m_bottomLevelAccelStructId == NULL)
+            terrainModelEx->m_bottomLevelAccelStructId = BottomLevelAccelStruct::allocate();
+
         auto& message = s_messageSender.makeMessage<MsgCreateInstance>();
 
         for (size_t i = 0; i < 3; i++)
@@ -50,6 +56,9 @@ static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoData
             for (size_t j = 0; j < 4; j++)
                 message.transform[i][j] = (*This->m_scpTransform)(i, j);
         }
+
+        if (This->m_instanceId == NULL)
+            This->m_instanceId = s_freeListAllocator.allocate();
 
         message.instanceId = This->m_instanceId;
         message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
@@ -64,7 +73,7 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 {
     const auto result = originalInstanceInfoConstructor(This);
 
-    This->m_instanceId = s_freeListAllocator.allocate();
+    This->m_instanceId = NULL;
     This->m_bottomLevelAccelStructId = NULL;
     new (std::addressof(This->m_poseVertexBuffer)) ComPtr<VertexBuffer>();
 
@@ -73,12 +82,15 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 
 HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
 {
-    auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-    message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
-    message.resourceId = This->m_instanceId;
-    s_messageSender.endMessage();
+    if (This->m_instanceId != NULL)
+    {
+        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+        message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
+        message.resourceId = This->m_instanceId;
+        s_messageSender.endMessage();
 
-    s_freeListAllocator.free(This->m_instanceId);
+        s_freeListAllocator.free(This->m_instanceId);
+    }
 
     if (This->m_bottomLevelAccelStructId != NULL)
         BottomLevelAccelStruct::release(This->m_bottomLevelAccelStructId);
@@ -86,6 +98,11 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     This->m_poseVertexBuffer.~ComPtr();
 
     originalInstanceInfoDestructor(This);
+}
+
+uint32_t TopLevelAccelStruct::allocate()
+{
+    return s_freeListAllocator.allocate();
 }
 
 void TopLevelAccelStruct::init()
