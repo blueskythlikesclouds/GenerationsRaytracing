@@ -177,6 +177,20 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
     else
         m_globalsRT.currentFrame = 0;
 
+    static std::default_random_engine engine;
+    static std::uniform_int_distribution distribution(0, 1024);
+
+    if (m_globalsRT.currentFrame > 0)
+    {
+        m_globalsRT.blueNoiseOffsetX = distribution(engine);
+        m_globalsRT.blueNoiseOffsetY = distribution(engine);
+    }
+    else
+    {
+        m_globalsRT.blueNoiseOffsetX = 0;
+        m_globalsRT.blueNoiseOffsetY = 0;
+    }
+
     memcpy(prevMatrices, &m_globalsVS, sizeof(prevMatrices));
 
     return createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);

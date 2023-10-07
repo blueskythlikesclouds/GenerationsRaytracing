@@ -12,10 +12,8 @@ struct Payload
 
 float4 GetBlueNoise()
 {
-    uint2 index = DispatchRaysIndex().xy + uint2(17, 31) * g_CurrentFrame;
-
     Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
-    return texture.Load(int3(index % 1024, 0));
+    return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
 }
 
 float3 GetCosineWeightedHemisphereSample(float2 random)

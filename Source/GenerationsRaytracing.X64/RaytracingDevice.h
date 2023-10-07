@@ -11,6 +11,8 @@ struct alignas(0x10) GlobalsRT
     uint32_t currentFrame = 0;
     float pixelJitterX;
     float pixelJitterY;
+    uint32_t blueNoiseOffsetX;
+    uint32_t blueNoiseOffsetY;
     uint32_t blueNoiseTextureId;
 };
 
