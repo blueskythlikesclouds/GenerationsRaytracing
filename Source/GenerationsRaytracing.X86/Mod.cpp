@@ -50,7 +50,7 @@ extern "C" void __declspec(dllexport) Init()
     MaterialData::init();
 
 #ifdef _DEBUG
-#if 1
+#if 0
     MessageBox(NULL, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_ICONINFORMATION | MB_OK);
 
     if (!GetConsoleWindow())

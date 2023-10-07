@@ -2,27 +2,36 @@
 
 struct Material
 {
-    struct Texture
-    {
-        uint32_t id;
-        uint32_t samplerId;
-        uint32_t texCoordIndex;
-    };
+    uint32_t shaderType;
+    uint32_t diffuseTexture;
+    uint32_t diffuseTexture2;
+    uint32_t specularTexture;
+    uint32_t specularTexture2;
+    uint32_t glossTexture;
+    uint32_t glossTexture2;
+    uint32_t normalTexture;
+    uint32_t normalTexture2;
+    uint32_t reflectionTexture;
+    uint32_t opacityTexture;
+    uint32_t displacementTexture;
 
-    Texture diffuseTexture;
-    Texture specularTexture;
-    Texture specularPowerTexture;
-    Texture normalTexture;
-    Texture displacementTexture;
-    Texture diffuseBlendTexture;
-    Texture powerBlendTexture;
-    Texture normalBlendTexture;
-    Texture environmentTexture;
-    uint32_t padding0;
-
-    float diffuseColor[4];
-    float specularColor[3];
-    float specularPower;
-    float falloffParam[3];
-    uint32_t shaderFlags;
+    float diffuse[4];
+    float ambient[4];
+    float specular[4];
+    float emissive[4];
+    float powerGlossLevel[4];
+    float opacityReflectionRefractionSpectype[4];
+    //float luminanceRange[4];
+    float fresnelParam[4];
+    float sonicEyeHighLightPosition[4];
+    float sonicEyeHighLightColor[4];
+    float sonicSkinFalloffParam[4];
+    float chrEmissionParam[4];
+    //float cloakParam[4];
+    //float distortionParam[4];
+    //float glassRefractionParam[4];
+    //float iceParam[4];
+    float emissionParam[4];
+    //float offsetParam[4];
+    //float heightParam[4];
 };

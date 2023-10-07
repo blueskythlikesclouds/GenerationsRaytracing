@@ -3,6 +3,7 @@
 #include "FreeListAllocator.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "ShaderType.h"
 #include "Texture.h"
 
 static FreeListAllocator s_freeListAllocator;
@@ -36,13 +37,30 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     auto& message = s_messageSender.makeMessage<MsgCreateMaterial>();
 
     message.materialId = materialDataEx.m_materialId;
+    message.shaderType = SHADER_TYPE_COMMON;
+
+    if (materialDataEx.m_spShaderListData != nullptr)
+    {
+        const auto shaderName = materialDataEx.m_spShaderListData->m_TypeAndName.c_str()
+            + sizeof("Mirage.shader-list");
+
+        for (const auto& [name, type] : s_shaderTypes)
+        {
+            if (strncmp(shaderName, name.data(), name.size()) == 0)
+            {
+                message.shaderType = type;
+                break;
+            }
+        }
+    }
 
     const Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
     const Hedgehog::Base::CStringSymbol specularSymbol("specular");
     const Hedgehog::Base::CStringSymbol glossSymbol("gloss");
     const Hedgehog::Base::CStringSymbol normalSymbol("normal");
-    const Hedgehog::Base::CStringSymbol displacementSymbol("displacement");
     const Hedgehog::Base::CStringSymbol reflectionSymbol("reflection");
+    const Hedgehog::Base::CStringSymbol opacitySymbol("opacity");
+    const Hedgehog::Base::CStringSymbol displacementSymbol("displacement");
 
     struct
     {
@@ -52,18 +70,17 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     } const textureDescs[] =
     {
         { diffuseSymbol, 0, message.diffuseTexture },
+        { diffuseSymbol, 1, message.diffuseTexture2 },
         { specularSymbol, 0, message.specularTexture },
-        { glossSymbol, 0, message.specularPowerTexture },
+        { specularSymbol, 1, message.specularTexture2 },
+        { glossSymbol, 0, message.glossTexture },
+        { glossSymbol, 1, message.glossTexture2 },
         { normalSymbol, 0, message.normalTexture },
-        { displacementSymbol, 0, message.emissionTexture },
-        { diffuseSymbol, 1, message.diffuseBlendTexture },
-        { glossSymbol, 1, message.powerBlendTexture },
-        { normalSymbol, 1, message.normalBlendTexture },
-        { reflectionSymbol, 0, message.environmentTexture },
+        { normalSymbol, 1, message.normalTexture2 },
+        { reflectionSymbol, 0, message.reflectionTexture },
+        { opacitySymbol, 0, message.opacityTexture },
+        { displacementSymbol, 0, message.displacementTexture },
     };
-
-    bool hasSpecular = false;
-    bool hasGloss = false;
 
     for (const auto& textureDesc : textureDescs)
     {
@@ -98,70 +115,52 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                     textureDesc.dstTexture.addressModeV = srcTexture->m_SamplerState.AddressV;
                     textureDesc.dstTexture.texCoordIndex = srcTexture->m_TexcoordIndex;
 
-                    if (srcTexture->m_Type == specularSymbol) hasSpecular = true;
-                    if (srcTexture->m_Type == glossSymbol) hasGloss = true;
-
                     break;
                 }
             }
         }
     }
 
-    float diffuseColor[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
-    float specularColor[3]{ 1.0f, 1.0f, 1.0f };
-    float specularPower = 0.0f;
-    float falloffParam[3]{ 0.0f, 0.0f, 0.0f };
-
-    const Hedgehog::Base::CStringSymbol opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
-    const Hedgehog::Base::CStringSymbol powerGlossLevelSymbol("power_gloss_level");
-    const Hedgehog::Base::CStringSymbol falloffParamSymbol("g_SonicSkinFalloffParam");
-
-    for (const auto& float4Param : materialDataEx.m_Float4Params)
+    struct
     {
-        if (float4Param->m_Name == diffuseSymbol)
-        {
-            diffuseColor[0] = float4Param->m_spValue[0];
-            diffuseColor[1] = float4Param->m_spValue[1];
-            diffuseColor[2] = float4Param->m_spValue[2];
-        }
-        else if (float4Param->m_Name == specularSymbol)
-        {
-            specularColor[0] *= float4Param->m_spValue[0];
-            specularColor[1] *= float4Param->m_spValue[1];
-            specularColor[2] *= float4Param->m_spValue[2];
-        }
-        else if (float4Param->m_Name == opacityReflectionRefractionSpectypeSymbol)
-        {
-            diffuseColor[3] = float4Param->m_spValue[0];
-        }
-        else if (float4Param->m_Name == powerGlossLevelSymbol)
-        {
-            const float level = float4Param->m_spValue[2] * 5.0f;
+        Hedgehog::Base::CStringSymbol name;
+        float* destParam;
+    } const parameterDescs[] =
+    {
+        { diffuseSymbol, message.diffuse },
+        { "ambient", message.ambient },
+        { specularSymbol, message.specular },
+        { "emissive", message.emissive },
+        { "power_gloss_level", message.powerGlossLevel },
+        { "opacity_reflection_refraction_spectype", message.opacityReflectionRefractionSpectype },
+        //{ "mrgLuminanceRange", message.luminanceRange },
+        { "mrgFresnelParam", message.fresnelParam },
+        { "g_SonicEyeHighLightPosition", message.sonicEyeHighLightPosition },
+        { "g_SonicEyeHighLightColor", message.sonicEyeHighLightColor },
+        { "g_SonicSkinFalloffParam", message.sonicSkinFalloffParam },
+        { "mrgChrEmissionParam", message.chrEmissionParam },
+        //{ "g_CloakParam", message.cloakParam },
+        //{ "mrgDistortionParam", message.distortionParam },
+        //{ "mrgGlassRefractionParam", message.glassRefractionParam },
+        //{ "g_IceParam", message.iceParam },
+        { "g_EmissionParam", message.emissionParam },
+        //{ "g_OffsetParam", message.offsetParam },
+        //{ "g_HeightParam", message.heightParam }
+    };
 
-            specularColor[0] *= level;
-            specularColor[1] *= level;
-            specularColor[2] *= level;
+    for (const auto& parameterDesc : parameterDescs)
+    {
+        memset(parameterDesc.destParam, 0, sizeof(float[4]));
 
-            specularPower = float4Param->m_spValue[1] * 500.0f;
-        }
-        else if (float4Param->m_Name == falloffParamSymbol)
+        for (const auto& float4Param : materialDataEx.m_Float4Params)
         {
-            falloffParam[0] = float4Param->m_spValue[0];
-            falloffParam[1] = float4Param->m_spValue[1];
-            falloffParam[2] = float4Param->m_spValue[2];
+            if (float4Param->m_Name == parameterDesc.name)
+            {
+                memcpy(parameterDesc.destParam, float4Param->m_spValue.get(), sizeof(float[4]));
+                break;
+            }
         }
     }
-    if (!hasSpecular && !hasGloss)
-    {
-        specularColor[0] = 0.0f;
-        specularColor[1] = 0.0f;
-        specularColor[2] = 0.0f;
-    }
-
-    memcpy(message.diffuseColor, diffuseColor, sizeof(message.diffuseColor));
-    memcpy(message.specularColor, specularColor, sizeof(message.specularColor));
-    message.specularPower = specularPower;
-    memcpy(message.falloffParam, falloffParam, sizeof(message.falloffParam));
 
     s_messageSender.endMessage();
 }

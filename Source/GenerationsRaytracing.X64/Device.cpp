@@ -1587,6 +1587,13 @@ Device::Device()
         samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
         samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
     }
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Texture2D.MipLevels = 1;
+    m_device->CreateShaderResourceView(nullptr, &srvDesc, m_descriptorHeap.getCpuHandle(0));
 }
 
 void Device::processMessages()

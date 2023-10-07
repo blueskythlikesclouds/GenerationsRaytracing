@@ -122,7 +122,13 @@
     <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\SubAllocator.inl">
       <FileType>Document</FileType>
     </None>
+    <None Include="GBufferData.hlsli" />
+    <None Include="GeometryShading.hlsli" />
+    <None Include="GeometryDesc.hlsli" />
+    <None Include="MaterialData.hlsli" />
     <None Include="MessageReceiver.inl" />
+    <None Include="RayTracing.hlsli" />
+    <None Include="RootSignature.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CommandList.cpp" />

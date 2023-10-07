@@ -191,7 +191,7 @@ void RaytracingDevice::createTopLevelAccelStruct()
         if (m_textures.size() > textureId &&
             m_textures[textureId].allocation != nullptr)
         {
-            *reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(m_materials.data()) + textureIdOffset) = m_textures[textureId].srvIndex;
+            *reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(m_materials.data()) + textureIdOffset) |= m_textures[textureId].srvIndex;
         }
         else
         {
@@ -525,17 +525,21 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     auto& material = m_materials[message.materialId];
 
-    const std::pair<const MsgCreateMaterial::Texture&, Material::Texture&> textures[] =
+    material.shaderType = message.shaderType;
+
+    const std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
     {
-        { message.diffuseTexture,       material.diffuseTexture },
-        { message.specularTexture,      material.specularTexture },
-        { message.specularPowerTexture, material.specularPowerTexture },
-        { message.normalTexture,        material.normalTexture },
-        { message.emissionTexture,      material.displacementTexture },
-        { message.diffuseBlendTexture,  material.diffuseBlendTexture },
-        { message.powerBlendTexture,    material.powerBlendTexture },
-        { message.normalBlendTexture,   material.normalBlendTexture },
-        { message.environmentTexture,   material.environmentTexture },
+        { message.diffuseTexture,      material.diffuseTexture      },
+        { message.diffuseTexture2,     material.diffuseTexture2     },
+        { message.specularTexture,     material.specularTexture     },
+        { message.specularTexture2,    material.specularTexture2    },
+        { message.glossTexture,        material.glossTexture        },
+        { message.glossTexture2,       material.glossTexture2       },
+        { message.normalTexture,       material.normalTexture       },
+        { message.normalTexture2,      material.normalTexture2      },
+        { message.reflectionTexture,   material.reflectionTexture   },
+        { message.opacityTexture,      material.opacityTexture      },
+        { message.displacementTexture, material.displacementTexture },
     };
 
     D3D12_SAMPLER_DESC samplerDesc{};
@@ -546,40 +550,39 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     for (const auto& [srcTexture, dstTexture] : textures)
     {
+        dstTexture = NULL;
+
         if (srcTexture.id != NULL)
         {
             if (m_textures.size() <= srcTexture.id || m_textures[srcTexture.id].allocation == nullptr)
             {
                 // Delay texture assignment if the texture is not loaded yet
                 m_delayedTextures.emplace_back(srcTexture.id,
-                    reinterpret_cast<uintptr_t>(&dstTexture.id) - reinterpret_cast<uintptr_t>(m_materials.data()));
+                    reinterpret_cast<uintptr_t>(&dstTexture) - reinterpret_cast<uintptr_t>(m_materials.data()));
             }
             else
             {
-                dstTexture.id = m_textures[srcTexture.id].srvIndex;
+                dstTexture = m_textures[srcTexture.id].srvIndex;
             }
+
+            samplerDesc.AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeU);
+            samplerDesc.AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeV);
+
+            auto& sampler = m_samplers[XXH3_64bits(&samplerDesc, sizeof(samplerDesc))];
+            if (!sampler)
+            {
+                sampler = m_samplerDescriptorHeap.allocate();
+
+                m_device->CreateSampler(&samplerDesc,
+                    m_samplerDescriptorHeap.getCpuHandle(sampler));
+            }
+
+            dstTexture |= sampler << 20;
+            dstTexture |= srcTexture.texCoordIndex << 30;
         }
-
-        samplerDesc.AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeU);
-        samplerDesc.AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeV);
-
-        auto& sampler = m_samplers[XXH3_64bits(&samplerDesc, sizeof(samplerDesc))];
-        if (!sampler)
-        {
-            sampler = m_samplerDescriptorHeap.allocate();
-
-            m_device->CreateSampler(&samplerDesc, 
-                m_samplerDescriptorHeap.getCpuHandle(sampler));
-        }
-
-        dstTexture.samplerId = sampler;
-        dstTexture.texCoordIndex = srcTexture.texCoordIndex;
     }
 
-    memcpy(material.diffuseColor, message.diffuseColor, sizeof(material.diffuseColor));
-    memcpy(material.specularColor, message.specularColor, sizeof(material.specularColor));
-    material.specularPower = message.specularPower;
-    memcpy(material.falloffParam, message.falloffParam, sizeof(material.falloffParam));
+    memcpy(material.diffuse, message.diffuse, sizeof(Material) - offsetof(Material, diffuse));
 }
 
 void RaytracingDevice::procMsgBuildBottomLevelAccelStruct()

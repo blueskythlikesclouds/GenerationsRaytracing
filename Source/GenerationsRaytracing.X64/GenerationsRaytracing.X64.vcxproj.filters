@@ -123,6 +123,24 @@
     <None Include="MessageReceiver.inl">
       <Filter>Message</Filter>
     </None>
+    <None Include="RayTracing.hlsli">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="RootSignature.hlsli">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="GeometryDesc.hlsli">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="GeometryShading.hlsli">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="GBufferData.hlsli">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="MaterialData.hlsli">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

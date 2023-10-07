@@ -371,20 +371,38 @@ struct MsgCreateMaterial
     };
 
     uint32_t materialId;
+    uint32_t shaderType;
     Texture diffuseTexture;
+    Texture diffuseTexture2;
     Texture specularTexture;
-    Texture specularPowerTexture;
+    Texture specularTexture2;
+    Texture glossTexture;
+    Texture glossTexture2;
     Texture normalTexture;
-    Texture emissionTexture;
-    Texture diffuseBlendTexture;
-    Texture powerBlendTexture;
-    Texture normalBlendTexture;
-    Texture environmentTexture;
-    float diffuseColor[4];
-    float specularColor[3];
-    float specularPower;
-    float falloffParam[3];
-    uint32_t shaderFlags;
+    Texture normalTexture2;
+    Texture reflectionTexture;
+    Texture opacityTexture;
+    Texture displacementTexture;
+
+    float diffuse[4];
+    float ambient[4];
+    float specular[4];
+    float emissive[4];
+    float powerGlossLevel[4];
+    float opacityReflectionRefractionSpectype[4];
+    //float luminanceRange[4];
+    float fresnelParam[4];
+    float sonicEyeHighLightPosition[4];
+    float sonicEyeHighLightColor[4];
+    float sonicSkinFalloffParam[4];
+    float chrEmissionParam[4];
+    //float cloakParam[4];
+    //float distortionParam[4];
+    //float glassRefractionParam[4];
+    //float iceParam[4];
+    float emissionParam[4];
+    //float offsetParam[4];
+    //float heightParam[4];
 };
 
 struct MsgComputePose
