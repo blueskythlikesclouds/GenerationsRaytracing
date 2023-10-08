@@ -3,16 +3,16 @@
 #include "RootSignature.hlsli"
 #include "SharedDefinitions.hlsli"
 
-struct PrimaryRayPayload
+struct [raypayload] PrimaryRayPayload
 {
-    uint dummy;
+    uint dummy : read() : write();
 };
 
-struct SecondaryRayPayload
+struct [raypayload] SecondaryRayPayload
 {
-    float3 Color;
-    float T;
-    uint Depth;
+    float3 Color : read(caller)     : write(closesthit, miss);
+    float T      : read(caller)     : write(closesthit, miss);
+    uint Depth   : read(closesthit) : write(caller);
 };
 
 float4 GetBlueNoise()

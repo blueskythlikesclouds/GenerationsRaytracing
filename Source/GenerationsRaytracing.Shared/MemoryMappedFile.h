@@ -11,7 +11,7 @@ protected:
 #endif
 
 public:
-    static constexpr size_t s_size = 32 * 1024 * 1024;
+    static constexpr size_t s_size = 64 * 1024 * 1024;
     static constexpr TCHAR s_name[] = TEXT("GenerationsRaytracingMemoryMappedFile");
 
     MemoryMappedFile();

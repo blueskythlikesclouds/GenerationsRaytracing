@@ -13,7 +13,7 @@ void PrimaryRayGeneration()
     ray.TMin = 0.0;
     ray.TMax = g_CameraNearFarAspect.y;
 
-    PrimaryRayPayload payload = (PrimaryRayPayload) 0;
+    PrimaryRayPayload payload;
 
     TraceRay(
         g_BVH,
