@@ -114,16 +114,29 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, attributes);
     GBufferData gBufferData = CreateGBufferData(vertex, material);
 
-    payload.Color = ComputeDirectLighting(gBufferData, 
-        -mrgGlobalLight_Direction.xyz, -WorldRayDirection(), mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+    if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_GLOBAL_LIGHT))
+    {
+        payload.Color = ComputeDirectLighting(gBufferData,
+            -mrgGlobalLight_Direction.xyz, -WorldRayDirection(), mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
 
-    payload.Color *= TraceHardShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
+        payload.Color *= TraceHardShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
+    }
+    else
+    {
+        payload.Color = 0.0;
+    }
 
-    payload.Color += ComputeDirectLighting(gBufferData, -WorldRayDirection(), 
-        -WorldRayDirection(), mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
+    if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_EYE_LIGHT))
+    {
+        payload.Color += ComputeDirectLighting(gBufferData, -WorldRayDirection(),
+            -WorldRayDirection(), mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
+    }
 
-    payload.Color += TraceGlobalIllumination(payload.Depth,
-        gBufferData.Position, gBufferData.Normal) * (gBufferData.Diffuse + gBufferData.Falloff);
+    if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION))
+    {
+        payload.Color += TraceGlobalIllumination(payload.Depth,
+            gBufferData.Position, gBufferData.Normal) * (gBufferData.Diffuse + gBufferData.Falloff);
+    }
 
     payload.Color += gBufferData.Emission;
 

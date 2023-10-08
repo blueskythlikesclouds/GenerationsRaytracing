@@ -8,8 +8,9 @@
 
 #define GBUFFER_FLAG_MISS                     (1 << 0)
 #define GBUFFER_FLAG_SKIP_GLOBAL_LIGHT        (1 << 1)
-#define GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION (1 << 2)
-#define GBUFFER_FLAG_SKIP_REFLECTION          (1 << 3)
+#define GBUFFER_FLAG_SKIP_EYE_LIGHT           (1 << 2)
+#define GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION (1 << 3)
+#define GBUFFER_FLAG_SKIP_REFLECTION          (1 << 4)
 
 struct GBufferData
 {
@@ -56,6 +57,30 @@ float3 DecodeNormalMap(Vertex vertex, float4 value)
 float ComputeFalloff(float3 normal, float3 falloffParam)
 {
     return pow(1.0 - saturate(dot(normal, -WorldRayDirection())), falloffParam.z) * falloffParam.y + falloffParam.x;
+}
+
+float2 ComputeEnvMapTexCoord(float3 eyeDirection, float3 normal)
+{
+    float4 C[4];
+    C[0] = float4(0.5, 500, 5, 1);
+    C[1] = float4(1024, 0, -2, 3);
+    C[2] = float4(0.25, 4, 0, 0);
+    C[3] = float4(-1, 1, 0, 0.5);
+    float4 r3 = eyeDirection.xyzx;
+    float4 r4 = normal.xyzx;
+    float4 r1, r2, r6; 
+    r1.w = dot(r3.yzw, r4.yzw);
+    r1.w = r1.w + r1.w;
+    r2 = r1.wwww * r4.xyzw + -r3.xyzw;
+    r3 = r2.wyzw * C[3].xxyz + C[3].zzzw;
+    r6 = r2.xyzw * C[3].yxxz;
+    r2 = select(r2.zzzz >= 0, r3.xyzw, r6.xyzw);
+    r1.w = r2.z + C[0].w;
+    r1.w = 1.0 / r1.w;
+    r2.xy = r2.yx * r1.ww + C[0].ww;
+    r3.x = r2.y * C[2].x + r2.w;
+    r3.y = r2.x * C[0].x;
+    return r3.xy;
 }
 
 GBufferData CreateGBufferData(Vertex vertex, Material material)
@@ -200,7 +225,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
 
                 gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
-
+            
                 break;
             }
 
@@ -235,6 +260,47 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_IGNORE_LIGHT:
+            {
+                gBufferData.Flags =
+                    GBUFFER_FLAG_SKIP_GLOBAL_LIGHT | GBUFFER_FLAG_SKIP_EYE_LIGHT |
+                    GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION | GBUFFER_FLAG_SKIP_REFLECTION;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                if (material.OpacityTexture != 0)
+                    gBufferData.Alpha *= SampleMaterialTexture2D(material.OpacityTexture, vertex.TexCoords).x;
+
+                if (material.DisplacementTexture != 0)
+                {
+                    gBufferData.Emission = SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb;
+                    gBufferData.Emission += material.EmissionParam.rgb;
+                    gBufferData.Emission *= material.Ambient.rgb * material.EmissionParam.w;
+                }
+                gBufferData.Emission += gBufferData.Diffuse;
+
+                break;
+            }
+        
+        case SHADER_TYPE_IGNORE_LIGHT_TWICE:
+            {
+                gBufferData.Flags =
+                    GBUFFER_FLAG_SKIP_GLOBAL_LIGHT | GBUFFER_FLAG_SKIP_EYE_LIGHT |
+                    GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION | GBUFFER_FLAG_SKIP_REFLECTION;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb * 2.0;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                gBufferData.Emission = gBufferData.Diffuse;
+
+                break;
+            }
+
         case SHADER_TYPE_LUMINESCENCE:
             {
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
@@ -264,11 +330,30 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_RING:
+            {
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb;
+                gBufferData.Alpha *= diffuse.a;
+
+                float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
+                gBufferData.Specular *= specular.rgb;
+                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture,
+                    ComputeEnvMapTexCoord(-WorldRayDirection(), gBufferData.Normal));
+
+                gBufferData.Emission = reflection.rgb * reflection.a * gBufferData.Specular;
+
+                break;
+            }
+
         default:
             {
-                gBufferData.Flags = GBUFFER_FLAG_SKIP_GLOBAL_LIGHT;
-                gBufferData.Diffuse = 0.0;
-                gBufferData.Specular = 0.0;
+                gBufferData.Flags = 
+                    GBUFFER_FLAG_SKIP_GLOBAL_LIGHT | GBUFFER_FLAG_SKIP_EYE_LIGHT |
+                    GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION | GBUFFER_FLAG_SKIP_REFLECTION;
+
                 gBufferData.Emission = float3(1.0, 0.0, 0.0);
                 break;
             }
