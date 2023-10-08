@@ -797,22 +797,24 @@ void RaytracingDevice::releaseRaytracingResources()
 
 RaytracingDevice::RaytracingDevice()
 {
-    CD3DX12_DESCRIPTOR_RANGE descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 11, 0);
+    CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 11, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
-    CD3DX12_ROOT_PARAMETER raytracingRootParams[7];
-    raytracingRootParams[0].InitAsConstantBufferView(0, 0);
-    raytracingRootParams[1].InitAsConstantBufferView(1, 0);
-    raytracingRootParams[2].InitAsConstantBufferView(2, 0);
-    raytracingRootParams[3].InitAsShaderResourceView(0, 0);
+    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[7];
+    raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[2].InitAsConstantBufferView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[3].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[4].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges);
-    raytracingRootParams[5].InitAsShaderResourceView(1, 0);
-    raytracingRootParams[6].InitAsShaderResourceView(2, 0);
+    raytracingRootParams[5].InitAsShaderResourceView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[6].InitAsShaderResourceView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
 
     RootSignature::create(
         m_device.Get(),
         raytracingRootParams,
         _countof(raytracingRootParams),
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | 
         D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED,
         m_raytracingRootSignature);
@@ -839,7 +841,7 @@ RaytracingDevice::RaytracingDevice()
     shaderConfigSubobject.Config(sizeof(float) * 5, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
-    pipelineConfigSubobject.Config(4);
+    pipelineConfigSubobject.Config(3);
 
     CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT rootSignatureSubobject(stateObject);
     rootSignatureSubobject.SetRootSignature(m_raytracingRootSignature.Get());
@@ -883,16 +885,16 @@ RaytracingDevice::RaytracingDevice()
         assert(SUCCEEDED(hr) && scratchBuffer != nullptr);
     }
 
-    CD3DX12_ROOT_PARAMETER copyRootParams[3];
-    copyRootParams[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
-    copyRootParams[1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    CD3DX12_ROOT_PARAMETER1 copyRootParams[3];
+    copyRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_PIXEL);
+    copyRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_PIXEL);
     copyRootParams[2].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
     RootSignature::create(
         m_device.Get(),
         copyRootParams,
         _countof(copyRootParams),
-        D3D12_ROOT_SIGNATURE_FLAG_NONE,
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS,
         m_copyTextureRootSignature);
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
@@ -917,17 +919,18 @@ RaytracingDevice::RaytracingDevice()
 
     assert(SUCCEEDED(hr) && m_copyTexturePipeline != nullptr);
 
-    CD3DX12_ROOT_PARAMETER poseRootParams[4];
-    poseRootParams[0].InitAsConstantBufferView(0);
-    poseRootParams[1].InitAsConstantBufferView(1);
-    poseRootParams[2].InitAsShaderResourceView(0);
-    poseRootParams[3].InitAsUnorderedAccessView(0);
+    CD3DX12_ROOT_PARAMETER1 poseRootParams[4];
+    poseRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    poseRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    poseRootParams[2].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    poseRootParams[3].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
 
     RootSignature::create(
         m_device.Get(),
         poseRootParams,
         _countof(poseRootParams),
-        D3D12_ROOT_SIGNATURE_FLAG_NONE,
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS,
         m_poseRootSignature);
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC posePipelineDesc{};
