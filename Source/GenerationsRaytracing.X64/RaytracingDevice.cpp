@@ -537,22 +537,21 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
+    getGraphicsCommandList().uavBarrier(m_positionAndFlagsTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_normalTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularPowerTexture->GetResource());
+    getGraphicsCommandList().commitBarriers();
+
     // ShadowRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    getGraphicsCommandList().uavBarrier(m_positionAndFlagsTexture->GetResource());
-    getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     // GlobalIlluminationRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    getGraphicsCommandList().uavBarrier(m_normalTexture->GetResource());
-    getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     // ReflectionRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    getGraphicsCommandList().uavBarrier(m_specularPowerTexture->GetResource());
-    getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     // Resolve

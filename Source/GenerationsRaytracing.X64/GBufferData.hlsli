@@ -265,6 +265,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
 
         default:
             {
+                gBufferData.Flags = GBUFFER_FLAG_SKIP_GLOBAL_LIGHT;
                 gBufferData.Diffuse = 0.0;
                 gBufferData.Specular = 0.0;
                 gBufferData.Emission = float3(1.0, 0.0, 0.0);
