@@ -97,12 +97,27 @@ uint32_t RaytracingDevice::buildRaytracingAccelerationStructure(ComPtr<D3D12MA::
 
     if (buildImmediate)
     {
-        assert(m_uploadBufferOffset + preBuildInfo.ScratchDataSizeInBytes <= SCRATCH_BUFFER_SIZE);
+        // Create separate resource if it does not fit to the pool
+        if (m_scratchBufferOffset + preBuildInfo.ScratchDataSizeInBytes > SCRATCH_BUFFER_SIZE)
+        {
+            auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
 
-        accelStructDesc.ScratchAccelerationStructureData = m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+            createBuffer(
+                D3D12_HEAP_TYPE_DEFAULT,
+                static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes),
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                D3D12_RESOURCE_STATE_COMMON,
+                scratchBuffer);
 
-        m_scratchBufferOffset = static_cast<uint32_t>((m_scratchBufferOffset + preBuildInfo.ScratchDataSizeInBytes
-            + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1));
+            accelStructDesc.ScratchAccelerationStructureData = scratchBuffer->GetResource()->GetGPUVirtualAddress();
+        }
+        else
+        {
+            accelStructDesc.ScratchAccelerationStructureData = m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+
+            m_scratchBufferOffset = static_cast<uint32_t>((m_scratchBufferOffset + preBuildInfo.ScratchDataSizeInBytes
+                + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1));
+        }
 
         getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
         getGraphicsCommandList().uavBarrier(allocation->GetResource());
@@ -122,11 +137,28 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[pendingBuild];
 
-        bottomLevelAccelStruct.desc.ScratchAccelerationStructureData =
-            m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+        // Create separate resource if it does not fit to the pool
+        if (m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize > SCRATCH_BUFFER_SIZE)
+        {
+            auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
 
-        m_scratchBufferOffset = m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize
-            + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1 & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
+            createBuffer(
+                D3D12_HEAP_TYPE_DEFAULT,
+                bottomLevelAccelStruct.scratchBufferSize,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                D3D12_RESOURCE_STATE_COMMON,
+                scratchBuffer);
+
+            bottomLevelAccelStruct.desc.ScratchAccelerationStructureData = scratchBuffer->GetResource()->GetGPUVirtualAddress();
+        }
+        else
+        {
+            bottomLevelAccelStruct.desc.ScratchAccelerationStructureData =
+                m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+
+            m_scratchBufferOffset = m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize
+                + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1 & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
+        }
 
         getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
         getGraphicsCommandList().uavBarrier(bottomLevelAccelStruct.allocation->GetResource());
