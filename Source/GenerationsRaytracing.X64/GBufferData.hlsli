@@ -6,9 +6,14 @@
 #include "RootSignature.hlsli"
 #include "ShaderType.h"
 
+#define GBUFFER_FLAG_SKIP_GLOBAL_LIGHT        (1 << 0)
+#define GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION (1 << 1)
+#define GBUFFER_FLAG_SKIP_REFLECTION          (1 << 2)
+
 struct GBufferData
 {
     float3 Position;
+    uint Flags;
     float3 Normal;
     float3 Diffuse;
     float Alpha;
@@ -52,7 +57,7 @@ float ComputeFalloff(float3 normal, float3 falloffParam)
     return pow(1.0 - saturate(dot(normal, -WorldRayDirection())), falloffParam.z) * falloffParam.y + falloffParam.x;
 }
 
-GBufferData MakeGBufferData(Vertex vertex, Material material)
+GBufferData CreateGBufferData(Vertex vertex, Material material)
 {
     GBufferData gBufferData = (GBufferData) 0;
 
@@ -260,8 +265,8 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
         default:
             {
-                gBufferData = (GBufferData) 0;
-                gBufferData.Alpha = 1.0;
+                gBufferData.Diffuse = 0.0;
+                gBufferData.Specular = 0.0;
                 gBufferData.Emission = float3(1.0, 0.0, 0.0);
                 break;
             }
@@ -269,7 +274,43 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
     gBufferData.SpecularPower = clamp(gBufferData.SpecularPower, 1.0, 1024.0);
 
+    if (dot(gBufferData.Diffuse, gBufferData.Diffuse) == 0.0)
+        gBufferData.Flags |= GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION;
+
+    if (dot(gBufferData.Specular, gBufferData.Specular) == 0.0)
+        gBufferData.Flags |= GBUFFER_FLAG_SKIP_REFLECTION;
+
     return gBufferData;
+}
+
+GBufferData LoadGBufferData(uint2 index)
+{
+    GBufferData gBufferData = (GBufferData) 0;
+
+    float4 positionAndFlags = g_PositionAndFlagsTexture[index];
+    gBufferData.Position = positionAndFlags.xyz;
+    gBufferData.Flags = asuint(positionAndFlags.w);
+    gBufferData.Normal = normalize(g_NormalTexture[index] * 2.0 - 1.0);
+    gBufferData.Diffuse = g_DiffuseTexture[index];
+    gBufferData.Specular = g_SpecularTexture[index];
+    gBufferData.SpecularPower = g_SpecularPowerTexture[index];
+    gBufferData.SpecularLevel = g_SpecularLevelTexture[index];
+    gBufferData.Emission = g_EmissionTexture[index];
+    gBufferData.Falloff = g_FalloffTexture[index];
+
+    return gBufferData;
+}
+
+void StoreGBufferData(uint2 index, GBufferData gBufferData)
+{
+    g_PositionAndFlagsTexture[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
+    g_NormalTexture[index] = gBufferData.Normal * 0.5 + 0.5;
+    g_DiffuseTexture[index] = gBufferData.Diffuse;
+    g_SpecularTexture[index] = gBufferData.Specular;
+    g_SpecularPowerTexture[index] = gBufferData.SpecularPower;
+    g_SpecularLevelTexture[index] = gBufferData.SpecularLevel;
+    g_EmissionTexture[index] = gBufferData.Emission;
+    g_FalloffTexture[index] = gBufferData.Falloff;
 }
 
 #endif

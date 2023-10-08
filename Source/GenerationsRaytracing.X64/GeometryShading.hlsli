@@ -3,9 +3,8 @@
 #include "GBufferData.hlsli"
 #include "RootSignature.hlsli"
 
-#define PI 3.14159265358979323846
-
-float3 ComputeDirectLighting(GBufferData gBufferData, float3 lightDirection, float3 diffuseColor, float3 specularColor)
+float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
+    float3 lightDirection, float3 diffuseColor, float3 specularColor)
 {
     // Diffuse Shading
     diffuseColor *= gBufferData.Diffuse;
@@ -13,7 +12,7 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 lightDirection, flo
     // Specular Shading
     specularColor *= gBufferData.Specular * gBufferData.SpecularLevel;
 
-    float3 halfwayDirection = normalize(lightDirection + -WorldRayDirection());
+    float3 halfwayDirection = normalize(lightDirection + eyeDirection);
 
     float specular = dot(gBufferData.Normal, halfwayDirection);
     specular = pow(saturate(specular), gBufferData.SpecularPower);

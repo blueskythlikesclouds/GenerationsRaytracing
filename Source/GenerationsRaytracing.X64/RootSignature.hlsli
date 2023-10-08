@@ -1,6 +1,9 @@
 #ifndef ROOT_SIGNATURE_H
 #define ROOT_SIGNATURE_H
 
+#include "GeometryDesc.hlsli"
+#include "MaterialData.hlsli"
+
 cbuffer GlobalsVS : register(b0)
 {
     row_major float4x4 g_MtxProjection : packoffset(c0);
@@ -110,7 +113,18 @@ cbuffer GlobalsRT : register(b2)
 RaytracingAccelerationStructure g_BVH : register(t0);
 StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t1);
 StructuredBuffer<Material> g_Materials : register(t2);
-RWTexture2D<float4> g_ColorTexture : register(u0);
-RWTexture2D<float> g_DepthTexture : register(u1);
+
+RWTexture2D<float4> g_PositionAndFlagsTexture : register(u0);
+RWTexture2D<float3> g_NormalTexture : register(u1);
+RWTexture2D<float3> g_DiffuseTexture : register(u2);
+RWTexture2D<float3> g_SpecularTexture : register(u3);
+RWTexture2D<float> g_SpecularPowerTexture : register(u4);
+RWTexture2D<float> g_SpecularLevelTexture : register(u5);
+RWTexture2D<float3> g_EmissionTexture : register(u6);
+RWTexture2D<float3> g_FalloffTexture : register(u7);
+
+RWTexture2D<float> g_ShadowTexture : register(u8);
+RWTexture2D<float3> g_GlobalIlluminationTexture : register(u9);
+RWTexture2D<float3> g_ReflectionTexture : register(u10);
 
 #endif

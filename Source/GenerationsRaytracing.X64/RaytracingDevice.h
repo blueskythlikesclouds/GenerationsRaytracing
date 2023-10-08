@@ -51,8 +51,17 @@ protected:
     // Textures
     uint32_t m_width = 0;
     uint32_t m_height = 0;
-    ComPtr<D3D12MA::Allocation> m_renderTargetTexture;
-    ComPtr<D3D12MA::Allocation> m_depthStencilTexture;
+    ComPtr<D3D12MA::Allocation> m_positionAndFlagsTexture;
+    ComPtr<D3D12MA::Allocation> m_normalTexture;
+    ComPtr<D3D12MA::Allocation> m_diffuseTexture;
+    ComPtr<D3D12MA::Allocation> m_specularTexture;
+    ComPtr<D3D12MA::Allocation> m_specularPowerTexture;
+    ComPtr<D3D12MA::Allocation> m_specularLevelTexture;
+    ComPtr<D3D12MA::Allocation> m_emissionTexture;
+    ComPtr<D3D12MA::Allocation> m_falloffTexture;
+    ComPtr<D3D12MA::Allocation> m_shadowTexture;
+    ComPtr<D3D12MA::Allocation> m_globalIlluminationTexture;
+    ComPtr<D3D12MA::Allocation> m_reflectionTexture;
     uint32_t m_uavId = 0;
 
     // Resolve
@@ -75,7 +84,7 @@ protected:
     D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT();
     void createTopLevelAccelStruct();
     void createRenderTargetAndDepthStencil();
-    void copyRenderTargetAndDepthStencil();
+    void resolveDeferredShading(D3D12_GPU_VIRTUAL_ADDRESS globalsVS, D3D12_GPU_VIRTUAL_ADDRESS globalsPS);
 
     void procMsgCreateBottomLevelAccelStruct();
     void procMsgReleaseRaytracingResource();

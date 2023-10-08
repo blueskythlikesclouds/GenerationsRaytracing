@@ -37,16 +37,20 @@ struct Material
     //float4 HeightParam;
 };
 
-float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoords[4])
+float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)
 {
     uint textureId = materialTexture & 0xFFFFF;
     uint samplerId = (materialTexture >> 20) & 0x3FF;
-    uint texCoordIndex = materialTexture >> 30;
 
     Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(textureId)];
     SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(samplerId)];
 
-    return texture.SampleLevel(samplerState, texCoords[texCoordIndex], 0);
+    return texture.SampleLevel(samplerState, texCoord, 0);
+}
+
+float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoords[4])
+{
+    return SampleMaterialTexture2D(materialTexture, texCoords[materialTexture >> 30]);
 }
 
 #endif

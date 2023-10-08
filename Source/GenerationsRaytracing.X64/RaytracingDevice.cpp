@@ -271,8 +271,17 @@ void RaytracingDevice::createRenderTargetAndDepthStencil()
     }
     const textureDescs[] =
     {
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_renderTargetTexture },
-        { DXGI_FORMAT_R32_FLOAT, m_depthStencilTexture }
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionAndFlagsTexture },
+        { DXGI_FORMAT_R10G10B10A2_UNORM, m_normalTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularTexture },
+        { DXGI_FORMAT_R32_FLOAT, m_specularPowerTexture },
+        { DXGI_FORMAT_R32_FLOAT, m_specularLevelTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_emissionTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_falloffTexture },
+        { DXGI_FORMAT_R16_UNORM, m_shadowTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_globalIlluminationTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_reflectionTexture }
     };
 
     if (m_uavId == NULL)
@@ -305,13 +314,15 @@ void RaytracingDevice::createRenderTargetAndDepthStencil()
     }
 }
 
-void RaytracingDevice::copyRenderTargetAndDepthStencil()
+void RaytracingDevice::resolveDeferredShading(D3D12_GPU_VIRTUAL_ADDRESS globalsVS, D3D12_GPU_VIRTUAL_ADDRESS globalsPS)
 {
     const D3D12_VIEWPORT viewport = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_uavId));
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0, globalsVS);
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(1, globalsPS);
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(2, m_descriptorHeap.getGpuHandle(m_uavId));
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipeline.Get());
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
@@ -512,22 +523,50 @@ void RaytracingDevice::procMsgTraceRays()
 
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress = shaderTable;
     dispatchRaysDesc.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.MissShaderTable.StartAddress = shaderTable + 0x40;
-    dispatchRaysDesc.MissShaderTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.HitGroupTable.StartAddress = shaderTable + 0x80;
-    dispatchRaysDesc.HitGroupTable.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.MissShaderTable.StartAddress = shaderTable + 8 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.MissShaderTable.SizeInBytes = 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.MissShaderTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.HitGroupTable.StartAddress = shaderTable + 10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.HitGroupTable.SizeInBytes = 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.HitGroupTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.Width = message.width;
     dispatchRaysDesc.Height = message.height;
     dispatchRaysDesc.Depth = 1;
 
+    // PrimaryRayGeneration
     getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
-    getGraphicsCommandList().uavBarrier(m_renderTargetTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_depthStencilTexture->GetResource());
+    // ShadowRayGeneration
+    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    getGraphicsCommandList().uavBarrier(m_positionAndFlagsTexture->GetResource());
+    getGraphicsCommandList().commitBarriers();
+    getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
-    copyRenderTargetAndDepthStencil();
+    // GlobalIlluminationRayGeneration
+    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    getGraphicsCommandList().uavBarrier(m_normalTexture->GetResource());
+    getGraphicsCommandList().commitBarriers();
+    getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+
+    // ReflectionRayGeneration
+    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    getGraphicsCommandList().uavBarrier(m_specularPowerTexture->GetResource());
+    getGraphicsCommandList().commitBarriers();
+    getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+
+    // Resolve
+    getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularLevelTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_falloffTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_globalIlluminationTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
+    getGraphicsCommandList().commitBarriers();
+
+    resolveDeferredShading(globalsVS, globalsPS);
 }
 
 void RaytracingDevice::procMsgCreateMaterial()
@@ -700,7 +739,7 @@ void RaytracingDevice::releaseRaytracingResources()
 RaytracingDevice::RaytracingDevice()
 {
     CD3DX12_DESCRIPTOR_RANGE descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 11, 0);
 
     CD3DX12_ROOT_PARAMETER raytracingRootParams[7];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0);
@@ -725,11 +764,17 @@ RaytracingDevice::RaytracingDevice()
     const CD3DX12_SHADER_BYTECODE dxilLibrary(DXILLibrary, sizeof(DXILLibrary));
     dxilLibrarySubobject.SetDXILLibrary(&dxilLibrary);
 
-    CD3DX12_HIT_GROUP_SUBOBJECT hitGroupSubobject(stateObject);
-    hitGroupSubobject.SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
-    hitGroupSubobject.SetHitGroupExport(L"HitGroup");
-    hitGroupSubobject.SetAnyHitShaderImport(L"AnyHit");
-    hitGroupSubobject.SetClosestHitShaderImport(L"ClosestHit");
+    CD3DX12_HIT_GROUP_SUBOBJECT primaryHitGroupSubobject(stateObject);
+    primaryHitGroupSubobject.SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
+    primaryHitGroupSubobject.SetHitGroupExport(L"PrimaryHitGroup");
+    primaryHitGroupSubobject.SetAnyHitShaderImport(L"PrimaryAnyHit");
+    primaryHitGroupSubobject.SetClosestHitShaderImport(L"PrimaryClosestHit");
+
+    CD3DX12_HIT_GROUP_SUBOBJECT secondaryHitGroupSubobject(stateObject);
+    secondaryHitGroupSubobject.SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
+    secondaryHitGroupSubobject.SetHitGroupExport(L"SecondaryHitGroup");
+    secondaryHitGroupSubobject.SetAnyHitShaderImport(L"SecondaryAnyHit");
+    secondaryHitGroupSubobject.SetClosestHitShaderImport(L"SecondaryClosestHit");
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
     shaderConfigSubobject.Config(sizeof(float) * 5, sizeof(float) * 2);
@@ -748,11 +793,15 @@ RaytracingDevice::RaytracingDevice()
 
     assert(SUCCEEDED(hr) && properties != nullptr);
 
-    m_shaderTable.resize(6 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-    memcpy(&m_shaderTable[0x00], properties->GetShaderIdentifier(L"RayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[0x40], properties->GetShaderIdentifier(L"Miss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[0x80], properties->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    m_shaderTable.resize(12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[0 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ShadowRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"GlobalIlluminationRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[6 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ReflectionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[8 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[9 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"SecondaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[11 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"SecondaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
     for (auto& scratchBuffer : m_scratchBuffers)
     {
@@ -775,8 +824,10 @@ RaytracingDevice::RaytracingDevice()
         assert(SUCCEEDED(hr) && scratchBuffer != nullptr);
     }
 
-    CD3DX12_ROOT_PARAMETER copyRootParams[1];
-    copyRootParams[0].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+    CD3DX12_ROOT_PARAMETER copyRootParams[3];
+    copyRootParams[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    copyRootParams[1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    copyRootParams[2].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
     RootSignature::create(
         m_device.Get(),

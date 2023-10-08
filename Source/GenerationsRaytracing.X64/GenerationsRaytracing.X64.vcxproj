@@ -70,12 +70,12 @@
       <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
-      <ShaderModel>6.6</ShaderModel>
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
       <AdditionalOptions>-Qembed_debug %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared</AdditionalIncludeDirectories>
+      <ShaderModel>6.6</ShaderModel>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -105,11 +105,11 @@
       <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
-      <ShaderModel>6.6</ShaderModel>
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared</AdditionalIncludeDirectories>
+      <ShaderModel>6.6</ShaderModel>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -129,6 +129,7 @@
     <None Include="MessageReceiver.inl" />
     <None Include="RayTracing.hlsli" />
     <None Include="RootSignature.hlsli" />
+    <None Include="SharedDefinitions.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CommandList.cpp" />
