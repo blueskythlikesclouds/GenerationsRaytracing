@@ -33,8 +33,8 @@ void RayGeneration()
 
         if (g_CurrentFrame > 0)
         {
-            float3 prevColor = g_ColorTexture[DispatchRaysIndex().xy].rgb;
-            g_ColorTexture[DispatchRaysIndex().xy] = float4(lerp(prevColor, color, 1.0 / (g_CurrentFrame + 1.0)), 1.0);
+            float4 prevColor = g_ColorTexture[DispatchRaysIndex().xy];
+            g_ColorTexture[DispatchRaysIndex().xy] = lerp(prevColor, float4(color, 1.0), 1.0 / (g_CurrentFrame + 1.0));
         }
         else
         {
@@ -49,7 +49,16 @@ void RayGeneration()
     }
     else
     {
-        g_ColorTexture[DispatchRaysIndex().xy] = 0.0;
+        if (g_CurrentFrame > 0)
+        {
+            float4 prevColor = g_ColorTexture[DispatchRaysIndex().xy];
+            g_ColorTexture[DispatchRaysIndex().xy] = lerp(prevColor, 0.0, 1.0 / (g_CurrentFrame + 1.0));
+        }
+        else
+        {
+            g_ColorTexture[DispatchRaysIndex().xy] = 0.0;
+        }
+
         g_DepthTexture[DispatchRaysIndex().xy] = 1.0;
     }
 }
