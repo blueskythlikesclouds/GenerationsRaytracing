@@ -35,7 +35,7 @@ float4 DecodeColor(uint color)
         ((color >> 24) & 0xFF) / 255.0);
 }
 
-Vertex LoadVertex(GeometryDesc geometryDesc, BuiltInTriangleIntersectionAttributes attributes)
+Vertex LoadVertex(GeometryDesc geometryDesc, float4 texCoordOffsets[2], BuiltInTriangleIntersectionAttributes attributes)
 {
     ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
     Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
@@ -84,6 +84,11 @@ Vertex LoadVertex(GeometryDesc geometryDesc, BuiltInTriangleIntersectionAttribut
             asfloat(vertexBuffer.Load2(texCoordOffsets.y)) * uv.y +
             asfloat(vertexBuffer.Load2(texCoordOffsets.z)) * uv.z;
     }
+
+    vertex.TexCoords[0] += texCoordOffsets[0].xy;
+    vertex.TexCoords[1] += texCoordOffsets[0].zw;
+    vertex.TexCoords[2] += texCoordOffsets[1].xy;
+    vertex.TexCoords[3] += texCoordOffsets[1].zw;
 
     if (geometryDesc.Flags & GEOMETRY_FLAG_D3DCOLOR)
     {

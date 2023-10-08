@@ -384,6 +384,7 @@ struct MsgCreateMaterial
     Texture opacityTexture;
     Texture displacementTexture;
 
+    float texCoordOffsets[8];
     float diffuse[4];
     float ambient[4];
     float specular[4];

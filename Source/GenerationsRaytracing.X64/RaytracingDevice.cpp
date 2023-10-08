@@ -563,7 +563,6 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_globalIlluminationTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
-    getGraphicsCommandList().commitBarriers();
 
     resolveDeferredShading(globalsVS, globalsPS);
 }
@@ -634,7 +633,7 @@ void RaytracingDevice::procMsgCreateMaterial()
         }
     }
 
-    memcpy(material.diffuse, message.diffuse, sizeof(Material) - offsetof(Material, diffuse));
+    memcpy(material.texCoordOffsets, message.texCoordOffsets, sizeof(Material) - offsetof(Material, texCoordOffsets));
 }
 
 void RaytracingDevice::procMsgBuildBottomLevelAccelStruct()

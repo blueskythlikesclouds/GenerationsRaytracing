@@ -16,6 +16,7 @@ struct Material
     uint OpacityTexture;
     uint DisplacementTexture;
 
+    float4 TexCoordOffsets[2];
     float4 Diffuse;
     float4 Ambient;
     float4 Specular;

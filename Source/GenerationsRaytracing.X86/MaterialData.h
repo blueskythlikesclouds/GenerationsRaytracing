@@ -8,7 +8,7 @@ public:
 
 struct MaterialData
 {
+    static void handlePendingMaterials();
     static uint32_t allocate();
-
     static void init();
 };

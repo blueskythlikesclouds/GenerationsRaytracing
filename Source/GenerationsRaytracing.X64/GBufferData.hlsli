@@ -278,7 +278,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
     if (dot(gBufferData.Diffuse, gBufferData.Diffuse) == 0.0)
         gBufferData.Flags |= GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION;
 
-    if (dot(gBufferData.Specular, gBufferData.Specular) == 0.0)
+    if (dot(gBufferData.Specular, gBufferData.Specular) == 0.0 || gBufferData.SpecularLevel == 0.0)
         gBufferData.Flags |= GBUFFER_FLAG_SKIP_REFLECTION;
 
     return gBufferData;

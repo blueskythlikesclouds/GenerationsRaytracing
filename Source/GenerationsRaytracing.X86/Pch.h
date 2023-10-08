@@ -13,6 +13,7 @@ using Microsoft::WRL::ComPtr;
 #include <atomic>
 #include <mutex>
 #include <vector>
+#include <unordered_set>
 
 #include <BlueBlur.h>
 #include <detours.h>

@@ -2,6 +2,7 @@
 
 #include "BottomLevelAccelStruct.h"
 #include "Device.h"
+#include "MaterialData.h"
 #include "Message.h"
 #include "MessageSender.h"
 #include "Texture.h"
@@ -38,6 +39,8 @@ static FUNCTION_PTR(void, __cdecl, originalSceneRender, 0x652110, void*);
 static void __cdecl implOfSceneRender(void* a1)
 {
     originalSceneRender(a1);
+
+    MaterialData::handlePendingMaterials();
 
     const auto device = reinterpret_cast<Device*>((
         **reinterpret_cast<Hedgehog::Mirage::CRenderingDevice***>(static_cast<uint8_t*>(a1) + 16))->m_pD3DDevice);

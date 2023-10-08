@@ -125,27 +125,29 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     {
         Hedgehog::Base::CStringSymbol name;
         float* destParam;
+        uint32_t paramSize;
     } const parameterDescs[] =
     {
-        { diffuseSymbol, message.diffuse },
-        { "ambient", message.ambient },
-        { specularSymbol, message.specular },
-        { "emissive", message.emissive },
-        { "power_gloss_level", message.powerGlossLevel },
-        { "opacity_reflection_refraction_spectype", message.opacityReflectionRefractionSpectype },
-        //{ "mrgLuminanceRange", message.luminanceRange },
-        { "mrgFresnelParam", message.fresnelParam },
-        { "g_SonicEyeHighLightPosition", message.sonicEyeHighLightPosition },
-        { "g_SonicEyeHighLightColor", message.sonicEyeHighLightColor },
-        { "g_SonicSkinFalloffParam", message.sonicSkinFalloffParam },
-        { "mrgChrEmissionParam", message.chrEmissionParam },
-        //{ "g_CloakParam", message.cloakParam },
-        //{ "mrgDistortionParam", message.distortionParam },
-        //{ "mrgGlassRefractionParam", message.glassRefractionParam },
-        //{ "g_IceParam", message.iceParam },
-        { "g_EmissionParam", message.emissionParam },
-        //{ "g_OffsetParam", message.offsetParam },
-        //{ "g_HeightParam", message.heightParam }
+        { "mrgTexcoordOffset", message.texCoordOffsets, 8 },
+        { diffuseSymbol, message.diffuse, 4 },
+        { "ambient", message.ambient, 4 },
+        { specularSymbol, message.specular, 4 },
+        { "emissive", message.emissive, 4 },
+        { "power_gloss_level", message.powerGlossLevel, 4 },
+        { "opacity_reflection_refraction_spectype", message.opacityReflectionRefractionSpectype, 4 },
+        //{ "mrgLuminanceRange", message.luminanceRange, 4 },
+        { "mrgFresnelParam", message.fresnelParam, 4 },
+        { "g_SonicEyeHighLightPosition", message.sonicEyeHighLightPosition, 4 },
+        { "g_SonicEyeHighLightColor", message.sonicEyeHighLightColor, 4 },
+        { "g_SonicSkinFalloffParam", message.sonicSkinFalloffParam, 4 },
+        { "mrgChrEmissionParam", message.chrEmissionParam, 4 },
+        //{ "g_CloakParam", message.cloakParam, 4 },
+        //{ "mrgDistortionParam", message.distortionParam, 4 },
+        //{ "mrgGlassRefractionParam", message.glassRefractionParam, 4 },
+        //{ "g_IceParam", message.iceParam, 4 },
+        { "g_EmissionParam", message.emissionParam, 4 },
+        //{ "g_OffsetParam", message.offsetParam, 4 },
+        //{ "g_HeightParam", message.heightParam, 4 }
     };
 
     for (const auto& parameterDesc : parameterDescs)
@@ -156,7 +158,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         {
             if (float4Param->m_Name == parameterDesc.name)
             {
-                memcpy(parameterDesc.destParam, float4Param->m_spValue.get(), sizeof(float[4]));
+                memcpy(parameterDesc.destParam, float4Param->m_spValue.get(), 
+                    std::min(parameterDesc.paramSize, float4Param->m_ValueNum * 4) * sizeof(float));
+
                 break;
             }
         }
@@ -173,6 +177,32 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     createMaterial(*This);
 
     This->SetMadeOne();
+}
+
+static std::unordered_set<boost::shared_ptr<Hedgehog::Mirage::CMaterialData>> s_materialsToUpdate;
+
+HOOK(void, __fastcall, MaterialAnimationEnv, 0x57C1C0, uintptr_t This, uintptr_t Edx, float deltaTime)
+{
+    s_materialsToUpdate.emplace(*reinterpret_cast<boost::shared_ptr<Hedgehog::Mirage::CMaterialData>*>(This + 12));
+    originalMaterialAnimationEnv(This, Edx, deltaTime);
+}
+
+HOOK(void, __fastcall, TexcoordAnimationEnv, 0x57C380, uintptr_t This, uintptr_t Edx, float deltaTime)
+{
+    s_materialsToUpdate.emplace(*reinterpret_cast<boost::shared_ptr<Hedgehog::Mirage::CMaterialData>*>(This + 12));
+    originalTexcoordAnimationEnv(This, Edx, deltaTime);
+}
+
+void MaterialData::handlePendingMaterials()
+{
+    for (auto& material : s_materialsToUpdate)
+    {
+        auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(material.get());
+        if (materialDataEx.IsMadeAll() && materialDataEx.m_materialId != NULL)
+            createMaterial(materialDataEx);
+    }
+
+    s_materialsToUpdate.clear();
 }
 
 uint32_t MaterialData::allocate()
@@ -199,4 +229,7 @@ void MaterialData::init()
 
     // TODO: Add support for other versions somehow
     WRITE_JUMP(0x742BED, materialDataSetMadeOne);
+
+    INSTALL_HOOK(MaterialAnimationEnv);
+    INSTALL_HOOK(TexcoordAnimationEnv);
 }
