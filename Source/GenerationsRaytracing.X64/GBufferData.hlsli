@@ -6,9 +6,10 @@
 #include "RootSignature.hlsli"
 #include "ShaderType.h"
 
-#define GBUFFER_FLAG_SKIP_GLOBAL_LIGHT        (1 << 0)
-#define GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION (1 << 1)
-#define GBUFFER_FLAG_SKIP_REFLECTION          (1 << 2)
+#define GBUFFER_FLAG_MISS                     (1 << 0)
+#define GBUFFER_FLAG_SKIP_GLOBAL_LIGHT        (1 << 1)
+#define GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION (1 << 2)
+#define GBUFFER_FLAG_SKIP_REFLECTION          (1 << 3)
 
 struct GBufferData
 {

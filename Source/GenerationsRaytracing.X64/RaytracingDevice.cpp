@@ -936,6 +936,9 @@ RaytracingDevice::RaytracingDevice()
     pipelineDesc.PS.pShaderBytecode = CopyTexturePixelShader;
     pipelineDesc.PS.BytecodeLength = sizeof(CopyTexturePixelShader);
     pipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    pipelineDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
+    pipelineDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    pipelineDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
     pipelineDesc.SampleMask = ~0;
     pipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     pipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;

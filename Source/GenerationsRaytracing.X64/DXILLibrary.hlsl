@@ -29,6 +29,10 @@ void PrimaryRayGeneration()
 [shader("miss")]
 void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 {
+    GBufferData gBufferData = (GBufferData) 0;
+    gBufferData.Flags = GBUFFER_FLAG_MISS;
+
+    StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 }
 
 [shader("closesthit")]
@@ -59,7 +63,7 @@ void ShadowRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float shadow = 0.0;
-    [branch] if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_GLOBAL_LIGHT))
+    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_MISS | GBUFFER_FLAG_SKIP_GLOBAL_LIGHT)))
         shadow = TraceSoftShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
 
     g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
@@ -71,7 +75,7 @@ void GlobalIlluminationRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 globalIllumination = 0.0;
-    [branch] if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION))
+    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_MISS | GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION)))
         globalIllumination = TraceGlobalIllumination(0, gBufferData.Position, gBufferData.Normal);
 
     g_GlobalIlluminationTexture[DispatchRaysIndex().xy] = globalIllumination;
@@ -84,7 +88,7 @@ void ReflectionRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 reflection = 0.0;
-    [branch] if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_REFLECTION))
+    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_MISS | GBUFFER_FLAG_SKIP_REFLECTION)))
     {
         reflection = TraceReflection(0,
             gBufferData.Position,
