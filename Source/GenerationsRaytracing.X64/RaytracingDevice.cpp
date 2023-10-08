@@ -395,6 +395,7 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
             dstGeometryDesc.indexBufferId = m_indexBuffers[geometryDesc.indexBufferId].srvIndex;
             dstGeometryDesc.vertexBufferId = m_vertexBuffers[geometryDesc.vertexBufferId].srvIndex;
             dstGeometryDesc.vertexStride = geometryDesc.vertexStride;
+            dstGeometryDesc.positionOffset = geometryDesc.positionOffset;
             dstGeometryDesc.normalOffset = geometryDesc.normalOffset;
             dstGeometryDesc.tangentOffset = geometryDesc.tangentOffset;
             dstGeometryDesc.binormalOffset = geometryDesc.binormalOffset;

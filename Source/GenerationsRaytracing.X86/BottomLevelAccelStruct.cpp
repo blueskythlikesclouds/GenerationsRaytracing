@@ -75,15 +75,15 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* data)
             {
                 if (direction)
                 {
-                    indices.push_back(a);
-                    indices.push_back(b);
                     indices.push_back(c);
+                    indices.push_back(b);
+                    indices.push_back(a);
                 }
                 else
                 {
                     indices.push_back(a);
-                    indices.push_back(c);
                     indices.push_back(b);
+                    indices.push_back(c);
                 }
             }
 

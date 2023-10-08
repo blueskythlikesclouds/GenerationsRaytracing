@@ -62,7 +62,7 @@ float TraceHardShadow(float3 position, float3 direction)
 
     ray.Origin = position;
     ray.Direction = direction;
-    ray.TMin = 0.001;
+    ray.TMin = 0.0;
     ray.TMax = 10000.0;
 
     SecondaryRayPayload payload = (SecondaryRayPayload) 0;
@@ -106,7 +106,7 @@ float3 TraceGlobalIllumination(uint depth, float3 position, float3 normal)
 
     ray.Origin = position;
     ray.Direction = TangentToWorld(normal, sampleDirection);
-    ray.TMin = 0.001;
+    ray.TMin = 0.0;
     ray.TMax = 10000.0;
 
     SecondaryRayPayload payload = (SecondaryRayPayload) 0;
@@ -143,7 +143,7 @@ float3 TraceReflection(
 
     ray.Origin = position;
     ray.Direction = reflectionDirection;
-    ray.TMin = 0.001;
+    ray.TMin = 0.0;
     ray.TMax = 10000.0;
 
     SecondaryRayPayload payload = (SecondaryRayPayload) 0;

@@ -1,6 +1,7 @@
 #ifndef GEOMETRY_DESC_H
 #define GEOMETRY_DESC_H
 #include "GeometryFlags.h"
+#include "SelfIntersectionAvoidance.hlsl"
 
 struct GeometryDesc
 {
@@ -8,12 +9,15 @@ struct GeometryDesc
     uint IndexBufferId;
     uint VertexBufferId;
     uint VertexStride;
+    uint PositionOffset;
     uint NormalOffset;
     uint TangentOffset;
     uint BinormalOffset;
     uint TexCoordOffsets[4];
     uint ColorOffset;
     uint MaterialId;
+    uint Padding0;
+    uint Padding1;
 };
 
 struct Vertex
@@ -51,13 +55,32 @@ Vertex LoadVertex(GeometryDesc geometryDesc, float4 texCoordOffsets[2], BuiltInT
     offsets.z = indexBuffer[PrimitiveIndex() * 3 + 2];
     offsets *= geometryDesc.VertexStride;
 
+    uint3 positionOffsets = offsets + geometryDesc.PositionOffset;
     uint3 normalOffsets = offsets + geometryDesc.NormalOffset;
     uint3 tangentOffsets = offsets + geometryDesc.TangentOffset;
     uint3 binormalOffsets = offsets + geometryDesc.BinormalOffset;
     uint3 colorOffsets = offsets + geometryDesc.ColorOffset;
 
     Vertex vertex;
-    vertex.Position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+
+    float3 v0 = asfloat(vertexBuffer.Load3(positionOffsets.x));
+    float3 v1 = asfloat(vertexBuffer.Load3(positionOffsets.y));
+    float3 v2 = asfloat(vertexBuffer.Load3(positionOffsets.z));
+    {
+        float3 outObjPosition; float3 outWldPosition;
+        float3 outObjNormal; float3 outWldNormal;
+        float outWldOffset;
+        safeSpawnPoint(
+            outObjPosition, outWldPosition,
+            outObjNormal, outWldNormal,
+            outWldOffset,
+            v0, v1, v2,
+            attributes.barycentrics,
+            ObjectToWorld3x4(),
+            WorldToObject3x4());
+
+        vertex.Position = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
+    }
 
     vertex.Normal =
         asfloat(vertexBuffer.Load3(normalOffsets.x)) * uv.x +
