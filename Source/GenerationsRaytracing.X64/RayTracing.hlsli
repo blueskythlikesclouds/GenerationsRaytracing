@@ -30,7 +30,7 @@ float4 GetPowerCosineWeightedHemisphere(float2 random, float specularPower)
     float cosTheta = pow(random.x, 1.0 / (specularPower + 1.0));
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
     float phi = 2.0 * PI * random.y;
-    float pdf = (specularPower + 1.0) * pow(cosTheta, specularPower) / (2.0 * PI);
+    float pdf = (specularPower + 1.0) / (2.0 * PI);
      
     return float4(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta, pdf);
 }
@@ -148,15 +148,9 @@ float3 TraceEnvironmentColor(uint depth, GBufferData gBufferData)
         payload);
 
     float3 environmentColor = payload.Color;
-    environmentColor *= gBufferData.Specular * gBufferData.SpecularLevel;
+    environmentColor *= gBufferData.Specular * gBufferData.SpecularLevel * 2.5;
+    environmentColor /= sampleDirection.w;
 
-    float specular = dot(gBufferData.Normal, halfwayDirection);
-    specular = pow(saturate(specular), gBufferData.SpecularPower);
-    environmentColor *= specular;
-
-    environmentColor /= 0.3;
-
-    environmentColor /= max(0.00001, sampleDirection.w);
     return environmentColor;
 }
 
