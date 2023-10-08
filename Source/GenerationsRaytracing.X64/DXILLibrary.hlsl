@@ -69,7 +69,7 @@ void ClosestHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInterse
     GBufferData gBufferData = MakeGBufferData(vertex, g_Materials[geometryDesc.MaterialId]);
 
     float3 globalLight = ComputeDirectLighting(gBufferData, -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
-    float shadow = TraceShadow(vertex.Position);
+    float shadow = TraceShadow(vertex.Position + vertex.Normal * 0.001);
     float3 eyeLight = ComputeDirectLighting(gBufferData, -WorldRayDirection(), mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
     float3 globalIllumination = TraceGlobalIllumination(payload.Depth, gBufferData);
     float3 environmentColor = TraceEnvironmentColor(payload.Depth, gBufferData);
@@ -90,7 +90,7 @@ void AnyHit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectio
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     Vertex vertex = LoadVertex(geometryDesc, attributes);
     GBufferData gBufferData = MakeGBufferData(vertex, g_Materials[geometryDesc.MaterialId]);
-    float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : GetBlueNoise().x;
+    float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : GetBlueNoise()[payload.Depth];
 
     if (gBufferData.Alpha < alphaThreshold)
         IgnoreHit();
