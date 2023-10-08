@@ -13,7 +13,7 @@ public:
     MessageReceiver();
     ~MessageReceiver();
 
-    uint8_t getId();
+    uint8_t getId() const;
 
     template <typename T>
     const T& getMessage();

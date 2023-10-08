@@ -161,6 +161,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
 {
     EnvironmentColor::get(m_globalsPS, m_globalsRT.environmentColor);
 
+#if 0
     haltonJitter(m_globalsRT.currentFrame, 64, m_globalsRT.pixelJitterX, m_globalsRT.pixelJitterY);
 
     // TODO: Preferably do this check in Generations
@@ -192,6 +193,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
     }
 
     memcpy(prevMatrices, &m_globalsVS, sizeof(prevMatrices));
+#endif
 
     return createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 }
@@ -432,6 +434,16 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
 
     case MsgReleaseRaytracingResource::ResourceType::Instance:
         memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+
+        if (m_instanceGeometries.size() > message.resourceId)
+        {
+            auto& instanceGeometries = m_instanceGeometries[message.resourceId];
+            if (instanceGeometries.first != NULL)
+                freeGeometryDescs(instanceGeometries.first, instanceGeometries.second);
+
+            instanceGeometries = {};
+        }
+
         break;
 
     case MsgReleaseRaytracingResource::ResourceType::Material:
@@ -460,11 +472,59 @@ void RaytracingDevice::procMsgCreateInstance()
     {
         // Not loaded yet, defer assignment to top level acceleration structure creation
         m_delayedInstances.emplace_back(message.instanceId, message.bottomLevelAccelStructId);
+        assert(message.dataSize == 0); // Skinned models should not fall here!
     }
     else
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
-        instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
+
+        if (message.dataSize > 0)
+        {
+            if (m_instanceGeometries.size() <= message.instanceId)
+                m_instanceGeometries.resize(message.instanceId + 1);
+
+            auto& [geometryId, geometryCount] = m_instanceGeometries[message.instanceId];
+
+            if (geometryId == NULL)
+            {
+                geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
+                geometryCount = bottomLevelAccelStruct.geometryCount;
+
+                memcpy(&m_geometryDescs[geometryId], &m_geometryDescs[bottomLevelAccelStruct.geometryId],
+                    bottomLevelAccelStruct.geometryCount * sizeof(GeometryDesc));
+
+                instanceDesc.InstanceID = geometryId;
+            }
+
+            for (size_t i = 0; i < geometryCount; i++)
+            {
+                const auto& srcGeometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
+                auto& dstGeometry = m_geometryDescs[geometryId + i];
+
+                dstGeometry.materialId = srcGeometry.materialId;
+
+                auto curId = reinterpret_cast<const uint32_t*>(message.data);
+                const auto lastId = reinterpret_cast<const uint32_t*>(message.data + message.dataSize);
+
+                while (curId < lastId)
+                {
+                    if ((*curId) == srcGeometry.materialId)
+                    {
+                        dstGeometry.materialId = *(curId + 1);
+                        break;
+                    }
+                    else
+                    {
+                        curId += 2;
+                    }
+                }
+            }
+        }
+        else
+        {
+            instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
+        }
+
         instanceDesc.InstanceMask = 1;
         instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
     }

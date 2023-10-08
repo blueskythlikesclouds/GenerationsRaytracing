@@ -49,7 +49,7 @@ static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoData
         if (terrainModelEx->m_bottomLevelAccelStructId == NULL)
             terrainModelEx->m_bottomLevelAccelStructId = BottomLevelAccelStruct::allocate();
 
-        auto& message = s_messageSender.makeMessage<MsgCreateInstance>();
+        auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
 
         for (size_t i = 0; i < 3; i++)
         {

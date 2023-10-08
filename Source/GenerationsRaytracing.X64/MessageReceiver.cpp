@@ -10,7 +10,7 @@ MessageReceiver::~MessageReceiver()
     m_memoryMappedFile.unmap(m_messageBuffer);
 }
 
-uint8_t MessageReceiver::getId()
+uint8_t MessageReceiver::getId() const
 {
     return m_messageBuffer[m_offset];
 }

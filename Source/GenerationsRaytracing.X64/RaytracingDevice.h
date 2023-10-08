@@ -47,6 +47,7 @@ protected:
     std::vector<std::pair<uint32_t, uint32_t>> m_delayedInstances;
     std::vector<std::pair<uint32_t, uint32_t>> m_tempDelayedInstances;
     ComPtr<D3D12MA::Allocation> m_topLevelAccelStruct;
+    std::vector<std::pair<uint32_t, uint32_t>> m_instanceGeometries;
 
     // Textures
     uint32_t m_width = 0;

@@ -347,6 +347,8 @@ struct MsgCreateInstance
     float transform[3][4];
     uint32_t instanceId;
     uint32_t bottomLevelAccelStructId;
+    uint32_t dataSize;
+    uint8_t data[1u];
 };
 
 struct MsgTraceRays

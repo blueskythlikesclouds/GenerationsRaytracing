@@ -19,7 +19,8 @@ static void traverseRenderable(Hedgehog::Mirage::CRenderable* renderable)
         {
             BottomLevelAccelStruct::create(
                 *reinterpret_cast<ModelDataEx*>(element->m_spModel.get()),
-                *reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get()));
+                *reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get()),
+                element->m_MaterialMap);
         }
     }
     else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))
@@ -40,8 +41,6 @@ static void __cdecl implOfSceneRender(void* a1)
 {
     originalSceneRender(a1);
 
-    MaterialData::handlePendingMaterials();
-
     const auto device = reinterpret_cast<Device*>((
         **reinterpret_cast<Hedgehog::Mirage::CRenderingDevice***>(static_cast<uint8_t*>(a1) + 16))->m_pD3DDevice);
 
@@ -51,10 +50,8 @@ static void __cdecl implOfSceneRender(void* a1)
     for (const auto& symbol : symbols)
     {
         const auto pair = renderScene->m_BundleMap.find(symbol);
-        if (pair == renderScene->m_BundleMap.end())
-            continue;
-
-        traverseRenderable(pair->second.get());
+        if (pair != renderScene->m_BundleMap.end())
+            traverseRenderable(pair->second.get());
     }
 
     auto& traceRaysMessage = s_messageSender.makeMessage<MsgTraceRays>();

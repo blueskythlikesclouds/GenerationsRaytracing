@@ -179,30 +179,36 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     This->SetMadeOne();
 }
 
-static std::unordered_set<boost::shared_ptr<Hedgehog::Mirage::CMaterialData>> s_materialsToUpdate;
-
-HOOK(void, __fastcall, MaterialAnimationEnv, 0x57C1C0, uintptr_t This, uintptr_t Edx, float deltaTime)
+HOOK(void, __cdecl, SampleTexcoordAnimation, 0x757E50, Hedgehog::Mirage::CMaterialData* materialData, void* a2, float a3, void* a4)
 {
-    s_materialsToUpdate.emplace(*reinterpret_cast<boost::shared_ptr<Hedgehog::Mirage::CMaterialData>*>(This + 12));
-    originalMaterialAnimationEnv(This, Edx, deltaTime);
+    originalSampleTexcoordAnimation(materialData, a2, a3, a4);
+
+    auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData);
+    if (materialDataEx.m_materialId != NULL)
+        createMaterial(materialDataEx);
 }
 
-HOOK(void, __fastcall, TexcoordAnimationEnv, 0x57C380, uintptr_t This, uintptr_t Edx, float deltaTime)
+HOOK(void, __cdecl, SampleMaterialAnimation, 0x757380, Hedgehog::Mirage::CMaterialData* materialData, void* a2, float a3)
 {
-    s_materialsToUpdate.emplace(*reinterpret_cast<boost::shared_ptr<Hedgehog::Mirage::CMaterialData>*>(This + 12));
-    originalTexcoordAnimationEnv(This, Edx, deltaTime);
+    originalSampleMaterialAnimation(materialData, a2, a3);
+
+    auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData);
+    if (materialDataEx.m_materialId != NULL)
+        createMaterial(materialDataEx);
 }
 
-void MaterialData::handlePendingMaterials()
+void MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData)
 {
-    for (auto& material : s_materialsToUpdate)
+    if (materialData.IsMadeAll())
     {
-        auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(material.get());
-        if (materialDataEx.IsMadeAll() && materialDataEx.m_materialId != NULL)
-            createMaterial(materialDataEx);
-    }
+        auto& materialDataEx = reinterpret_cast<MaterialDataEx&>(materialData);
 
-    s_materialsToUpdate.clear();
+        if (materialDataEx.m_materialId == NULL)
+        {
+            materialDataEx.m_materialId = s_freeListAllocator.allocate();
+            createMaterial(materialDataEx);
+        }
+    }
 }
 
 uint32_t MaterialData::allocate()
@@ -230,6 +236,6 @@ void MaterialData::init()
     // TODO: Add support for other versions somehow
     WRITE_JUMP(0x742BED, materialDataSetMadeOne);
 
-    INSTALL_HOOK(MaterialAnimationEnv);
-    INSTALL_HOOK(TexcoordAnimationEnv);
+    INSTALL_HOOK(SampleTexcoordAnimation);
+    INSTALL_HOOK(SampleMaterialAnimation);
 }

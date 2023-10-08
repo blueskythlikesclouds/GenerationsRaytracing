@@ -1,18 +1,16 @@
 template <typename T>
 T& MessageSender::makeMessage()
 {
-    void* message = makeMessage(sizeof(T), alignof(T));
-    new (message) T();
-    return *static_cast<T*>(message);
+    T* message = static_cast<T*>(makeMessage(sizeof(T), alignof(T)));
+    message->id = T::s_id;
+    return *message;
 }
 
 template <typename T>
 T& MessageSender::makeMessage(uint32_t dataSize)
 {
-    void* message = makeMessage(offsetof(T, data) + dataSize, alignof(T));
-    new (message) T();
-
-    T* typedMessage = static_cast<T*>(message);
-    typedMessage->dataSize = static_cast<decltype(T::dataSize)>(dataSize);
-    return *typedMessage;
+    T* message = static_cast<T*>(makeMessage(offsetof(T, data) + dataSize, alignof(T)));
+    message->id = T::s_id;
+    message->dataSize = static_cast<decltype(T::dataSize)>(dataSize);
+    return *message;
 }

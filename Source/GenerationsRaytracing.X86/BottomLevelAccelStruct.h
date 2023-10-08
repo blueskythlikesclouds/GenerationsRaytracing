@@ -14,10 +14,12 @@ public:
     uint32_t m_bottomLevelAccelStructId;
 };
 
+using MaterialMap = hh::map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>>;
+
 struct BottomLevelAccelStruct
 {
     static uint32_t allocate();
-    static void create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx);
+    static void create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap);
     static void release(uint32_t bottomLevelAccelStructId);
 
     static void init();

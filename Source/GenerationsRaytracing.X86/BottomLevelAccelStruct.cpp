@@ -361,11 +361,16 @@ uint32_t BottomLevelAccelStruct::allocate()
     return s_freeListAllocator.allocate();
 }
 
-void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx)
+void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap)
 {
+    for (auto& [key, value] : materialMap)
+    {
+        MaterialData::create(*value);
+    }
+
     auto transform = instanceInfoEx.m_Transform;
     uint32_t bottomLevelAccelStructId;
-    
+
     if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > 1)
     {
         if (instanceInfoEx.m_poseVertexBuffer == nullptr)
@@ -388,7 +393,7 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
                 s_messageSender.endMessage();
 
                 length += meshDataEx.m_VertexNum * meshDataEx.m_VertexSize;
-                
+
             });
 
             message.length = length;
@@ -492,7 +497,8 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
         bottomLevelAccelStructId = modelDataEx.m_bottomLevelAccelStructId;
     }
 
-    auto& message = s_messageSender.makeMessage<MsgCreateInstance>();
+    auto& message = s_messageSender.makeMessage<MsgCreateInstance>(
+        materialMap.size() * sizeof(uint32_t) * 2);
 
     for (size_t i = 0; i < 3; i++)
     {
@@ -505,6 +511,17 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
 
     message.instanceId = instanceInfoEx.m_instanceId;
     message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+
+    auto materialIds = reinterpret_cast<uint32_t*>(message.data);
+
+    for (auto& [key, value] : materialMap)
+    {
+        *materialIds = reinterpret_cast<MaterialDataEx*>(key)->m_materialId;
+        ++materialIds;
+
+        *materialIds = reinterpret_cast<MaterialDataEx*>(value.get())->m_materialId;
+        ++materialIds;
+    }
 
     s_messageSender.endMessage();
 }
