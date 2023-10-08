@@ -86,7 +86,6 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
                     gBufferData.Specular *= specular.rgb;
                 }
-                gBufferData.Specular *= ComputeFresnel(vertex.Normal) * 0.6 + 0.4;
 
                 if (material.GlossTexture != 0)
                 {
@@ -110,6 +109,7 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
                     gBufferData.Normal = DecodeNormalMap(vertex, normal);
                 }
+                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
                 
                 break;
             }
@@ -130,10 +130,10 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
                 gBufferData.Diffuse.rgb *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a;
-                gBufferData.Specular *= (ComputeFresnel(vertex.Normal) * 0.7 + 0.3) * vertex.Color.a;
                 gBufferData.SpecularPower *= gloss.y;    
                 gBufferData.SpecularLevel *= gloss.y;
                 gBufferData.Normal = DecodeNormalMap(vertex, normalMap.xy);
+                gBufferData.Specular *= (ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3) * vertex.Color.a;
                 gBufferData.Emission = highlightSpecular * material.SonicEyeHighLightColor.rgb;
 
                 break;
@@ -147,7 +147,6 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
-                gBufferData.Specular *= ComputeFresnel(vertex.Normal) * 0.6 + 0.4;    
 
                 if (material.GlossTexture != 0)
                 {
@@ -158,6 +157,8 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
                 if (material.NormalTexture != 0)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 
                 gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
                 if (material.DisplacementTexture != 0)
@@ -177,7 +178,6 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
                     float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
                     gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
                 }
-                gBufferData.Specular *= ComputeFresnel(vertex.Normal) * 0.6 + 0.4;
 
                 if (material.GlossTexture != 0)
                 {
@@ -193,6 +193,8 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
                 if (material.NormalTexture != 0)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
 
+                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
                 break;
             }
 
@@ -206,7 +208,6 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
                 {
                     float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
                     gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
-                    gBufferData.Specular *= ComputeFresnel(vertex.Normal) * 0.6 + 0.4;
                 }
                 else
                 {
@@ -215,6 +216,8 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
                 if (material.NormalTexture != 0)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 
                 gBufferData.Emission = material.ChrEmissionParam.rgb;
 
@@ -232,8 +235,6 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a * vertex.Color.a;
 
-                gBufferData.Specular *= ComputeFresnel(vertex.Normal) * 0.6 + 0.4;
-
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
@@ -247,6 +248,8 @@ GBufferData MakeGBufferData(Vertex vertex, Material material)
 
                 if (material.NormalTexture != 0)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 
                 gBufferData.Emission = material.DisplacementTexture != 0 ? 
                     SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb : material.Emissive.rgb;
