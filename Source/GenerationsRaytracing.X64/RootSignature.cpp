@@ -3,6 +3,8 @@
 void RootSignature::create(ID3D12Device* device, 
     const D3D12_ROOT_PARAMETER1* rootParameters,
     uint32_t rootParamCount,
+    D3D12_STATIC_SAMPLER_DESC* staticSamplers,
+    uint32_t staticSamplerCount,
     D3D12_ROOT_SIGNATURE_FLAGS flags,
     ComPtr<ID3D12RootSignature>& rootSignature)
 {
@@ -12,6 +14,8 @@ void RootSignature::create(ID3D12Device* device,
     rootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
     rootSignatureDesc.Desc_1_1.NumParameters = rootParamCount;
     rootSignatureDesc.Desc_1_1.pParameters = rootParameters;
+    rootSignatureDesc.Desc_1_1.NumStaticSamplers = staticSamplerCount;
+    rootSignatureDesc.Desc_1_1.pStaticSamplers = staticSamplers;
     rootSignatureDesc.Desc_1_1.Flags = flags |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |

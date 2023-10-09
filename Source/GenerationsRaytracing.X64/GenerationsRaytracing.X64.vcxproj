@@ -58,7 +58,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\DLSS\include;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
@@ -67,7 +67,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;nvsdk_ngx_d_dbg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\Dependencies\DLSS\lib\Windows_x86_64\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <FxCompile>
       <VariableName>%(Filename)</VariableName>
@@ -86,7 +87,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\DLSS\include;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
@@ -102,7 +103,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;nvsdk_ngx_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\Dependencies\DLSS\lib\Windows_x86_64\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <FxCompile>
       <VariableName>%(Filename)</VariableName>
@@ -136,6 +138,7 @@
     <ClCompile Include="CommandQueue.cpp" />
     <ClCompile Include="DescriptorHeap.cpp" />
     <ClCompile Include="Device.cpp" />
+    <ClCompile Include="DLSS.cpp" />
     <ClCompile Include="EnvironmentColor.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MessageReceiver.cpp" />
@@ -147,6 +150,7 @@
     <ClCompile Include="RootSignature.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="DxgiConverter.cpp" />
+    <ClCompile Include="Upscaler.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -156,6 +160,7 @@
     <ClInclude Include="CommandQueue.h" />
     <ClInclude Include="DescriptorHeap.h" />
     <ClInclude Include="Device.h" />
+    <ClInclude Include="DLSS.h" />
     <ClInclude Include="EnvironmentColor.h" />
     <ClInclude Include="GeometryDesc.h" />
     <ClInclude Include="Material.h" />
@@ -169,6 +174,7 @@
     <ClInclude Include="Texture.h" />
     <ClInclude Include="DxgiConverter.h" />
     <ClInclude Include="UploadBuffer.h" />
+    <ClInclude Include="Upscaler.h" />
     <ClInclude Include="VertexDeclaration.h" />
     <ClInclude Include="VertexShader.h" />
     <ClInclude Include="Window.h" />
@@ -224,6 +230,10 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="PoseComputeShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+    </FxCompile>
+    <FxCompile Include="ResolveComputeShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
     </FxCompile>

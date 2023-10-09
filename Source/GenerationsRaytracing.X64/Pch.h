@@ -21,3 +21,5 @@ using Microsoft::WRL::ComPtr;
 #include <DDSTextureLoader12.h>
 #include <ankerl/unordered_dense.h>
 #include <xxhash.h>
+#include <nvsdk_ngx_helpers.h>
+#include <INIReader.h>

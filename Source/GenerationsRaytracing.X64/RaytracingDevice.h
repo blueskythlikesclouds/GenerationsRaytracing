@@ -4,16 +4,18 @@
 #include "Device.h"
 #include "GeometryDesc.h"
 #include "Material.h"
+#include "Upscaler.h"
 
 struct alignas(0x10) GlobalsRT
 {
+    float prevProj[4][4];
+    float prevView[4][4];
     float environmentColor[3];
-    uint32_t currentFrame = 0;
+    uint32_t blueNoiseTextureId;
     float pixelJitterX;
     float pixelJitterY;
     uint32_t blueNoiseOffsetX;
     uint32_t blueNoiseOffsetY;
-    uint32_t blueNoiseTextureId;
 };
 
 class RaytracingDevice final : public Device
@@ -25,6 +27,7 @@ protected:
     ComPtr<ID3D12StateObject> m_stateObject;
     std::vector<uint8_t> m_shaderTable;
     GlobalsRT m_globalsRT;
+    uint32_t m_currentFrame = 0;
 
     // Accel Struct
     ComPtr<D3D12MA::Allocation> m_scratchBuffers[NUM_FRAMES];
@@ -49,9 +52,16 @@ protected:
     ComPtr<D3D12MA::Allocation> m_topLevelAccelStruct;
     std::vector<std::pair<uint32_t, uint32_t>> m_instanceGeometries;
 
+    // Upscaler
+    std::unique_ptr<Upscaler> m_upscaler;
+    QualityMode m_qualityMode = QualityMode::Balanced;
+
     // Textures
     uint32_t m_width = 0;
     uint32_t m_height = 0;
+    ComPtr<D3D12MA::Allocation> m_colorTexture;
+    ComPtr<D3D12MA::Allocation> m_depthTexture;
+    ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
     ComPtr<D3D12MA::Allocation> m_positionAndFlagsTexture;
     ComPtr<D3D12MA::Allocation> m_normalTexture;
     ComPtr<D3D12MA::Allocation> m_diffuseTexture;
@@ -65,7 +75,13 @@ protected:
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
     uint32_t m_uavId = 0;
 
+    ComPtr<D3D12MA::Allocation> m_outputTexture;
+    uint32_t m_srvId = 0;
+
     // Resolve
+    ComPtr<ID3D12PipelineState> m_resolvePipeline;
+
+    // Copy
     ComPtr<ID3D12RootSignature> m_copyTextureRootSignature;
     ComPtr<ID3D12PipelineState> m_copyTexturePipeline;
 
@@ -84,8 +100,10 @@ protected:
 
     D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT();
     void createTopLevelAccelStruct();
-    void createRenderTargetAndDepthStencil();
-    void resolveDeferredShading(D3D12_GPU_VIRTUAL_ADDRESS globalsVS, D3D12_GPU_VIRTUAL_ADDRESS globalsPS);
+
+    void createRaytracingTextures();
+    void resolveAndDispatchUpscaler();
+    void copyToRenderTargetAndDepthStencil();
 
     void procMsgCreateBottomLevelAccelStruct();
     void procMsgReleaseRaytracingResource();

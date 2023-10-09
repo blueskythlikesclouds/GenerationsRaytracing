@@ -53,4 +53,10 @@ float2 ComputeLightScattering(float3 position, float3 viewPosition)
     return float2(r0.x, r0.y * g_LightScatteringFarNearScale.w);
 }
 
+float2 ComputePixelPosition(float3 position, float4x4 view, float4x4 projection)
+{
+    float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);
+    return (projectedPosition.xy / projectedPosition.w * float2(0.5, -0.5) + 0.5) * DispatchRaysDimensions().xy;
+}
+
 #endif 

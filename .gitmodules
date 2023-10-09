@@ -13,3 +13,6 @@
 [submodule "Dependencies/Amicitia.IO"]
 	path = Dependencies/Amicitia.IO
 	url = https://github.com/tge-was-taken/Amicitia.IO.git
+[submodule "Dependencies/DLSS"]
+	path = Dependencies/DLSS
+	url = https://github.com/NVIDIA/DLSS.git

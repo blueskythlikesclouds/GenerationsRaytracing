@@ -3,11 +3,13 @@
 #include "DXILLibrary.h"
 #include "CopyTextureVertexShader.h"
 #include "CopyTexturePixelShader.h"
+#include "DLSS.h"
 #include "EnvironmentColor.h"
 #include "GeometryFlags.h"
 #include "Message.h"
 #include "RootSignature.h"
 #include "PoseComputeShader.h"
+#include "ResolveComputeShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 16 * 1024 * 1024;
 
@@ -193,41 +195,19 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
 {
     EnvironmentColor::get(m_globalsPS, m_globalsRT.environmentColor);
 
-#if 0
-    haltonJitter(m_globalsRT.currentFrame, 64, m_globalsRT.pixelJitterX, m_globalsRT.pixelJitterY);
-
-    // TODO: Preferably do this check in Generations
-    static float prevMatrices[32];
-    bool allMatch = true;
-
-    for (size_t i = 0; i < 32; i++)
-    {
-        allMatch &= abs(prevMatrices[i] - (&m_globalsVS.floatConstants[0][0])[i]) < 0.001f;
-        prevMatrices[i] = (&m_globalsVS.floatConstants[0][0])[i];
-    }
-    if (allMatch)
-        ++m_globalsRT.currentFrame;
-    else
-        m_globalsRT.currentFrame = 0;
+    haltonJitter(m_currentFrame, 64, m_globalsRT.pixelJitterX, m_globalsRT.pixelJitterY);
+    ++m_currentFrame;
 
     static std::default_random_engine engine;
     static std::uniform_int_distribution distribution(0, 1024);
 
-    if (m_globalsRT.currentFrame > 0)
-    {
-        m_globalsRT.blueNoiseOffsetX = distribution(engine);
-        m_globalsRT.blueNoiseOffsetY = distribution(engine);
-    }
-    else
-    {
-        m_globalsRT.blueNoiseOffsetX = 0;
-        m_globalsRT.blueNoiseOffsetY = 0;
-    }
+    m_globalsRT.blueNoiseOffsetX = distribution(engine);
+    m_globalsRT.blueNoiseOffsetY = distribution(engine);
 
-    memcpy(prevMatrices, &m_globalsVS, sizeof(prevMatrices));
-#endif
+    const auto globalsRT = createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    memcpy(m_globalsRT.prevProj, m_globalsVS.floatConstants, 0x80);
 
-    return createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    return globalsRT;
 }
 
 void RaytracingDevice::createTopLevelAccelStruct()
@@ -287,15 +267,17 @@ void RaytracingDevice::createTopLevelAccelStruct()
     buildRaytracingAccelerationStructure(m_topLevelAccelStruct, accelStructDesc, true);
 }
 
-void RaytracingDevice::createRenderTargetAndDepthStencil()
+void RaytracingDevice::createRaytracingTextures()
 {
+    m_upscaler->init({ *this, m_width, m_height, m_qualityMode });
+
     D3D12MA::ALLOCATION_DESC allocDesc{};
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
     allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
     auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_UNKNOWN,
-        m_width, m_height, 1, 1, 1, 0,
+        m_upscaler->getWidth(), m_upscaler->getHeight(), 1, 1, 1, 0,
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
     struct
@@ -305,6 +287,9 @@ void RaytracingDevice::createRenderTargetAndDepthStencil()
     }
     const textureDescs[] =
     {
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture },
+        { DXGI_FORMAT_R32_FLOAT, m_depthTexture },
+        { DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionAndFlagsTexture },
         { DXGI_FORMAT_R10G10B10A2_UNORM, m_normalTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseTexture },
@@ -315,7 +300,7 @@ void RaytracingDevice::createRenderTargetAndDepthStencil()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_falloffTexture },
         { DXGI_FORMAT_R16_UNORM, m_shadowTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_globalIlluminationTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_reflectionTexture }
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_reflectionTexture },
     };
 
     if (m_uavId == NULL)
@@ -346,31 +331,114 @@ void RaytracingDevice::createRenderTargetAndDepthStencil()
 
         cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
     }
+
+    resourceDesc.Width = m_width;
+    resourceDesc.Height = m_height;
+    resourceDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+
+    const HRESULT hr = m_allocator->CreateResource(
+        &allocDesc,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+        nullptr,
+        m_outputTexture.ReleaseAndGetAddressOf(),
+        IID_ID3D12Resource,
+        nullptr);
+
+    assert(SUCCEEDED(hr) && m_outputTexture != nullptr);
+
+    // Create descriptor heap for copy texture shader
+    if (m_srvId == NULL)
+        m_srvId = m_descriptorHeap.allocateMany(2);
+
+    cpuHandle = m_descriptorHeap.getCpuHandle(m_srvId);
+    m_device->CreateShaderResourceView(m_outputTexture->GetResource(), nullptr, cpuHandle);
+
+    cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
+    m_device->CreateShaderResourceView(m_depthTexture->GetResource(), nullptr, cpuHandle);
 }
 
-void RaytracingDevice::resolveDeferredShading(D3D12_GPU_VIRTUAL_ADDRESS globalsVS, D3D12_GPU_VIRTUAL_ADDRESS globalsPS)
+void RaytracingDevice::resolveAndDispatchUpscaler()
+{
+    getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
+
+    getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularLevelTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_falloffTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_globalIlluminationTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
+
+    getGraphicsCommandList().commitBarriers();
+
+    getUnderlyingGraphicsCommandList()->Dispatch(
+        (m_upscaler->getWidth() + 31) / 32,
+        (m_upscaler->getHeight() + 31) / 32,
+        1);
+
+    getGraphicsCommandList().uavBarrier(m_colorTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_depthTexture->GetResource());
+
+    getGraphicsCommandList().transitionBarrier(m_colorTexture->GetResource(), 
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().commitBarriers();
+
+    m_upscaler->dispatch(
+        {
+            *this,
+            m_colorTexture->GetResource(),
+            m_outputTexture->GetResource(),
+            m_depthTexture->GetResource(),
+            m_motionVectorsTexture->GetResource(),
+            m_globalsRT.pixelJitterX,
+            m_globalsRT.pixelJitterY,
+            false
+        });
+
+    ID3D12DescriptorHeap* descriptorHeaps[] =
+    {
+        m_descriptorHeap.getUnderlyingHeap(),
+        m_samplerDescriptorHeap.getUnderlyingHeap()
+    };
+
+    getUnderlyingGraphicsCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+}
+
+void RaytracingDevice::copyToRenderTargetAndDepthStencil()
 {
     const D3D12_VIEWPORT viewport = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0, globalsVS);
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(1, globalsPS);
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(2, m_descriptorHeap.getGpuHandle(m_uavId));
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvId));
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipeline.Get());
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
     getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &scissorRect);
     getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    getGraphicsCommandList().transitionBarrier(m_outputTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
     getGraphicsCommandList().commitBarriers();
+
     getUnderlyingGraphicsCommandList()->DrawInstanced(6, 1, 0, 0);
 
-    m_dirtyFlags |= 
+    m_dirtyFlags |=
         DIRTY_FLAG_ROOT_SIGNATURE |
-        DIRTY_FLAG_PIPELINE_DESC | 
-        DIRTY_FLAG_GLOBALS_PS | 
-        DIRTY_FLAG_GLOBALS_VS | 
-        DIRTY_FLAG_VIEWPORT | 
+        DIRTY_FLAG_PIPELINE_DESC |
+        DIRTY_FLAG_GLOBALS_PS |
+        DIRTY_FLAG_GLOBALS_VS |
+        DIRTY_FLAG_VIEWPORT |
         DIRTY_FLAG_SCISSOR_RECT |
         DIRTY_FLAG_PRIMITIVE_TOPOLOGY;
 
@@ -572,7 +640,7 @@ void RaytracingDevice::procMsgTraceRays()
     {
         m_width = message.width;
         m_height = message.height;
-        createRenderTargetAndDepthStencil();
+        createRaytracingTextures();
     }
 
     createTopLevelAccelStruct();
@@ -622,8 +690,8 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.HitGroupTable.StartAddress = shaderTable + 10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.HitGroupTable.SizeInBytes = 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.HitGroupTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.Width = message.width;
-    dispatchRaysDesc.Height = message.height;
+    dispatchRaysDesc.Width = m_upscaler->getWidth();
+    dispatchRaysDesc.Height = m_upscaler->getHeight();
     dispatchRaysDesc.Depth = 1;
 
     // PrimaryRayGeneration
@@ -647,17 +715,8 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
-    // Resolve
-    getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularLevelTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_falloffTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_globalIlluminationTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
-
-    resolveDeferredShading(globalsVS, globalsPS);
+    resolveAndDispatchUpscaler();
+    copyToRenderTargetAndDepthStencil();
 }
 
 void RaytracingDevice::procMsgCreateMaterial()
@@ -830,7 +889,7 @@ void RaytracingDevice::releaseRaytracingResources()
 RaytracingDevice::RaytracingDevice()
 {
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 11, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 14, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[7];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -845,6 +904,8 @@ RaytracingDevice::RaytracingDevice()
         m_device.Get(),
         raytracingRootParams,
         _countof(raytracingRootParams),
+        nullptr,
+        0,
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | 
@@ -917,15 +978,24 @@ RaytracingDevice::RaytracingDevice()
         assert(SUCCEEDED(hr) && scratchBuffer != nullptr);
     }
 
-    CD3DX12_ROOT_PARAMETER1 copyRootParams[3];
-    copyRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_PIXEL);
-    copyRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_PIXEL);
-    copyRootParams[2].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+    CD3DX12_DESCRIPTOR_RANGE1 copyDescriptorRanges[1];
+    copyDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+
+    CD3DX12_ROOT_PARAMETER1 copyRootParams[1];
+    copyRootParams[0].InitAsDescriptorTable(_countof(copyDescriptorRanges), copyDescriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    D3D12_STATIC_SAMPLER_DESC copyStaticSamplers[1]{};
+    copyStaticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    copyStaticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    copyStaticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    copyStaticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
     RootSignature::create(
         m_device.Get(),
         copyRootParams,
         _countof(copyRootParams),
+        copyStaticSamplers,
+        _countof(copyStaticSamplers),
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS,
         m_copyTextureRootSignature);
 
@@ -964,6 +1034,8 @@ RaytracingDevice::RaytracingDevice()
         m_device.Get(),
         poseRootParams,
         _countof(poseRootParams),
+        nullptr,
+        0,
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS,
         m_poseRootSignature);
@@ -976,4 +1048,22 @@ RaytracingDevice::RaytracingDevice()
     hr = m_device->CreateComputePipelineState(&posePipelineDesc, IID_PPV_ARGS(m_posePipeline.GetAddressOf()));
 
     assert(SUCCEEDED(hr) && m_posePipeline != nullptr);
+
+    const INIReader reader("GenerationsRaytracing.ini");
+    if (reader.ParseError() == 0)
+    {
+        m_qualityMode = static_cast<QualityMode>(
+            reader.GetInteger("Mod", "QualityMode", static_cast<long>(QualityMode::Balanced)));
+    }
+
+    m_upscaler = std::make_unique<DLSS>(*this);
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC resolvePipelineDesc{};
+    resolvePipelineDesc.pRootSignature = m_raytracingRootSignature.Get();
+    resolvePipelineDesc.CS.pShaderBytecode = ResolveComputeShader;
+    resolvePipelineDesc.CS.BytecodeLength = sizeof(ResolveComputeShader);
+
+    hr = m_device->CreateComputePipelineState(&resolvePipelineDesc, IID_PPV_ARGS(m_resolvePipeline.GetAddressOf()));
+
+    assert(SUCCEEDED(hr) && m_resolvePipeline != nullptr);
 }

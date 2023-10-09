@@ -36,6 +36,12 @@
     <ClCompile Include="EnvironmentColor.cpp">
       <Filter>Shader</Filter>
     </ClCompile>
+    <ClCompile Include="Upscaler.cpp">
+      <Filter>Upscaler</Filter>
+    </ClCompile>
+    <ClCompile Include="DLSS.cpp">
+      <Filter>Upscaler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -52,6 +58,9 @@
     </Filter>
     <Filter Include="Resource">
       <UniqueIdentifier>{e5e147b1-dbdc-4ff6-9246-95c12226f27a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Upscaler">
+      <UniqueIdentifier>{f5e3711a-1e56-4981-863d-258bba94bd6d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -118,6 +127,12 @@
     <ClInclude Include="EnvironmentColor.h">
       <Filter>Shader</Filter>
     </ClInclude>
+    <ClInclude Include="Upscaler.h">
+      <Filter>Upscaler</Filter>
+    </ClInclude>
+    <ClInclude Include="DLSS.h">
+      <Filter>Upscaler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
@@ -165,6 +180,9 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="PoseComputeShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="ResolveComputeShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>

@@ -31,8 +31,9 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 {
     GBufferData gBufferData = (GBufferData) 0;
     gBufferData.Flags = GBUFFER_FLAG_MISS;
-
     StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
+
+    g_MotionVectorsTexture[DispatchRaysIndex().xy] = 0.0;
 }
 
 [shader("closesthit")]
@@ -42,6 +43,10 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
     Material material = g_Materials[geometryDesc.MaterialId];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, attributes);
     StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material));
+
+    g_MotionVectorsTexture[DispatchRaysIndex().xy] =
+        ComputePixelPosition(vertex.Position, g_MtxPrevView, g_MtxPrevProjection) -
+        ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 }
 
 [shader("anyhit")]
