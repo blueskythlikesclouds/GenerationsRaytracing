@@ -1,6 +1,7 @@
 #include "GBufferData.hlsli"
 #include "GeometryShading.hlsli"
 #include "RootSignature.hlsli"
+#include "SharedDefinitions.hlsli"
 
 void main(in float4 position : SV_Position, out float4 color : SV_Target0, out float depth : SV_Depth)
 {
@@ -23,7 +24,7 @@ void main(in float4 position : SV_Position, out float4 color : SV_Target0, out f
 
         color.rgb += g_GlobalIlluminationTexture[position.xy] * (gBufferData.Diffuse + gBufferData.Falloff);
 
-        color.rgb += g_ReflectionTexture[position.xy] * gBufferData.Specular * gBufferData.SpecularLevel;
+        color.rgb += g_ReflectionTexture[position.xy] * gBufferData.Specular * gBufferData.SpecularLevel * 0.3;
 
         color.rgb += gBufferData.Emission;
 

@@ -159,7 +159,7 @@ float3 TraceReflection(
         ray,
         payload);
 
-    return payload.Color / sampleDirection.w;
+    return payload.Color * saturate(dot(normal, reflectionDirection));
 }
 
 #endif
