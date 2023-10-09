@@ -135,7 +135,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { "emissive", message.emissive, 4 },
         { "power_gloss_level", message.powerGlossLevel, 4 },
         { "opacity_reflection_refraction_spectype", message.opacityReflectionRefractionSpectype, 4 },
-        //{ "mrgLuminanceRange", message.luminanceRange, 4 },
+        { "mrgLuminanceRange", message.luminanceRange, 4 },
         { "mrgFresnelParam", message.fresnelParam, 4 },
         { "g_SonicEyeHighLightPosition", message.sonicEyeHighLightPosition, 4 },
         { "g_SonicEyeHighLightColor", message.sonicEyeHighLightColor, 4 },

@@ -23,7 +23,7 @@ struct Material
     float4 Emissive;
     float4 PowerGlossLevel;
     float4 OpacityReflectionRefractionSpectype;
-    //float4 LuminanceRange;
+    float4 LuminanceRange;
     float4 FresnelParam;
     float4 SonicEyeHighLightPosition;
     float4 SonicEyeHighLightColor;

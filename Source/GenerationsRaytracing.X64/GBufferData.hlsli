@@ -332,18 +332,20 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
 
         case SHADER_TYPE_RING:
             {
+                gBufferData.Flags = GBUFFER_FLAG_SKIP_REFLECTION;
+
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
                 gBufferData.Diffuse *= diffuse.rgb;
                 gBufferData.Alpha *= diffuse.a;
 
                 float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
-                gBufferData.Specular *= specular.rgb;
-                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+                gBufferData.Specular *= specular.rgb * gBufferData.SpecularPower;
 
                 float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture,
                     ComputeEnvMapTexCoord(-WorldRayDirection(), gBufferData.Normal));
 
-                gBufferData.Emission = reflection.rgb * reflection.a * gBufferData.Specular;
+                gBufferData.Emission = reflection.rgb * material.LuminanceRange.x * reflection.a + reflection.rgb;
+                gBufferData.Emission *= specular.rgb * (ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3);
 
                 break;
             }

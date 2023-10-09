@@ -393,7 +393,7 @@ struct MsgCreateMaterial
     float emissive[4];
     float powerGlossLevel[4];
     float opacityReflectionRefractionSpectype[4];
-    //float luminanceRange[4];
+    float luminanceRange[4];
     float fresnelParam[4];
     float sonicEyeHighLightPosition[4];
     float sonicEyeHighLightColor[4];
