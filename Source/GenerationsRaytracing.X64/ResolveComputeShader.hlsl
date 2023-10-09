@@ -32,7 +32,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
         float2 lightScattering = ComputeLightScattering(gBufferData.Position, viewPosition);
-        color.rgb = min(color.rgb, 4.0) * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+        color.rgb = color.rgb * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
         color.a = 1.0;
 
         float4 projectedPosition = mul(float4(viewPosition, 1.0), g_MtxProjection);
