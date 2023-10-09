@@ -111,7 +111,6 @@
     <ClInclude Include="Buffer.h">
       <Filter>Resource</Filter>
     </ClInclude>
-    <ClInclude Include="UploadBuffer.h" />
     <ClInclude Include="RaytracingDevice.h">
       <Filter>Device</Filter>
     </ClInclude>
@@ -139,6 +138,9 @@
     <ClInclude Include="FeatureCaps.h">
       <Filter>Device</Filter>
     </ClInclude>
+    <ClInclude Include="UploadBuffer.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
@@ -165,6 +167,7 @@
     <None Include="SharedDefinitions.hlsli">
       <Filter>Shader</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

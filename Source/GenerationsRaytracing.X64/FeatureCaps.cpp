@@ -1,5 +1,9 @@
 #include "FeatureCaps.h"
 
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 610; }
+
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = u8".\\D3D12\\"; }
+
 bool FeatureCaps::ensureMinimumCapability(ID3D12Device* device)
 {
     CD3DX12FeatureSupport features;
