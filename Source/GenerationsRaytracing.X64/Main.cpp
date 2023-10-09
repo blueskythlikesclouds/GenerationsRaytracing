@@ -11,7 +11,8 @@ static struct ThreadHolder
 
     ~ThreadHolder()
     {
-        processThread.join();
+        if (processThread.joinable())
+            processThread.join();
     }
 } s_threadHolder;
 
@@ -70,14 +71,17 @@ int main()
 
     s_device = std::make_unique<RaytracingDevice>();
 
-    s_threadHolder.processThread = std::thread([processHandle]
+    if (s_device->getUnderlyingDevice() != nullptr)
     {
-        WaitForSingleObject(processHandle, INFINITE);
-        s_device->setShouldExit();
-    });
+        s_threadHolder.processThread = std::thread([processHandle]
+        {
+            WaitForSingleObject(processHandle, INFINITE);
+            s_device->setShouldExit();
+        });
 
-    s_device->runLoop();
-    s_device->setEvents();
+        s_device->runLoop();
+        s_device->setEvents();
+    }
 
     return 0;
 }

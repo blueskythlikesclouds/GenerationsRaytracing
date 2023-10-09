@@ -888,6 +888,9 @@ void RaytracingDevice::releaseRaytracingResources()
 
 RaytracingDevice::RaytracingDevice()
 {
+    if (m_device == nullptr)
+        return;
+
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
     descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 14, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 

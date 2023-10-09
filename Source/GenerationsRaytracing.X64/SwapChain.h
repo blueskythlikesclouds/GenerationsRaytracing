@@ -10,7 +10,6 @@ class SwapChain
 {
 protected:
     ComPtr<IDXGIFactory4> m_factory;
-    ComPtr<IDXGIAdapter> m_adapter;
     Window m_window;
     ComPtr<IDXGISwapChain3> m_swapChain;
     std::vector<Texture> m_textures;
@@ -19,7 +18,7 @@ protected:
 public:
     SwapChain();
 
-    IDXGIAdapter* getAdapter() const;
+    IDXGIFactory4* getUnderlyingFactory() const;
     Window& getWindow();
     const Texture& getTexture() const;
     ID3D12Resource* getResource() const;

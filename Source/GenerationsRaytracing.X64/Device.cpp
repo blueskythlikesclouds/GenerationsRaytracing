@@ -1,6 +1,7 @@
 #include "Device.h"
 
 #include "DxgiConverter.h"
+#include "FeatureCaps.h"
 #include "Message.h"
 #include "FVFVertexShader.h"
 #include "FVFPixelShader.h"
@@ -1509,9 +1510,42 @@ Device::Device()
     debugInterface->EnableDebugLayer();
 #endif
 
-    hr = D3D12CreateDevice(m_swapChain.getAdapter(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(m_device.GetAddressOf()));
+    const auto factory = m_swapChain.getUnderlyingFactory();
+    if (factory == nullptr)
+        return;
 
-    assert(SUCCEEDED(hr) && m_device != nullptr);
+    ComPtr<IDXGIAdapter1> adapter;
+
+    for (uint32_t i = 0; SUCCEEDED(factory->EnumAdapters1(i, adapter.ReleaseAndGetAddressOf())); i++)
+    {
+        DXGI_ADAPTER_DESC1 adapterDesc;
+        hr = adapter->GetDesc1(&adapterDesc);
+
+        if (SUCCEEDED(hr))
+        {
+            if (adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+                continue;
+
+            hr = D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_device.GetAddressOf()));
+
+            if (SUCCEEDED(hr) && FeatureCaps::ensureMinimumCapability(m_device.Get()))
+                break;
+
+            m_device = nullptr;
+        }
+    }
+
+    if (m_device == nullptr)
+    {
+        MessageBox(nullptr,
+            TEXT("A Direct3D 12 compatible GPU with raytracing support is required.\n"
+                "Ensure your graphics drivers and OS are up to date.\n"
+                "If you are on a laptop, configure GenerationsRaytracing.X64.exe located inside mod folder to use the discrete GPU in graphics settings."),
+            TEXT("GenerationsRaytracing"),
+            MB_ICONERROR);
+
+        return;
+    }
 
 #ifdef _DEBUG
     ComPtr<ID3D12InfoQueue> infoQueue;
@@ -1535,7 +1569,7 @@ Device::Device()
 
     desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
     desc.pDevice = m_device.Get();
-    desc.pAdapter = m_swapChain.getAdapter();
+    desc.pAdapter = adapter.Get();
 
     hr = D3D12MA::CreateAllocator(&desc, m_allocator.GetAddressOf());
 

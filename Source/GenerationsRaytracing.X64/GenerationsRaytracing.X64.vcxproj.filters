@@ -42,6 +42,9 @@
     <ClCompile Include="DLSS.cpp">
       <Filter>Upscaler</Filter>
     </ClCompile>
+    <ClCompile Include="FeatureCaps.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -132,6 +135,9 @@
     </ClInclude>
     <ClInclude Include="DLSS.h">
       <Filter>Upscaler</Filter>
+    </ClInclude>
+    <ClInclude Include="FeatureCaps.h">
+      <Filter>Device</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

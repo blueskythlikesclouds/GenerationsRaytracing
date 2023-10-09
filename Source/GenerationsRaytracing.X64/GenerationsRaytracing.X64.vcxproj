@@ -140,6 +140,7 @@
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DLSS.cpp" />
     <ClCompile Include="EnvironmentColor.cpp" />
+    <ClCompile Include="FeatureCaps.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MessageReceiver.cpp" />
     <ClCompile Include="Pch.cpp">
@@ -162,6 +163,7 @@
     <ClInclude Include="Device.h" />
     <ClInclude Include="DLSS.h" />
     <ClInclude Include="EnvironmentColor.h" />
+    <ClInclude Include="FeatureCaps.h" />
     <ClInclude Include="GeometryDesc.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="MessageReceiver.h" />

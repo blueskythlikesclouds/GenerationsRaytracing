@@ -13,16 +13,13 @@ SwapChain::SwapChain()
 #endif
         IID_PPV_ARGS(m_factory.GetAddressOf()));
 
-    assert(SUCCEEDED(hr) && m_factory != nullptr);
-
-    hr = m_factory->EnumAdapters(0, m_adapter.GetAddressOf());
-
-    assert(SUCCEEDED(hr) && m_adapter != nullptr);
+    if (FAILED(hr))
+        MessageBoxW(nullptr, L"Failed to create DXGI factory.", L"GenerationsRaytracing", MB_ICONERROR);
 }
 
-IDXGIAdapter* SwapChain::getAdapter() const
+IDXGIFactory4* SwapChain::getUnderlyingFactory() const
 {
-    return m_adapter.Get();
+    return m_factory.Get();
 }
 
 Window& SwapChain::getWindow()
