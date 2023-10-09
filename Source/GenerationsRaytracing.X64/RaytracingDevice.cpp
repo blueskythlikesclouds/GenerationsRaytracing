@@ -76,7 +76,7 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
     m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
 }
 
-uint32_t RaytracingDevice::buildRaytracingAccelerationStructure(ComPtr<D3D12MA::Allocation>& allocation,
+uint32_t RaytracingDevice::buildAccelStruct(ComPtr<D3D12MA::Allocation>& allocation,
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate)
 {
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
@@ -128,6 +128,35 @@ uint32_t RaytracingDevice::buildRaytracingAccelerationStructure(ComPtr<D3D12MA::
     return static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
 }
 
+void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& bottomLevelAccelStruct)
+{
+    // Create separate resource if it does not fit to the pool
+    if (m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize > SCRATCH_BUFFER_SIZE)
+    {
+        auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
+
+        createBuffer(
+            D3D12_HEAP_TYPE_DEFAULT,
+            bottomLevelAccelStruct.scratchBufferSize,
+            D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+            D3D12_RESOURCE_STATE_COMMON,
+            scratchBuffer);
+
+        bottomLevelAccelStruct.desc.ScratchAccelerationStructureData = scratchBuffer->GetResource()->GetGPUVirtualAddress();
+    }
+    else
+    {
+        bottomLevelAccelStruct.desc.ScratchAccelerationStructureData =
+            m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+
+        m_scratchBufferOffset = m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize
+            + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1 & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
+    }
+
+    getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
+    getGraphicsCommandList().uavBarrier(bottomLevelAccelStruct.allocation->GetResource());
+}
+
 void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
 {
     for (const auto pendingPose : m_pendingPoses)
@@ -139,31 +168,12 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[pendingBuild];
 
-        // Create separate resource if it does not fit to the pool
-        if (m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize > SCRATCH_BUFFER_SIZE)
+        if (bottomLevelAccelStruct.pendingBuild) // Check as it's possible it was freed before this point
         {
-            auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
-
-            createBuffer(
-                D3D12_HEAP_TYPE_DEFAULT,
-                bottomLevelAccelStruct.scratchBufferSize,
-                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                D3D12_RESOURCE_STATE_COMMON,
-                scratchBuffer);
-
-            bottomLevelAccelStruct.desc.ScratchAccelerationStructureData = scratchBuffer->GetResource()->GetGPUVirtualAddress();
+            assert(bottomLevelAccelStruct.allocation != nullptr);
+            buildBottomLevelAccelStruct(bottomLevelAccelStruct);
+            bottomLevelAccelStruct.pendingBuild = false;
         }
-        else
-        {
-            bottomLevelAccelStruct.desc.ScratchAccelerationStructureData =
-                m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
-
-            m_scratchBufferOffset = m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize
-                + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1 & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
-        }
-
-        getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
-        getGraphicsCommandList().uavBarrier(bottomLevelAccelStruct.allocation->GetResource());
     }
 
     m_pendingPoses.clear();
@@ -264,7 +274,7 @@ void RaytracingDevice::createTopLevelAccelStruct()
         static_cast<uint32_t>(m_instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
     getGraphicsCommandList().commitBarriers();
-    buildRaytracingAccelerationStructure(m_topLevelAccelStruct, accelStructDesc, true);
+    buildAccelStruct(m_topLevelAccelStruct, accelStructDesc, true);
 }
 
 void RaytracingDevice::createRaytracingTextures()
@@ -512,7 +522,9 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     bottomLevelAccelStruct.desc.Inputs.NumDescs = static_cast<UINT>(bottomLevelAccelStruct.geometryDescs.size());
     bottomLevelAccelStruct.desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
     bottomLevelAccelStruct.desc.Inputs.pGeometryDescs = bottomLevelAccelStruct.geometryDescs.data();
-    bottomLevelAccelStruct.scratchBufferSize = buildRaytracingAccelerationStructure(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
+    bottomLevelAccelStruct.scratchBufferSize = buildAccelStruct(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
+    bottomLevelAccelStruct.pendingBuild = true;
+    
     m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
 }
 
@@ -525,6 +537,12 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
     case MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct:
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.resourceId];
+        if (bottomLevelAccelStruct.pendingBuild) // Build ASAP since we normally delay it and don't want to deal with freed memory blocks
+        {
+            buildBottomLevelAccelStruct(bottomLevelAccelStruct);
+            bottomLevelAccelStruct.pendingBuild = false;
+        }
+
         m_tempBuffers[m_frame].emplace_back(std::move(bottomLevelAccelStruct.allocation));
         freeGeometryDescs(m_bottomLevelAccelStructs[message.resourceId].geometryId, m_bottomLevelAccelStructs[message.resourceId].geometryCount);
         bottomLevelAccelStruct.desc = {};
@@ -547,7 +565,8 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
         break;
 
     case MsgReleaseRaytracingResource::ResourceType::Material:
-        memset(&m_materials[message.resourceId], 0, sizeof(Material));
+        if (m_materials.size() > message.resourceId)
+            memset(&m_materials[message.resourceId], 0, sizeof(Material));
         break;
 
     default:
@@ -791,6 +810,9 @@ void RaytracingDevice::procMsgCreateMaterial()
 void RaytracingDevice::procMsgBuildBottomLevelAccelStruct()
 {
     const auto& message = m_messageReceiver.getMessage<MsgBuildBottomLevelAccelStruct>();
+
+    m_bottomLevelAccelStructs[message.bottomLevelAccelStructId].pendingBuild = true;
+
     m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
 }
 
