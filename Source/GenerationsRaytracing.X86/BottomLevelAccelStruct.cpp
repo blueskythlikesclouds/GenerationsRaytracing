@@ -161,7 +161,7 @@ static void traverseModelData(const TModelData& modelData, const TFunction& func
 
         traverseMeshGroup(nodeGroupModelData->m_OpaqueMeshes, NULL, function);
         traverseMeshGroup(nodeGroupModelData->m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
-        traverseMeshGroup(nodeGroupModelData->m_PunchThroughMeshes, GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH, function);
+        traverseMeshGroup(nodeGroupModelData->m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
 
         for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
             traverseMeshGroup(specialMeshGroup, GEOMETRY_FLAG_TRANSPARENT, function);
@@ -169,7 +169,7 @@ static void traverseModelData(const TModelData& modelData, const TFunction& func
 
     traverseMeshGroup(modelData.m_OpaqueMeshes, NULL, function);
     traverseMeshGroup(modelData.m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
-    traverseMeshGroup(modelData.m_PunchThroughMeshes, GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH, function);
+    traverseMeshGroup(modelData.m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
 }
 
 template<typename T>

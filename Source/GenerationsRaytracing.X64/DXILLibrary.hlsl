@@ -157,7 +157,7 @@ void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in Built
         Material material = g_Materials[geometryDesc.MaterialId];
         Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, attributes);
 
-        if (SampleMaterialTexture2D(material.DiffuseTexture, geometryDesc.TexCoordOffsets[0]).a < 0.5)
+        if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0]).a < 0.5)
             IgnoreHit();
     }
 }

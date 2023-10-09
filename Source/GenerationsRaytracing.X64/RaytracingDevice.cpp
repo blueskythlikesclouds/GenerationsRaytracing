@@ -406,8 +406,8 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
 
             dstGeometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 
-            dstGeometryDesc.Flags = (geometryDesc.flags & GEOMETRY_FLAG_TRANSPARENT) ? D3D12_RAYTRACING_GEOMETRY_FLAG_NONE :
-                D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+            dstGeometryDesc.Flags = (geometryDesc.flags & (GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH)) ? 
+                D3D12_RAYTRACING_GEOMETRY_FLAG_NONE : D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
             auto& triangles = dstGeometryDesc.Triangles;
 
