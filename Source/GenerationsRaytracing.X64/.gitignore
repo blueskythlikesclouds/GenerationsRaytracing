@@ -4,3 +4,4 @@ DXILLibrary.h
 FVFVertexShader.h
 FVFPixelShader.h
 PoseComputeShader.h
+ResolveComputeShader.h

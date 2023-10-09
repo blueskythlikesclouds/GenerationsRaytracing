@@ -1600,6 +1600,11 @@ Device::Device()
 
 void Device::processMessages()
 {
+    if (!m_cpuEvent.waitImm())
+        return;
+
+    m_cpuEvent.reset();
+
     getGraphicsCommandList().open();
 
     if (m_swapChainTextureId != 0)
@@ -1617,10 +1622,6 @@ void Device::processMessages()
     getUnderlyingGraphicsCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
     bool stop = false;
-
-    // Wait for Generations to copy messages
-    m_cpuEvent.wait();
-    m_cpuEvent.reset();
 
     while (!stop && !m_swapChain.getWindow().m_shouldExit)
     {
