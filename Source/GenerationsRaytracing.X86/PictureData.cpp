@@ -24,15 +24,18 @@ HOOK(void, __cdecl, PictureDataMake, Hedgehog::Mirage::fpCPictureDataMake0,
             pictureData->m_pD3DTexture = reinterpret_cast<DX_PATCH::IDirect3DBaseTexture9*>(texture);
         }
 
-        auto& message = s_messageSender.makeMessage<MsgMakeTexture>(dataSize);
+        if (*reinterpret_cast<uint32_t*>(data) == MAKEFOURCC('D', 'D', 'S', ' '))
+        {
+            auto& message = s_messageSender.makeMessage<MsgMakeTexture>(dataSize);
 
-        message.textureId = texture->getId();
+            message.textureId = texture->getId();
 #if _DEBUG
-        strcpy(message.textureName, pictureData->m_TypeAndName.c_str() + 15);
+            strcpy(message.textureName, pictureData->m_TypeAndName.c_str() + 15);
 #endif
-        memcpy(message.data, data, dataSize);
+            memcpy(message.data, data, dataSize);
 
-        s_messageSender.endMessage();
+            s_messageSender.endMessage();
+        }
 
         pictureData->m_Type = Hedgehog::Mirage::ePictureType_Texture;
         pictureData->SetMadeOne();
