@@ -111,9 +111,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                         textureDesc.dstTexture.id = reinterpret_cast<const Texture*>(
                             srcTexture->m_spPictureData->m_pD3DTexture)->getId();
                     }
-                    textureDesc.dstTexture.addressModeU = srcTexture->m_SamplerState.AddressU;
-                    textureDesc.dstTexture.addressModeV = srcTexture->m_SamplerState.AddressV;
-                    textureDesc.dstTexture.texCoordIndex = srcTexture->m_TexcoordIndex;
+                    textureDesc.dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
+                    textureDesc.dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
+                    textureDesc.dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
 
                     break;
                 }
