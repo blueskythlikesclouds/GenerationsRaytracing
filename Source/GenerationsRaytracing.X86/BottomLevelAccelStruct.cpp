@@ -216,6 +216,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
             meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
 
         auto vertexElement = vertexDeclaration->getVertexElements();
+        uint32_t texCoordOffsets[4]{};
 
         while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
         {
@@ -241,7 +242,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
 
             case D3DDECLUSAGE_TEXCOORD:
                 assert(vertexElement->UsageIndex < 4);
-                geometryDesc->texCoordOffsets[vertexElement->UsageIndex] = offset;
+                texCoordOffsets[vertexElement->UsageIndex] = offset;
                 break;
 
             case D3DDECLUSAGE_COLOR:
@@ -253,6 +254,9 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
 
             ++vertexElement;
         }
+
+        for (size_t i = 0; i < 4; i++)
+            geometryDesc->texCoordOffsets[i] = texCoordOffsets[i] != 0 ? texCoordOffsets[i] : texCoordOffsets[0];
 
         const auto materialDataEx = reinterpret_cast<MaterialDataEx*>(
             meshDataEx.m_spMaterial.get());
