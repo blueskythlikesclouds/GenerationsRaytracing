@@ -26,7 +26,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         color.rgb += g_GlobalIlluminationTexture[dispatchThreadId.xy] * (gBufferData.Diffuse + gBufferData.Falloff);
 
-        color.rgb += g_ReflectionTexture[dispatchThreadId.xy] * gBufferData.Specular * gBufferData.SpecularLevel;
+        color.rgb += g_ReflectionTexture[dispatchThreadId.xy] * min(1.0, gBufferData.Specular * gBufferData.SpecularLevel);
 
         color.rgb += gBufferData.Emission;
 
