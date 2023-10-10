@@ -21,7 +21,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_EYE_LIGHT))
             color.rgb += ComputeEyeLighting(gBufferData, g_EyePosition.xyz, eyeDirection);
 
-        color.rgb += g_GlobalIlluminationTexture[dispatchThreadId.xy] * (gBufferData.Diffuse + gBufferData.Falloff);
+        float3 globalIllumination = g_GlobalIlluminationTexture[dispatchThreadId.xy];
+        float luminance = dot(globalIllumination, float3(0.299, 0.587, 0.114));
+        globalIllumination = saturate((globalIllumination - luminance) * g_GI1Scale.w + luminance);
+        globalIllumination *= g_GI0Scale.rgb;
+
+        color.rgb += globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
 
         color.rgb += g_ReflectionTexture[dispatchThreadId.xy] * min(1.0, gBufferData.Specular * gBufferData.SpecularLevel);
 
