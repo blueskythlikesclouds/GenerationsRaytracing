@@ -70,7 +70,7 @@ void ShadowRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float shadow = 0.0;
-    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT)))
+    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT)))
         shadow = TraceSoftShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
 
     g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
@@ -82,7 +82,7 @@ void GlobalIlluminationRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 globalIllumination = 0.0;
-    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
+    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
         globalIllumination = TraceGlobalIllumination(0, gBufferData.Position, gBufferData.Normal);
 
     g_GlobalIlluminationTexture[DispatchRaysIndex().xy] = globalIllumination;
@@ -95,13 +95,24 @@ void ReflectionRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 reflection = 0.0;
-    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)))
+    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)))
     {
-        reflection = TraceReflection(0,
-            gBufferData.Position,
-            gBufferData.Normal,
-            gBufferData.SpecularPower,
-            normalize(g_EyePosition.xyz - gBufferData.Position));
+        float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
+
+        if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
+        {
+            reflection = TraceReflection(0, 
+                gBufferData.Position, 
+                reflect(-eyeDirection, gBufferData.Normal));
+        }
+        else
+        {
+            reflection = TraceReflection(0,
+                gBufferData.Position,
+                gBufferData.Normal,
+                gBufferData.SpecularPower,
+                eyeDirection);
+        }
     }
     g_ReflectionTexture[DispatchRaysIndex().xy] = reflection;
 }

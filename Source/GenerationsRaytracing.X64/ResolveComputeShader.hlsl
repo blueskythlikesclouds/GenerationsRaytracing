@@ -28,8 +28,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         color.rgb += globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
 
-        color.rgb += g_ReflectionTexture[dispatchThreadId.xy] *
-            min(1.0, gBufferData.Specular * gBufferData.SpecularLevel * gBufferData.SpecularFresnel);
+        float3 reflection = g_ReflectionTexture[dispatchThreadId.xy];
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
+            reflection *= min(1.0, gBufferData.Specular * gBufferData.SpecularLevel);
+
+        color.rgb += reflection * gBufferData.SpecularFresnel;
 
         color.rgb += gBufferData.Emission;
 

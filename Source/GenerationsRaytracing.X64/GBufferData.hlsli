@@ -16,6 +16,7 @@
 #define GBUFFER_FLAG_IGNORE_REFLECTION          (1 << 7)
 #define GBUFFER_FLAG_HAS_REFRACTION             (1 << 8)
 #define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 9)
+#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 10)
 
 struct GBufferData
 {
@@ -42,7 +43,7 @@ float ComputeFresnel(float3 normal)
 
 float ComputeFresnel(float3 normal, float2 fresnelParam)
 {
-    return lerp(1.0, ComputeFresnel(normal), fresnelParam.x) * fresnelParam.y;
+    return lerp(fresnelParam.x, 1.0, ComputeFresnel(normal)) * fresnelParam.y;
 }
 
 float3 DecodeNormalMap(Vertex vertex, float2 value)
@@ -501,6 +502,20 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_MIRROR:
+            {
+                gBufferData.Flags = GBUFFER_FLAG_IS_MIRROR_REFLECTION;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                gBufferData.Specular = 0.0;
+                gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal, material.FresnelParam.xy);
+
+                break;
+            }
+
         case SHADER_TYPE_RING:
             {
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
@@ -536,8 +551,11 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
     if (dot(gBufferData.Diffuse, gBufferData.Diffuse) == 0.0)
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION;
 
-    if (dot(gBufferData.Specular, gBufferData.Specular) == 0.0 || gBufferData.SpecularLevel == 0.0 || gBufferData.SpecularFresnel == 0.0)
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION) && (dot(gBufferData.Specular, gBufferData.Specular) == 0.0 ||
+        gBufferData.SpecularLevel == 0.0 || gBufferData.SpecularFresnel == 0.0))
+    {
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_REFLECTION;
+    }
 
     return gBufferData;
 }
