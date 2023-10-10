@@ -11,6 +11,7 @@
 #define GBUFFER_FLAG_SKIP_EYE_LIGHT           (1 << 2)
 #define GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION (1 << 3)
 #define GBUFFER_FLAG_SKIP_REFLECTION          (1 << 4)
+#define GBUFFER_FLAG_MIRROR                   (1 << 5)
 
 struct GBufferData
 {

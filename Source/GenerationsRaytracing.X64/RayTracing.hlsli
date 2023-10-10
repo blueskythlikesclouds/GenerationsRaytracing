@@ -35,7 +35,7 @@ float4 GetPowerCosineWeightedHemisphere(float2 random, float specularPower)
     float cosTheta = pow(random.x, 1.0 / (specularPower + 1.0));
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
     float phi = 2.0 * PI * random.y;
-    float pdf = (specularPower + 1.0) / (2.0 * PI);
+    float pdf = pow(cosTheta, specularPower);
      
     return float4(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta, pdf);
 }
@@ -128,21 +128,15 @@ float3 TraceGlobalIllumination(uint depth, float3 position, float3 normal)
 float3 TraceReflection(
     uint depth,
     float3 position,
-    float3 normal,
-    float specularPower,
-    float3 eyeDirection)
+    float3 direction)
 {
     if (depth > 0)
         return 0.0;
 
-    float4 sampleDirection = GetPowerCosineWeightedHemisphere(GetBlueNoise().yz, specularPower);
-    float3 halfwayDirection = TangentToWorld(normal, sampleDirection.xyz);
-    float3 reflectionDirection = normalize(reflect(-eyeDirection, halfwayDirection));
-
     RayDesc ray;
 
     ray.Origin = position;
-    ray.Direction = reflectionDirection;
+    ray.Direction = direction;
     ray.TMin = 0.0;
     ray.TMax = 10000.0;
 
@@ -159,7 +153,22 @@ float3 TraceReflection(
         ray,
         payload);
 
-    return payload.Color * saturate(dot(normal, reflectionDirection));
+    return payload.Color;
+}
+
+float3 TraceReflection(
+    uint depth,
+    float3 position,
+    float3 normal,
+    float specularPower,
+    float3 eyeDirection)
+{
+    float4 sampleDirection = GetPowerCosineWeightedHemisphere(GetBlueNoise().yz, specularPower);
+    float3 halfwayDirection = TangentToWorld(normal, sampleDirection.xyz);
+    float3 reflectionDirection = normalize(reflect(-eyeDirection, halfwayDirection));
+
+    return TraceReflection(depth, position, reflectionDirection) * 
+        pow(saturate(dot(normal, halfwayDirection)), specularPower) / max(0.000001, sampleDirection.w * PI);
 }
 
 #endif
