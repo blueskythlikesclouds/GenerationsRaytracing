@@ -119,18 +119,17 @@ RWTexture2D<float4> g_ColorTexture : register(u0);
 RWTexture2D<float> g_DepthTexture : register(u1);
 RWTexture2D<float2> g_MotionVectorsTexture : register(u2);
 
-RWTexture2D<float4> g_PositionAndFlagsTexture : register(u3);
-RWTexture2D<float3> g_NormalTexture : register(u4);
-RWTexture2D<float3> g_DiffuseTexture : register(u5);
-RWTexture2D<float3> g_SpecularTexture : register(u6);
-RWTexture2D<float> g_SpecularPowerTexture : register(u7);
-RWTexture2D<float> g_SpecularLevelTexture : register(u8);
+RWTexture2D<float4> g_PositionFlagsTexture : register(u3);
+RWTexture2D<float3> g_DiffuseTexture : register(u4);
+RWTexture2D<float3> g_SpecularTexture : register(u5);
+RWTexture2D<float3> g_SpecularPowerLevelFresnelTexture : register(u6);
+RWTexture2D<float3> g_NormalTexture : register(u7);
+RWTexture2D<float3> g_FalloffTexture : register(u8);
 RWTexture2D<float3> g_EmissionTexture : register(u9);
-RWTexture2D<float3> g_FalloffTexture : register(u10);
 
-RWTexture2D<float> g_ShadowTexture : register(u11);
-RWTexture2D<float3> g_GlobalIlluminationTexture : register(u12);
-RWTexture2D<float3> g_ReflectionTexture : register(u13);
+RWTexture2D<float> g_ShadowTexture : register(u10);
+RWTexture2D<float3> g_GlobalIlluminationTexture : register(u11);
+RWTexture2D<float3> g_ReflectionTexture : register(u12);
 
 
 

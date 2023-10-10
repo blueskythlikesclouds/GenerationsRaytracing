@@ -6,23 +6,35 @@
 float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     float3 lightDirection, float3 diffuseColor, float3 specularColor)
 {
-    // Diffuse Shading
-    diffuseColor *= gBufferData.Diffuse;
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
+    {
+        diffuseColor *= gBufferData.Diffuse;
 
-    float nDotL = dot(gBufferData.Normal, lightDirection);
-    if (gBufferData.Flags & GBUFFER_FLAG_LAMBERT_ADJUSTMENT)
-        nDotL = (nDotL - 0.05) / (1.0 - 0.05);
+        float nDotL = dot(gBufferData.Normal, lightDirection);
+        if (gBufferData.Flags & GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT)
+            nDotL = (nDotL - 0.05) / (1.0 - 0.05);
 
-    diffuseColor *= saturate(nDotL);
+        diffuseColor *= saturate(nDotL);
+    }
+    else
+    {
+        diffuseColor = 0.0;
+    }
 
-    // Specular Shading
-    specularColor *= gBufferData.Specular * gBufferData.SpecularLevel;
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT))
+    {
+        specularColor *= gBufferData.Specular * gBufferData.SpecularLevel * gBufferData.SpecularFresnel;
 
-    float3 halfwayDirection = normalize(lightDirection + eyeDirection);
+        float3 halfwayDirection = normalize(lightDirection + eyeDirection);
 
-    float nDotH = dot(gBufferData.Normal, halfwayDirection);
-    nDotH = pow(saturate(nDotH), gBufferData.SpecularPower);
-    specularColor *= nDotH;
+        float nDotH = dot(gBufferData.Normal, halfwayDirection);
+        nDotH = pow(saturate(nDotH), gBufferData.SpecularPower);
+        specularColor *= nDotH;
+    }
+    else
+    {
+        specularColor = 0.0;
+    }
 
     return diffuseColor + specularColor;
 }

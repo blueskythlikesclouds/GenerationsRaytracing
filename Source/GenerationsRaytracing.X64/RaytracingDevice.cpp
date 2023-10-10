@@ -303,14 +303,15 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture },
         { DXGI_FORMAT_R32_FLOAT, m_depthTexture },
         { DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionAndFlagsTexture },
-        { DXGI_FORMAT_R10G10B10A2_UNORM, m_normalTexture },
+
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionFlagsTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularTexture },
-        { DXGI_FORMAT_R32_FLOAT, m_specularPowerTexture },
-        { DXGI_FORMAT_R32_FLOAT, m_specularLevelTexture },
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_emissionTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularPowerLevelFresnelTexture },
+        { DXGI_FORMAT_R10G10B10A2_UNORM, m_normalTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_falloffTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_emissionTexture },
+
         { DXGI_FORMAT_R16_UNORM, m_shadowTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_globalIlluminationTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_reflectionTexture },
@@ -377,9 +378,10 @@ void RaytracingDevice::resolveAndDispatchUpscaler()
 
     getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularLevelTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularPowerLevelFresnelTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_falloffTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
+
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_globalIlluminationTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
@@ -726,9 +728,9 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
-    getGraphicsCommandList().uavBarrier(m_positionAndFlagsTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_positionFlagsTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularPowerLevelFresnelTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_normalTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularPowerTexture->GetResource());
     getGraphicsCommandList().commitBarriers();
 
     // ShadowRayGeneration
@@ -925,7 +927,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 14, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 13, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[8];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

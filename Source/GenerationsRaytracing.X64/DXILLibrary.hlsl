@@ -30,7 +30,7 @@ void PrimaryRayGeneration()
 void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 {
     GBufferData gBufferData = (GBufferData) 0;
-    gBufferData.Flags = GBUFFER_FLAG_MISS;
+    gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
     StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 
     g_MotionVectorsTexture[DispatchRaysIndex().xy] = 0.0;
@@ -70,7 +70,7 @@ void ShadowRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float shadow = 0.0;
-    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_MISS | GBUFFER_FLAG_SKIP_GLOBAL_LIGHT)))
+    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT)))
         shadow = TraceSoftShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
 
     g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
@@ -82,7 +82,7 @@ void GlobalIlluminationRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 globalIllumination = 0.0;
-    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_MISS | GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION)))
+    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
         globalIllumination = TraceGlobalIllumination(0, gBufferData.Position, gBufferData.Normal);
 
     g_GlobalIlluminationTexture[DispatchRaysIndex().xy] = globalIllumination;
@@ -95,7 +95,7 @@ void ReflectionRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 reflection = 0.0;
-    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_MISS | GBUFFER_FLAG_SKIP_REFLECTION)))
+    [branch] if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)))
     {
         reflection = TraceReflection(0,
             gBufferData.Position,
@@ -122,7 +122,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
     GBufferData gBufferData = CreateGBufferData(vertex, material);
 
-    if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_GLOBAL_LIGHT))
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
     {
         payload.Color = ComputeDirectLighting(gBufferData,
             -mrgGlobalLight_Direction.xyz, -WorldRayDirection(), mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
@@ -134,7 +134,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         payload.Color = 0.0;
     }
 
-    if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION))
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
     {
         payload.Color += TraceGlobalIllumination(payload.Depth,
             gBufferData.Position, gBufferData.Normal) * (gBufferData.Diffuse + gBufferData.Falloff);

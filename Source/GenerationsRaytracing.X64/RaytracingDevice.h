@@ -61,21 +61,23 @@ protected:
     // Textures
     uint32_t m_width = 0;
     uint32_t m_height = 0;
+    uint32_t m_uavId = 0;
+
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
     ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
-    ComPtr<D3D12MA::Allocation> m_positionAndFlagsTexture;
-    ComPtr<D3D12MA::Allocation> m_normalTexture;
+
+    ComPtr<D3D12MA::Allocation> m_positionFlagsTexture;
     ComPtr<D3D12MA::Allocation> m_diffuseTexture;
     ComPtr<D3D12MA::Allocation> m_specularTexture;
-    ComPtr<D3D12MA::Allocation> m_specularPowerTexture;
-    ComPtr<D3D12MA::Allocation> m_specularLevelTexture;
-    ComPtr<D3D12MA::Allocation> m_emissionTexture;
+    ComPtr<D3D12MA::Allocation> m_specularPowerLevelFresnelTexture;
+    ComPtr<D3D12MA::Allocation> m_normalTexture;
     ComPtr<D3D12MA::Allocation> m_falloffTexture;
+    ComPtr<D3D12MA::Allocation> m_emissionTexture;
+
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
     ComPtr<D3D12MA::Allocation> m_globalIlluminationTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
-    uint32_t m_uavId = 0;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     uint32_t m_srvId = 0;

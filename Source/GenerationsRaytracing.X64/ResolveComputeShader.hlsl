@@ -9,7 +9,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     GBufferData gBufferData = LoadGBufferData(dispatchThreadId.xy);
 
-    if (!(gBufferData.Flags & GBUFFER_FLAG_MISS))
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
     {
         float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
 
@@ -18,7 +18,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         color.rgb *= g_ShadowTexture[dispatchThreadId.xy];
 
-        if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_EYE_LIGHT))
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
             color.rgb += ComputeEyeLighting(gBufferData, g_EyePosition.xyz, eyeDirection);
 
         float3 globalIllumination = g_GlobalIlluminationTexture[dispatchThreadId.xy];
@@ -28,7 +28,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         color.rgb += globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
 
-        color.rgb += g_ReflectionTexture[dispatchThreadId.xy] * min(1.0, gBufferData.Specular * gBufferData.SpecularLevel);
+        color.rgb += g_ReflectionTexture[dispatchThreadId.xy] *
+            min(1.0, gBufferData.Specular * gBufferData.SpecularLevel * gBufferData.SpecularFresnel);
 
         color.rgb += gBufferData.Emission;
 
