@@ -31,6 +31,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
 
     uint vertexOffset = dispatchThreadId.x * g_VertexStride;
+    uint prevVertexOffset = g_VertexCount * g_VertexStride + dispatchThreadId.x * 0xC;
+
+    g_Destination.Store3(prevVertexOffset, g_Destination.Load3(vertexOffset));
+
     uint encodedBlendWeight = g_Source.Load(vertexOffset + g_BlendWeightOffset);
     uint encodedBlendIndices = g_Source.Load(vertexOffset + g_BlendIndicesOffset);
 

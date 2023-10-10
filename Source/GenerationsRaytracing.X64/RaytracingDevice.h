@@ -3,6 +3,7 @@
 #include "BottomLevelAccelStruct.h"
 #include "Device.h"
 #include "GeometryDesc.h"
+#include "InstanceDesc.h"
 #include "Material.h"
 #include "Upscaler.h"
 
@@ -47,6 +48,7 @@ protected:
 
     // Top Level Accel Struct
     std::vector<D3D12_RAYTRACING_INSTANCE_DESC> m_instanceDescs;
+    std::vector<InstanceDesc> m_instanceDescs2;
     std::vector<std::pair<uint32_t, uint32_t>> m_delayedInstances;
     std::vector<std::pair<uint32_t, uint32_t>> m_tempDelayedInstances;
     ComPtr<D3D12MA::Allocation> m_topLevelAccelStruct;

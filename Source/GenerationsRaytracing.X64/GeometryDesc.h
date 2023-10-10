@@ -3,6 +3,7 @@
 struct GeometryDesc
 {
     uint32_t flags;
+    uint32_t vertexCount;
     uint32_t indexBufferId;
     uint32_t vertexBufferId;
     uint32_t vertexStride;
@@ -14,5 +15,4 @@ struct GeometryDesc
     uint32_t colorOffset;
     uint32_t materialId;
     uint32_t padding0;
-    uint32_t padding1;
 };

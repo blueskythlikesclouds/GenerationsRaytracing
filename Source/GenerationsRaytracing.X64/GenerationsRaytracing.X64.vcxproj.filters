@@ -141,6 +141,9 @@
     <ClInclude Include="UploadBuffer.h">
       <Filter>Resource</Filter>
     </ClInclude>
+    <ClInclude Include="InstanceDesc.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">

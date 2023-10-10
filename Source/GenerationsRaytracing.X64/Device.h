@@ -142,6 +142,7 @@ protected:
 
     void setPrimitiveType(D3DPRIMITIVETYPE primitiveType);
 
+    void setDescriptorHeaps();
     void flushGraphicsState();
 
     void procMsgPadding();

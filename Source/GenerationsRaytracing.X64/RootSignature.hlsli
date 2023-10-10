@@ -113,6 +113,7 @@ cbuffer GlobalsRT : register(b2)
 RaytracingAccelerationStructure g_BVH : register(t0);
 StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t1);
 StructuredBuffer<Material> g_Materials : register(t2);
+StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t3);
 
 RWTexture2D<float4> g_ColorTexture : register(u0);
 RWTexture2D<float> g_DepthTexture : register(u1);

@@ -347,6 +347,7 @@ struct MsgCreateInstance
     float transform[3][4];
     uint32_t instanceId;
     uint32_t bottomLevelAccelStructId;
+    bool storePrevTransform;
     uint32_t dataSize;
     uint8_t data[1u];
 };

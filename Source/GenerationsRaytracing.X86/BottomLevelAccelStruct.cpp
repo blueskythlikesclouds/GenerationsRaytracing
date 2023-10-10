@@ -194,6 +194,9 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
 
     traverseModelData(modelData, [&](const MeshDataEx& meshDataEx, uint32_t flags)
     {
+        if (poseVertexBufferId != NULL)
+            flags |= GEOMETRY_FLAG_POSE;
+
         geometryDesc->flags = flags;
         geometryDesc->indexCount = meshDataEx.m_indexCount;
         geometryDesc->vertexCount = meshDataEx.m_VertexNum;
@@ -204,7 +207,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
         {
             geometryDesc->vertexBufferId = poseVertexBufferId;
             vertexOffset = poseVertexOffset;
-            poseVertexOffset += meshDataEx.m_VertexNum * meshDataEx.m_VertexSize;
+            poseVertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
         }
         else
         {
@@ -396,7 +399,7 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
                 copyMessage.numBytes = meshDataEx.m_VertexNum * meshDataEx.m_VertexSize;
                 s_messageSender.endMessage();
 
-                length += meshDataEx.m_VertexNum * meshDataEx.m_VertexSize;
+                length += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
 
             });
 
@@ -511,7 +514,14 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
     }
 
     if (instanceInfoEx.m_instanceId == NULL)
+    {
         instanceInfoEx.m_instanceId = TopLevelAccelStruct::allocate();
+        message.storePrevTransform = false;
+    }
+    else
+    {
+        message.storePrevTransform = true;
+    }
 
     message.instanceId = instanceInfoEx.m_instanceId;
     message.bottomLevelAccelStructId = bottomLevelAccelStructId;

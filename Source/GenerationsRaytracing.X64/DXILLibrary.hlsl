@@ -41,11 +41,12 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     Material material = g_Materials[geometryDesc.MaterialId];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, attributes);
+    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
     StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material));
 
     g_MotionVectorsTexture[DispatchRaysIndex().xy] =
-        ComputePixelPosition(vertex.Position, g_MtxPrevView, g_MtxPrevProjection) -
+        ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 }
 
@@ -54,7 +55,8 @@ void PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTr
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     Material material = g_Materials[geometryDesc.MaterialId];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, attributes);
+    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
     GBufferData gBufferData = CreateGBufferData(vertex, material);
     float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : GetBlueNoise().x;
 
@@ -116,7 +118,8 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     Material material = g_Materials[geometryDesc.MaterialId];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, attributes);
+    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
     GBufferData gBufferData = CreateGBufferData(vertex, material);
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_GLOBAL_LIGHT))
@@ -160,7 +163,8 @@ void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in Built
     else
     {
         Material material = g_Materials[geometryDesc.MaterialId];
-        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, attributes);
+        InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
 
         if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0]).a < 0.5)
             IgnoreHit();

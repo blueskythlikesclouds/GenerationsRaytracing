@@ -62,6 +62,7 @@ static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoData
 
         message.instanceId = This->m_instanceId;
         message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
+        message.storePrevTransform = false;
 
         s_messageSender.endMessage();
     }

@@ -177,6 +177,18 @@ void Device::setPrimitiveType(D3DPRIMITIVETYPE primitiveType)
     m_pipelineDesc.PrimitiveTopologyType = primitiveTopologyType;
 }
 
+void Device::setDescriptorHeaps()
+{
+    ID3D12DescriptorHeap* descriptorHeaps[] =
+    {
+        m_descriptorHeap.getUnderlyingHeap(),
+        m_samplerDescriptorHeap.getUnderlyingHeap()
+    };
+
+    getUnderlyingGraphicsCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+    m_dirtyFlags |= DIRTY_FLAG_ROOT_SIGNATURE;
+}
+
 void Device::flushGraphicsState()
 {
     if (m_dirtyFlags & DIRTY_FLAG_ROOT_SIGNATURE)
@@ -760,16 +772,18 @@ void Device::procMsgSetTexture()
         m_globalsPS.textureIndices[message.stage] = NULL;
     }
 
-    auto& filter = m_samplerDescs[message.stage].Filter;
-    const auto value = (filter & ~0x80) | (isShadowMap ? 0x80 : 0x00); // comparison filter
+    auto& samplerDesc = m_samplerDescs[message.stage];
+    const auto filter = (samplerDesc.Filter & ~0x80) | (isShadowMap ? 0x80 : 0x00); // comparison filter
+    const auto comparisonFunc = isShadowMap ? D3D12_COMPARISON_FUNC_LESS_EQUAL : D3D12_COMPARISON_FUNC_NONE;
 
-    if (filter != value)
+    if (samplerDesc.Filter != filter || samplerDesc.ComparisonFunc != comparisonFunc)
     {
         m_dirtyFlags |= DIRTY_FLAG_SAMPLER_DESC;
         m_samplerDescsFirst = std::min<uint32_t>(m_samplerDescsFirst, message.stage);
         m_samplerDescsLast = std::max<uint32_t>(m_samplerDescsLast, message.stage);
     }
-    filter = static_cast<D3D12_FILTER>(value);
+    samplerDesc.Filter = static_cast<D3D12_FILTER>(filter);
+    samplerDesc.ComparisonFunc = comparisonFunc;
 }
 
 void Device::procMsgSetDepthStencilSurface()
@@ -1620,7 +1634,7 @@ Device::Device()
         samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-        samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
         samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
     }
 
@@ -1647,13 +1661,7 @@ void Device::processMessages()
         getGraphicsCommandList().transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }
 
-    ID3D12DescriptorHeap* descriptorHeaps[] =
-    {
-        m_descriptorHeap.getUnderlyingHeap(),
-        m_samplerDescriptorHeap.getUnderlyingHeap()
-    };
-
-    getUnderlyingGraphicsCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+    setDescriptorHeaps();
 
     bool stop = false;
 

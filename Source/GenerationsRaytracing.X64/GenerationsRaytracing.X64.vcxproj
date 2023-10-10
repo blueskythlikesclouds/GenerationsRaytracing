@@ -167,6 +167,7 @@
     <ClInclude Include="EnvironmentColor.h" />
     <ClInclude Include="FeatureCaps.h" />
     <ClInclude Include="GeometryDesc.h" />
+    <ClInclude Include="InstanceDesc.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="MessageReceiver.h" />
     <ClInclude Include="Pch.h" />
