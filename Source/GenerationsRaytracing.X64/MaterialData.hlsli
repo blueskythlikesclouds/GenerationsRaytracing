@@ -15,6 +15,10 @@ struct Material
     uint ReflectionTexture;
     uint OpacityTexture;
     uint DisplacementTexture;
+    uint DisplacementTexture1;
+    uint DisplacementTexture2;
+    uint Padding0;
+    uint Padding1;
 
     float4 TexCoordOffsets[2];
     float4 Diffuse;
@@ -34,8 +38,8 @@ struct Material
     //float4 GlassRefractionParam;
     //float4 IceParam;
     float4 EmissionParam;
-    //float4 OffsetParam;
-    //float4 HeightParam;
+    float4 OffsetParam;
+    float4 HeightParam;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)

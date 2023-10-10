@@ -41,8 +41,7 @@ static void __cdecl implOfSceneRender(void* a1)
 {
     setSceneSurface(a1, *reinterpret_cast<void**>(**reinterpret_cast<uint32_t**>(a1) + 84));
 
-    const auto device = reinterpret_cast<Device*>((
-        **reinterpret_cast<Hedgehog::Mirage::CRenderingDevice***>(static_cast<uint8_t*>(a1) + 16))->m_pD3DDevice);
+    MaterialData::handlePendingMaterials();
 
     const auto& renderScene = Sonic::CGameDocument::GetInstance()->GetWorld()->m_pMember->m_spRenderScene;
     const Hedgehog::Base::CStringSymbol symbols[] = { "Object", "Object_Overlay", "Player" };

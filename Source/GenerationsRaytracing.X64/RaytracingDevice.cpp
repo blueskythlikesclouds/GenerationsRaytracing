@@ -760,17 +760,19 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     const std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
     {
-        { message.diffuseTexture,      material.diffuseTexture      },
-        { message.diffuseTexture2,     material.diffuseTexture2     },
-        { message.specularTexture,     material.specularTexture     },
-        { message.specularTexture2,    material.specularTexture2    },
-        { message.glossTexture,        material.glossTexture        },
-        { message.glossTexture2,       material.glossTexture2       },
-        { message.normalTexture,       material.normalTexture       },
-        { message.normalTexture2,      material.normalTexture2      },
-        { message.reflectionTexture,   material.reflectionTexture   },
-        { message.opacityTexture,      material.opacityTexture      },
-        { message.displacementTexture, material.displacementTexture },
+        { message.diffuseTexture,       material.diffuseTexture       },
+        { message.diffuseTexture2,      material.diffuseTexture2      },
+        { message.specularTexture,      material.specularTexture      },
+        { message.specularTexture2,     material.specularTexture2     },
+        { message.glossTexture,         material.glossTexture         },
+        { message.glossTexture2,        material.glossTexture2        },
+        { message.normalTexture,        material.normalTexture        },
+        { message.normalTexture2,       material.normalTexture2       },
+        { message.reflectionTexture,    material.reflectionTexture    },
+        { message.opacityTexture,       material.opacityTexture       },
+        { message.displacementTexture,  material.displacementTexture  },
+        { message.displacementTexture1, material.displacementTexture1 },
+        { message.displacementTexture2, material.displacementTexture2 },
     };
 
     D3D12_SAMPLER_DESC samplerDesc{};

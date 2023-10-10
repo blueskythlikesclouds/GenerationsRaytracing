@@ -38,36 +38,28 @@ void DLSS::init(const InitArgs& args)
 {
     NVSDK_NGX_DLSS_Create_Params params{};
 
-    if (args.qualityMode == QualityMode::Native)
-    {
-        m_width = args.width;
-        m_height = args.height;
-    }
-    else
-    {
-        params.Feature.InPerfQualityValue =
-            args.qualityMode == QualityMode::Quality ? NVSDK_NGX_PerfQuality_Value_MaxQuality :
-            args.qualityMode == QualityMode::Balanced ? NVSDK_NGX_PerfQuality_Value_Balanced :
-            args.qualityMode == QualityMode::Performance ? NVSDK_NGX_PerfQuality_Value_MaxPerf :
-            args.qualityMode == QualityMode::UltraPerformance ? NVSDK_NGX_PerfQuality_Value_UltraPerformance : NVSDK_NGX_PerfQuality_Value_UltraQuality;
-
-        uint32_t _;
-
-        THROW_IF_FAILED(NGX_DLSS_GET_OPTIMAL_SETTINGS(
-            m_parameters,
-            args.width,
-            args.height,
-            params.Feature.InPerfQualityValue,
-            &m_width,
-            &m_height,
-            &_,
-            &_,
-            &_,
-            &_,
-            reinterpret_cast<float*>(&_)));
-
-        assert(m_width > 0 && m_height > 0);
-    }
+    params.Feature.InPerfQualityValue =
+        args.qualityMode == QualityMode::Quality ? NVSDK_NGX_PerfQuality_Value_MaxQuality :
+        args.qualityMode == QualityMode::Balanced ? NVSDK_NGX_PerfQuality_Value_Balanced :
+        args.qualityMode == QualityMode::Performance ? NVSDK_NGX_PerfQuality_Value_MaxPerf :
+        args.qualityMode == QualityMode::UltraPerformance ? NVSDK_NGX_PerfQuality_Value_UltraPerformance : NVSDK_NGX_PerfQuality_Value_DLAA;
+    
+    uint32_t _;
+    
+    THROW_IF_FAILED(NGX_DLSS_GET_OPTIMAL_SETTINGS(
+        m_parameters,
+        args.width,
+        args.height,
+        params.Feature.InPerfQualityValue,
+        &m_width,
+        &m_height,
+        &_,
+        &_,
+        &_,
+        &_,
+        &m_sharpness));
+    
+    assert(m_width > 0 && m_height > 0);
 
     params.Feature.InWidth = m_width;
     params.Feature.InHeight = m_height;
@@ -92,6 +84,7 @@ void DLSS::dispatch(const DispatchArgs& args)
 
     params.Feature.pInColor = args.color;
     params.Feature.pInOutput = args.output;
+    params.Feature.InSharpness = m_sharpness;
     params.pInDepth = args.depth;
     params.pInMotionVectors = args.motionVectors;
     params.InJitterOffsetX = args.jitterX;

@@ -386,6 +386,8 @@ struct MsgCreateMaterial
     Texture reflectionTexture;
     Texture opacityTexture;
     Texture displacementTexture;
+    Texture displacementTexture1;
+    Texture displacementTexture2;
 
     float texCoordOffsets[8];
     float diffuse[4];
@@ -405,8 +407,8 @@ struct MsgCreateMaterial
     //float glassRefractionParam[4];
     //float iceParam[4];
     float emissionParam[4];
-    //float offsetParam[4];
-    //float heightParam[4];
+    float offsetParam[4];
+    float heightParam[4];
 };
 
 struct MsgComputePose
@@ -447,6 +449,21 @@ struct MsgCopyVertexBuffer
     uint32_t srcVertexBufferId;
     uint32_t srcOffset;
     uint32_t numBytes;
+};
+
+struct MsgRenderSky
+{
+    MSG_DEFINE_MESSAGE(MsgCopyVertexBuffer);
+
+    struct GeometryDesc
+    {
+        uint32_t vertexBufferId;
+        uint32_t indexBufferId;
+    };
+
+    float backgroundScale;
+    uint32_t dataSize;
+    uint8_t data[1u];
 };
 
 #pragma pack(pop)

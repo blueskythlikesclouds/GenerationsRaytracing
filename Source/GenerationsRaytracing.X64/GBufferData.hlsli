@@ -226,6 +226,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
 
                 gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                if (material.OpacityTexture != 0)
+                    gBufferData.Alpha *= SampleMaterialTexture2D(material.OpacityTexture, vertex.TexCoords).x;
             
                 break;
             }
@@ -235,21 +238,20 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a * vertex.Color.a;
-                
+
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
                 if (material.SpecularTexture != 0)
                 {
                     float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
                     gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
+                    gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
                 }
                 else
                 {
                     gBufferData.Specular = 0.0;
                 }
-
-                if (material.NormalTexture != 0)
-                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
-
-                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 
                 gBufferData.Emission = material.ChrEmissionParam.rgb;
 
@@ -257,6 +259,69 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                     gBufferData.Emission += SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb;
 
                 gBufferData.Emission *= material.Ambient.rgb * material.ChrEmissionParam.w * vertex.Color.rgb;
+
+                break;
+            }
+
+        case SHADER_TYPE_FALLOFF:
+            {
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                if (material.GlossTexture != 0)
+                {
+                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularLevel *= gloss;
+                    gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+                }
+                else
+                {
+                    gBufferData.Specular = 0.0;
+                }
+
+                float3 viewNormal = mul(float4(vertex.Normal, 0.0), g_MtxView).xyz;
+                gBufferData.Emission = SampleMaterialTexture2D(material.DisplacementTexture, viewNormal.xy * float2(0.5, -0.5) + 0.5).rgb;
+
+                break;
+            }
+
+        case SHADER_TYPE_FALLOFF_V:
+            {
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb;
+                gBufferData.Alpha *= diffuse.a;
+
+                if (material.NormalTexture != 0)
+                {
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                    if (material.NormalTexture2 != 0)
+                    {
+                        float3 normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex.TexCoords));
+                        gBufferData.Normal = normalize(gBufferData.Normal + normal);
+                    }
+                }
+
+                if (material.GlossTexture != 0)
+                {
+                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularLevel *= gloss;
+                    gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+                }
+                else
+                {
+                    gBufferData.Specular = 0.0;
+                }
+
+                float fresnel = 1.0 - saturate(dot(-WorldRayDirection(), vertex.Normal));
+                fresnel *= fresnel;
+                gBufferData.Emission = fresnel * vertex.Color.rgb;
 
                 break;
             }
@@ -302,27 +367,81 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_INDIRECT:
+            {
+                float4 offset = SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords);
+                offset.xy = (offset.wx * 2.0 - 1.0) * material.OffsetParam.xy * 3.0;
+
+                for (int i = 0; i < 4; i++)
+                    vertex.TexCoords[i] += offset.xy;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                gBufferData.SpecularPower *= gloss;
+                gBufferData.SpecularLevel *= gloss;
+
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                break;
+            }
+
+        case SHADER_TYPE_INDIRECT_V:
+        case SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW:
+            {
+                float4 offset = SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords);
+
+                offset.xy = (offset.wx * 2.0 - 1.0) * material.OffsetParam.xy * 3.0 * vertex.Color.w;
+                offset.xy *= SampleMaterialTexture2D(material.OpacityTexture, vertex.TexCoords).x;
+
+                for (int i = 0; i < 4; i++)
+                    vertex.TexCoords[i] += offset.xy;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+
+                gBufferData.Diffuse *= diffuse.rgb;
+                gBufferData.Alpha *= diffuse.a;
+
+                gBufferData.SpecularPower *= gloss;
+                gBufferData.SpecularLevel *= gloss;
+
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                gBufferData.Emission = vertex.Color.rgb;
+
+                break;
+            }
+
         case SHADER_TYPE_LUMINESCENCE:
             {
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a * vertex.Color.a;
 
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
                     gBufferData.SpecularPower *= gloss;
                     gBufferData.SpecularLevel *= gloss;
+                    gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
                 }
                 else
                 {
                     gBufferData.Specular = 0.0;
                 }
-
-                if (material.NormalTexture != 0)
-                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
-
-                gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 
                 gBufferData.Emission = material.DisplacementTexture != 0 ? 
                     SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb : material.Emissive.rgb;
@@ -331,10 +450,44 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_LUMINESCENCE_V:
+            {
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                if (material.DiffuseTexture2 != 0)
+                    diffuse = lerp(diffuse, SampleMaterialTexture2D(material.DiffuseTexture2, vertex.TexCoords), vertex.Color.w);
+                
+                gBufferData.Diffuse *= diffuse.rgb;
+                gBufferData.Alpha *= diffuse.a;
+
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                if (material.GlossTexture != 0)
+                {
+                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+                    if (material.GlossTexture2 != 0)
+                        gloss = lerp(gloss, SampleMaterialTexture2D(material.GlossTexture2, vertex.TexCoords).x, vertex.Color.w);
+
+                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularLevel *= gloss;
+                    gBufferData.Specular *= ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                }
+                else
+                {
+                    gBufferData.Specular = 0.0;
+                }
+
+                gBufferData.Emission = vertex.Color.rgb * material.Ambient.rgb;
+
+                if (material.DisplacementTexture != 0)
+                    gBufferData.Emission *= SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb;
+
+                break;
+            }
+
         case SHADER_TYPE_RING:
             {
-                gBufferData.Flags = GBUFFER_FLAG_SKIP_REFLECTION;
-
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
                 gBufferData.Diffuse *= diffuse.rgb;
                 gBufferData.Alpha *= diffuse.a;

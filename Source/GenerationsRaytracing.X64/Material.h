@@ -14,6 +14,10 @@ struct Material
     uint32_t reflectionTexture;
     uint32_t opacityTexture;
     uint32_t displacementTexture;
+    uint32_t displacementTexture1;
+    uint32_t displacementTexture2;
+    uint32_t padding0;
+    uint32_t padding1;
 
     float texCoordOffsets[8];
     float diffuse[4];
@@ -33,6 +37,6 @@ struct Material
     //float glassRefractionParam[4];
     //float iceParam[4];
     float emissionParam[4];
-    //float offsetParam[4];
-    //float heightParam[4];
+    float offsetParam[4];
+    float heightParam[4];
 };

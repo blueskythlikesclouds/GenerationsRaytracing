@@ -8,7 +8,8 @@ public:
 
 struct MaterialData
 {
-    static void create(Hedgehog::Mirage::CMaterialData& materialData);
+    static bool create(Hedgehog::Mirage::CMaterialData& materialData);
+    static void handlePendingMaterials();
     static uint32_t allocate();
     static void init();
 };

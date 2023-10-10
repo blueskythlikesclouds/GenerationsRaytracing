@@ -8,6 +8,9 @@
 
 static FreeListAllocator s_freeListAllocator;
 
+static std::unordered_set<Hedgehog::Mirage::CMaterialData*> s_materialsToCreate;
+static Mutex s_matCreateMutex;
+
 HOOK(MaterialDataEx*, __fastcall, MaterialDataConstructor, 0x704CA0, MaterialDataEx* This)
 {
     const auto result = originalMaterialDataConstructor(This);
@@ -19,6 +22,10 @@ HOOK(MaterialDataEx*, __fastcall, MaterialDataConstructor, 0x704CA0, MaterialDat
 
 HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
 {
+    s_matCreateMutex.lock();
+    s_materialsToCreate.erase(This);
+    s_matCreateMutex.unlock();
+
     if (This->m_materialId != NULL)
     {
         auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
@@ -67,7 +74,8 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         Hedgehog::Base::CStringSymbol type;
         uint32_t offset;
         MsgCreateMaterial::Texture& dstTexture;
-    } const textureDescs[] =
+        DX_PATCH::IDirect3DBaseTexture9* dxpTexture;
+    } textureDescs[] =
     {
         { diffuseSymbol, 0, message.diffuseTexture },
         { diffuseSymbol, 1, message.diffuseTexture2 },
@@ -80,9 +88,11 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { reflectionSymbol, 0, message.reflectionTexture },
         { opacitySymbol, 0, message.opacityTexture },
         { displacementSymbol, 0, message.displacementTexture },
+        { displacementSymbol, 1, message.displacementTexture1 },
+        { displacementSymbol, 2, message.displacementTexture2 },
     };
 
-    for (const auto& textureDesc : textureDescs)
+    for (auto& textureDesc : textureDescs)
     {
         textureDesc.dstTexture.id = 0;
         textureDesc.dstTexture.addressModeU = D3DTADDRESS_WRAP;
@@ -108,8 +118,17 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                                 reinterpret_cast<DX_PATCH::IDirect3DBaseTexture9*>(new Texture(NULL, NULL, NULL));
                         }
 
+                        // Skip materials that assign the diffuse texture as opacity
+                        if (srcTexture->m_Type == opacitySymbol && 
+                            srcTexture->m_spPictureData->m_pD3DTexture == textureDescs[0].dxpTexture)
+                        {
+                            continue;
+                        }
+
                         textureDesc.dstTexture.id = reinterpret_cast<const Texture*>(
                             srcTexture->m_spPictureData->m_pD3DTexture)->getId();
+
+                        textureDesc.dxpTexture = srcTexture->m_spPictureData->m_pD3DTexture;
                     }
                     textureDesc.dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
                     textureDesc.dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
@@ -146,13 +165,13 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         //{ "mrgGlassRefractionParam", message.glassRefractionParam, 4 },
         //{ "g_IceParam", message.iceParam, 4 },
         { "g_EmissionParam", message.emissionParam, 4 },
-        //{ "g_OffsetParam", message.offsetParam, 4 },
-        //{ "g_HeightParam", message.heightParam, 4 }
+        { "g_OffsetParam", message.offsetParam, 4 },
+        { "g_HeightParam", message.heightParam, 4 }
     };
 
     for (const auto& parameterDesc : parameterDescs)
     {
-        memset(parameterDesc.destParam, 0, sizeof(float[4]));
+        memset(parameterDesc.destParam, 0, parameterDesc.paramSize * sizeof(float));
 
         for (const auto& float4Param : materialDataEx.m_Float4Params)
         {
@@ -169,7 +188,15 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     s_messageSender.endMessage();
 }
 
-static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
+static void __fastcall materialDataSetMadeOneV0V1V2(MaterialDataEx* This)
+{
+    LockGuard lock(s_matCreateMutex);
+    s_materialsToCreate.emplace(This);
+
+    This->SetMadeOne();
+}
+
+static void __fastcall materialDataSetMadeOneV3(MaterialDataEx* This)
 {
     if (This->m_materialId == NULL)
         This->m_materialId = s_freeListAllocator.allocate();
@@ -197,7 +224,7 @@ HOOK(void, __cdecl, SampleMaterialAnimation, 0x757380, Hedgehog::Mirage::CMateri
         createMaterial(materialDataEx);
 }
 
-void MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData)
+bool MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData)
 {
     if (materialData.IsMadeAll())
     {
@@ -208,6 +235,21 @@ void MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData)
             materialDataEx.m_materialId = s_freeListAllocator.allocate();
             createMaterial(materialDataEx);
         }
+        return true;
+    }
+    return false;
+}
+
+void MaterialData::handlePendingMaterials()
+{
+    LockGuard lock(s_matCreateMutex);
+
+    for (auto it = s_materialsToCreate.begin(); it != s_materialsToCreate.end();)
+    {
+        if (create(**it))
+            it = s_materialsToCreate.erase(it);
+        else
+            ++it;
     }
 }
 
@@ -233,8 +275,10 @@ void MaterialData::init()
     INSTALL_HOOK(MaterialDataConstructor);
     INSTALL_HOOK(MaterialDataDestructor);
 
-    // TODO: Add support for other versions somehow
-    WRITE_JUMP(0x742BED, materialDataSetMadeOne);
+    WRITE_JUMP(0x74170C, materialDataSetMadeOneV0V1V2);
+    WRITE_JUMP(0x741E00, materialDataSetMadeOneV0V1V2);
+    WRITE_JUMP(0x7424DD, materialDataSetMadeOneV0V1V2);
+    WRITE_JUMP(0x742BED, materialDataSetMadeOneV3);
 
     INSTALL_HOOK(SampleTexcoordAnimation);
     INSTALL_HOOK(SampleMaterialAnimation);

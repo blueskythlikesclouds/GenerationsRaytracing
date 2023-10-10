@@ -42,7 +42,7 @@
 #define SHADER_TYPE_IGNORE_LIGHT_V                38
 #define SHADER_TYPE_INDIRECT                      39
 #define SHADER_TYPE_INDIRECT_V                    40
-#define SHADER_TYPE_INDIRECT_V_NO_GI              41
+#define SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW       41
 #define SHADER_TYPE_LAVA                          42
 #define SHADER_TYPE_LUMINESCENCE                  43
 #define SHADER_TYPE_LUMINESCENCE_V                44
@@ -111,7 +111,7 @@ inline std::pair<std::string_view, size_t> s_shaderTypes[] =
     {"IgnoreLightV_", SHADER_TYPE_IGNORE_LIGHT_V},
     {"Indirect_", SHADER_TYPE_INDIRECT},
     {"IndirectV_", SHADER_TYPE_INDIRECT_V},
-    {"IndirectVnoGIs_", SHADER_TYPE_INDIRECT_V_NO_GI},
+    {"IndirectVnoGIs_", SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW},
     {"Lava_", SHADER_TYPE_LAVA},
     {"Luminescence_", SHADER_TYPE_LUMINESCENCE},
     {"LuminescenceV_", SHADER_TYPE_LUMINESCENCE_V},
