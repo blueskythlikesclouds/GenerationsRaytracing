@@ -13,5 +13,6 @@ public:
 struct TopLevelAccelStruct
 {
     static uint32_t allocate();
+    static void free(uint32_t id);
     static void init();
 };

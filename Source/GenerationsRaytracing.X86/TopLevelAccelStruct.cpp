@@ -106,6 +106,11 @@ uint32_t TopLevelAccelStruct::allocate()
     return s_freeListAllocator.allocate();
 }
 
+void TopLevelAccelStruct::free(uint32_t id)
+{
+    s_freeListAllocator.free(id);
+}
+
 void TopLevelAccelStruct::init()
 {
     WRITE_MEMORY(0x7176AC, uint32_t, sizeof(TerrainInstanceInfoDataEx));

@@ -368,8 +368,24 @@ uint32_t BottomLevelAccelStruct::allocate()
     return s_freeListAllocator.allocate();
 }
 
-void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap)
+void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled)
 {
+    if (!isEnabled)
+    {
+        if (instanceInfoEx.m_instanceId != NULL)
+        {
+            auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+            message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
+            message.resourceId = instanceInfoEx.m_instanceId;
+            s_messageSender.endMessage();
+
+            TopLevelAccelStruct::free(instanceInfoEx.m_instanceId);
+            instanceInfoEx.m_instanceId = NULL;
+        }
+
+        return;
+    }
+
     for (auto& [key, value] : materialMap)
     {
         MaterialData::create(*value);

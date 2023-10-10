@@ -8,30 +8,30 @@
 #include "Texture.h"
 #include "TopLevelAccelStruct.h"
 
-static void traverseRenderable(Hedgehog::Mirage::CRenderable* renderable)
+static void traverseRenderable(Hedgehog::Mirage::CRenderable* renderable, bool isEnabled = true)
 {
-    if (!renderable->m_Enabled)
-        return;
+    isEnabled &= renderable->m_Enabled;
 
     if (auto element = dynamic_cast<const Hedgehog::Mirage::CSingleElement*>(renderable))
     {
-        if (element->m_spModel->IsMadeAll() && (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
+        if (element->m_spModel->IsMadeAll())
         {
             BottomLevelAccelStruct::create(
                 *reinterpret_cast<ModelDataEx*>(element->m_spModel.get()),
                 *reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get()),
-                element->m_MaterialMap);
+                element->m_MaterialMap,
+                isEnabled && (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0);
         }
     }
     else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))
     {
         for (const auto& it : bundle->m_RenderableList)
-            traverseRenderable(it.get());
+            traverseRenderable(it.get(), isEnabled);
     }
     else if (const auto optimalBundle = dynamic_cast<const Hedgehog::Mirage::COptimalBundle*>(renderable))
     {
         for (const auto it : optimalBundle->m_RenderableList)
-            traverseRenderable(it);
+            traverseRenderable(it, isEnabled);
     }
 }
 

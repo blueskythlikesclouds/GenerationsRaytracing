@@ -19,7 +19,7 @@ using MaterialMap = hh::map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<
 struct BottomLevelAccelStruct
 {
     static uint32_t allocate();
-    static void create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap);
+    static void create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled);
     static void release(uint32_t bottomLevelAccelStructId);
 
     static void init();
