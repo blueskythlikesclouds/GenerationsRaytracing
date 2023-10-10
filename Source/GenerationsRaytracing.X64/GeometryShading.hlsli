@@ -10,7 +10,7 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     diffuseColor *= gBufferData.Diffuse;
 
     float nDotL = dot(gBufferData.Normal, lightDirection);
-    if (gBufferData.Flags & GBUFFER_LAMBERT_ADJUSTMENT)
+    if (gBufferData.Flags & GBUFFER_FLAG_LAMBERT_ADJUSTMENT)
         nDotL = (nDotL - 0.05) / (1.0 - 0.05);
 
     diffuseColor *= saturate(nDotL);
@@ -20,9 +20,9 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
 
     float3 halfwayDirection = normalize(lightDirection + eyeDirection);
 
-    float specular = dot(gBufferData.Normal, halfwayDirection);
-    specular = pow(saturate(specular), gBufferData.SpecularPower);
-    specularColor *= specular;
+    float nDotH = dot(gBufferData.Normal, halfwayDirection);
+    nDotH = pow(saturate(nDotH), gBufferData.SpecularPower);
+    specularColor *= nDotH;
 
     return diffuseColor + specularColor;
 }

@@ -12,7 +12,7 @@
 #define GBUFFER_FLAG_SKIP_GLOBAL_ILLUMINATION (1 << 3)
 #define GBUFFER_FLAG_SKIP_REFLECTION          (1 << 4)
 #define GBUFFER_FLAG_MIRROR                   (1 << 5)
-#define GBUFFER_LAMBERT_ADJUSTMENT            (1 << 6)
+#define GBUFFER_FLAG_LAMBERT_ADJUSTMENT       (1 << 6)
 
 struct GBufferData
 {
@@ -175,7 +175,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
         case SHADER_TYPE_CHR_SKIN:
         case SHADER_TYPE_ENM_METAL:
             {
-                gBufferData.Flags = GBUFFER_LAMBERT_ADJUSTMENT;
+                gBufferData.Flags = GBUFFER_FLAG_LAMBERT_ADJUSTMENT;
 
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
                 float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
@@ -238,7 +238,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
 
         case SHADER_TYPE_ENM_EMISSION:
             {
-                gBufferData.Flags = GBUFFER_LAMBERT_ADJUSTMENT;
+                gBufferData.Flags = GBUFFER_FLAG_LAMBERT_ADJUSTMENT;
 
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
