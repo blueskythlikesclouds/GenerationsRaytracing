@@ -25,6 +25,24 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     return resolvedColor;
 }
 
+float3 ComputeEyeLighting(GBufferData gBufferData, float3 eyePosition, float3 eyeDirection)
+{
+    float3 eyeLighting = ComputeDirectLighting(
+        gBufferData,
+        eyeDirection,
+        eyeDirection,
+        mrgEyeLight_Diffuse.rgb * mrgEyeLight_Diffuse.w,
+        mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
+
+    if (mrgEyeLight_Attribute.x != 0) // If not directional
+    {
+        float distance = length(gBufferData.Position - eyePosition);
+        eyeLighting *= 1.0 - saturate((distance - mrgEyeLight_Range.z) / (mrgEyeLight_Range.w - mrgEyeLight_Range.z));
+    }
+
+    return eyeLighting;
+}
+
 float2 ComputeLightScattering(float3 position, float3 viewPosition)
 {
     float4 r0, r3, r4;

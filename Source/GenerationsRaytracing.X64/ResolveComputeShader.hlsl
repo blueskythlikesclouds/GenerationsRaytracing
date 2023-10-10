@@ -19,10 +19,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         color.rgb *= g_ShadowTexture[dispatchThreadId.xy];
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_SKIP_EYE_LIGHT))
-        {
-            color.rgb += ComputeDirectLighting(gBufferData, eyeDirection,
-               eyeDirection, mrgEyeLight_Diffuse.rgb, mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
-        }
+            color.rgb += ComputeEyeLighting(gBufferData, g_EyePosition.xyz, eyeDirection);
 
         color.rgb += g_GlobalIlluminationTexture[dispatchThreadId.xy] * (gBufferData.Diffuse + gBufferData.Falloff);
 
