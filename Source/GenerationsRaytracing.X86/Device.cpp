@@ -10,6 +10,37 @@
 #include "VertexDeclaration.h"
 #include "VertexShader.h"
 
+void Device::createVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl, bool isFVF)
+{
+    auto vertexElement = pVertexElements;
+    size_t vertexElementCount = 0;
+
+    while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
+    {
+        ++vertexElement;
+        ++vertexElementCount;
+    }
+
+    auto& pDecl = m_vertexDeclarationMap[
+        XXH32(pVertexElements, sizeof(D3DVERTEXELEMENT9) * vertexElementCount, isFVF)];
+
+    if (!pDecl)
+    {
+        pDecl.Attach(new VertexDeclaration(pVertexElements));
+
+        auto& message = s_messageSender.makeMessage<MsgCreateVertexDeclaration>(
+            pDecl->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
+
+        message.vertexDeclarationId = pDecl->getId();
+        message.isFVF = isFVF;
+        memcpy(message.data, pDecl->getVertexElements(), pDecl->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
+
+        s_messageSender.endMessage();
+    }
+
+    pDecl.CopyTo(ppDecl);
+}
+
 Device::Device(uint32_t width, uint32_t height)
 {
     m_backBuffer.Attach(new Texture(width, height, 1));
@@ -498,33 +529,7 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::ProcessVertices, UINT SrcStartIndex, U
 
 HRESULT Device::CreateVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl)
 {
-    auto vertexElement = pVertexElements;
-    size_t vertexElementCount = 0;
-
-    while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
-    {
-        ++vertexElement;
-        ++vertexElementCount;
-    }
-
-    auto& pDecl = m_vertexDeclarationMap[
-        XXH32(pVertexElements, sizeof(D3DVERTEXELEMENT9) * vertexElementCount, 0)];
-
-    if (!pDecl)
-    {
-        pDecl.Attach(new VertexDeclaration(pVertexElements));
-
-        auto& message = s_messageSender.makeMessage<MsgCreateVertexDeclaration>(
-            pDecl->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
-
-        message.vertexDeclarationId = pDecl->getId();
-        memcpy(message.data, pDecl->getVertexElements(), pDecl->getVertexElementsSize() * sizeof(D3DVERTEXELEMENT9));
-
-        s_messageSender.endMessage();
-    }
-
-    pDecl.CopyTo(ppDecl);
-
+    createVertexDeclaration(pVertexElements, ppDecl, false);
     return S_OK;
 }
 
@@ -549,30 +554,28 @@ HRESULT Device::SetFVF(DWORD FVF)
     if (!vertexDeclaration)
     {
         std::vector<D3DVERTEXELEMENT9> vertexElements;
-        size_t offset = 0;
+        WORD offset = 0;
 
         if (FVF & D3DFVF_XYZRHW)
         {
-            vertexElements.push_back({ 0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 });
+            vertexElements.push_back({ 0, offset, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 });
             offset += 16;
         }
 
         if (FVF & D3DFVF_DIFFUSE)
         {
-            vertexElements.push_back({ 0, 0, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0 });
+            vertexElements.push_back({ 0, offset, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0 });
             offset += 4;
         }
 
         if (FVF & D3DFVF_TEX1)
         {
-            vertexElements.push_back({ 0, 0, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 });
+            vertexElements.push_back({ 0, offset, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 });
             offset += 8;
         }
 
         vertexElements.push_back(D3DDECL_END());
-
-        const HRESULT hr = CreateVertexDeclaration(vertexElements.data(), vertexDeclaration.GetAddressOf());
-        assert(SUCCEEDED(hr) && vertexDeclaration != nullptr);
+        createVertexDeclaration(vertexElements.data(), vertexDeclaration.GetAddressOf(), true);
     }
 
     return SetVertexDeclaration(vertexDeclaration.Get());

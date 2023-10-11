@@ -47,6 +47,7 @@ struct MsgCreateVertexDeclaration
 {
     MSG_DEFINE_MESSAGE(MsgSetRenderTarget);
     uint32_t vertexDeclarationId;
+    bool isFVF;
     uint16_t dataSize;
     uint8_t data[1u];
 };
@@ -244,7 +245,10 @@ struct MsgWriteTexture
 {
     MSG_DEFINE_MESSAGE(MsgWriteIndexBuffer);
     uint32_t textureId;
-    uint8_t level;
+    uint32_t width;
+    uint32_t height;
+    uint32_t level;
+    uint32_t pitch;
     uint32_t dataSize;
     alignas(0x10) uint8_t data[1u];
 };

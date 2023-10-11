@@ -53,13 +53,21 @@ HRESULT Texture::GetSurfaceLevel(UINT Level, Surface** ppSurfaceLevel)
 HRESULT Texture::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags)
 {
     // TODO: is it safe to assume RGBA8 here??
-    auto& message = s_messageSender.makeMessage<MsgWriteTexture>((m_width >> Level) * (m_height >> Level) * 4);
+
+    const uint32_t width = m_width >> Level;
+    const uint32_t height = m_height >> Level;
+    const uint32_t pitch = std::max(width * 4u, 256u);
+
+    auto& message = s_messageSender.makeMessage<MsgWriteTexture>(pitch * height);
 
     message.textureId = m_id;
+    message.width = width;
+    message.height = height;
     message.level = Level;
+    message.pitch = pitch;
 
     pLockedRect->pBits = message.data;
-    pLockedRect->Pitch = static_cast<INT>((m_width >> Level) * 4);
+    pLockedRect->Pitch = pitch;
 
     return S_OK;
 }

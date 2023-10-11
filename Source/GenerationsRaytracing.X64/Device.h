@@ -103,6 +103,8 @@ protected:
     D3D12_VIEWPORT m_viewport{};
     RECT m_scissorRect{};
     uint32_t m_vertexDeclarationId = 0;
+    uint32_t m_pixelShaderId = 0;
+    uint32_t m_vertexShaderId = 0;
 
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferViews[16]{};
     uint32_t m_vertexBufferViewsFirst = 0;

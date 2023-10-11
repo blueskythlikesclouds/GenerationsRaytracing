@@ -227,6 +227,35 @@ void Device::flushGraphicsState()
 
     if (m_dirtyFlags & DIRTY_FLAG_PIPELINE_DESC)
     {
+        const bool isFVF = m_vertexDeclarationId != NULL &&
+            m_vertexDeclarations[m_vertexDeclarationId].isFVF;
+
+        if (m_vertexShaderId != NULL && !isFVF)
+        {
+            const auto& vertexShader = m_vertexShaders[m_vertexShaderId];
+
+            m_pipelineDesc.VS.pShaderBytecode = vertexShader.byteCode.get();
+            m_pipelineDesc.VS.BytecodeLength = vertexShader.byteSize;
+        }
+        else
+        {
+            m_pipelineDesc.VS.pShaderBytecode = FVFVertexShader;
+            m_pipelineDesc.VS.BytecodeLength = sizeof(FVFVertexShader);
+        }
+
+        if (m_pixelShaderId != NULL)
+        {
+            const auto& pixelShader = m_pixelShaders[m_pixelShaderId];
+
+            m_pipelineDesc.PS.pShaderBytecode = pixelShader.byteCode.get();
+            m_pipelineDesc.PS.BytecodeLength = pixelShader.byteSize;
+        }
+        else
+        {
+            m_pipelineDesc.PS.pShaderBytecode = FVFPixelShader;
+            m_pipelineDesc.PS.BytecodeLength = sizeof(FVFPixelShader);
+        }
+
         const XXH64_hash_t pipelineHash = XXH3_64bits(&m_pipelineDesc, sizeof(m_pipelineDesc));
         auto& pipeline = m_pipelines[pipelineHash];
         if (!pipeline)
@@ -467,6 +496,7 @@ void Device::procMsgCreateVertexDeclaration()
 
     vertexDeclaration.inputElements = std::make_unique<D3D12_INPUT_ELEMENT_DESC[]>(inputElements.size() * 2);
     vertexDeclaration.inputElementsSize = static_cast<uint32_t>(inputElements.size());
+    vertexDeclaration.isFVF = message.isFVF;
 
     memcpy(vertexDeclaration.inputElements.get(), 
         inputElements.data(), inputElements.size() * sizeof(D3D12_INPUT_ELEMENT_DESC));
@@ -873,48 +903,20 @@ void Device::procMsgSetVertexShader()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetVertexShader>();
 
-    if (message.vertexShaderId != NULL)
-    {
-        const auto& vertexShader = m_vertexShaders[message.vertexShaderId];
+    if (m_vertexShaderId != message.vertexShaderId)
+        m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
-        if (m_pipelineDesc.VS.pShaderBytecode != vertexShader.byteCode.get())
-            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
-
-        m_pipelineDesc.VS.pShaderBytecode = vertexShader.byteCode.get();
-        m_pipelineDesc.VS.BytecodeLength = static_cast<SIZE_T>(vertexShader.byteSize);
-    }
-    else
-    {
-        if (m_pipelineDesc.VS.pShaderBytecode != FVFVertexShader)
-            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
-
-        m_pipelineDesc.VS.pShaderBytecode = FVFVertexShader;
-        m_pipelineDesc.VS.BytecodeLength = sizeof(FVFVertexShader);
-    }
+    m_vertexShaderId = message.vertexShaderId;
 }
 
 void Device::procMsgSetPixelShader()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetPixelShader>();
 
-    if (message.pixelShaderId != NULL)
-    {
-        const auto& pixelShader = m_pixelShaders[message.pixelShaderId];
+    if (m_pixelShaderId != message.pixelShaderId)
+        m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
-        if (m_pipelineDesc.PS.pShaderBytecode != pixelShader.byteCode.get())
-            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
-
-        m_pipelineDesc.PS.pShaderBytecode = pixelShader.byteCode.get();
-        m_pipelineDesc.PS.BytecodeLength = static_cast<SIZE_T>(pixelShader.byteSize);
-    }
-    else
-    {
-        if (m_pipelineDesc.PS.pShaderBytecode != FVFPixelShader)
-            m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
-
-        m_pipelineDesc.PS.pShaderBytecode = FVFPixelShader;
-        m_pipelineDesc.PS.BytecodeLength = sizeof(FVFPixelShader);
-    }
+    m_pixelShaderId = message.pixelShaderId;
 }
 
 void Device::procMsgSetPixelShaderConstantF()
@@ -1275,6 +1277,59 @@ void Device::procMsgWriteIndexBuffer()
 void Device::procMsgWriteTexture()
 {
     const auto& message = m_messageReceiver.getMessage<MsgWriteTexture>();
+    const auto& texture = m_textures[message.textureId];
+
+    const CD3DX12_TEXTURE_COPY_LOCATION dstLocation(texture.allocation->GetResource(), message.level);
+
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
+    footprint.Footprint = CD3DX12_SUBRESOURCE_FOOTPRINT(texture.format, message.width, message.height, 1, message.pitch);
+
+    if (m_uploadBufferOffset + message.dataSize <= UPLOAD_BUFFER_SIZE && m_uploadBuffers[m_frame].size() > m_uploadBufferIndex &&
+        m_uploadBuffers[m_frame][m_uploadBufferIndex].allocation != nullptr)
+    {
+        const auto& uploadBuffer = m_uploadBuffers[m_frame][m_uploadBufferIndex];
+
+        memcpy(uploadBuffer.memory + m_uploadBufferOffset, message.data, message.dataSize);
+        footprint.Offset = m_uploadBufferOffset;
+
+        const CD3DX12_TEXTURE_COPY_LOCATION srcLocation(uploadBuffer.allocation->GetResource(), footprint);
+
+        getCopyCommandList().open();
+        getUnderlyingCopyCommandList()->CopyTextureRegion(
+            &dstLocation,
+            0,
+            0,
+            0,
+            &srcLocation,
+            nullptr);
+
+        m_uploadBufferOffset += message.dataSize;
+    }
+    else
+    {
+        auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
+        createBuffer(D3D12_HEAP_TYPE_UPLOAD, message.dataSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
+
+        void* mappedData = nullptr;
+        const HRESULT hr = uploadBuffer->GetResource()->Map(0, nullptr, &mappedData);
+
+        assert(SUCCEEDED(hr) && mappedData != nullptr);
+
+        memcpy(mappedData, message.data, message.dataSize);
+
+        uploadBuffer->GetResource()->Unmap(0, nullptr);
+
+        const CD3DX12_TEXTURE_COPY_LOCATION srcLocation(uploadBuffer->GetResource(), footprint);
+
+        getCopyCommandList().open();
+        getUnderlyingCopyCommandList()->CopyTextureRegion(
+            &dstLocation,
+            0,
+            0,
+            0,
+            &srcLocation,
+            nullptr);
+    }
 }
 
 void Device::procMsgMakeTexture()
@@ -1750,14 +1805,11 @@ void Device::processMessages()
     m_uploadBufferIndex = 0;
     m_uploadBufferOffset = 0;
 
-    m_renderTargetView = {};
-    m_depthStencilView = {};
+    m_instancing = false;
+    m_instanceCount = 1;
 
-    memset(m_vertexBufferViews, 0, sizeof(m_vertexBufferViews));
     m_vertexBufferViewsFirst = 0;
     m_vertexBufferViewsLast = _countof(m_vertexBufferViews) - 1;
-
-    m_indexBufferView = {};
 
     m_dirtyFlags = ~0;
 

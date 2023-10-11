@@ -52,6 +52,8 @@ protected:
 
     UINT m_settings[16]{};
 
+    void createVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl, bool isFVF);
+
 public:
     Device(uint32_t width, uint32_t height);
 
