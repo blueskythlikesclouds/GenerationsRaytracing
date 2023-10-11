@@ -26,6 +26,10 @@ HOOK(void, __cdecl, PictureDataMake, Hedgehog::Mirage::fpCPictureDataMake0,
 
         if (*reinterpret_cast<uint32_t*>(data) == MAKEFOURCC('D', 'D', 'S', ' '))
         {
+            texture->setResolution(
+                *reinterpret_cast<uint32_t*>(data + 16),
+                *reinterpret_cast<uint32_t*>(data + 12));
+
             auto& message = s_messageSender.makeMessage<MsgMakeTexture>(dataSize);
 
             message.textureId = texture->getId();

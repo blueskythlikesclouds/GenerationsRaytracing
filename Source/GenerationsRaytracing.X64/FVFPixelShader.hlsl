@@ -1,7 +1,7 @@
 cbuffer cbGlobalsPS : register(b1)
 {
     uint s0_tI : packoffset(c224.x);
-    uint s0_sI : packoffset(c240.x);
+    uint s0_sI : packoffset(c228.x);
 }
 
 float4 main(

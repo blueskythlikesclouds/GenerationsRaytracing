@@ -18,6 +18,8 @@ public:
     uint32_t getWidth() const;
     uint32_t getHeight() const;
 
+    void setResolution(uint32_t width, uint32_t height);
+
     virtual HRESULT GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) final;
     virtual HRESULT GetSurfaceLevel(UINT Level, Surface** ppSurfaceLevel);
     virtual HRESULT LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags) final;

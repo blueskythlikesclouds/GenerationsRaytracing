@@ -21,6 +21,12 @@ uint32_t Texture::getHeight() const
     return m_height;
 }
 
+void Texture::setResolution(uint32_t width, uint32_t height)
+{
+    m_width = width;
+    m_height = height;
+}
+
 HRESULT Texture::GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc)
 {
     pDesc->Format = D3DFMT_UNKNOWN;
