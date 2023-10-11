@@ -39,4 +39,5 @@ struct Material
     float emissionParam[4];
     float offsetParam[4];
     float heightParam[4];
+    float waterParam[4];
 };

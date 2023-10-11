@@ -166,7 +166,8 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         //{ "g_IceParam", message.iceParam, 4 },
         { "g_EmissionParam", message.emissionParam, 4 },
         { "g_OffsetParam", message.offsetParam, 4 },
-        { "g_HeightParam", message.heightParam, 4 }
+        { "g_HeightParam", message.heightParam, 4 },
+        { "g_WaterParam", message.waterParam, 4 }
     };
 
     for (const auto& parameterDesc : parameterDescs)

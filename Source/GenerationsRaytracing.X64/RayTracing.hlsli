@@ -94,45 +94,8 @@ float TraceSoftShadow(float3 position, float3 direction)
     return TraceHardShadow(position, TangentToWorld(direction, sample));
 }
 
-float3 TraceGlobalIllumination(uint depth, float3 position, float3 normal)
+float3 TraceSecondaryRay(uint depth, float3 position, float3 direction)
 {
-    if (depth > 1)
-        return 0.0;
-
-    float4 random = GetBlueNoise();
-    float3 sampleDirection = GetCosineWeightedHemisphere(depth == 0 ? random.xy : random.zw);
-
-    RayDesc ray;
-
-    ray.Origin = position;
-    ray.Direction = TangentToWorld(normal, sampleDirection);
-    ray.TMin = 0.001;
-    ray.TMax = 10000.0;
-
-    SecondaryRayPayload payload = (SecondaryRayPayload) 0;
-    payload.Depth = depth + 1;
-
-    TraceRay(
-        g_BVH,
-        0,
-        1,
-        1,
-        0,
-        1,
-        ray,
-        payload);
-
-    return payload.Color;
-}
-
-float3 TraceReflection(
-    uint depth,
-    float3 position,
-    float3 direction)
-{
-    if (depth > 0)
-        return 0.0;
-
     RayDesc ray;
 
     ray.Origin = position;
@@ -156,6 +119,29 @@ float3 TraceReflection(
     return payload.Color;
 }
 
+float3 TraceGlobalIllumination(uint depth, float3 position, float3 normal)
+{
+    if (depth > 1)
+        return 0.0;
+
+    float4 random = GetBlueNoise();
+    float3 sampleDirection = GetCosineWeightedHemisphere(depth == 0 ? random.xy : random.zw);
+
+    return TraceSecondaryRay(depth, position, TangentToWorld(normal, sampleDirection));
+}
+
+float3 TraceReflection(
+    uint depth,
+    float3 position,
+    float3 normal,
+    float3 eyeDirection)
+{
+    if (depth > 0)
+        return 0.0;
+
+    return TraceSecondaryRay(depth, position, reflect(-eyeDirection, normal));
+}
+
 float3 TraceReflection(
     uint depth,
     float3 position,
@@ -165,10 +151,23 @@ float3 TraceReflection(
 {
     float4 sampleDirection = GetPowerCosineWeightedHemisphere(GetBlueNoise().yz, specularPower);
     float3 halfwayDirection = TangentToWorld(normal, sampleDirection.xyz);
-    float3 reflectionDirection = normalize(reflect(-eyeDirection, halfwayDirection));
 
-    return TraceReflection(depth, position, reflectionDirection) * 
-        pow(saturate(dot(normal, halfwayDirection)), specularPower) / max(0.000001, sampleDirection.w * PI);
+    float3 reflection = TraceReflection(depth, position, halfwayDirection, eyeDirection);
+    reflection *= pow(saturate(dot(normal, halfwayDirection)), specularPower) / max(0.000001, sampleDirection.w * PI);
+
+    return reflection;
+}
+
+float3 TraceRefraction(
+    uint depth,
+    float3 position,
+    float3 normal,
+    float3 eyeDirection)
+{
+    if (depth > 0)
+        return 0.0;
+
+    return TraceSecondaryRay(depth, position, refract(-eyeDirection, normal, 0.95));
 }
 
 #endif

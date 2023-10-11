@@ -3,6 +3,16 @@
 #include "GBufferData.hlsli"
 #include "RootSignature.hlsli"
 
+struct ShadingParams
+{
+    float3 EyePosition;
+    float3 EyeDirection;
+    float3 Shadow;
+    float3 GlobalIllumination;
+    float3 Reflection;
+    float3 Refraction;
+};
+
 float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     float3 lightDirection, float3 diffuseColor, float3 specularColor)
 {
@@ -10,11 +20,11 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     {
         diffuseColor *= gBufferData.Diffuse;
 
-        float nDotL = dot(gBufferData.Normal, lightDirection);
+        float cosTheta = dot(gBufferData.Normal, lightDirection);
         if (gBufferData.Flags & GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT)
-            nDotL = (nDotL - 0.05) / (1.0 - 0.05);
+            cosTheta = (cosTheta - 0.05) / (1.0 - 0.05);
 
-        diffuseColor *= saturate(nDotL);
+        diffuseColor *= saturate(cosTheta);
     }
     else
     {
@@ -27,9 +37,9 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
 
         float3 halfwayDirection = normalize(lightDirection + eyeDirection);
 
-        float nDotH = dot(gBufferData.Normal, halfwayDirection);
-        nDotH = pow(saturate(nDotH), gBufferData.SpecularPower);
-        specularColor *= nDotH;
+        float cosTheta = dot(gBufferData.Normal, halfwayDirection);
+        cosTheta = pow(saturate(cosTheta), gBufferData.SpecularPower);
+        specularColor *= cosTheta;
     }
     else
     {
@@ -55,6 +65,87 @@ float3 ComputeEyeLighting(GBufferData gBufferData, float3 eyePosition, float3 ey
     }
 
     return eyeLighting;
+}
+
+float3 ComputeGlobalIllumination(GBufferData gBufferData, float3 globalIllumination)
+{
+    return globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
+}
+
+float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
+{
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
+        reflection *= min(1.0, gBufferData.Specular * gBufferData.SpecularLevel);
+
+    return reflection * gBufferData.SpecularFresnel;
+}
+
+float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)
+{
+    if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_MUL)
+        return refraction * gBufferData.Diffuse;
+
+    if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_OPACITY)
+        return refraction * (1.0 - gBufferData.RefractionAlpha);
+
+    return refraction;
+}
+
+float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingParams)
+{
+    float3 resultShading = 0.0;
+
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
+    {
+        resultShading += ComputeDirectLighting(gBufferData, shadingParams.EyeDirection,
+            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb) * shadingParams.Shadow;
+    }
+
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
+        resultShading += ComputeEyeLighting(gBufferData, shadingParams.EyePosition, shadingParams.EyeDirection);
+
+    resultShading += ComputeGlobalIllumination(gBufferData, shadingParams.GlobalIllumination);
+    resultShading += ComputeReflection(gBufferData, shadingParams.Reflection);
+    resultShading += ComputeRefraction(gBufferData, shadingParams.Refraction);
+    resultShading += gBufferData.Emission;
+
+    return resultShading;
+}
+
+float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
+{
+    float3 resultShading = 0.0;
+
+    float3 halfwayDirection = normalize(shadingParams.EyeDirection - mrgGlobalLight_Direction.xyz);
+    float cosTheta = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularPower);
+    float3 specularLight = mrgGlobalLight_Specular.rgb * cosTheta * gBufferData.Specular * gBufferData.SpecularPower * gBufferData.SpecularLevel;
+    resultShading += specularLight * shadingParams.Shadow;
+
+    float specularFresnel = 1.0 - abs(dot(gBufferData.Normal, shadingParams.EyeDirection));
+    specularFresnel *= specularFresnel;
+    specularFresnel *= specularFresnel;
+
+    float diffuseFresnel = (1.0 - specularFresnel) * 
+        pow(abs(dot(gBufferData.Normal, g_EyeDirection.xyz)), gBufferData.SpecularPower);
+
+    resultShading += shadingParams.GlobalIllumination * diffuseFresnel;
+
+    float luminance = dot(resultShading, float3(0.2126, 0.7152, 0.0722));
+    resultShading += shadingParams.Reflection * specularFresnel * (1.0 - saturate(luminance));
+
+    float3 diffuseLight = 0.0;
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
+    {
+        diffuseLight = mrgGlobalLight_Diffuse.rgb * saturate(dot(gBufferData.Normal, -mrgGlobalLight_Direction.xyz)) * shadingParams.Shadow;
+        diffuseLight += shadingParams.GlobalIllumination;
+        diffuseLight *= gBufferData.Diffuse;
+        diffuseLight *= gBufferData.RefractionAlpha;
+    }
+
+    resultShading += diffuseLight;
+    resultShading += ComputeRefraction(gBufferData, shadingParams.Refraction);
+
+    return resultShading;
 }
 
 float2 ComputeLightScattering(float3 position, float3 viewPosition)
@@ -89,6 +180,12 @@ float2 ComputePixelPosition(float3 position, float4x4 view, float4x4 projection)
 {
     float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);
     return (projectedPosition.xy / projectedPosition.w * float2(0.5, -0.5) + 0.5) * DispatchRaysDimensions().xy;
+}
+
+float ComputeDepth(float3 position, float4x4 view, float4x4 projection)
+{
+    float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);
+    return projectedPosition.z / projectedPosition.w;
 }
 
 #endif 

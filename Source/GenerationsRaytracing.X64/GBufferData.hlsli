@@ -17,6 +17,10 @@
 #define GBUFFER_FLAG_HAS_REFRACTION             (1 << 8)
 #define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 9)
 #define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 10)
+#define GBUFFER_FLAG_IS_WATER                   (1 << 11)
+#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 12)
+#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 13)
+#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 14)
 
 struct GBufferData
 {
@@ -25,6 +29,7 @@ struct GBufferData
 
     float3 Diffuse;
     float Alpha;
+    float RefractionAlpha;
 
     float3 Specular;
     float SpecularPower;
@@ -91,6 +96,28 @@ float2 ComputeEnvMapTexCoord(float3 eyeDirection, float3 normal)
     r3.x = r2.y * C[2].x + r2.w;
     r3.y = r2.x * C[0].x;
     return r3.xy;
+}
+
+void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
+{
+    gBufferData.Flags = GBUFFER_FLAG_IGNORE_EYE_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT | 
+        GBUFFER_FLAG_HAS_REFRACTION | GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_WATER;
+
+    float2 offset = material.WaterParam.xy * g_TimeParam.y * 0.08;
+    
+    float4 decal = SampleMaterialTexture2D(material.DiffuseTexture,
+        vertex.TexCoords[material.DiffuseTexture >> 30] + float2(0.0, offset.x));
+    
+    gBufferData.Diffuse = decal.rgb * vertex.Color.rgb;
+    gBufferData.Alpha = decal.a * vertex.Color.a;
+    
+    float4 normal1 = SampleMaterialTexture2D(material.NormalTexture,
+        vertex.TexCoords[material.NormalTexture >> 30] + float2(0.0, offset.x));
+    
+    float4 normal2 = SampleMaterialTexture2D(material.NormalTexture2,
+        vertex.TexCoords[material.NormalTexture2 >> 30] + float2(0.0, offset.y));
+    
+    gBufferData.Normal = normalize(DecodeNormalMap(vertex, normal1) + DecodeNormalMap(vertex, normal2));
 }
 
 GBufferData CreateGBufferData(Vertex vertex, Material material)
@@ -535,6 +562,29 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_WATER_ADD:
+            {
+                CreateWaterGBufferData(vertex, material, gBufferData);
+                gBufferData.Flags |= GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_REFRACTION_ADD;
+                break;
+            }
+
+        case SHADER_TYPE_WATER_MUL:
+            {
+                CreateWaterGBufferData(vertex, material, gBufferData);
+                gBufferData.Flags |= GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_REFRACTION_MUL;
+                break;
+            }
+
+        case SHADER_TYPE_WATER_OPACITY:
+            {
+                CreateWaterGBufferData(vertex, material, gBufferData);
+                gBufferData.Flags |= GBUFFER_FLAG_REFRACTION_OPACITY;
+                gBufferData.RefractionAlpha = gBufferData.Alpha;
+                gBufferData.Alpha = 1.0;
+                break;
+            }
+
         default:
             {
                 gBufferData.Flags = 
@@ -568,7 +618,10 @@ GBufferData LoadGBufferData(uint2 index)
     gBufferData.Position = positionFlags.xyz;
     gBufferData.Flags = asuint(positionFlags.w);
 
-    gBufferData.Diffuse = g_DiffuseTexture[index];
+    float4 diffuseRefractionAlpha = g_DiffuseRefractionAlpha[index];
+    gBufferData.Diffuse = diffuseRefractionAlpha.rgb;
+    gBufferData.RefractionAlpha = diffuseRefractionAlpha.a;
+
     gBufferData.Specular = g_SpecularTexture[index];
 
     float3 specularPowerLevelFresnel = g_SpecularPowerLevelFresnelTexture[index];
@@ -586,7 +639,7 @@ GBufferData LoadGBufferData(uint2 index)
 void StoreGBufferData(uint2 index, GBufferData gBufferData)
 {
     g_PositionFlagsTexture[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
-    g_DiffuseTexture[index] = gBufferData.Diffuse;
+    g_DiffuseRefractionAlpha[index] = float4(gBufferData.Diffuse, gBufferData.RefractionAlpha);
     g_SpecularTexture[index] = gBufferData.Specular;
     g_SpecularPowerLevelFresnelTexture[index] = float3(gBufferData.SpecularPower, gBufferData.SpecularLevel, gBufferData.SpecularFresnel);
     g_NormalTexture[index] = gBufferData.Normal * 0.5 + 0.5;

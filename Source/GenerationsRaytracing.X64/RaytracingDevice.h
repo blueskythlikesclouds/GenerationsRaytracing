@@ -78,6 +78,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
     ComPtr<D3D12MA::Allocation> m_globalIlluminationTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
+    ComPtr<D3D12MA::Allocation> m_refractionTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     uint32_t m_srvId = 0;

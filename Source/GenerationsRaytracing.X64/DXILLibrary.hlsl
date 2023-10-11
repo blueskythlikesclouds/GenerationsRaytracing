@@ -83,10 +83,15 @@ void GlobalIlluminationRayGeneration()
 
     float3 globalIllumination = 0.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
+    {
         globalIllumination = TraceGlobalIllumination(0, gBufferData.Position, gBufferData.Normal);
 
+        float luminance = dot(globalIllumination, float3(0.299, 0.587, 0.114));
+        globalIllumination = saturate((globalIllumination - luminance) * g_GI1Scale.w + luminance);
+        globalIllumination *= g_GI0Scale.rgb;
+    }
+
     g_GlobalIlluminationTexture[DispatchRaysIndex().xy] = globalIllumination;
-        
 }
 
 [shader("raygeneration")]
@@ -103,7 +108,8 @@ void ReflectionRayGeneration()
         {
             reflection = TraceReflection(0, 
                 gBufferData.Position, 
-                reflect(-eyeDirection, gBufferData.Normal));
+                gBufferData.Normal,
+                eyeDirection);
         }
         else
         {
@@ -115,6 +121,22 @@ void ReflectionRayGeneration()
         }
     }
     g_ReflectionTexture[DispatchRaysIndex().xy] = reflection;
+}
+
+[shader("raygeneration")]
+void RefractionRayGeneration()
+{
+    GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
+
+    float3 refraction = 0.0;
+    if (gBufferData.Flags & GBUFFER_FLAG_HAS_REFRACTION)
+    {
+        refraction = TraceRefraction(0, 
+            gBufferData.Position, 
+            gBufferData.Normal, 
+            normalize(g_EyePosition.xyz - gBufferData.Position));
+    }
+    g_RefractionTexture[DispatchRaysIndex().xy] = refraction;
 }
 
 [shader("miss")]

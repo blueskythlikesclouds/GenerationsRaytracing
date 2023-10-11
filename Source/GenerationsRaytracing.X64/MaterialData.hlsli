@@ -40,6 +40,7 @@ struct Material
     float4 EmissionParam;
     float4 OffsetParam;
     float4 HeightParam;
+    float4 WaterParam;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)
