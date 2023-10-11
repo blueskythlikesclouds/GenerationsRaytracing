@@ -379,7 +379,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler()
 
     getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularPowerLevelFresnelTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_falloffTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
 
