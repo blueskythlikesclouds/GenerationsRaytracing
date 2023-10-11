@@ -765,6 +765,7 @@ void RaytracingDevice::procMsgCreateMaterial()
     auto& material = m_materials[message.materialId];
 
     material.shaderType = message.shaderType;
+    material.flags = message.flags;
 
     const std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
     {

@@ -17,6 +17,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Event.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)GeometryFlags.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)LockGuard.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)MaterialFlags.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)MemoryMappedFile.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Message.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Mutex.h" />

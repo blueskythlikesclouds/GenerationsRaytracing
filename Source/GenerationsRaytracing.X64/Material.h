@@ -3,6 +3,7 @@
 struct Material
 {
     uint32_t shaderType;
+    uint32_t flags;
     uint32_t diffuseTexture;
     uint32_t diffuseTexture2;
     uint32_t specularTexture;
@@ -17,7 +18,6 @@ struct Material
     uint32_t displacementTexture1;
     uint32_t displacementTexture2;
     uint32_t padding0;
-    uint32_t padding1;
 
     float texCoordOffsets[8];
     float diffuse[4];

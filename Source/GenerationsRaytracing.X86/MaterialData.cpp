@@ -1,6 +1,7 @@
 #include "MaterialData.h"
 
 #include "FreeListAllocator.h"
+#include "MaterialFlags.h"
 #include "Message.h"
 #include "MessageSender.h"
 #include "ShaderType.h"
@@ -45,6 +46,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
     message.materialId = materialDataEx.m_materialId;
     message.shaderType = SHADER_TYPE_COMMON;
+    message.flags = materialDataEx.m_Additive ? MATERIAL_FLAG_ADDITIVE : NULL;
 
     if (materialDataEx.m_spShaderListData != nullptr)
     {

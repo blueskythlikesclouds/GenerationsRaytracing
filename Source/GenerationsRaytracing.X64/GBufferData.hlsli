@@ -3,6 +3,7 @@
 
 #include "GeometryDesc.hlsli"
 #include "MaterialData.hlsli"
+#include "MaterialFlags.h"
 #include "RootSignature.hlsli"
 #include "ShaderType.h"
 

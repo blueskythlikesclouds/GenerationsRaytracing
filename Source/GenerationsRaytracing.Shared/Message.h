@@ -375,6 +375,7 @@ struct MsgCreateMaterial
 
     uint32_t materialId;
     uint32_t shaderType;
+    uint32_t flags;
     Texture diffuseTexture;
     Texture diffuseTexture2;
     Texture specularTexture;

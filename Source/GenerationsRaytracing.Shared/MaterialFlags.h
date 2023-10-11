@@ -1,0 +1,6 @@
+#ifndef MATERIAL_FLAGS_H
+#define MATERIAL_FLAGS_H
+
+#define MATERIAL_FLAG_ADDITIVE (1 << 0)
+
+#endif

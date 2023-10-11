@@ -4,6 +4,7 @@
 struct Material
 {
     uint ShaderType;
+    uint Flags;
     uint DiffuseTexture;
     uint DiffuseTexture2;
     uint SpecularTexture;
@@ -18,7 +19,6 @@ struct Material
     uint DisplacementTexture1;
     uint DisplacementTexture2;
     uint Padding0;
-    uint Padding1;
 
     float4 TexCoordOffsets[2];
     float4 Diffuse;
