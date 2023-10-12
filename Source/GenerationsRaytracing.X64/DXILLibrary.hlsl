@@ -106,14 +106,14 @@ void ReflectionRayGeneration()
 
         if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
         {
-            reflection = TraceReflection(0, 
+            reflection = TraceReflection(1, 
                 gBufferData.Position, 
                 gBufferData.Normal,
                 eyeDirection);
         }
         else
         {
-            reflection = TraceReflection(0,
+            reflection = TraceReflection(1,
                 gBufferData.Position,
                 gBufferData.Normal,
                 gBufferData.SpecularPower,
@@ -131,7 +131,7 @@ void RefractionRayGeneration()
     float3 refraction = 0.0;
     if (gBufferData.Flags & GBUFFER_FLAG_HAS_REFRACTION)
     {
-        refraction = TraceRefraction(0, 
+        refraction = TraceRefraction(1, 
             gBufferData.Position, 
             gBufferData.Normal, 
             normalize(g_EyePosition.xyz - gBufferData.Position));
@@ -167,9 +167,9 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         payload.Color = 0.0;
     }
 
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth < 2)
     {
-        payload.Color += TraceGlobalIllumination(payload.Depth,
+        payload.Color += TraceGlobalIllumination(payload.Depth + 1,
             gBufferData.Position, gBufferData.Normal) * (gBufferData.Diffuse + gBufferData.Falloff);
     }
 

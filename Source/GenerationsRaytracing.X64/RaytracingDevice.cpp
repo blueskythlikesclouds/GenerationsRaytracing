@@ -997,7 +997,7 @@ RaytracingDevice::RaytracingDevice()
     shaderConfigSubobject.Config(sizeof(float) * 5, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
-    pipelineConfigSubobject.Config(3);
+    pipelineConfigSubobject.Config(4);
 
     CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT rootSignatureSubobject(stateObject);
     rootSignatureSubobject.SetRootSignature(m_raytracingRootSignature.Get());

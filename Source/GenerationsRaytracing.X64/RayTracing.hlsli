@@ -104,7 +104,7 @@ float3 TraceSecondaryRay(uint depth, float3 position, float3 direction)
     ray.TMax = 10000.0;
 
     SecondaryRayPayload payload = (SecondaryRayPayload) 0;
-    payload.Depth = depth + 1;
+    payload.Depth = depth;
 
     TraceRay(
         g_BVH,
@@ -121,9 +121,6 @@ float3 TraceSecondaryRay(uint depth, float3 position, float3 direction)
 
 float3 TraceGlobalIllumination(uint depth, float3 position, float3 normal)
 {
-    if (depth > 1)
-        return 0.0;
-
     float4 random = GetBlueNoise();
     float3 sampleDirection = GetCosineWeightedHemisphere(depth == 0 ? random.xy : random.zw);
 
@@ -136,9 +133,6 @@ float3 TraceReflection(
     float3 normal,
     float3 eyeDirection)
 {
-    if (depth > 0)
-        return 0.0;
-
     return TraceSecondaryRay(depth, position, reflect(-eyeDirection, normal));
 }
 
@@ -164,9 +158,6 @@ float3 TraceRefraction(
     float3 normal,
     float3 eyeDirection)
 {
-    if (depth > 0)
-        return 0.0;
-
     return TraceSecondaryRay(depth, position, refract(-eyeDirection, normal, 0.95));
 }
 
