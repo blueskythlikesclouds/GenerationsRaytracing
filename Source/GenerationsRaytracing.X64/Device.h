@@ -55,6 +55,7 @@ protected:
     SwapChain m_swapChain;
     uint32_t m_swapChainTextureId = 0;
     uint32_t m_frame = 0;
+    uint32_t m_nextFrame = 1;
     bool m_shouldPresent = false;
 
     ComPtr<ID3D12Device5> m_device;

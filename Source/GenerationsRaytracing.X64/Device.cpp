@@ -1816,7 +1816,8 @@ void Device::processMessages()
     m_samplerDescsFirst = 0;
     m_samplerDescsLast = _countof(m_samplerDescs) - 1;
 
-    m_frame = (m_frame + 1) % NUM_FRAMES;
+    m_frame = m_nextFrame;
+    m_nextFrame = (m_frame + 1) % NUM_FRAMES;
 
     // Wait for graphics command list to finish
     m_graphicsQueue.wait(m_fenceValues[m_frame]);

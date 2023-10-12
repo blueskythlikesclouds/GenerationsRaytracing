@@ -57,7 +57,7 @@ void MessageSender::commitMessages()
     LockGuard lock(m_mutex);
 
     while (m_pendingMessages)
-        Sleep(0);
+        ;
 
     m_messages[m_offset] = MsgEof::s_id;
     ++m_offset;

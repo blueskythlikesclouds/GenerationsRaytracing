@@ -11,7 +11,7 @@
 #include "PoseComputeShader.h"
 #include "ResolveComputeShader.h"
 
-static constexpr uint32_t SCRATCH_BUFFER_SIZE = 16 * 1024 * 1024;
+static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 
 uint32_t RaytracingDevice::allocateGeometryDescs(uint32_t count)
 {
@@ -220,25 +220,30 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
     return globalsRT;
 }
 
-void RaytracingDevice::createTopLevelAccelStruct()
+bool RaytracingDevice::createTopLevelAccelStruct()
 {
     handlePendingBottomLevelAccelStructBuilds();
 
-    for (const auto& [textureId, textureIdOffset] : m_delayedTextures)
+    for (const auto& delayedTexture : m_delayedTextures[m_frame])
     {
-        if (m_textures.size() > textureId &&
-            m_textures[textureId].allocation != nullptr)
+        auto& material = m_materials[delayedTexture.materialId];
+
+        // Process material only if it's the one we want
+        if (material.version == delayedTexture.materialVersion)
         {
-            *reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(m_materials.data()) + textureIdOffset) |= m_textures[textureId].srvIndex;
-        }
-        else
-        {
-            // Still not loaded, leave it for next creation
-            m_tempDelayedTextures.emplace_back(textureId, textureIdOffset);
+            if (m_textures.size() > delayedTexture.textureId && 
+                m_textures[delayedTexture.textureId].allocation != nullptr)
+            {
+                (&material.version)[delayedTexture.textureIdOffset] |= m_textures[delayedTexture.textureId].srvIndex;
+            }
+            else
+            {
+                m_delayedTextures[m_nextFrame].push_back(delayedTexture);
+            }
         }
     }
 
-    for (const auto& [instanceId, bottomLevelAccelStructId] : m_delayedInstances)
+    for (const auto& [instanceId, bottomLevelAccelStructId] : m_delayedInstances[m_frame])
     {
         if (m_bottomLevelAccelStructs.size() > bottomLevelAccelStructId &&
             m_bottomLevelAccelStructs[bottomLevelAccelStructId].allocation != nullptr)
@@ -251,19 +256,15 @@ void RaytracingDevice::createTopLevelAccelStruct()
         }
         else
         {
-            // Still not loaded, leave it for next creation
-            m_tempDelayedInstances.emplace_back(instanceId, bottomLevelAccelStructId);
+            m_delayedInstances[m_nextFrame].emplace_back(instanceId, bottomLevelAccelStructId);
         }
     }
 
-    m_delayedTextures.clear();
-    m_delayedInstances.clear();
-
-    std::swap(m_delayedTextures, m_tempDelayedTextures);
-    std::swap(m_delayedInstances, m_tempDelayedInstances);
+    m_delayedTextures[m_frame].clear();
+    m_delayedInstances[m_frame].clear();
 
     if (m_instanceDescs.empty())
-        return;
+        return false;
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
     accelStructDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
@@ -275,6 +276,8 @@ void RaytracingDevice::createTopLevelAccelStruct()
 
     getGraphicsCommandList().commitBarriers();
     buildAccelStruct(m_topLevelAccelStruct, accelStructDesc, true);
+
+    return true;
 }
 
 void RaytracingDevice::createRaytracingTextures()
@@ -555,21 +558,29 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
     case MsgReleaseRaytracingResource::ResourceType::Instance:
         memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
 
-        if (m_instanceGeometries.size() > message.resourceId)
+        if (m_geometryRanges.size() > message.resourceId)
         {
-            auto& instanceGeometries = m_instanceGeometries[message.resourceId];
-            if (instanceGeometries.first != NULL)
-                freeGeometryDescs(instanceGeometries.first, instanceGeometries.second);
+            auto& geometryRange = m_geometryRanges[message.resourceId];
+            if (geometryRange.first != NULL)
+                freeGeometryDescs(geometryRange.first, geometryRange.second);
 
-            instanceGeometries = {};
+            geometryRange = {};
         }
 
         break;
 
     case MsgReleaseRaytracingResource::ResourceType::Material:
+    {
         if (m_materials.size() > message.resourceId)
-            memset(&m_materials[message.resourceId], 0, sizeof(Material));
+        {
+            auto& material = m_materials[message.resourceId];
+
+            uint32_t version = material.version + 1;
+            memset(&material, 0, sizeof(Material));
+            material.version = version;
+        }
         break;
+    }
 
     default:
         assert(false);
@@ -584,12 +595,12 @@ void RaytracingDevice::procMsgCreateInstance()
     if (m_instanceDescs.size() <= message.instanceId)
         m_instanceDescs.resize(message.instanceId + 1);
 
-    if (m_instanceDescs2.size() <= message.instanceId)
-        m_instanceDescs2.resize(message.instanceId + 1);
+    if (m_instanceDescsEx.size() <= message.instanceId)
+        m_instanceDescsEx.resize(message.instanceId + 1);
 
     auto& instanceDesc = m_instanceDescs[message.instanceId];
 
-    memcpy(m_instanceDescs2[message.instanceId].prevTransform, 
+    memcpy(m_instanceDescsEx[message.instanceId].prevTransform, 
         message.storePrevTransform ? instanceDesc.Transform : message.transform, sizeof(message.transform));
 
     memcpy(instanceDesc.Transform, message.transform, sizeof(message.transform));
@@ -598,7 +609,7 @@ void RaytracingDevice::procMsgCreateInstance()
         m_bottomLevelAccelStructs[message.bottomLevelAccelStructId].allocation == nullptr)
     {
         // Not loaded yet, defer assignment to top level acceleration structure creation
-        m_delayedInstances.emplace_back(message.instanceId, message.bottomLevelAccelStructId);
+        m_delayedInstances[m_frame].emplace_back(message.instanceId, message.bottomLevelAccelStructId);
         assert(message.dataSize == 0); // Skinned models should not fall here!
     }
     else
@@ -607,10 +618,10 @@ void RaytracingDevice::procMsgCreateInstance()
 
         if (message.dataSize > 0)
         {
-            if (m_instanceGeometries.size() <= message.instanceId)
-                m_instanceGeometries.resize(message.instanceId + 1);
+            if (m_geometryRanges.size() <= message.instanceId)
+                m_geometryRanges.resize(message.instanceId + 1);
 
-            auto& [geometryId, geometryCount] = m_instanceGeometries[message.instanceId];
+            auto& [geometryId, geometryCount] = m_geometryRanges[message.instanceId];
 
             if (geometryId == NULL)
             {
@@ -661,6 +672,9 @@ void RaytracingDevice::procMsgTraceRays()
 {
     const auto& message = m_messageReceiver.getMessage<MsgTraceRays>();
 
+    if (!createTopLevelAccelStruct())
+        return;
+
     m_globalsRT.blueNoiseTextureId = m_textures[message.blueNoiseTextureId].srvIndex;
 
     if (m_width != message.width || m_height != message.height)
@@ -669,8 +683,6 @@ void RaytracingDevice::procMsgTraceRays()
         m_height = message.height;
         createRaytracingTextures();
     }
-
-    createTopLevelAccelStruct();
 
     const auto globalsVS = createBuffer(&m_globalsVS,
         sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
@@ -689,8 +701,8 @@ void RaytracingDevice::procMsgTraceRays()
     const auto materials = createBuffer(m_materials.data(),
         static_cast<uint32_t>(m_materials.size() * sizeof(Material)), 0x10);
 
-    const auto instanceDescs = createBuffer(m_instanceDescs2.data(),
-        static_cast<uint32_t>(m_instanceDescs2.size() * sizeof(InstanceDesc)), 0x10);
+    const auto instanceDescs = createBuffer(m_instanceDescsEx.data(),
+        static_cast<uint32_t>(m_instanceDescsEx.size() * sizeof(InstanceDesc)), 0x10);
 
     if (m_curRootSignature != m_raytracingRootSignature.Get())
     {
@@ -763,6 +775,7 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     auto& material = m_materials[message.materialId];
 
+    ++material.version;
     material.shaderType = message.shaderType;
     material.flags = message.flags;
 
@@ -798,8 +811,13 @@ void RaytracingDevice::procMsgCreateMaterial()
             if (m_textures.size() <= srcTexture.id || m_textures[srcTexture.id].allocation == nullptr)
             {
                 // Delay texture assignment if the texture is not loaded yet
-                m_delayedTextures.emplace_back(srcTexture.id,
-                    reinterpret_cast<uintptr_t>(&dstTexture) - reinterpret_cast<uintptr_t>(m_materials.data()));
+                m_delayedTextures[m_frame].emplace_back(DelayedTexture
+                    {
+                        message.materialId,
+                        material.version,
+                        srcTexture.id,
+                        static_cast<uint32_t>(&dstTexture - &material.version)
+                    });
             }
             else
             {

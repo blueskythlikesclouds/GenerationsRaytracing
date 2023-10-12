@@ -27,10 +27,8 @@ HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInsta
     if (This->m_instanceId != NULL)
     {
         auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-
         message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
         message.resourceId = This->m_instanceId;
-
         s_messageSender.endMessage();
 
         s_freeListAllocator.free(This->m_instanceId);

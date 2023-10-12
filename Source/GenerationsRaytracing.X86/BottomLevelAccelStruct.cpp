@@ -13,7 +13,7 @@
 class MeshDataEx : public Hedgehog::Mirage::CMeshData
 {
 public:
-    DX_PATCH::IDirect3DIndexBuffer9* m_indices;
+    ComPtr<IndexBuffer> m_indices;
     uint32_t m_indexCount;
 };
 
@@ -21,7 +21,7 @@ HOOK(MeshDataEx*, __fastcall, MeshDataConstructor, 0x722860, MeshDataEx* This)
 {
     const auto result = originalMeshDataConstructor(This);
 
-    This->m_indices = nullptr;
+    new (std::addressof(This->m_indices)) ComPtr<IndexBuffer>();
     This->m_indexCount = 0;
 
     return result;
@@ -29,9 +29,7 @@ HOOK(MeshDataEx*, __fastcall, MeshDataConstructor, 0x722860, MeshDataEx* This)
 
 HOOK(void, __fastcall, MeshDataDestructor, 0x7227A0, MeshDataEx* This)
 {
-    if (This->m_indices != nullptr)
-        This->m_indices->Release();
-
+    This->m_indices.~ComPtr();
     originalMeshDataDestructor(This);
 }
 
@@ -96,22 +94,21 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* data)
         return;
 
     const size_t byteSize = indices.size() * sizeof(uint16_t);
-    const auto indexBuffer = new IndexBuffer(byteSize);
+
+    meshData.m_indices.Attach(new IndexBuffer(byteSize));
+    meshData.m_indexCount = indices.size();
 
     auto& createMessage = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
     createMessage.length = byteSize;
     createMessage.format = D3DFMT_INDEX16;
-    createMessage.indexBufferId = indexBuffer->getId();
+    createMessage.indexBufferId = meshData.m_indices->getId();
     s_messageSender.endMessage();
 
     auto& copyMessage = s_messageSender.makeMessage<MsgWriteIndexBuffer>(byteSize);
-    copyMessage.indexBufferId = indexBuffer->getId();
+    copyMessage.indexBufferId = meshData.m_indices->getId();
     copyMessage.offset = 0;
     memcpy(copyMessage.data, indices.data(), byteSize);
     s_messageSender.endMessage();
-
-    meshData.m_indices = reinterpret_cast<DX_PATCH::IDirect3DIndexBuffer9*>(indexBuffer);
-    meshData.m_indexCount = indices.size();
 }
 
 HOOK(void, __cdecl, MakeMeshData, 0x744A00,
@@ -200,7 +197,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
         geometryDesc->flags = flags;
         geometryDesc->indexCount = meshDataEx.m_indexCount;
         geometryDesc->vertexCount = meshDataEx.m_VertexNum;
-        geometryDesc->indexBufferId = reinterpret_cast<const IndexBuffer*>(meshDataEx.m_indices)->getId();
+        geometryDesc->indexBufferId = meshDataEx.m_indices->getId();
 
         uint32_t vertexOffset = meshDataEx.m_VertexOffset;
         if (poseVertexBufferId != NULL)

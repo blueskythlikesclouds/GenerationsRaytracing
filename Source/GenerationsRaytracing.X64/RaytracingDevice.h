@@ -19,6 +19,14 @@ struct alignas(0x10) GlobalsRT
     uint32_t blueNoiseOffsetY;
 };
 
+struct DelayedTexture
+{
+    uint32_t materialId;
+    uint32_t materialVersion;
+    uint32_t textureId;
+    uint32_t textureIdOffset;
+};
+
 class RaytracingDevice final : public Device
 {
 protected:
@@ -43,16 +51,14 @@ protected:
 
     // Material
     std::vector<Material> m_materials;
-    std::vector<std::pair<uint32_t, uintptr_t>> m_delayedTextures;
-    std::vector<std::pair<uint32_t, uintptr_t>> m_tempDelayedTextures;
+    std::vector<DelayedTexture> m_delayedTextures[NUM_FRAMES];
 
     // Top Level Accel Struct
     std::vector<D3D12_RAYTRACING_INSTANCE_DESC> m_instanceDescs;
-    std::vector<InstanceDesc> m_instanceDescs2;
-    std::vector<std::pair<uint32_t, uint32_t>> m_delayedInstances;
-    std::vector<std::pair<uint32_t, uint32_t>> m_tempDelayedInstances;
+    std::vector<std::pair<uint32_t, uint32_t>> m_delayedInstances[NUM_FRAMES];
+    std::vector<InstanceDesc> m_instanceDescsEx;
+    std::vector<std::pair<uint32_t, uint32_t>> m_geometryRanges;
     ComPtr<D3D12MA::Allocation> m_topLevelAccelStruct;
-    std::vector<std::pair<uint32_t, uint32_t>> m_instanceGeometries;
 
     // Upscaler
     std::unique_ptr<Upscaler> m_upscaler;
@@ -106,7 +112,7 @@ protected:
     void handlePendingBottomLevelAccelStructBuilds();
 
     D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT();
-    void createTopLevelAccelStruct();
+    bool createTopLevelAccelStruct();
 
     void createRaytracingTextures();
     void resolveAndDispatchUpscaler();
