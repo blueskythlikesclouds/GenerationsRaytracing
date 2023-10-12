@@ -157,10 +157,10 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
     {
-        payload.Color = ComputeDirectLighting(gBufferData,
-            -mrgGlobalLight_Direction.xyz, -WorldRayDirection(), mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+        payload.Color = ComputeDirectLighting(gBufferData, -WorldRayDirection(), 
+            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
 
-        payload.Color *= TraceHardShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
+        payload.Color *= TraceSoftShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
     }
     else
     {
