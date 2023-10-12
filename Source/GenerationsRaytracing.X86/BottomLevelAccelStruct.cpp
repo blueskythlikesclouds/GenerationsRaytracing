@@ -398,29 +398,37 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
     {
         if (instanceInfoEx.m_poseVertexBuffer == nullptr)
         {
+            uint32_t length = 0;
+            traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+            {
+                length += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
+            });
+
+            if (length == 0)
+                return;
+
             instanceInfoEx.m_poseVertexBuffer.Attach(new VertexBuffer(NULL));
 
             auto& message = s_messageSender.makeMessage<MsgCreateVertexBuffer>();
             message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
             message.allowUnorderedAccess = true;
+            message.length = length;
+            s_messageSender.endMessage();
 
-            uint32_t length = 0;
+            uint32_t offset = 0;
             traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
             {
                 auto& copyMessage = s_messageSender.makeMessage<MsgCopyVertexBuffer>();
                 copyMessage.dstVertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
-                copyMessage.dstOffset = length;
+                copyMessage.dstOffset = offset;
                 copyMessage.srcVertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
                 copyMessage.srcOffset = meshDataEx.m_VertexOffset;
                 copyMessage.numBytes = meshDataEx.m_VertexNum * meshDataEx.m_VertexSize;
                 s_messageSender.endMessage();
 
-                length += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
+                offset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
 
             });
-
-            message.length = length;
-            s_messageSender.endMessage();
         }
 
         uint32_t geometryCount = 0;
