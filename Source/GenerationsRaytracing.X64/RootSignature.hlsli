@@ -105,9 +105,11 @@ cbuffer GlobalsRT : register(b2)
     row_major float4x4 g_MtxPrevProjection;
     row_major float4x4 g_MtxPrevView;
     float3 g_EnvironmentColor;
-    uint g_BlueNoiseTextureId;
+    bool g_UseEnvironmentColor;
     float2 g_PixelJitter;
     uint2 g_BlueNoiseOffset;
+    uint g_BlueNoiseTextureId;
+    uint g_SkyTextureId;
 }
 
 RaytracingAccelerationStructure g_BVH : register(t0);
@@ -132,6 +134,6 @@ RWTexture2D<float3> g_GlobalIlluminationTexture : register(u12);
 RWTexture2D<float3> g_ReflectionTexture : register(u13);
 RWTexture2D<float3> g_RefractionTexture : register(u14);
 
-
+SamplerState g_SamplerState : register(s0);
 
 #endif

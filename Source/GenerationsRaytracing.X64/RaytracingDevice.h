@@ -12,11 +12,13 @@ struct alignas(0x10) GlobalsRT
     float prevProj[4][4];
     float prevView[4][4];
     float environmentColor[3];
-    uint32_t blueNoiseTextureId;
+    uint32_t useEnvironmentColor;
     float pixelJitterX;
     float pixelJitterY;
     uint32_t blueNoiseOffsetX;
     uint32_t blueNoiseOffsetY;
+    uint32_t blueNoiseTextureId;
+    uint32_t skyTextureId;
 };
 
 struct DelayedTexture
@@ -27,16 +29,16 @@ struct DelayedTexture
     uint32_t textureIdOffset;
 };
 
-struct GlobalsSky
+struct GlobalsSB
 {
-    float projection[4][4];
+    float proj[4][4];
     float view[4][4];
-    float pixelJitterX;
-    float pixelJitterY;
     float backgroundScale;
     uint32_t diffuseTextureId;
     uint32_t alphaTextureId;
     uint32_t emissionTextureId;
+    float ambient[4];
+    float texCoordOffsets[8];
 };
 
 class RaytracingDevice final : public Device
@@ -113,6 +115,11 @@ protected:
     ComPtr<ID3D12PipelineState> m_posePipeline;
     std::vector<uint32_t> m_pendingPoses;
 
+    // Sky
+    ComPtr<ID3D12RootSignature> m_skyRootSignature;
+    ComPtr<ID3D12Resource> m_skyTexture;
+    uint32_t m_skyRtvIndices[6]{};
+
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
@@ -137,6 +144,7 @@ protected:
     void procMsgCreateMaterial();
     void procMsgBuildBottomLevelAccelStruct();
     void procMsgComputePose();
+    void procMsgRenderSky();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

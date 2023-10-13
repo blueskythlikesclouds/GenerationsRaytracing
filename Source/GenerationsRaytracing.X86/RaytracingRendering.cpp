@@ -37,10 +37,15 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
 
 static void renderSky(Hedgehog::Mirage::CRenderable* renderable)
 {
+    if (!renderable->m_Enabled)
+        return;
+
     if (auto element = dynamic_cast<const Hedgehog::Mirage::CSingleElement*>(renderable))
     {
-        if (element->m_spModel->IsMadeAll() && (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
+        if (element->m_spModel->IsMadeAll() && 
+            (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
         {
+            ModelData::renderSky(*element->m_spModel);
         }
     }
     else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))
@@ -61,16 +66,21 @@ static void __cdecl implOfSceneRender(void* a1)
 {
     setSceneSurface(a1, *reinterpret_cast<void**>(**reinterpret_cast<uint32_t**>(a1) + 84));
 
+    const auto& renderScene = Sonic::CGameDocument::GetInstance()->GetWorld()->m_pMember->m_spRenderScene;
+
+    const auto skyFindResult = renderScene->m_BundleMap.find("Sky");
+    if (skyFindResult != renderScene->m_BundleMap.end())
+        renderSky(skyFindResult->second.get());
+
     MaterialData::createPendingMaterials();
 
-    const auto& renderScene = Sonic::CGameDocument::GetInstance()->GetWorld()->m_pMember->m_spRenderScene;
     const Hedgehog::Base::CStringSymbol symbols[] = { "Object", "Object_Overlay", "Player" };
 
     for (const auto& symbol : symbols)
     {
-        const auto pair = renderScene->m_BundleMap.find(symbol);
-        if (pair != renderScene->m_BundleMap.end())
-            createInstancesAndBottomLevelAccelStructs(pair->second.get(), true);
+        const auto categoryFindResult = renderScene->m_BundleMap.find(symbol);
+        if (categoryFindResult != renderScene->m_BundleMap.end())
+            createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get(), true);
     }
 
     auto& traceRaysMessage = s_messageSender.makeMessage<MsgTraceRays>();
@@ -91,9 +101,7 @@ void RaytracingRendering::init()
     WRITE_MEMORY(0x13DDB20, uint32_t, 0); // Disable sky render
     WRITE_MEMORY(0x13DDBA0, uint32_t, 0); // Disable reflection map 1
     WRITE_MEMORY(0x13DDC20, uint32_t, 0); // Disable reflection map 2
-    WRITE_MEMORY(0x13DDCA0, uint32_t, 2); // Override game scene child count
-    WRITE_MEMORY(0x13DC2F0, uint32_t, 0xB); // Render sky before tracing rays
-    WRITE_MEMORY(0x13DC2F8, uint32_t, 0x80107); // ^^ 
-    WRITE_MEMORY(0x13DC318, void*, &implOfSceneRender); // Override scene render function
+    WRITE_MEMORY(0x13DDCA0, uint32_t, 1); // Override game scene child count
+    WRITE_MEMORY(0x13DC2D8, void*, &implOfSceneRender); // Override scene render function
     WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
 }

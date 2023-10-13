@@ -29,11 +29,17 @@ void PrimaryRayGeneration()
 [shader("miss")]
 void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 {
+    TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
+
     GBufferData gBufferData = (GBufferData) 0;
+    gBufferData.Position = WorldRayOrigin() + WorldRayDirection() * g_CameraNearFarAspect.y;
     gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
+    gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection(), 0).rgb;
     StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 
-    g_MotionVectorsTexture[DispatchRaysIndex().xy] = 0.0;
+    g_MotionVectorsTexture[DispatchRaysIndex().xy] = 
+        ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
+        ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
 }
 
 [shader("closesthit")]
@@ -142,8 +148,27 @@ void RefractionRayGeneration()
 [shader("miss")]
 void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
-    payload.Color = g_EnvironmentColor;
-    payload.T = -1.0;
+    TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
+    payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection(), 0).rgb;
+}
+
+[shader("miss")]
+void ShadowMiss(inout ShadowRayPayload payload : SV_RayPayload)
+{
+    payload.Miss = true;
+}
+
+[shader("miss")]
+void GlobalIlluminationMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+{
+    if (g_UseEnvironmentColor)
+    {
+        payload.Color = g_EnvironmentColor;
+    }
+    else
+    {
+        SecondaryMiss(payload);
+    }
 }
 
 [shader("closesthit")]
@@ -174,8 +199,6 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     }
 
     payload.Color += gBufferData.Emission;
-
-    payload.T = RayTCurrent();
 }
 
 [shader("anyhit")]

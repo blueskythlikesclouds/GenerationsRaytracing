@@ -11,8 +11,12 @@ struct [raypayload] PrimaryRayPayload
 struct [raypayload] SecondaryRayPayload
 {
     float3 Color : read(caller)     : write(closesthit, miss);
-    float T      : read(caller)     : write(closesthit, miss);
     uint Depth   : read(closesthit) : write(caller);
+};
+
+struct [raypayload] ShadowRayPayload
+{
+    bool Miss : read(caller) : write(caller, miss);
 };
 
 float4 GetBlueNoise()
@@ -65,7 +69,7 @@ float TraceHardShadow(float3 position, float3 direction)
     ray.TMin = 0.001;
     ray.TMax = 10000.0;
 
-    SecondaryRayPayload payload = (SecondaryRayPayload) 0;
+    ShadowRayPayload payload = (ShadowRayPayload) 0;
 
     TraceRay(
         g_BVH,
@@ -77,7 +81,7 @@ float TraceHardShadow(float3 position, float3 direction)
         ray,
         payload);
 
-    return payload.T >= 0.0 ? 0.0 : 1.0;
+    return payload.Miss ? 1.0 : 0.0;
 }
 
 float TraceSoftShadow(float3 position, float3 direction)
@@ -94,7 +98,7 @@ float TraceSoftShadow(float3 position, float3 direction)
     return TraceHardShadow(position, TangentToWorld(direction, sample));
 }
 
-float3 TraceSecondaryRay(uint depth, float3 position, float3 direction)
+float3 TraceSecondaryRay(uint depth, float3 position, float3 direction, uint missShaderIndex)
 {
     RayDesc ray;
 
@@ -112,7 +116,7 @@ float3 TraceSecondaryRay(uint depth, float3 position, float3 direction)
         1,
         1,
         0,
-        1,
+        missShaderIndex,
         ray,
         payload);
 
@@ -124,7 +128,7 @@ float3 TraceGlobalIllumination(uint depth, float3 position, float3 normal)
     float4 random = GetBlueNoise();
     float3 sampleDirection = GetCosineWeightedHemisphere(depth == 0 ? random.xy : random.zw);
 
-    return TraceSecondaryRay(depth, position, TangentToWorld(normal, sampleDirection));
+    return TraceSecondaryRay(depth, position, TangentToWorld(normal, sampleDirection), 2);
 }
 
 float3 TraceReflection(
@@ -133,7 +137,7 @@ float3 TraceReflection(
     float3 normal,
     float3 eyeDirection)
 {
-    return TraceSecondaryRay(depth, position, reflect(-eyeDirection, normal));
+    return TraceSecondaryRay(depth, position, reflect(-eyeDirection, normal), 3);
 }
 
 float3 TraceReflection(
@@ -158,7 +162,7 @@ float3 TraceRefraction(
     float3 normal,
     float3 eyeDirection)
 {
-    return TraceSecondaryRay(depth, position, refract(-eyeDirection, normal, 0.95));
+    return TraceSecondaryRay(depth, position, refract(-eyeDirection, normal, 0.95), 3);
 }
 
 #endif

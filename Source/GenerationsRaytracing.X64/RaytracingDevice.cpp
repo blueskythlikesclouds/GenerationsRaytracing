@@ -10,6 +10,8 @@
 #include "RootSignature.h"
 #include "PoseComputeShader.h"
 #include "ResolveComputeShader.h"
+#include "SkyVertexShader.h"
+#include "SkyPixelShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 
@@ -203,7 +205,7 @@ static void haltonJitter(int frame, int phases, float& jitterX, float& jitterY)
 
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
 {
-    EnvironmentColor::get(m_globalsPS, m_globalsRT.environmentColor);
+    m_globalsRT.useEnvironmentColor = EnvironmentColor::get(m_globalsPS, m_globalsRT.environmentColor);
 
     haltonJitter(m_currentFrame, 64, m_globalsRT.pixelJitterX, m_globalsRT.pixelJitterY);
     ++m_currentFrame;
@@ -429,6 +431,7 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil()
     const D3D12_VIEWPORT viewport = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 
+    getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
     getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvId));
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
@@ -730,7 +733,7 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.MissShaderTable.StartAddress = shaderTable + 10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.MissShaderTable.SizeInBytes = 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.MissShaderTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.HitGroupTable.StartAddress = shaderTable + 12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.HitGroupTable.StartAddress = shaderTable + 14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.HitGroupTable.SizeInBytes = 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.HitGroupTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.Width = m_upscaler->getWidth();
@@ -921,6 +924,204 @@ void RaytracingDevice::procMsgComputePose()
     m_pendingPoses.push_back(message.vertexBufferId);
 }
 
+static float s_skyView[] =
+{
+    0, 0, -1, 0,
+    0, 1, 0, 0,
+    1, 0, 0, 0,
+    0, 0, 0, 1,
+
+    0, 0, 1, 0,
+    0, 1, 0, 0,
+    -1, 0, 0, 0,
+    0, 0, 0, 1,
+
+    1, 0, 0, 0,
+    0, 0, -1, 0,
+    0, 1, 0, 0,
+    0, 0, 0, 1,
+
+    1, 0, 0, 0,
+    0, 0, 1, 0,
+    0, -1, 0, 0,
+    0, 0, 0, 1,
+
+    -1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, -1, 0,
+    0, 0, 0, 1,
+
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+};
+
+static float s_skyProj[] =
+{
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, -1, -1,
+    0, 0, 0, 0
+};
+
+void RaytracingDevice::procMsgRenderSky()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgRenderSky>();
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
+    pipelineDesc.pRootSignature = m_skyRootSignature.Get();
+    pipelineDesc.VS.pShaderBytecode = SkyVertexShader;
+    pipelineDesc.VS.BytecodeLength = sizeof(SkyVertexShader);
+    pipelineDesc.PS.pShaderBytecode = SkyPixelShader;
+    pipelineDesc.PS.BytecodeLength = sizeof(SkyPixelShader);
+    pipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    pipelineDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
+    pipelineDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    pipelineDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    pipelineDesc.SampleMask = ~0;
+    pipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    pipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    pipelineDesc.RasterizerState.DepthClipEnable = FALSE;
+    pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    pipelineDesc.NumRenderTargets = 1;
+    pipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    pipelineDesc.SampleDesc.Count = 1;
+
+    D3D12_SAMPLER_DESC samplerDesc{};
+    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
+    samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+
+    uint32_t samplerId = NULL;
+
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_skyRootSignature.Get());
+
+    constexpr D3D12_VIEWPORT viewport = { 0, 0, 1024, 1024, 0.0f, 1.0f };
+    constexpr D3D12_RECT scissorRect = { 0, 0, 1024, 1024 };
+
+    getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
+    getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &scissorRect);
+
+    getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+    GlobalsSB globalsSB;
+    memcpy(globalsSB.proj, s_skyProj, sizeof(globalsSB.proj));
+    globalsSB.backgroundScale = message.backgroundScale;
+
+    for (size_t i = 0; i < 6; i++)
+    {
+        memcpy(globalsSB.view, &s_skyView[i * 16], sizeof(globalsSB.view));
+
+        const auto renderTarget = m_rtvDescriptorHeap.getCpuHandle(m_skyRtvIndices[i]);
+        getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &renderTarget, FALSE, nullptr);
+
+        auto geometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data);
+        auto lastGeometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data + message.dataSize);
+
+        while (geometryDesc < lastGeometryDesc)
+        {
+            std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
+            {
+                { geometryDesc->diffuseTexture, globalsSB.diffuseTextureId },
+                { geometryDesc->alphaTexture, globalsSB.alphaTextureId },
+                { geometryDesc->emissionTexture, globalsSB.emissionTextureId }
+            };
+
+            for (auto& [srcTexture, dstTexture] : textures)
+            {
+                if (srcTexture.id != NULL)
+                {
+                    dstTexture = m_textures[srcTexture.id].srvIndex;
+
+                    if (samplerDesc.AddressU != srcTexture.addressModeU ||
+                        samplerDesc.AddressV != srcTexture.addressModeV)
+                    {
+                        samplerDesc.AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeU);
+                        samplerDesc.AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeV);
+
+                        auto& sampler = m_samplers[XXH3_64bits(&samplerDesc, sizeof(samplerDesc))];
+                        if (!sampler)
+                        {
+                            sampler = m_samplerDescriptorHeap.allocate();
+                            m_device->CreateSampler(&samplerDesc, m_samplerDescriptorHeap.getCpuHandle(sampler));
+                        }
+
+                        samplerId = sampler;
+                    }
+
+                    dstTexture |= samplerId << 20;
+                    dstTexture |= srcTexture.texCoordIndex << 30;
+                }
+                else
+                {
+                    dstTexture = 0;
+                }
+            }
+
+            memcpy(globalsSB.ambient, geometryDesc->ambient, sizeof(globalsSB.ambient));
+            memcpy(globalsSB.texCoordOffsets, geometryDesc->texCoordOffsets, sizeof(globalsSB.texCoordOffsets));
+
+            auto& vertexDeclaration = m_vertexDeclarations[geometryDesc->vertexDeclarationId];
+
+            if (pipelineDesc.InputLayout.pInputElementDescs != vertexDeclaration.inputElements.get() ||
+                pipelineDesc.InputLayout.NumElements != vertexDeclaration.inputElementsSize)
+            {
+                pipelineDesc.InputLayout.pInputElementDescs = vertexDeclaration.inputElements.get();
+                pipelineDesc.InputLayout.NumElements = vertexDeclaration.inputElementsSize;
+
+                auto& pipeline = m_pipelines[XXH3_64bits(&pipelineDesc, sizeof(pipelineDesc))];
+                if (!pipeline)
+                {
+                    HRESULT hr = m_device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
+                    assert(SUCCEEDED(hr) && pipeline != nullptr);
+                }
+
+                getUnderlyingGraphicsCommandList()->SetPipelineState(pipeline.Get());
+                m_curPipeline = pipeline.Get();
+            }
+
+            getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0,
+                createBuffer(&globalsSB, sizeof(GlobalsSB), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+
+            D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+            vertexBufferView.BufferLocation = m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
+            vertexBufferView.StrideInBytes = geometryDesc->vertexStride;
+            vertexBufferView.SizeInBytes = geometryDesc->vertexStride * geometryDesc->vertexCount;
+
+            getUnderlyingGraphicsCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
+
+            D3D12_INDEX_BUFFER_VIEW indexBufferView{};
+            indexBufferView.BufferLocation = m_indexBuffers[geometryDesc->indexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
+            indexBufferView.SizeInBytes = geometryDesc->indexCount * 2;
+            indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+                
+            getUnderlyingGraphicsCommandList()->IASetIndexBuffer(&indexBufferView);
+
+            getUnderlyingGraphicsCommandList()->DrawIndexedInstanced(geometryDesc->indexCount, 1, 0, 0, 0);
+
+            ++geometryDesc;
+        }
+    }
+
+    getGraphicsCommandList().transitionBarrier(m_skyTexture.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, 
+        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    m_dirtyFlags |=
+        DIRTY_FLAG_ROOT_SIGNATURE |
+        DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL |
+        DIRTY_FLAG_PIPELINE_DESC |
+        DIRTY_FLAG_GLOBALS_PS |
+        DIRTY_FLAG_GLOBALS_VS |
+        DIRTY_FLAG_VIEWPORT |
+        DIRTY_FLAG_SCISSOR_RECT |
+        DIRTY_FLAG_VERTEX_BUFFER_VIEWS |
+        DIRTY_FLAG_INDEX_BUFFER_VIEW |
+        DIRTY_FLAG_PRIMITIVE_TOPOLOGY;
+}
+
+
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -930,8 +1131,9 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgCreateInstance::s_id: procMsgCreateInstance(); break;
     case MsgTraceRays::s_id: procMsgTraceRays(); break;
     case MsgCreateMaterial::s_id: procMsgCreateMaterial(); break;
-    case MsgComputePose::s_id: procMsgComputePose(); break;
     case MsgBuildBottomLevelAccelStruct::s_id: procMsgBuildBottomLevelAccelStruct(); break;
+    case MsgComputePose::s_id: procMsgComputePose(); break;
+    case MsgRenderSky::s_id: procMsgRenderSky(); break;
     default: return false;
     }
 
@@ -963,12 +1165,18 @@ RaytracingDevice::RaytracingDevice()
     raytracingRootParams[6].InitAsShaderResourceView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[7].InitAsShaderResourceView(3, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
 
+    D3D12_STATIC_SAMPLER_DESC raytracingStaticSamplers[1]{};
+    raytracingStaticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    raytracingStaticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    raytracingStaticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    raytracingStaticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
     RootSignature::create(
         m_device.Get(),
         raytracingRootParams,
         _countof(raytracingRootParams),
-        nullptr,
-        0,
+        raytracingStaticSamplers,
+        _countof(raytracingStaticSamplers),
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | 
@@ -994,7 +1202,7 @@ RaytracingDevice::RaytracingDevice()
     secondaryHitGroupSubobject.SetClosestHitShaderImport(L"SecondaryClosestHit");
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
-    shaderConfigSubobject.Config(sizeof(float) * 5, sizeof(float) * 2);
+    shaderConfigSubobject.Config(sizeof(float) * 4, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
     pipelineConfigSubobject.Config(4);
@@ -1010,16 +1218,21 @@ RaytracingDevice::RaytracingDevice()
 
     assert(SUCCEEDED(hr) && properties != nullptr);
 
-    m_shaderTable.resize(14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    m_shaderTable.resize(16 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
     memcpy(&m_shaderTable[0 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     memcpy(&m_shaderTable[2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ShadowRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     memcpy(&m_shaderTable[4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"GlobalIlluminationRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     memcpy(&m_shaderTable[6 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ReflectionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     memcpy(&m_shaderTable[8 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"RefractionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
     memcpy(&m_shaderTable[10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[11 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"SecondaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[13 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"SecondaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[11 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ShadowMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"GlobalIlluminationMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[13 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"SecondaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+    memcpy(&m_shaderTable[14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[15 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"SecondaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
     for (auto& scratchBuffer : m_scratchBuffers)
     {
@@ -1063,28 +1276,28 @@ RaytracingDevice::RaytracingDevice()
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS,
         m_copyTextureRootSignature);
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
-    pipelineDesc.pRootSignature = m_copyTextureRootSignature.Get();
-    pipelineDesc.VS.pShaderBytecode = CopyTextureVertexShader;
-    pipelineDesc.VS.BytecodeLength = sizeof(CopyTextureVertexShader);
-    pipelineDesc.PS.pShaderBytecode = CopyTexturePixelShader;
-    pipelineDesc.PS.BytecodeLength = sizeof(CopyTexturePixelShader);
-    pipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    pipelineDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
-    pipelineDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    pipelineDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-    pipelineDesc.SampleMask = ~0;
-    pipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    pipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    pipelineDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-    pipelineDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-    pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    pipelineDesc.NumRenderTargets = 1;
-    pipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    pipelineDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    pipelineDesc.SampleDesc.Count = 1;
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC copyPipelineDesc{};
+    copyPipelineDesc.pRootSignature = m_copyTextureRootSignature.Get();
+    copyPipelineDesc.VS.pShaderBytecode = CopyTextureVertexShader;
+    copyPipelineDesc.VS.BytecodeLength = sizeof(CopyTextureVertexShader);
+    copyPipelineDesc.PS.pShaderBytecode = CopyTexturePixelShader;
+    copyPipelineDesc.PS.BytecodeLength = sizeof(CopyTexturePixelShader);
+    copyPipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    copyPipelineDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
+    copyPipelineDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    copyPipelineDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    copyPipelineDesc.SampleMask = ~0;
+    copyPipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    copyPipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    copyPipelineDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    copyPipelineDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+    copyPipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    copyPipelineDesc.NumRenderTargets = 1;
+    copyPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    copyPipelineDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    copyPipelineDesc.SampleDesc.Count = 1;
 
-    hr = m_device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
+    hr = m_device->CreateGraphicsPipelineState(&copyPipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
 
     assert(SUCCEEDED(hr) && m_copyTexturePipeline != nullptr);
 
@@ -1130,4 +1343,58 @@ RaytracingDevice::RaytracingDevice()
     hr = m_device->CreateComputePipelineState(&resolvePipelineDesc, IID_PPV_ARGS(m_resolvePipeline.GetAddressOf()));
 
     assert(SUCCEEDED(hr) && m_resolvePipeline != nullptr);
+
+    CD3DX12_ROOT_PARAMETER1 skyRootParams[1];
+    skyRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
+
+    RootSignature::create(
+        m_device.Get(),
+        skyRootParams,
+        _countof(skyRootParams),
+        nullptr,
+        0,
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
+        D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED,
+        m_skyRootSignature);
+
+    const auto skyResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+        DXGI_FORMAT_R16G16B16A16_FLOAT,
+        1024, 1024, 6, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+
+    const CD3DX12_HEAP_PROPERTIES skyHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
+
+    hr = m_device->CreateCommittedResource(
+        &skyHeapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &skyResourceDesc,
+        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        nullptr,
+        IID_PPV_ARGS(m_skyTexture.GetAddressOf()));
+
+    assert(SUCCEEDED(hr) && m_skyTexture != nullptr);
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC skySrvDesc{};
+    skySrvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    skySrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+    skySrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    skySrvDesc.TextureCube.MipLevels = 1;
+
+    m_globalsRT.skyTextureId = m_descriptorHeap.allocate();
+    m_device->CreateShaderResourceView(m_skyTexture.Get(), 
+        &skySrvDesc, m_descriptorHeap.getCpuHandle(m_globalsRT.skyTextureId));
+
+    for (uint32_t i = 0; i < 6; i++)
+    {
+        m_skyRtvIndices[i] = m_rtvDescriptorHeap.allocate();
+
+        D3D12_RENDER_TARGET_VIEW_DESC skyRtvDesc{};
+        skyRtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        skyRtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+        skyRtvDesc.Texture2DArray.FirstArraySlice = i;
+        skyRtvDesc.Texture2DArray.ArraySize = 1;
+
+        m_device->CreateRenderTargetView(m_skyTexture.Get(),
+            &skyRtvDesc, m_rtvDescriptorHeap.getCpuHandle(m_skyRtvIndices[i]));
+    }
 }

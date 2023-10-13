@@ -4,7 +4,7 @@
 [numthreads(32, 32, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-    float4 color = 0.0;
+    float3 color = 0.0;
     float depth = 1.0;
 
     GBufferData gBufferData = LoadGBufferData(dispatchThreadId.xy);
@@ -21,18 +21,21 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         shadingParams.Refraction = g_RefractionTexture[dispatchThreadId.xy];
 
         if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
-            color.rgb = ComputeWaterShading(gBufferData, shadingParams);
+            color = ComputeWaterShading(gBufferData, shadingParams);
         else
-            color.rgb = ComputeGeometryShading(gBufferData, shadingParams);
+            color = ComputeGeometryShading(gBufferData, shadingParams);
 
         float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
         float2 lightScattering = ComputeLightScattering(gBufferData.Position, viewPosition);
 
-        color.rgb = color.rgb * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
-        color.a = 1.0;
+        color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
         depth = ComputeDepth(gBufferData.Position, g_MtxView, g_MtxProjection);
     }
+    else
+    {
+        color = g_EmissionTexture[dispatchThreadId.xy];
+    }
 
-    g_ColorTexture[dispatchThreadId.xy] = color;
+    g_ColorTexture[dispatchThreadId.xy] = float4(color, 1.0);
     g_DepthTexture[dispatchThreadId.xy] = depth;
 }

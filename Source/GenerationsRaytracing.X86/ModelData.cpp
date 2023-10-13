@@ -6,6 +6,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "InstanceData.h"
+#include "Texture.h"
 #include "VertexBuffer.h"
 #include "VertexDeclaration.h"
 
@@ -557,8 +558,73 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
     size_t geometryCount = 0;
     traverseModelData(modelData, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
 
+    if (geometryCount == 0)
+        return;
+
     auto& message = s_messageSender.makeMessage<MsgRenderSky>(
         geometryCount * sizeof(MsgRenderSky::GeometryDesc));
+
+    message.backgroundScale = *reinterpret_cast<const float*>(0x1A489EC);
+    memset(message.data, 0, geometryCount * sizeof(MsgRenderSky::GeometryDesc));
+
+    auto geometryDesc = reinterpret_cast<MsgRenderSky::GeometryDesc*>(message.data);
+
+    const Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
+    const Hedgehog::Base::CStringSymbol opacitySymbol("opacity");
+    const Hedgehog::Base::CStringSymbol displacementSymbol("displacement");
+
+    const Hedgehog::Base::CStringSymbol ambientSymbol("ambient");
+    const Hedgehog::Base::CStringSymbol texCoordOffsetSymbol("mrgTexcoordOffset");
+
+    traverseModelData(modelData, [&](const MeshDataEx& meshDataEx, uint32_t)
+    {
+        geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
+        geometryDesc->vertexStride = meshDataEx.m_VertexSize;
+        geometryDesc->vertexCount = meshDataEx.m_VertexNum;
+        geometryDesc->indexBufferId = reinterpret_cast<const IndexBuffer*>(meshDataEx.m_pD3DIndexBuffer)->getId();
+        geometryDesc->indexCount = meshDataEx.m_IndexNum;
+        geometryDesc->vertexDeclarationId = reinterpret_cast<const VertexDeclaration*>(meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration)->getId();
+    
+        if (meshDataEx.m_spMaterial != nullptr)
+        {
+            for (const auto& texture : meshDataEx.m_spMaterial->m_spTexsetData->m_TextureList)
+            {
+                if (!texture->IsMadeOne() || texture->m_spPictureData == nullptr ||
+                    texture->m_spPictureData->m_pD3DTexture == nullptr)
+                {
+                    continue;
+                }
+    
+                MsgCreateMaterial::Texture* textureDesc = nullptr;
+    
+                if (texture->m_Type == diffuseSymbol)
+                    textureDesc = &geometryDesc->diffuseTexture;
+                else if (texture->m_Type == opacitySymbol)
+                    textureDesc = &geometryDesc->alphaTexture;
+                else if (texture->m_Type == displacementSymbol)
+                    textureDesc = &geometryDesc->emissionTexture;
+    
+                if (textureDesc != nullptr)
+                {
+                    textureDesc->id = reinterpret_cast<const Texture*>(texture->m_spPictureData->m_pD3DTexture)->getId();
+                    textureDesc->addressModeU = std::max(D3DTADDRESS_WRAP, texture->m_SamplerState.AddressU);
+                    textureDesc->addressModeV = std::max(D3DTADDRESS_WRAP, texture->m_SamplerState.AddressV);
+                    textureDesc->texCoordIndex = texture->m_TexcoordIndex;
+                }
+            }
+
+            for (const auto& float4Param : meshDataEx.m_spMaterial->m_Float4Params)
+            {
+                if (float4Param->m_Name == ambientSymbol)
+                    memcpy(geometryDesc->ambient, float4Param->m_spValue.get(), sizeof(geometryDesc->ambient));
+
+                else if (float4Param->m_Name == texCoordOffsetSymbol)
+                    memcpy(geometryDesc->texCoordOffsets, float4Param->m_spValue.get(), sizeof(geometryDesc->texCoordOffsets));
+            }
+        }
+    
+        ++geometryDesc;
+    });
 
     s_messageSender.endMessage();
 }
