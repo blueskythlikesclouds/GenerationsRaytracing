@@ -1,4 +1,4 @@
-#include "BottomLevelAccelStruct.h"
+#include "ModelData.h"
 #include "Configuration.h"
 #include "D3D9.h"
 #include "PictureData.h"
@@ -9,7 +9,7 @@
 #include "MessageSender.h"
 #include "ProcessUtil.h"
 #include "RaytracingRendering.h"
-#include "TopLevelAccelStruct.h"
+#include "InstanceData.h"
 #include "TriangleFan.h"
 #include "TriangleStrip.h"
 #include "Window.h"
@@ -44,8 +44,8 @@ extern "C" void __declspec(dllexport) Init()
     HalfPixel::init();
     TriangleStrip::init();
     MemoryAllocator::init();
-    BottomLevelAccelStruct::init();
-    TopLevelAccelStruct::init();
+    ModelData::init();
+    InstanceData::init();
     RaytracingRendering::init();
     MaterialData::init();
 

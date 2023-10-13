@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FreeListAllocator.h"
+
 class InstanceInfoEx;
 
 class TerrainModelDataEx : public Hedgehog::Mirage::CTerrainModelData
@@ -16,11 +18,14 @@ public:
 
 using MaterialMap = hh::map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>>;
 
-struct BottomLevelAccelStruct
+struct ModelData
 {
-    static uint32_t allocate();
-    static void create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled);
-    static void release(uint32_t bottomLevelAccelStructId);
+    static inline FreeListAllocator s_idAllocator;
+
+    static void createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, 
+        const MaterialMap& materialMap, bool isEnabled);
+
+    static void renderSky(Hedgehog::Mirage::CModelData& modelData);
 
     static void init();
 };

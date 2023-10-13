@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FreeListAllocator.h"
 #include "VertexBuffer.h"
 
 class InstanceInfoEx : public Hedgehog::Mirage::CInstanceInfo
@@ -10,9 +11,9 @@ public:
     ComPtr<VertexBuffer> m_poseVertexBuffer;
 };
 
-struct TopLevelAccelStruct
+struct InstanceData
 {
-    static uint32_t allocate();
-    static void free(uint32_t id);
+    static inline FreeListAllocator s_idAllocator;
+
     static void init();
 };

@@ -66,13 +66,13 @@
     <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c">
       <Filter>Dependencies</Filter>
     </ClCompile>
-    <ClCompile Include="BottomLevelAccelStruct.cpp">
+    <ClCompile Include="ModelData.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
     <ClCompile Include="MemoryAllocator.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
-    <ClCompile Include="TopLevelAccelStruct.cpp">
+    <ClCompile Include="InstanceData.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
     <ClCompile Include="RaytracingRendering.cpp">
@@ -144,13 +144,13 @@
     <ClInclude Include="TriangleStrip.h">
       <Filter>Patch</Filter>
     </ClInclude>
-    <ClInclude Include="BottomLevelAccelStruct.h">
+    <ClInclude Include="ModelData.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="MemoryAllocator.h">
       <Filter>Patch</Filter>
     </ClInclude>
-    <ClInclude Include="TopLevelAccelStruct.h">
+    <ClInclude Include="InstanceData.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="RaytracingRendering.h">

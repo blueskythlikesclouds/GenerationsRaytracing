@@ -1693,6 +1693,8 @@ Device::Device()
         samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
     }
 
+    m_device->CreateSampler(m_samplerDescs, m_samplerDescriptorHeap.getCpuHandle(0));
+
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;

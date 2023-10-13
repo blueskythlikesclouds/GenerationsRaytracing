@@ -1,11 +1,8 @@
-#include "TopLevelAccelStruct.h"
+#include "InstanceData.h"
 
-#include "BottomLevelAccelStruct.h"
-#include "FreeListAllocator.h"
+#include "ModelData.h"
 #include "Message.h"
 #include "MessageSender.h"
-
-static FreeListAllocator s_freeListAllocator;
 
 class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoData
 {
@@ -31,7 +28,7 @@ HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInsta
         message.resourceId = This->m_instanceId;
         s_messageSender.endMessage();
 
-        s_freeListAllocator.free(This->m_instanceId);
+        InstanceData::s_idAllocator.free(This->m_instanceId);
     }
 
     originalTerrainInstanceInfoDataDestructor(This);
@@ -45,7 +42,7 @@ static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoData
             reinterpret_cast<TerrainModelDataEx*>(This->m_spTerrainModel.get());
 
         if (terrainModelEx->m_bottomLevelAccelStructId == NULL)
-            terrainModelEx->m_bottomLevelAccelStructId = BottomLevelAccelStruct::allocate();
+            terrainModelEx->m_bottomLevelAccelStructId = ModelData::s_idAllocator.allocate();
 
         auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
 
@@ -56,7 +53,7 @@ static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoData
         }
 
         if (This->m_instanceId == NULL)
-            This->m_instanceId = s_freeListAllocator.allocate();
+            This->m_instanceId = InstanceData::s_idAllocator.allocate();
 
         message.instanceId = This->m_instanceId;
         message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
@@ -88,28 +85,25 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
         message.resourceId = This->m_instanceId;
         s_messageSender.endMessage();
 
-        s_freeListAllocator.free(This->m_instanceId);
+        InstanceData::s_idAllocator.free(This->m_instanceId);
     }
 
     if (This->m_bottomLevelAccelStructId != NULL)
-        BottomLevelAccelStruct::release(This->m_bottomLevelAccelStructId);
+    {
+        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
+        message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
+        message.resourceId = This->m_bottomLevelAccelStructId;
+        s_messageSender.endMessage();
+
+        ModelData::s_idAllocator.free(This->m_bottomLevelAccelStructId);
+    }
 
     This->m_poseVertexBuffer.~ComPtr();
 
     originalInstanceInfoDestructor(This);
 }
 
-uint32_t TopLevelAccelStruct::allocate()
-{
-    return s_freeListAllocator.allocate();
-}
-
-void TopLevelAccelStruct::free(uint32_t id)
-{
-    s_freeListAllocator.free(id);
-}
-
-void TopLevelAccelStruct::init()
+void InstanceData::init()
 {
     WRITE_MEMORY(0x7176AC, uint32_t, sizeof(TerrainInstanceInfoDataEx));
     WRITE_MEMORY(0x725593, uint32_t, sizeof(TerrainInstanceInfoDataEx));

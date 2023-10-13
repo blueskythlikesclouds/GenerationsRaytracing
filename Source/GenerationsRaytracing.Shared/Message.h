@@ -465,6 +465,10 @@ struct MsgRenderSky
     {
         uint32_t vertexBufferId;
         uint32_t indexBufferId;
+        uint32_t vertexDeclarationId;
+        MsgCreateMaterial::Texture diffuseTexture;
+        MsgCreateMaterial::Texture alphaTexture;
+        MsgCreateMaterial::Texture emissionTexture;
     };
 
     float backgroundScale;

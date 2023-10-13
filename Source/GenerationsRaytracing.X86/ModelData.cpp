@@ -1,12 +1,11 @@
-#include "BottomLevelAccelStruct.h"
+#include "ModelData.h"
 
-#include "FreeListAllocator.h"
 #include "GeometryFlags.h"
 #include "IndexBuffer.h"
 #include "MaterialData.h"
 #include "Message.h"
 #include "MessageSender.h"
-#include "TopLevelAccelStruct.h"
+#include "InstanceData.h"
 #include "VertexBuffer.h"
 #include "VertexDeclaration.h"
 
@@ -262,7 +261,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
             meshDataEx.m_spMaterial.get());
 
         if (materialDataEx->m_materialId == NULL)
-            materialDataEx->m_materialId = MaterialData::allocate();
+            materialDataEx->m_materialId = MaterialData::s_idAllocator.allocate();
 
         geometryDesc->materialId = materialDataEx->m_materialId;
 
@@ -273,8 +272,6 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
 
     s_messageSender.endMessage();
 }
-
-static FreeListAllocator s_freeListAllocator;
 
 HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, TerrainModelDataEx* This)
 {
@@ -296,7 +293,7 @@ HOOK(void, __fastcall, TerrainModelDataDestructor, 0x717230, TerrainModelDataEx*
 
         s_messageSender.endMessage();
 
-        s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
+        ModelData::s_idAllocator.free(This->m_bottomLevelAccelStructId);
     }
 
     originalTerrainModelDataDestructor(This);
@@ -313,7 +310,7 @@ static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* This)
     else
     {
         if (This->m_bottomLevelAccelStructId == NULL)
-            This->m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+            This->m_bottomLevelAccelStructId = ModelData::s_idAllocator.allocate();
 
         createBottomLevelAccelStruct(*This, This->m_bottomLevelAccelStructId, NULL);
     }
@@ -328,7 +325,7 @@ HOOK(void, __fastcall, CreateShareVertexBuffer, 0x72EBD0, void* This)
     for (const auto terrainModelData : s_terrainModelList)
     {
         if (terrainModelData->m_bottomLevelAccelStructId == NULL)
-            terrainModelData->m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
+            terrainModelData->m_bottomLevelAccelStructId = ModelData::s_idAllocator.allocate();
 
         createBottomLevelAccelStruct(*terrainModelData, terrainModelData->m_bottomLevelAccelStructId, NULL);
     }
@@ -354,18 +351,12 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
         message.resourceId = This->m_bottomLevelAccelStructId;
         s_messageSender.endMessage();
 
-        s_freeListAllocator.free(This->m_bottomLevelAccelStructId);
+        ModelData::s_idAllocator.free(This->m_bottomLevelAccelStructId);
     }
 
     originalModelDataDestructor(This);
 }
-
-uint32_t BottomLevelAccelStruct::allocate()
-{
-    return s_freeListAllocator.allocate();
-}
-
-void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled)
+void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled)
 {
     if (!isEnabled)
     {
@@ -376,7 +367,7 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
             message.resourceId = instanceInfoEx.m_instanceId;
             s_messageSender.endMessage();
 
-            TopLevelAccelStruct::free(instanceInfoEx.m_instanceId);
+            InstanceData::s_idAllocator.free(instanceInfoEx.m_instanceId);
             instanceInfoEx.m_instanceId = NULL;
         }
 
@@ -500,8 +491,8 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
 
         if (instanceInfoEx.m_bottomLevelAccelStructId == NULL)
         {
-            instanceInfoEx.m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
-            createBottomLevelAccelStruct(modelDataEx,
+            instanceInfoEx.m_bottomLevelAccelStructId = s_idAllocator.allocate();
+            ::createBottomLevelAccelStruct(modelDataEx,
                 instanceInfoEx.m_bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId());
         }
         else
@@ -519,8 +510,8 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
 
         if (modelDataEx.m_bottomLevelAccelStructId == NULL)
         {
-            modelDataEx.m_bottomLevelAccelStructId = s_freeListAllocator.allocate();
-            createBottomLevelAccelStruct(modelDataEx, modelDataEx.m_bottomLevelAccelStructId, NULL);
+            modelDataEx.m_bottomLevelAccelStructId = s_idAllocator.allocate();
+            ::createBottomLevelAccelStruct(modelDataEx, modelDataEx.m_bottomLevelAccelStructId, NULL);
         }
         bottomLevelAccelStructId = modelDataEx.m_bottomLevelAccelStructId;
     }
@@ -536,7 +527,7 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
 
     if (instanceInfoEx.m_instanceId == NULL)
     {
-        instanceInfoEx.m_instanceId = TopLevelAccelStruct::allocate();
+        instanceInfoEx.m_instanceId = InstanceData::s_idAllocator.allocate();
         message.storePrevTransform = false;
     }
     else
@@ -561,17 +552,18 @@ void BottomLevelAccelStruct::create(ModelDataEx& modelDataEx, InstanceInfoEx& in
     s_messageSender.endMessage();
 }
 
-void BottomLevelAccelStruct::release(uint32_t bottomLevelAccelStructId)
+void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
 {
-    auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-    message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
-    message.resourceId = bottomLevelAccelStructId;
-    s_messageSender.endMessage();
+    size_t geometryCount = 0;
+    traverseModelData(modelData, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
 
-    s_freeListAllocator.free(bottomLevelAccelStructId);
+    auto& message = s_messageSender.makeMessage<MsgRenderSky>(
+        geometryCount * sizeof(MsgRenderSky::GeometryDesc));
+
+    s_messageSender.endMessage();
 }
 
-void BottomLevelAccelStruct::init()
+void ModelData::init()
 {
     WRITE_MEMORY(0x72294D, uint32_t, sizeof(MeshDataEx));
     WRITE_MEMORY(0x739511, uint32_t, sizeof(MeshDataEx));

@@ -7,8 +7,6 @@
 #include "ShaderType.h"
 #include "Texture.h"
 
-static FreeListAllocator s_freeListAllocator;
-
 static std::unordered_set<Hedgehog::Mirage::CMaterialData*> s_materialsToCreate;
 static Mutex s_matCreateMutex;
 
@@ -34,7 +32,7 @@ HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
         message.resourceId = This->m_materialId;
         s_messageSender.endMessage();
 
-        s_freeListAllocator.free(This->m_materialId);
+        MaterialData::s_idAllocator.free(This->m_materialId);
     }
 
     originalMaterialDataDestructor(This);
@@ -202,7 +200,7 @@ static void __fastcall materialDataSetMadeOneV0V1V2(MaterialDataEx* This)
 static void __fastcall materialDataSetMadeOneV3(MaterialDataEx* This)
 {
     if (This->m_materialId == NULL)
-        This->m_materialId = s_freeListAllocator.allocate();
+        This->m_materialId = MaterialData::s_idAllocator.allocate();
 
     createMaterial(*This);
 
@@ -235,7 +233,7 @@ bool MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData)
 
         if (materialDataEx.m_materialId == NULL)
         {
-            materialDataEx.m_materialId = s_freeListAllocator.allocate();
+            materialDataEx.m_materialId = s_idAllocator.allocate();
             createMaterial(materialDataEx);
         }
         return true;
@@ -243,7 +241,7 @@ bool MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData)
     return false;
 }
 
-void MaterialData::handlePendingMaterials()
+void MaterialData::createPendingMaterials()
 {
     LockGuard lock(s_matCreateMutex);
 
@@ -254,11 +252,6 @@ void MaterialData::handlePendingMaterials()
         else
             ++it;
     }
-}
-
-uint32_t MaterialData::allocate()
-{
-    return s_freeListAllocator.allocate();
 }
 
 void MaterialData::init()

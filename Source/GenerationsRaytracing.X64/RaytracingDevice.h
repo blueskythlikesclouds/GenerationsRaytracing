@@ -27,6 +27,18 @@ struct DelayedTexture
     uint32_t textureIdOffset;
 };
 
+struct GlobalsSky
+{
+    float projection[4][4];
+    float view[4][4];
+    float pixelJitterX;
+    float pixelJitterY;
+    float backgroundScale;
+    uint32_t diffuseTextureId;
+    uint32_t alphaTextureId;
+    uint32_t emissionTextureId;
+};
+
 class RaytracingDevice final : public Device
 {
 protected:

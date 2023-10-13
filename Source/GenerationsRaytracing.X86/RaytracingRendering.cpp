@@ -1,14 +1,14 @@
 #include "RaytracingRendering.h"
 
-#include "BottomLevelAccelStruct.h"
+#include "ModelData.h"
 #include "Device.h"
 #include "MaterialData.h"
 #include "Message.h"
 #include "MessageSender.h"
 #include "Texture.h"
-#include "TopLevelAccelStruct.h"
+#include "InstanceData.h"
 
-static void traverseRenderable(Hedgehog::Mirage::CRenderable* renderable, bool isEnabled = true)
+static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable, bool isEnabled)
 {
     isEnabled &= renderable->m_Enabled;
 
@@ -16,7 +16,7 @@ static void traverseRenderable(Hedgehog::Mirage::CRenderable* renderable, bool i
     {
         if (element->m_spModel->IsMadeAll())
         {
-            BottomLevelAccelStruct::create(
+            ModelData::createBottomLevelAccelStruct(
                 *reinterpret_cast<ModelDataEx*>(element->m_spModel.get()),
                 *reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get()),
                 element->m_MaterialMap,
@@ -26,12 +26,32 @@ static void traverseRenderable(Hedgehog::Mirage::CRenderable* renderable, bool i
     else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))
     {
         for (const auto& it : bundle->m_RenderableList)
-            traverseRenderable(it.get(), isEnabled);
+            createInstancesAndBottomLevelAccelStructs(it.get(), isEnabled);
     }
     else if (const auto optimalBundle = dynamic_cast<const Hedgehog::Mirage::COptimalBundle*>(renderable))
     {
         for (const auto it : optimalBundle->m_RenderableList)
-            traverseRenderable(it, isEnabled);
+            createInstancesAndBottomLevelAccelStructs(it, isEnabled);
+    }
+}
+
+static void renderSky(Hedgehog::Mirage::CRenderable* renderable)
+{
+    if (auto element = dynamic_cast<const Hedgehog::Mirage::CSingleElement*>(renderable))
+    {
+        if (element->m_spModel->IsMadeAll() && (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
+        {
+        }
+    }
+    else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))
+    {
+        for (const auto& it : bundle->m_RenderableList)
+            renderSky(it.get());
+    }
+    else if (const auto optimalBundle = dynamic_cast<const Hedgehog::Mirage::COptimalBundle*>(renderable))
+    {
+        for (const auto it : optimalBundle->m_RenderableList)
+            renderSky(it);
     }
 }
 
@@ -41,7 +61,7 @@ static void __cdecl implOfSceneRender(void* a1)
 {
     setSceneSurface(a1, *reinterpret_cast<void**>(**reinterpret_cast<uint32_t**>(a1) + 84));
 
-    MaterialData::handlePendingMaterials();
+    MaterialData::createPendingMaterials();
 
     const auto& renderScene = Sonic::CGameDocument::GetInstance()->GetWorld()->m_pMember->m_spRenderScene;
     const Hedgehog::Base::CStringSymbol symbols[] = { "Object", "Object_Overlay", "Player" };
@@ -50,7 +70,7 @@ static void __cdecl implOfSceneRender(void* a1)
     {
         const auto pair = renderScene->m_BundleMap.find(symbol);
         if (pair != renderScene->m_BundleMap.end())
-            traverseRenderable(pair->second.get());
+            createInstancesAndBottomLevelAccelStructs(pair->second.get(), true);
     }
 
     auto& traceRaysMessage = s_messageSender.makeMessage<MsgTraceRays>();

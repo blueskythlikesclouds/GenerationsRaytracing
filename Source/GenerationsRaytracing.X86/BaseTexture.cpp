@@ -4,11 +4,11 @@
 #include "Message.h"
 #include "MessageSender.h"
 
-static FreeListAllocator s_freeListAllocator;
+static FreeListAllocator s_idAllocator;
 
 BaseTexture::BaseTexture(uint32_t levelCount)
 {
-    m_id = s_freeListAllocator.allocate();
+    m_id = s_idAllocator.allocate();
     m_levelCount = levelCount;
 }
 
@@ -21,7 +21,7 @@ BaseTexture::~BaseTexture()
 
     s_messageSender.endMessage();
 
-    s_freeListAllocator.free(m_id);
+    s_idAllocator.free(m_id);
 }
 
 uint32_t BaseTexture::getId() const

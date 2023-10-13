@@ -1,4 +1,5 @@
 #pragma once
+#include "FreeListAllocator.h"
 
 class MaterialDataEx : public Hedgehog::Mirage::CMaterialData
 {
@@ -8,8 +9,10 @@ public:
 
 struct MaterialData
 {
+    static inline FreeListAllocator s_idAllocator;
+
     static bool create(Hedgehog::Mirage::CMaterialData& materialData);
-    static void handlePendingMaterials();
-    static uint32_t allocate();
+    static void createPendingMaterials();
+
     static void init();
 };
