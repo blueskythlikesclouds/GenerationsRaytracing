@@ -5,3 +5,5 @@ FVFVertexShader.h
 FVFPixelShader.h
 PoseComputeShader.h
 ResolveComputeShader.h
+SkyVertexShader.h
+SkyPixelShader.h
