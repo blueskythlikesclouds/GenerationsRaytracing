@@ -126,6 +126,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="PixelShader.cpp" />
+    <ClCompile Include="RaytracingParams.cpp" />
     <ClCompile Include="RaytracingRendering.cpp" />
     <ClCompile Include="Resource.cpp" />
     <ClCompile Include="Surface.cpp" />
@@ -154,6 +155,7 @@
     <ClInclude Include="MessageSender.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="PixelShader.h" />
+    <ClInclude Include="RaytracingParams.h" />
     <ClInclude Include="RaytracingRendering.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Surface.h" />

@@ -135,7 +135,7 @@ protected:
     bool createTopLevelAccelStruct();
 
     void createRaytracingTextures();
-    void resolveAndDispatchUpscaler();
+    void resolveAndDispatchUpscaler(bool resetAccumulation);
     void copyToRenderTargetAndDepthStencil();
 
     void procMsgCreateBottomLevelAccelStruct();

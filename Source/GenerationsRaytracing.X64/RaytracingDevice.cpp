@@ -379,7 +379,7 @@ void RaytracingDevice::createRaytracingTextures()
     m_device->CreateShaderResourceView(m_depthTexture->GetResource(), nullptr, cpuHandle);
 }
 
-void RaytracingDevice::resolveAndDispatchUpscaler()
+void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
 {
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
 
@@ -420,7 +420,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler()
             m_motionVectorsTexture->GetResource(),
             m_globalsRT.pixelJitterX,
             m_globalsRT.pixelJitterY,
-            false
+            resetAccumulation
         });
 
     setDescriptorHeaps();
@@ -766,7 +766,7 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
-    resolveAndDispatchUpscaler();
+    resolveAndDispatchUpscaler(message.resetAccumulation);
     copyToRenderTargetAndDepthStencil();
 }
 
