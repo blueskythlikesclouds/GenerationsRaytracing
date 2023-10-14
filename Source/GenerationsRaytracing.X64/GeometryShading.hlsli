@@ -2,6 +2,7 @@
 #define GEOMETRY_SHADING_H
 #include "GBufferData.hlsli"
 #include "RootSignature.hlsli"
+#include "SharedDefinitions.hlsli"
 
 struct ShadingParams
 {
@@ -75,7 +76,7 @@ float3 ComputeGlobalIllumination(GBufferData gBufferData, float3 globalIlluminat
 float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 {
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
-        reflection *= min(1.0, gBufferData.Specular * gBufferData.SpecularLevel);
+        reflection *= min(1.0, gBufferData.Specular * gBufferData.SpecularLevel / PI);
 
     return reflection * gBufferData.SpecularFresnel;
 }

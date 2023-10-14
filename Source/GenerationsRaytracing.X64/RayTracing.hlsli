@@ -151,7 +151,7 @@ float3 TraceReflection(
     float3 halfwayDirection = TangentToWorld(normal, sampleDirection.xyz);
 
     float3 reflection = TraceReflection(depth, position, halfwayDirection, eyeDirection);
-    reflection *= pow(saturate(dot(normal, halfwayDirection)), specularPower) / max(0.000001, sampleDirection.w * PI);
+    reflection *= pow(saturate(dot(normal, halfwayDirection)), specularPower) / (0.0001 + sampleDirection.w);
 
     return reflection;
 }

@@ -75,7 +75,7 @@
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
-      <AdditionalOptions>-Qembed_debug %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-all-resources-bound -Qembed_debug %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
     </FxCompile>
@@ -113,6 +113,7 @@
       <ObjectFileOutput />
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
+      <AdditionalOptions>-all-resources-bound %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

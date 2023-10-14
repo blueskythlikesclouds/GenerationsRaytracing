@@ -130,10 +130,10 @@ RWTexture2D<float3> g_NormalTexture : register(u7);
 RWTexture2D<float3> g_FalloffTexture : register(u8);
 RWTexture2D<float3> g_EmissionTexture : register(u9);
 
-RWTexture2D<float> g_ShadowTexture : register(u11);
-RWTexture2D<float3> g_GlobalIlluminationTexture : register(u12);
-RWTexture2D<float3> g_ReflectionTexture : register(u13);
-RWTexture2D<float3> g_RefractionTexture : register(u14);
+RWTexture2D<float> g_ShadowTexture : register(u10);
+RWTexture2D<float3> g_GlobalIlluminationTexture : register(u11);
+RWTexture2D<float3> g_ReflectionTexture : register(u12);
+RWTexture2D<float3> g_RefractionTexture : register(u13);
 
 SamplerState g_SamplerState : register(s0);
 
