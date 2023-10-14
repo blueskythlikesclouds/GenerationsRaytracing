@@ -34,7 +34,7 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     GBufferData gBufferData = (GBufferData) 0;
     gBufferData.Position = WorldRayOrigin() + WorldRayDirection() * g_CameraNearFarAspect.y;
     gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
-    gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection(), 0).rgb;
+    gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 
     g_MotionVectorsTexture[DispatchRaysIndex().xy] = 
@@ -149,7 +149,7 @@ void RefractionRayGeneration()
 void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
-    payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection(), 0).rgb;
+    payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
 }
 
 [shader("miss")]
