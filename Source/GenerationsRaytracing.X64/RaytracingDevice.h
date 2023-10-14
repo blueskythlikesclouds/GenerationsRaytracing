@@ -11,14 +11,15 @@ struct alignas(0x10) GlobalsRT
 {
     float prevProj[4][4];
     float prevView[4][4];
-    float environmentColor[3];
+    float skyColor[3];
+    uint32_t skyTextureId;
+    float groundColor[3];
     uint32_t useEnvironmentColor;
     float pixelJitterX;
     float pixelJitterY;
     uint32_t blueNoiseOffsetX;
     uint32_t blueNoiseOffsetY;
     uint32_t blueNoiseTextureId;
-    uint32_t skyTextureId;
 };
 
 struct DelayedTexture

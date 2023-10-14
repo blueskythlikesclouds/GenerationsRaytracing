@@ -4,5 +4,5 @@ struct GlobalsPS;
 
 struct EnvironmentColor
 {
-    static bool get(const GlobalsPS& globalsPS, float* result);
+    static bool get(const GlobalsPS& globalsPS, float* skyColor, float* groundColor);
 };

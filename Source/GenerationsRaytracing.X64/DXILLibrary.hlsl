@@ -163,7 +163,7 @@ void GlobalIlluminationMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     if (g_UseEnvironmentColor)
     {
-        payload.Color = g_EnvironmentColor;
+        payload.Color = lerp(g_GroundColor, g_SkyColor, WorldRayDirection().y * 0.5 + 0.5);
     }
     else
     {

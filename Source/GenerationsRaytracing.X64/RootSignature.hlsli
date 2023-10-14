@@ -104,12 +104,13 @@ cbuffer GlobalsRT : register(b2)
 {
     row_major float4x4 g_MtxPrevProjection;
     row_major float4x4 g_MtxPrevView;
-    float3 g_EnvironmentColor;
+    float3 g_SkyColor;
+    uint g_SkyTextureId;
+    float3 g_GroundColor;
     bool g_UseEnvironmentColor;
     float2 g_PixelJitter;
     uint2 g_BlueNoiseOffset;
     uint g_BlueNoiseTextureId;
-    uint g_SkyTextureId;
 }
 
 RaytracingAccelerationStructure g_BVH : register(t0);
