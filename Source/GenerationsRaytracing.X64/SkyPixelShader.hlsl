@@ -18,6 +18,9 @@ float4 main(in PixelShaderInput i) : SV_Target
     if (g_AlphaTextureId != 0)
         color.a *= SampleTexture2D(g_AlphaTextureId, i.AlphaTexCoord).x;
 
+    if (g_EnableAlphaTest)
+        clip(color.a - 0.5);
+
     if (g_EmissionTextureId != 0)
         color.rgb += SampleTexture2D(g_EmissionTextureId, i.EmissionTexCoord).rgb * g_Ambient.rgb;
 

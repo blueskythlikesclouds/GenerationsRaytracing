@@ -463,12 +463,14 @@ struct MsgRenderSky
 
     struct GeometryDesc
     {
+        uint32_t flags;
         uint32_t vertexBufferId;
         uint32_t vertexStride;
         uint32_t vertexCount;
         uint32_t indexBufferId;
         uint32_t indexCount;
         uint32_t vertexDeclarationId;
+        bool isAdditive;
         MsgCreateMaterial::Texture diffuseTexture;
         MsgCreateMaterial::Texture alphaTexture;
         MsgCreateMaterial::Texture emissionTexture;

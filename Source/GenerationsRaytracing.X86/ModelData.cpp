@@ -151,22 +151,35 @@ static void traverseMeshGroup(const hh::vector<boost::shared_ptr<Hedgehog::Mirag
 template<typename TModelData, typename TFunction>
 static void traverseModelData(const TModelData& modelData, const TFunction& function)
 {
+    traverseMeshGroup(modelData.m_OpaqueMeshes, NULL, function);
+    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+    {
+        if (nodeGroupModelData->m_Visible)
+            traverseMeshGroup(nodeGroupModelData->m_OpaqueMeshes, NULL, function);
+    }
+
+    traverseMeshGroup(modelData.m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
+    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+    {
+        if (nodeGroupModelData->m_Visible)
+            traverseMeshGroup(nodeGroupModelData->m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
+    }
+
+    traverseMeshGroup(modelData.m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
+    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+    {
+        if (nodeGroupModelData->m_Visible)
+            traverseMeshGroup(nodeGroupModelData->m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
+    }
+
     for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
     {
         if (!nodeGroupModelData->m_Visible)
             continue;
 
-        traverseMeshGroup(nodeGroupModelData->m_OpaqueMeshes, NULL, function);
-        traverseMeshGroup(nodeGroupModelData->m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
-        traverseMeshGroup(nodeGroupModelData->m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
-
         for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
             traverseMeshGroup(specialMeshGroup, GEOMETRY_FLAG_TRANSPARENT, function);
     }
-
-    traverseMeshGroup(modelData.m_OpaqueMeshes, NULL, function);
-    traverseMeshGroup(modelData.m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
-    traverseMeshGroup(modelData.m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
 }
 
 template<typename T>
@@ -576,8 +589,11 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
     const Hedgehog::Base::CStringSymbol ambientSymbol("ambient");
     const Hedgehog::Base::CStringSymbol texCoordOffsetSymbol("mrgTexcoordOffset");
 
-    traverseModelData(modelData, [&](const MeshDataEx& meshDataEx, uint32_t)
+    DX_PATCH::IDirect3DBaseTexture9* diffuseTexture = nullptr;
+
+    traverseModelData(modelData, [&](const MeshDataEx& meshDataEx, uint32_t flags)
     {
+        geometryDesc->flags = flags;
         geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
         geometryDesc->vertexStride = meshDataEx.m_VertexSize;
         geometryDesc->vertexCount = meshDataEx.m_VertexNum;
@@ -587,6 +603,8 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
     
         if (meshDataEx.m_spMaterial != nullptr)
         {
+            geometryDesc->isAdditive = meshDataEx.m_spMaterial->m_Additive;
+
             for (const auto& texture : meshDataEx.m_spMaterial->m_spTexsetData->m_TextureList)
             {
                 if (!texture->IsMadeOne() || texture->m_spPictureData == nullptr ||
@@ -598,11 +616,21 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
                 MsgCreateMaterial::Texture* textureDesc = nullptr;
     
                 if (texture->m_Type == diffuseSymbol)
+                {
                     textureDesc = &geometryDesc->diffuseTexture;
+                    diffuseTexture = texture->m_spPictureData->m_pD3DTexture;
+                }
                 else if (texture->m_Type == opacitySymbol)
+                {
+                    if (diffuseTexture == texture->m_spPictureData->m_pD3DTexture)
+                        continue;
+
                     textureDesc = &geometryDesc->alphaTexture;
+                }
                 else if (texture->m_Type == displacementSymbol)
+                {
                     textureDesc = &geometryDesc->emissionTexture;
+                }
     
                 if (textureDesc != nullptr)
                 {
@@ -621,6 +649,10 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
                 else if (float4Param->m_Name == texCoordOffsetSymbol)
                     memcpy(geometryDesc->texCoordOffsets, float4Param->m_spValue.get(), sizeof(geometryDesc->texCoordOffsets));
             }
+        }
+        else
+        {
+            geometryDesc->isAdditive = false;
         }
     
         ++geometryDesc;

@@ -9,7 +9,8 @@ cbuffer GlobalsSB : register(b0)
     uint g_DiffuseTextureId;
     uint g_AlphaTextureId;
     uint g_EmissionTextureId;
-    float4 g_Ambient;
+    float3 g_Ambient;
+    bool g_EnableAlphaTest;
     float4 g_TexCoordOffsets[2];
 }
 

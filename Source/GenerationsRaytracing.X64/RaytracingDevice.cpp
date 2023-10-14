@@ -14,6 +14,7 @@
 #include "SkyPixelShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
+static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
 
 uint32_t RaytracingDevice::allocateGeometryDescs(uint32_t count)
 {
@@ -976,9 +977,9 @@ void RaytracingDevice::procMsgRenderSky()
     pipelineDesc.PS.pShaderBytecode = SkyPixelShader;
     pipelineDesc.PS.BytecodeLength = sizeof(SkyPixelShader);
     pipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    pipelineDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
     pipelineDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    pipelineDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    pipelineDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA;
+    pipelineDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
     pipelineDesc.SampleMask = ~0;
     pipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     pipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
@@ -996,14 +997,12 @@ void RaytracingDevice::procMsgRenderSky()
 
     uint32_t samplerId = NULL;
 
+    constexpr D3D12_VIEWPORT viewport = { 0, 0, CUBE_MAP_RESOLUTION, CUBE_MAP_RESOLUTION, 0.0f, 1.0f };
+    constexpr D3D12_RECT scissorRect = { 0, 0, CUBE_MAP_RESOLUTION, CUBE_MAP_RESOLUTION };
+
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_skyRootSignature.Get());
-
-    constexpr D3D12_VIEWPORT viewport = { 0, 0, 1024, 1024, 0.0f, 1.0f };
-    constexpr D3D12_RECT scissorRect = { 0, 0, 1024, 1024 };
-
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
     getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &scissorRect);
-
     getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
     GlobalsSB globalsSB;
@@ -1017,11 +1016,16 @@ void RaytracingDevice::procMsgRenderSky()
         const auto renderTarget = m_rtvDescriptorHeap.getCpuHandle(m_skyRtvIndices[i]);
         getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &renderTarget, FALSE, nullptr);
 
+        float clearValue[4]{};
+        getUnderlyingGraphicsCommandList()->ClearRenderTargetView(renderTarget, clearValue, 0, nullptr);
+
         auto geometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data);
         auto lastGeometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data + message.dataSize);
 
         while (geometryDesc < lastGeometryDesc)
         {
+            globalsSB.enableAlphaTest = (geometryDesc->flags & GEOMETRY_FLAG_PUNCH_THROUGH) != 0;
+
             std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
             {
                 { geometryDesc->diffuseTexture, globalsSB.diffuseTextureId },
@@ -1063,13 +1067,20 @@ void RaytracingDevice::procMsgRenderSky()
             memcpy(globalsSB.ambient, geometryDesc->ambient, sizeof(globalsSB.ambient));
             memcpy(globalsSB.texCoordOffsets, geometryDesc->texCoordOffsets, sizeof(globalsSB.texCoordOffsets));
 
-            auto& vertexDeclaration = m_vertexDeclarations[geometryDesc->vertexDeclarationId];
+            const auto& vertexDeclaration = m_vertexDeclarations[geometryDesc->vertexDeclarationId];
+
+            const BOOL blendEnable = TRUE; // TODO: Toggling this on/off causes buggy graphics in Planet Wisp
+            const auto destBlend = geometryDesc->isAdditive ? D3D12_BLEND_ONE : D3D12_BLEND_INV_SRC_ALPHA;
 
             if (pipelineDesc.InputLayout.pInputElementDescs != vertexDeclaration.inputElements.get() ||
-                pipelineDesc.InputLayout.NumElements != vertexDeclaration.inputElementsSize)
+                pipelineDesc.InputLayout.NumElements != vertexDeclaration.inputElementsSize ||
+                pipelineDesc.BlendState.RenderTarget[0].BlendEnable != blendEnable ||
+                pipelineDesc.BlendState.RenderTarget[0].DestBlend != destBlend)
             {
                 pipelineDesc.InputLayout.pInputElementDescs = vertexDeclaration.inputElements.get();
                 pipelineDesc.InputLayout.NumElements = vertexDeclaration.inputElementsSize;
+                pipelineDesc.BlendState.RenderTarget[0].BlendEnable = blendEnable;
+                pipelineDesc.BlendState.RenderTarget[0].DestBlend = destBlend;
 
                 auto& pipeline = m_pipelines[XXH3_64bits(&pipelineDesc, sizeof(pipelineDesc))];
                 if (!pipeline)
@@ -1356,18 +1367,21 @@ RaytracingDevice::RaytracingDevice()
         D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED,
         m_skyRootSignature);
 
+    const CD3DX12_HEAP_PROPERTIES skyHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
+
     const auto skyResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_R16G16B16A16_FLOAT,
-        1024, 1024, 6, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+        CUBE_MAP_RESOLUTION, CUBE_MAP_RESOLUTION, 6, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
-    const CD3DX12_HEAP_PROPERTIES skyHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
+    float color[4]{};
+    const CD3DX12_CLEAR_VALUE clearValue(DXGI_FORMAT_R16G16B16A16_FLOAT, color);
 
     hr = m_device->CreateCommittedResource(
         &skyHeapProperties,
         D3D12_HEAP_FLAG_NONE,
         &skyResourceDesc,
         D3D12_RESOURCE_STATE_RENDER_TARGET,
-        nullptr,
+        &clearValue,
         IID_PPV_ARGS(m_skyTexture.GetAddressOf()));
 
     assert(SUCCEEDED(hr) && m_skyTexture != nullptr);

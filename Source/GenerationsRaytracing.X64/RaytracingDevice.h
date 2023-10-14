@@ -37,7 +37,8 @@ struct GlobalsSB
     uint32_t diffuseTextureId;
     uint32_t alphaTextureId;
     uint32_t emissionTextureId;
-    float ambient[4];
+    float ambient[3];
+    uint32_t enableAlphaTest;
     float texCoordOffsets[8];
 };
 
