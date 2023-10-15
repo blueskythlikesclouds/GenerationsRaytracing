@@ -68,6 +68,19 @@ float3 ComputeEyeLighting(GBufferData gBufferData, float3 eyePosition, float3 ey
     return eyeLighting;
 }
 
+float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
+{
+    float3 direction = localLight.Position - gBufferData.Position;
+    float distance = length(direction);
+    direction /= distance;
+
+    float3 localLighting = ComputeDirectLighting(gBufferData, eyeDirection,
+        direction, localLight.Color, localLight.Color);
+
+    localLighting *= 1.0 - saturate((distance - localLight.InRange) / (localLight.OutRange - localLight.InRange));
+    return localLighting;
+}
+
 float3 ComputeGlobalIllumination(GBufferData gBufferData, float3 globalIllumination)
 {
     return globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);

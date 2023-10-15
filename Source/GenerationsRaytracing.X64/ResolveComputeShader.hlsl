@@ -1,4 +1,5 @@
 #include "GeometryShading.hlsli"
+#include "RayTracing.hlsli"
 #include "RootSignature.hlsli"
 
 [numthreads(32, 32, 1)]

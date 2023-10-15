@@ -144,6 +144,9 @@
     <ClInclude Include="InstanceDesc.h">
       <Filter>Resource</Filter>
     </ClInclude>
+    <ClInclude Include="LocalLight.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
@@ -171,6 +174,7 @@
       <Filter>Shader</Filter>
     </None>
     <None Include="packages.config" />
+    <None Include="SkySharedDefinitions.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
@@ -197,5 +201,7 @@
     <FxCompile Include="ResolveComputeShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="SkyPixelShader.hlsl" />
+    <FxCompile Include="SkyVertexShader.hlsl" />
   </ItemGroup>
 </Project>

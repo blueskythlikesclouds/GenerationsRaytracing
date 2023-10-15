@@ -111,12 +111,22 @@ cbuffer GlobalsRT : register(b2)
     float2 g_PixelJitter;
     uint2 g_BlueNoiseOffset;
     uint g_BlueNoiseTextureId;
+    uint g_LocalLightCount;
 }
+
+struct LocalLight
+{
+    float3 Position;
+    float InRange;
+    float3 Color;
+    float OutRange;
+};
 
 RaytracingAccelerationStructure g_BVH : register(t0);
 StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t1);
 StructuredBuffer<Material> g_Materials : register(t2);
 StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t3);
+StructuredBuffer<LocalLight> g_LocalLights : register(t4);
 
 RWTexture2D<float4> g_ColorTexture : register(u0);
 RWTexture2D<float> g_DepthTexture : register(u1);

@@ -4,6 +4,7 @@
 #include "Device.h"
 #include "GeometryDesc.h"
 #include "InstanceDesc.h"
+#include "LocalLight.h"
 #include "Material.h"
 #include "Upscaler.h"
 
@@ -20,6 +21,7 @@ struct alignas(0x10) GlobalsRT
     uint32_t blueNoiseOffsetX;
     uint32_t blueNoiseOffsetY;
     uint32_t blueNoiseTextureId;
+    uint32_t localLightCount;
 };
 
 struct DelayedTexture
@@ -122,6 +124,9 @@ protected:
     ComPtr<ID3D12Resource> m_skyTexture;
     uint32_t m_skyRtvIndices[6]{};
 
+    // Local Light
+    std::vector<LocalLight> m_localLights;
+
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
@@ -147,6 +152,7 @@ protected:
     void procMsgBuildBottomLevelAccelStruct();
     void procMsgComputePose();
     void procMsgRenderSky();
+    void procMsgCreateLocalLight();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

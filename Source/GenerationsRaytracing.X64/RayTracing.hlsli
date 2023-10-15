@@ -19,10 +19,15 @@ struct [raypayload] ShadowRayPayload
     bool Miss : read(caller) : write(caller, miss);
 };
 
-float4 GetBlueNoise()
+float4 GetBlueNoise(uint2 index)
 {
     Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
-    return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
+    return texture.Load(int3((index + g_BlueNoiseOffset) % 1024, 0));
+}
+
+float4 GetBlueNoise()
+{
+    return GetBlueNoise(DispatchRaysIndex().xy);
 }
 
 float3 GetCosineWeightedHemisphere(float2 random)
@@ -60,12 +65,21 @@ float3 TangentToWorld(float3 normal, float3 value)
     return normalize(value.x * tangent + value.y * binormal + value.z * normal);
 }
 
-float TraceHardShadow(float3 position, float3 direction)
+float TraceGlobalLightShadow(float3 position, float3 direction)
 {
+    float2 random = GetBlueNoise().xw;
+    float radius = sqrt(random.x) * 0.01;
+    float angle = random.y * 2.0 * PI;
+
+    float3 sample;
+    sample.x = cos(angle) * radius;
+    sample.y = sin(angle) * radius;
+    sample.z = sqrt(1.0 - saturate(dot(sample.xy, sample.xy)));
+
     RayDesc ray;
 
     ray.Origin = position;
-    ray.Direction = direction;
+    ray.Direction = TangentToWorld(direction, sample);
     ray.TMin = 0.001;
     ray.TMax = 10000.0;
 
@@ -84,18 +98,32 @@ float TraceHardShadow(float3 position, float3 direction)
     return payload.Miss ? 1.0 : 0.0;
 }
 
-float TraceSoftShadow(float3 position, float3 direction)
+float TraceLocalLightShadow(float3 position, LocalLight localLight)
 {
-    float2 random = GetBlueNoise().xw;
-    float radius = sqrt(random.x) * 0.01;
-    float angle = random.y * 2.0 * PI;
+    float3 direction = position - localLight.Position;
+    float distance = length(direction);
+    direction /= distance;
 
-    float3 sample;
-    sample.x = cos(angle) * radius;
-    sample.y = sin(angle) * radius;
-    sample.z = sqrt(1.0 - saturate(dot(sample.xy, sample.xy)));
+    RayDesc ray;
 
-    return TraceHardShadow(position, TangentToWorld(direction, sample));
+    ray.Origin = localLight.Position;
+    ray.Direction = direction;
+    ray.TMin = 0.0;
+    ray.TMax = -0.0001 + distance;
+
+    ShadowRayPayload payload = (ShadowRayPayload) 0;
+
+    TraceRay(
+        g_BVH,
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+        1,
+        1,
+        0,
+        1,
+        ray,
+        payload);
+
+    return payload.Miss ? 1.0 : 0.0;
 }
 
 float3 TraceSecondaryRay(uint depth, float3 position, float3 direction, uint missShaderIndex)

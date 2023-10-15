@@ -137,6 +137,35 @@ static void __cdecl implOfSceneRender(void* a1)
                 createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get(), true);
         }
 
+        if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
+        {
+            if (gameDocument->m_pMember->m_spLightManager &&
+                gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext &&
+                gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData &&
+                gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData->IsMadeAll())
+            {
+                uint32_t localLightId = 0;
+
+                for (const auto& lightData : gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData->m_Lights)
+                {
+                    if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
+                    {
+                        auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+
+                        message.localLightId = localLightId;
+                        memcpy(message.position, lightData->m_Position.data(), sizeof(message.position));
+                        message.inRange = lightData->m_Range.z();
+                        memcpy(message.color, lightData->m_Color.data(), sizeof(message.color));
+                        message.outRange = lightData->m_Range.w();
+
+                        s_messageSender.endMessage();
+
+                        ++localLightId;
+                    }
+                }
+            }
+        }
+
         auto& traceRaysMessage = s_messageSender.makeMessage<MsgTraceRays>();
 
         traceRaysMessage.width = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 4);

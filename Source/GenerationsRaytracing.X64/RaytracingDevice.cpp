@@ -218,6 +218,8 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
     m_globalsRT.blueNoiseOffsetX = distribution(engine);
     m_globalsRT.blueNoiseOffsetY = distribution(engine);
 
+    m_globalsRT.localLightCount = static_cast<uint32_t>(m_localLights.size());
+
     const auto globalsRT = createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     memcpy(m_globalsRT.prevProj, m_globalsVS.floatConstants, 0x80);
 
@@ -709,6 +711,9 @@ void RaytracingDevice::procMsgTraceRays()
     const auto instanceDescs = createBuffer(m_instanceDescsEx.data(),
         static_cast<uint32_t>(m_instanceDescsEx.size() * sizeof(InstanceDesc)), 0x10);
 
+    const auto localLights = createBuffer(m_localLights.data(),
+        static_cast<uint32_t>(m_localLights.size() * sizeof(LocalLight)), 0x10);
+
     if (m_curRootSignature != m_raytracingRootSignature.Get())
     {
         getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_raytracingRootSignature.Get());
@@ -724,6 +729,7 @@ void RaytracingDevice::procMsgTraceRays()
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, geometryDescs);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(6, materials);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(7, instanceDescs);
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(8, localLights);
 
     const auto shaderTable = createBuffer(
         m_shaderTable.data(), static_cast<uint32_t>(m_shaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -1133,6 +1139,20 @@ void RaytracingDevice::procMsgRenderSky()
         DIRTY_FLAG_PRIMITIVE_TOPOLOGY;
 }
 
+void RaytracingDevice::procMsgCreateLocalLight()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCreateLocalLight>();
+
+    if (m_localLights.size() <= message.localLightId)
+        m_localLights.resize(message.localLightId + 1);
+
+    auto& localLight = m_localLights[message.localLightId];
+
+    memcpy(localLight.position, message.position, sizeof(localLight.position));
+    localLight.inRange = message.inRange;
+    memcpy(localLight.color, message.color, sizeof(localLight.color));
+    localLight.outRange = message.outRange;
+}
 
 bool RaytracingDevice::processRaytracingMessage()
 {
@@ -1146,6 +1166,7 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgBuildBottomLevelAccelStruct::s_id: procMsgBuildBottomLevelAccelStruct(); break;
     case MsgComputePose::s_id: procMsgComputePose(); break;
     case MsgRenderSky::s_id: procMsgRenderSky(); break;
+    case MsgCreateLocalLight::s_id: procMsgCreateLocalLight(); break;
     default: return false;
     }
 
@@ -1167,7 +1188,7 @@ RaytracingDevice::RaytracingDevice()
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
     descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 14, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
-    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[8];
+    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[2].InitAsConstantBufferView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1176,6 +1197,7 @@ RaytracingDevice::RaytracingDevice()
     raytracingRootParams[5].InitAsShaderResourceView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[6].InitAsShaderResourceView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[7].InitAsShaderResourceView(3, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[8].InitAsShaderResourceView(4, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
 
     D3D12_STATIC_SAMPLER_DESC raytracingStaticSamplers[1]{};
     raytracingStaticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;

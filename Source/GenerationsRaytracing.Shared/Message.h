@@ -484,4 +484,15 @@ struct MsgRenderSky
     uint8_t data[1u];
 };
 
+struct MsgCreateLocalLight
+{
+    MSG_DEFINE_MESSAGE(MsgRenderSky);
+
+    uint32_t localLightId;
+    float position[3];
+    float color[3];
+    float inRange;
+    float outRange;
+};
+
 #pragma pack(pop)

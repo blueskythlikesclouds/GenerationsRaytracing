@@ -49,7 +49,22 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
-    StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material));
+    GBufferData gBufferData = CreateGBufferData(vertex, material);
+
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
+    {
+        for (uint i = 0; i < g_LocalLightCount; i++)
+        {
+            LocalLight localLight = g_LocalLights[i];
+            float3 localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), localLight);
+            if (dot(localLighting, localLighting) > 0.0001)
+                localLighting *= TraceLocalLightShadow(gBufferData.Position, localLight);
+
+            gBufferData.Emission += localLighting;
+        }
+    }
+
+    StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 
     g_MotionVectorsTexture[DispatchRaysIndex().xy] =
         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
@@ -77,7 +92,7 @@ void ShadowRayGeneration()
 
     float shadow = 0.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT)))
-        shadow = TraceSoftShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
+        shadow = TraceGlobalLightShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
 
     g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
 }
@@ -185,7 +200,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         payload.Color = ComputeDirectLighting(gBufferData, -WorldRayDirection(), 
             -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
 
-        payload.Color *= TraceSoftShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
+        payload.Color *= TraceGlobalLightShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
     }
     else
     {
@@ -194,6 +209,12 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
         payload.Color += ComputeEyeLighting(gBufferData, WorldRayOrigin(), -WorldRayDirection());
+
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
+    {
+        LocalLight localLight = g_LocalLights[floor(GetBlueNoise().x * g_LocalLightCount)];
+        payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), localLight) * g_LocalLightCount;
+    }
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth < 2)
     {
