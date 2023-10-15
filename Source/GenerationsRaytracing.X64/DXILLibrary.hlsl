@@ -1,6 +1,7 @@
 #include "GBufferData.hlsli"
 #include "GeometryShading.hlsli"
 #include "RayTracing.hlsli"
+#include "Reservoir.hlsli"
 
 [shader("raygeneration")]
 void PrimaryRayGeneration()
@@ -49,22 +50,7 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
-    GBufferData gBufferData = CreateGBufferData(vertex, material);
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
-    {
-        for (uint i = 0; i < g_LocalLightCount; i++)
-        {
-            LocalLight localLight = g_LocalLights[i];
-            float3 localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), localLight);
-            if (dot(localLighting, localLighting) > 0.0001)
-                localLighting *= TraceLocalLightShadow(gBufferData.Position, localLight);
-
-            gBufferData.Emission += localLighting;
-        }
-    }
-
-    StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
+    StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material));
 
     g_MotionVectorsTexture[DispatchRaysIndex().xy] =
         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
@@ -95,6 +81,37 @@ void ShadowRayGeneration()
         shadow = TraceGlobalLightShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
 
     g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
+}
+
+[shader("raygeneration")]
+void ReservoirRayGeneration()
+{
+    GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
+    if (gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
+        return;
+
+    float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
+
+    uint random = InitRand(g_CurrentFrame,
+        DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
+
+    Reservoir r = (Reservoir) 0;
+
+    uint localLightCount = min(32, g_LocalLightCount);
+
+    for (uint i = 0; i < localLightCount; i++)
+    {
+        uint y = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
+        float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, g_LocalLights[y]) * g_LocalLightCount;
+        UpdateReservoir(r, y, length(localLighting), NextRand(random));
+    }
+
+    LocalLight localLight = g_LocalLights[r.Y];
+    float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
+    ComputeReservoirWeight(r, length(localLighting));
+    r.W *= TraceLocalLightShadow(gBufferData.Position, localLight);
+
+    g_EmissionTexture[DispatchRaysIndex().xy] += localLighting * r.W;
 }
 
 [shader("raygeneration")]
@@ -212,8 +229,25 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
     {
-        LocalLight localLight = g_LocalLights[floor(GetBlueNoise().x * g_LocalLightCount)];
-        payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), localLight) * g_LocalLightCount;
+        uint random = InitRand(g_CurrentFrame * 3 + payload.Depth,
+            DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
+
+        Reservoir r = (Reservoir) 0;
+
+        uint localLightCount = min(32, g_LocalLightCount);
+
+        for (uint i = 0; i < localLightCount; i++)
+        {
+            uint y = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
+            float3 localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[y]) * g_LocalLightCount;
+            UpdateReservoir(r, y, length(localLighting), NextRand(random));
+        }
+
+        LocalLight localLight = g_LocalLights[r.Y];
+        float3 localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), localLight);
+        ComputeReservoirWeight(r, length(localLighting));
+
+        payload.Color += localLighting * r.W * TraceLocalLightShadow(gBufferData.Position, localLight);
     }
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth < 2)

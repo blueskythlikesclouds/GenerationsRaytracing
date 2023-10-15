@@ -133,6 +133,7 @@
     <None Include="MessageReceiver.inl" />
     <None Include="packages.config" />
     <None Include="RayTracing.hlsli" />
+    <None Include="Reservoir.hlsli" />
     <None Include="RootSignature.hlsli" />
     <None Include="SharedDefinitions.hlsli" />
     <None Include="SkySharedDefinitions.hlsli" />

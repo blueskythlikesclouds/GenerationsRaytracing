@@ -22,6 +22,7 @@ struct alignas(0x10) GlobalsRT
     uint32_t blueNoiseOffsetY;
     uint32_t blueNoiseTextureId;
     uint32_t localLightCount;
+    uint32_t currentFrame = 0;
 };
 
 struct DelayedTexture
@@ -54,7 +55,6 @@ protected:
     ComPtr<ID3D12StateObject> m_stateObject;
     std::vector<uint8_t> m_shaderTable;
     GlobalsRT m_globalsRT;
-    uint32_t m_currentFrame = 0;
 
     // Accel Struct
     ComPtr<D3D12MA::Allocation> m_scratchBuffers[NUM_FRAMES];
@@ -100,6 +100,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_emissionTexture;
 
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
+    ComPtr<D3D12MA::Allocation> m_reservoirTexture;
     ComPtr<D3D12MA::Allocation> m_globalIlluminationTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
     ComPtr<D3D12MA::Allocation> m_refractionTexture;

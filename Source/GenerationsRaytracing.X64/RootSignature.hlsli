@@ -112,6 +112,7 @@ cbuffer GlobalsRT : register(b2)
     uint2 g_BlueNoiseOffset;
     uint g_BlueNoiseTextureId;
     uint g_LocalLightCount;
+    uint g_CurrentFrame;
 }
 
 struct LocalLight
@@ -141,9 +142,10 @@ RWTexture2D<float3> g_FalloffTexture : register(u8);
 RWTexture2D<float3> g_EmissionTexture : register(u9);
 
 RWTexture2D<float> g_ShadowTexture : register(u10);
-RWTexture2D<float3> g_GlobalIlluminationTexture : register(u11);
-RWTexture2D<float3> g_ReflectionTexture : register(u12);
-RWTexture2D<float3> g_RefractionTexture : register(u13);
+RWTexture2D<float4> g_ReservoirTexture : register(u11);
+RWTexture2D<float3> g_GlobalIlluminationTexture : register(u12);
+RWTexture2D<float3> g_ReflectionTexture : register(u13);
+RWTexture2D<float3> g_RefractionTexture : register(u14);
 
 SamplerState g_SamplerState : register(s0);
 
