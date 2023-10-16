@@ -100,9 +100,9 @@ protected:
     ComPtr<D3D12MA::Allocation> m_emissionTexture;
 
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
-    ComPtr<D3D12MA::Allocation> m_reservoirTexture;
-    ComPtr<D3D12MA::Allocation> m_prevReservoirTexture;
-    ComPtr<D3D12MA::Allocation> m_globalIlluminationTexture;
+    ComPtr<D3D12MA::Allocation> m_diReservoirTexture;
+    ComPtr<D3D12MA::Allocation> m_prevDIReservoirTexture;
+    ComPtr<D3D12MA::Allocation> m_giTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
     ComPtr<D3D12MA::Allocation> m_refractionTexture;
 

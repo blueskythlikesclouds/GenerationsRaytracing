@@ -142,9 +142,9 @@ RWTexture2D<float3> g_FalloffTexture : register(u8);
 RWTexture2D<float3> g_EmissionTexture : register(u9);
 
 RWTexture2D<float> g_ShadowTexture : register(u10);
-RWTexture2D<float4> g_ReservoirTexture : register(u11);
-RWTexture2D<float4> g_PrevReservoirTexture : register(u12);
-RWTexture2D<float3> g_GlobalIlluminationTexture : register(u13);
+RWTexture2D<float4> g_DIReservoirTexture : register(u11);
+RWTexture2D<float4> g_PrevDIReservoirTexture : register(u12);
+RWTexture2D<float3> g_GITexture : register(u13);
 RWTexture2D<float3> g_ReflectionTexture : register(u14);
 RWTexture2D<float3> g_RefractionTexture : register(u15);
 

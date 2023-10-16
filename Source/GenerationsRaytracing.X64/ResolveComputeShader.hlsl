@@ -17,7 +17,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         shadingParams.EyePosition = g_EyePosition.xyz;
         shadingParams.EyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
         shadingParams.Shadow = g_ShadowTexture[dispatchThreadId.xy];
-        shadingParams.GlobalIllumination = g_GlobalIlluminationTexture[dispatchThreadId.xy];
+        shadingParams.DIReservoir = LoadDIReservoir(g_DIReservoirTexture[dispatchThreadId.xy]);
+        shadingParams.GI = g_GITexture[dispatchThreadId.xy];
         shadingParams.Reflection = g_ReflectionTexture[dispatchThreadId.xy];
         shadingParams.Refraction = g_RefractionTexture[dispatchThreadId.xy];
 

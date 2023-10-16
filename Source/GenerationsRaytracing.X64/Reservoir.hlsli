@@ -1,49 +1,52 @@
 #ifndef RESERVOIR_H
 #define RESERVOIR_H
 
+template<typename T>
 struct Reservoir
 {
-    uint Y;
-    float WSum;
-    uint M;
-    float W;
+    T Sample;
+    float WeightSum;
+    uint SampleCount;
+    float Weight;
 };
 
-void UpdateReservoir(inout Reservoir r, uint y, float w, float random)
+template<typename T>
+void UpdateReservoir(inout Reservoir<T> reservoir, T sample, float weight, float random)
 {
-    r.WSum += w;
-    r.M += 1;
+    reservoir.WeightSum += weight;
+    reservoir.SampleCount += 1;
 
-    if (random < (w / r.WSum))
-        r.Y = y;
+    if (random * reservoir.WeightSum < weight)
+        reservoir.Sample = sample;
 }
 
-void ComputeReservoirW(inout Reservoir r, float w)
+template<typename T>
+void ComputeReservoirWeight(inout Reservoir<T> reservoir, float weight)
 {
-    if (w > 0.0)
-        r.W = (1.0 / w) * ((1.0 / r.M) * r.WSum);
+    if (weight > 0.0)
+        reservoir.Weight = (1.0 / weight) * ((1.0 / reservoir.SampleCount) * reservoir.WeightSum);
     else
-        r.W = 0.0;
+        reservoir.Weight = 0.0;
 }
 
-Reservoir LoadReservoir(float4 value)
+Reservoir<uint> LoadDIReservoir(float4 value)
 {
-    Reservoir r;
-    r.Y = asuint(value.x);
-    r.WSum = value.y;
-    r.M = asuint(value.z);
-    r.W = value.w;
+    Reservoir<uint> reservoir;
+    reservoir.Sample = asuint(value.x);
+    reservoir.WeightSum = value.y;
+    reservoir.SampleCount = asuint(value.z);
+    reservoir.Weight = value.w;
 
-    return r;
+    return reservoir;
 }
 
-float4 StoreReservoir(Reservoir r)
+float4 StoreDIReservoir(Reservoir<uint> reservoir)
 {
     float4 value;
-    value.x = asfloat(r.Y);
-    value.y = r.WSum;
-    value.z = asfloat(r.M);
-    value.w = r.W;
+    value.x = asfloat(reservoir.Sample);
+    value.y = reservoir.WeightSum;
+    value.z = asfloat(reservoir.SampleCount);
+    value.w = reservoir.Weight;
 
     return value;
 }

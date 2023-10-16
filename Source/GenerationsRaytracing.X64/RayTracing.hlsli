@@ -151,7 +151,7 @@ float3 TraceSecondaryRay(uint depth, float3 position, float3 direction, uint mis
     return payload.Color;
 }
 
-float3 TraceGlobalIllumination(uint depth, float3 position, float3 normal)
+float3 TraceGI(uint depth, float3 position, float3 normal)
 {
     float4 random = GetBlueNoise();
     float3 sampleDirection = GetCosineWeightedHemisphere(depth == 0 ? random.xy : random.zw);

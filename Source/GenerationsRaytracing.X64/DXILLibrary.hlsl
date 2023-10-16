@@ -95,52 +95,56 @@ void ReservoirRayGeneration()
     uint random = InitRand(g_CurrentFrame,
         DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
 
-    Reservoir r = (Reservoir) 0;
+    Reservoir<uint> reservoir = (Reservoir<uint>) 0;
 
     // Generate initial candidates
     uint localLightCount = min(32, g_LocalLightCount);
 
     for (uint i = 0; i < localLightCount; i++)
     {
-        uint y = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
-        UpdateReservoir(r, y, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[y]) * g_LocalLightCount, NextRand(random));
+        uint sample = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
+        float weight = ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
+        UpdateReservoir(reservoir, sample, weight, NextRand(random));
     }
 
-    ComputeReservoirW(r, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[r.Y]));
+    ComputeReservoirWeight(reservoir, ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]));
+    reservoir.Weight *= TraceLocalLightShadow(gBufferData.Position, g_LocalLights[reservoir.Sample]);
 
     // Temporal reuse
     int2 temporalNeighbor = round((float2) DispatchRaysIndex().xy + g_MotionVectorsTexture[DispatchRaysIndex().xy]);
-    Reservoir prevFrameReservoir = LoadReservoir(g_PrevReservoirTexture[temporalNeighbor]);
-    prevFrameReservoir.M = min(r.M * 20.0, prevFrameReservoir.M);
+    Reservoir<uint> prevReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[temporalNeighbor]);
+    prevReservoir.SampleCount = min(reservoir.SampleCount * 20.0, prevReservoir.SampleCount);
 
-    Reservoir s = (Reservoir) 0;
+    Reservoir<uint> sumReservoir = (Reservoir<uint>) 0;
 
-    UpdateReservoir(s, r.Y, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[r.Y]) * r.W * r.M, NextRand(random));
-    UpdateReservoir(s, prevFrameReservoir.Y, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[prevFrameReservoir.Y]) * prevFrameReservoir.W * prevFrameReservoir.M, NextRand(random));
+    UpdateReservoir(sumReservoir, reservoir.Sample, 
+        ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
 
-    s.M = r.M + prevFrameReservoir.M;
-    ComputeReservoirW(s, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[s.Y]));
+    UpdateReservoir(sumReservoir, prevReservoir.Sample, 
+        ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
 
-    g_EmissionTexture[DispatchRaysIndex().xy] += ComputeLocalLighting(gBufferData, eyeDirection, g_LocalLights[s.Y]) * s.W;
-    g_ReservoirTexture[DispatchRaysIndex().xy] = StoreReservoir(s);
+    sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
+    ComputeReservoirWeight(sumReservoir, ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sumReservoir.Sample]));
+
+    g_DIReservoirTexture[DispatchRaysIndex().xy] = StoreDIReservoir(sumReservoir);
 }
 
 [shader("raygeneration")]
-void GlobalIlluminationRayGeneration()
+void GIRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 globalIllumination = 0.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
     {
-        globalIllumination = TraceGlobalIllumination(0, gBufferData.Position, gBufferData.Normal);
+        globalIllumination = TraceGI(0, gBufferData.Position, gBufferData.Normal);
 
         float luminance = dot(globalIllumination, float3(0.299, 0.587, 0.114));
         globalIllumination = saturate((globalIllumination - luminance) * g_GI1Scale.w + luminance);
         globalIllumination *= g_GI0Scale.rgb;
     }
 
-    g_GlobalIlluminationTexture[DispatchRaysIndex().xy] = globalIllumination;
+    g_GITexture[DispatchRaysIndex().xy] = globalIllumination;
 }
 
 [shader("raygeneration")]
@@ -202,7 +206,7 @@ void ShadowMiss(inout ShadowRayPayload payload : SV_RayPayload)
 }
 
 [shader("miss")]
-void GlobalIlluminationMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     if (g_UseEnvironmentColor)
     {
@@ -238,32 +242,9 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
         payload.Color += ComputeEyeLighting(gBufferData, WorldRayOrigin(), -WorldRayDirection());
 
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
-    {
-        uint random = InitRand(g_CurrentFrame * 2 + payload.Depth,
-            DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
-
-        Reservoir r = (Reservoir) 0;
-
-        uint localLightCount = min(32, g_LocalLightCount);
-
-        for (uint i = 0; i < localLightCount; i++)
-        {
-            uint y = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
-            float3 localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[y]) * g_LocalLightCount;
-            UpdateReservoir(r, y, length(localLighting), NextRand(random));
-        }
-
-        LocalLight localLight = g_LocalLights[r.Y];
-        float3 localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), localLight);
-        ComputeReservoirW(r, length(localLighting));
-
-        payload.Color += localLighting * r.W * TraceLocalLightShadow(gBufferData.Position, localLight);
-    }
-
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth == 0)
     {
-        payload.Color += TraceGlobalIllumination(payload.Depth + 1,
+        payload.Color += TraceGI(payload.Depth + 1,
             gBufferData.Position, gBufferData.Normal) * (gBufferData.Diffuse + gBufferData.Falloff);
     }
 
