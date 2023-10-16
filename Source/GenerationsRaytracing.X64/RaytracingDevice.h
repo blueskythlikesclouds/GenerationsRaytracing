@@ -96,6 +96,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_specularTexture;
     ComPtr<D3D12MA::Allocation> m_specularPowerLevelFresnelTexture;
     ComPtr<D3D12MA::Allocation> m_normalTexture;
+    ComPtr<D3D12MA::Allocation> m_prevNormalTexture;
     ComPtr<D3D12MA::Allocation> m_falloffTexture;
     ComPtr<D3D12MA::Allocation> m_emissionTexture;
 

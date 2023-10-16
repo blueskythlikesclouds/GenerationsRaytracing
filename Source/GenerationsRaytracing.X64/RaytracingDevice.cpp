@@ -319,7 +319,8 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularPowerLevelFresnelTexture },
-        { DXGI_FORMAT_R10G10B10A2_UNORM, m_normalTexture },
+        { DXGI_FORMAT_R10G10B10A2_UNORM, m_normalTexture, &m_prevNormalTexture },
+        { DXGI_FORMAT_R10G10B10A2_UNORM, m_prevNormalTexture, &m_normalTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_falloffTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_emissionTexture },
 
@@ -1216,7 +1217,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 21, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 22, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

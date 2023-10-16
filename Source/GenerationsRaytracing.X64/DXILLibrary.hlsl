@@ -113,21 +113,26 @@ void ReservoirRayGeneration()
         {
             // Temporal reuse
             int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
-            Reservoir<uint> prevReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[temporalNeighbor]);
-            prevReservoir.SampleCount = min(reservoir.SampleCount * 20, prevReservoir.SampleCount);
+            float3 prevNormal = normalize(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
-            Reservoir<uint> sumReservoir = (Reservoir<uint>) 0;
+            if (dot(prevNormal, gBufferData.Normal) >= 0.9063)
+            {
+                Reservoir<uint> prevReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[temporalNeighbor]);
+                prevReservoir.SampleCount = min(reservoir.SampleCount * 20, prevReservoir.SampleCount);
 
-            UpdateReservoir(sumReservoir, reservoir.Sample, 
-                ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
+                Reservoir<uint> sumReservoir = (Reservoir<uint>) 0;
 
-            UpdateReservoir(sumReservoir, prevReservoir.Sample, 
-                ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
+                UpdateReservoir(sumReservoir, reservoir.Sample, 
+                    ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
 
-            sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
-            ComputeReservoirWeight(sumReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sumReservoir.Sample]));
+                UpdateReservoir(sumReservoir, prevReservoir.Sample, 
+                    ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
 
-            reservoir = sumReservoir;
+                sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
+                ComputeReservoirWeight(sumReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sumReservoir.Sample]));
+
+                reservoir = sumReservoir;
+            }
         }
     }
 
@@ -178,15 +183,20 @@ void GIRayGeneration()
         {
             // Temporal reuse
             int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
-            Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGIReservoirTexture, temporalNeighbor);
+            float3 prevNormal = normalize(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
-            prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
-            uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
+            if (dot(prevNormal, gBufferData.Normal) >= 0.9063)
+            {
+                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGIReservoirTexture, temporalNeighbor);
 
-            UpdateReservoir(reservoir, prevReservoir.Sample,
-                ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
+                prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
+                uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
 
-            reservoir.SampleCount = newSampleCount;
+                UpdateReservoir(reservoir, prevReservoir.Sample,
+                    ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
+
+                reservoir.SampleCount = newSampleCount;
+            }
         }
 
         ComputeReservoirWeight(reservoir, ComputeGIReservoirWeight(gBufferData, reservoir.Sample));
