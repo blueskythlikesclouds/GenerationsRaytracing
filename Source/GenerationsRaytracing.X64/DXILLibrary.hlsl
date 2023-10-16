@@ -176,6 +176,7 @@ void GIRayGeneration()
 
         reservoir.Sample.Color = payload.Color;
         reservoir.Sample.Position = gBufferData.Position + payload.T * ray.Direction;
+        reservoir.Sample.Normal = payload.Normal;
         reservoir.WeightSum = ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * pdf;
         reservoir.SampleCount = 1;
 
@@ -183,26 +184,32 @@ void GIRayGeneration()
         {
             // Temporal reuse
             int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
+            float3 prevPosition = g_PrevPositionFlagsTexture[temporalNeighbor].xyz;
             float3 prevNormal = normalize(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
             if (dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
-                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGIReservoirTexture, temporalNeighbor);
+                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, 
+                    g_PrevGINormalTexture, g_PrevGIReservoirTexture, temporalNeighbor);
 
-                prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
-                uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
+                float jacobian = ComputeJacobian(gBufferData.Position, gBufferData.Normal, prevPosition, prevNormal, prevReservoir.Sample);
+                if (jacobian >= 1.0 / 10.0 && jacobian <= 10.0)
+                {
+                    prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
+                    uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
 
-                UpdateReservoir(reservoir, prevReservoir.Sample,
-                    ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
+                    UpdateReservoir(reservoir, prevReservoir.Sample, ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * 
+                        prevReservoir.Weight * prevReservoir.SampleCount * jacobian, NextRand(random));
 
-                reservoir.SampleCount = newSampleCount;
+                    reservoir.SampleCount = newSampleCount;
+                }
             }
         }
 
         ComputeReservoirWeight(reservoir, ComputeGIReservoirWeight(gBufferData, reservoir.Sample));
     }
 
-    StoreGIReservoir(g_GITexture, g_GIPositionTexture, g_GIReservoirTexture, DispatchRaysIndex().xy, reservoir);
+    StoreGIReservoir(g_GITexture, g_GIPositionTexture, g_GINormalTexture, g_GIReservoirTexture, DispatchRaysIndex().xy, reservoir);
 }
 
 [shader("raygeneration")]
@@ -256,6 +263,7 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
     payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     payload.T = 10000.0;
+    payload.Normal = -WorldRayDirection();
 }
 
 [shader("miss")]
@@ -271,6 +279,7 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     {
         payload.Color = lerp(g_GroundColor, g_SkyColor, WorldRayDirection().y * 0.5 + 0.5);
         payload.T = 10000.0;
+        payload.Normal = -WorldRayDirection();
     }
     else
     {
@@ -315,11 +324,11 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     }
 
     payload.Color += gBufferData.Emission;
-
-    if (any(isnan(payload.Color)))
+    if (any(or(isnan(payload.Color), isinf(payload.Color))))
         payload.Color = 0.0;
 
     payload.T = RayTCurrent();
+    payload.Normal = gBufferData.Normal;
 }
 
 [shader("anyhit")]

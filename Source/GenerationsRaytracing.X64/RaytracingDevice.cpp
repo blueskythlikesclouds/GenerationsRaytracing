@@ -315,7 +315,8 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R32_FLOAT, m_depthTexture },
         { DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionFlagsTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionFlagsTexture, &m_prevPositionFlagsTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevPositionFlagsTexture, &m_positionFlagsTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularPowerLevelFresnelTexture },
@@ -331,10 +332,12 @@ void RaytracingDevice::createRaytracingTextures()
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giPositionTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giNormalTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giReservoirTexture },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGITexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIPositionTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGINormalTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIReservoirTexture },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giAccumulationTexture, &m_prevGIAccumulationTexture },
@@ -1222,7 +1225,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 24, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 27, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1273,7 +1276,7 @@ RaytracingDevice::RaytracingDevice()
     secondaryHitGroupSubobject.SetClosestHitShaderImport(L"SecondaryClosestHit");
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
-    shaderConfigSubobject.Config(sizeof(float) * 5, sizeof(float) * 2);
+    shaderConfigSubobject.Config(sizeof(float) * 8, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
     pipelineConfigSubobject.Config(3);

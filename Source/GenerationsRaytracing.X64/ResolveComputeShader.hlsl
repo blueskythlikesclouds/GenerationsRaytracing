@@ -19,8 +19,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         diReservoir = LoadDIReservoir(g_DIReservoirTexture[dispatchThreadId.xy]);
 
-        giReservoir = LoadGIReservoir(
-            g_GITexture, g_GIPositionTexture, g_GIReservoirTexture, dispatchThreadId.xy);
+        giReservoir = LoadGIReservoir(g_GITexture, g_GIPositionTexture,
+            g_GINormalTexture, g_GIReservoirTexture, dispatchThreadId.xy);
 
         float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
 
@@ -34,24 +34,29 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             Reservoir<uint> spatialDIReservoir = LoadDIReservoir(g_DIReservoirTexture[index]);
 
             Reservoir<GISample> spatialGIReservoir = LoadGIReservoir(
-                g_GITexture, g_GIPositionTexture, g_GIReservoirTexture, index);
+                g_GITexture, g_GIPositionTexture, g_GINormalTexture, g_GIReservoirTexture, index);
 
+            float3 position = g_PositionFlagsTexture[index].xyz;
             float3 normal = normalize(g_NormalTexture[index] * 2.0 - 1.0);
 
             if (dot(gBufferData.Normal, normal) >= 0.9063)
             {
                 uint newSampleCount = diReservoir.SampleCount + spatialDIReservoir.SampleCount;
 
-                UpdateReservoir(diReservoir, spatialDIReservoir.Sample,
-                    ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[spatialDIReservoir.Sample]) * spatialDIReservoir.Weight * spatialDIReservoir.SampleCount, NextRand(random));
+                UpdateReservoir(diReservoir, spatialDIReservoir.Sample, ComputeDIReservoirWeight(gBufferData, eyeDirection, 
+                    g_LocalLights[spatialDIReservoir.Sample]) * spatialDIReservoir.Weight * spatialDIReservoir.SampleCount, NextRand(random));
 
                 diReservoir.SampleCount = newSampleCount;
 
-                newSampleCount = giReservoir.SampleCount + spatialGIReservoir.SampleCount;
-                UpdateReservoir(giReservoir, spatialGIReservoir.Sample,
-                    ComputeGIReservoirWeight(gBufferData, spatialGIReservoir.Sample) * spatialGIReservoir.Weight * spatialGIReservoir.SampleCount, NextRand(random));
+                float jacobian = ComputeJacobian(gBufferData.Position, gBufferData.Normal, position, normal, spatialGIReservoir.Sample);
+                if (jacobian >= 1.0 / 10.0 && jacobian <= 10.0)
+                {
+                    newSampleCount = giReservoir.SampleCount + spatialGIReservoir.SampleCount;
+                    UpdateReservoir(giReservoir, spatialGIReservoir.Sample, ComputeGIReservoirWeight(gBufferData, spatialGIReservoir.Sample) * 
+                        spatialGIReservoir.Weight * spatialGIReservoir.SampleCount * jacobian, NextRand(random));
 
-                giReservoir.SampleCount = newSampleCount;
+                    giReservoir.SampleCount = newSampleCount;
+                }
             }
         }
         ComputeReservoirWeight(diReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[diReservoir.Sample]));
@@ -109,5 +114,5 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     g_DepthTexture[dispatchThreadId.xy] = depth;
 
     g_PrevDIReservoirTexture[dispatchThreadId.xy] = StoreDIReservoir(diReservoir);
-    StoreGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGIReservoirTexture, dispatchThreadId.xy, giReservoir);
+    StoreGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGINormalTexture, g_PrevGIReservoirTexture, dispatchThreadId.xy, giReservoir);
 }
