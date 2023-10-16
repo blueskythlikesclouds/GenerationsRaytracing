@@ -619,7 +619,7 @@ GBufferData LoadGBufferData(uint2 index)
     gBufferData.Position = positionFlags.xyz;
     gBufferData.Flags = asuint(positionFlags.w);
 
-    float4 diffuseRefractionAlpha = g_DiffuseRefractionAlpha[index];
+    float4 diffuseRefractionAlpha = g_DiffuseRefractionAlphaTexture[index];
     gBufferData.Diffuse = diffuseRefractionAlpha.rgb;
     gBufferData.RefractionAlpha = diffuseRefractionAlpha.a;
 
@@ -640,7 +640,7 @@ GBufferData LoadGBufferData(uint2 index)
 void StoreGBufferData(uint2 index, GBufferData gBufferData)
 {
     g_PositionFlagsTexture[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
-    g_DiffuseRefractionAlpha[index] = float4(gBufferData.Diffuse, gBufferData.RefractionAlpha);
+    g_DiffuseRefractionAlphaTexture[index] = float4(gBufferData.Diffuse, gBufferData.RefractionAlpha);
     g_SpecularTexture[index] = gBufferData.Specular;
     g_SpecularPowerLevelFresnelTexture[index] = float3(gBufferData.SpecularPower, gBufferData.SpecularLevel, gBufferData.SpecularFresnel);
     g_NormalTexture[index] = gBufferData.Normal * 0.5 + 0.5;

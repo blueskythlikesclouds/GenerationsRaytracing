@@ -11,6 +11,7 @@ struct [raypayload] PrimaryRayPayload
 struct [raypayload] SecondaryRayPayload
 {
     float3 Color : read(caller)     : write(closesthit, miss);
+    float T      : read(caller)     : write(closesthit, miss);
     uint Depth   : read(closesthit) : write(caller);
 };
 

@@ -87,64 +87,112 @@ void ShadowRayGeneration()
 void ReservoirRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
-    if (gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
-        return;
-
-    float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
-
-    uint random = InitRand(g_CurrentFrame,
-        DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
-
     Reservoir<uint> reservoir = (Reservoir<uint>) 0;
 
-    // Generate initial candidates
-    uint localLightCount = min(32, g_LocalLightCount);
-
-    for (uint i = 0; i < localLightCount; i++)
+    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
     {
-        uint sample = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
-        float weight = ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
-        UpdateReservoir(reservoir, sample, weight, NextRand(random));
+        float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
+
+        uint random = InitRand(g_CurrentFrame,
+            DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
+
+        // Generate initial candidates
+        uint localLightCount = min(32, g_LocalLightCount);
+
+        for (uint i = 0; i < localLightCount; i++)
+        {
+            uint sample = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
+            float weight = ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
+            UpdateReservoir(reservoir, sample, weight, NextRand(random));
+        }
+
+        ComputeReservoirWeight(reservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]));
+        reservoir.Weight *= TraceLocalLightShadow(gBufferData.Position, g_LocalLights[reservoir.Sample]);
+
+        // Temporal reuse
+        int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
+        Reservoir<uint> prevReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[temporalNeighbor]);
+        prevReservoir.SampleCount = min(reservoir.SampleCount * 20, prevReservoir.SampleCount);
+
+        Reservoir<uint> sumReservoir = (Reservoir<uint>) 0;
+
+        UpdateReservoir(sumReservoir, reservoir.Sample, 
+            ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
+
+        UpdateReservoir(sumReservoir, prevReservoir.Sample, 
+            ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
+
+        sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
+        ComputeReservoirWeight(sumReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sumReservoir.Sample]));
+
+        reservoir = sumReservoir;
     }
 
-    ComputeReservoirWeight(reservoir, ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]));
-    reservoir.Weight *= TraceLocalLightShadow(gBufferData.Position, g_LocalLights[reservoir.Sample]);
-
-    // Temporal reuse
-    int2 temporalNeighbor = round((float2) DispatchRaysIndex().xy + g_MotionVectorsTexture[DispatchRaysIndex().xy]);
-    Reservoir<uint> prevReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[temporalNeighbor]);
-    prevReservoir.SampleCount = min(reservoir.SampleCount * 20.0, prevReservoir.SampleCount);
-
-    Reservoir<uint> sumReservoir = (Reservoir<uint>) 0;
-
-    UpdateReservoir(sumReservoir, reservoir.Sample, 
-        ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
-
-    UpdateReservoir(sumReservoir, prevReservoir.Sample, 
-        ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
-
-    sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
-    ComputeReservoirWeight(sumReservoir, ComputeLocalLightReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sumReservoir.Sample]));
-
-    g_DIReservoirTexture[DispatchRaysIndex().xy] = StoreDIReservoir(sumReservoir);
+    g_DIReservoirTexture[DispatchRaysIndex().xy] = StoreDIReservoir(reservoir);
 }
 
 [shader("raygeneration")]
 void GIRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
+    Reservoir<GISample> reservoir = (Reservoir<GISample>) 0;
 
-    float3 globalIllumination = 0.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
     {
-        globalIllumination = TraceGI(0, gBufferData.Position, gBufferData.Normal);
+        uint random = InitRand(g_CurrentFrame,
+            DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
 
-        float luminance = dot(globalIllumination, float3(0.299, 0.587, 0.114));
-        globalIllumination = saturate((globalIllumination - luminance) * g_GI1Scale.w + luminance);
-        globalIllumination *= g_GI0Scale.rgb;
+        RayDesc ray;
+
+        ray.Origin = gBufferData.Position;
+        ray.Direction = TangentToWorld(gBufferData.Normal, GetCosineWeightedHemisphere(float2(NextRand(random), NextRand(random))));
+        ray.TMin = 0.001;
+        ray.TMax = 10000.0;
+
+        SecondaryRayPayload payload;
+        payload.Depth = 0;
+
+        TraceRay(
+            g_BVH,
+            0,
+            1,
+            1,
+            0,
+            2,
+            ray,
+            payload);
+
+        GISample giSample;
+        giSample.Color = payload.Color;
+        giSample.Position = gBufferData.Position + payload.T * ray.Direction;
+
+        float weight = ComputeGIReservoirWeight(gBufferData, giSample);
+        weight /= saturate(dot(gBufferData.Normal, ray.Direction)) / PI;
+        UpdateReservoir(reservoir, giSample, weight, NextRand(random));
+        ComputeReservoirWeight(reservoir, ComputeGIReservoirWeight(gBufferData, giSample));
+
+        // Temporal reuse
+        int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
+        Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture,
+            g_PrevGIReservoirTexture, temporalNeighbor);
+
+        prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
+
+        Reservoir<GISample> sumReservoir = (Reservoir<GISample>) 0;
+
+        UpdateReservoir(sumReservoir, reservoir.Sample,
+            ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
+
+        UpdateReservoir(sumReservoir, prevReservoir.Sample,
+            ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
+
+        sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
+        ComputeReservoirWeight(sumReservoir, ComputeGIReservoirWeight(gBufferData, sumReservoir.Sample));
+
+        reservoir = sumReservoir;
     }
 
-    g_GITexture[DispatchRaysIndex().xy] = globalIllumination;
+    StoreGIReservoir(g_GITexture, g_GIPositionTexture, g_GIReservoirTexture, DispatchRaysIndex().xy, reservoir);
 }
 
 [shader("raygeneration")]
@@ -197,6 +245,7 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
     payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+    payload.T = 10000.0;
 }
 
 [shader("miss")]
@@ -211,6 +260,7 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     if (g_UseEnvironmentColor)
     {
         payload.Color = lerp(g_GroundColor, g_SkyColor, WorldRayDirection().y * 0.5 + 0.5);
+        payload.T = 10000.0;
     }
     else
     {
@@ -242,6 +292,12 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
         payload.Color += ComputeEyeLighting(gBufferData, WorldRayOrigin(), -WorldRayDirection());
 
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
+    {
+        uint sample = min(floor(GetBlueNoise().x * g_LocalLightCount), g_LocalLightCount - 1);
+        payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount;
+    }
+
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth == 0)
     {
         payload.Color += TraceGI(payload.Depth + 1,
@@ -249,6 +305,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     }
 
     payload.Color += gBufferData.Emission;
+    payload.T = RayTCurrent();
 }
 
 [shader("anyhit")]

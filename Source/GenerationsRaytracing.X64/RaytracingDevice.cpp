@@ -324,9 +324,18 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_emissionTexture },
 
         { DXGI_FORMAT_R16_UNORM, m_shadowTexture },
+
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_diReservoirTexture, &m_prevDIReservoirTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevDIReservoirTexture, &m_diReservoirTexture },
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture },
+
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture, &m_prevGITexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giPositionTexture, &m_prevGIPositionTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giReservoirTexture, &m_prevGIReservoirTexture },
+
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGITexture, &m_giTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIPositionTexture, &m_giPositionTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIReservoirTexture, &m_giReservoirTexture },
+
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
     };
@@ -1207,7 +1216,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 16, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 21, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1258,7 +1267,7 @@ RaytracingDevice::RaytracingDevice()
     secondaryHitGroupSubobject.SetClosestHitShaderImport(L"SecondaryClosestHit");
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
-    shaderConfigSubobject.Config(sizeof(float) * 4, sizeof(float) * 2);
+    shaderConfigSubobject.Config(sizeof(float) * 5, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
     pipelineConfigSubobject.Config(3);
