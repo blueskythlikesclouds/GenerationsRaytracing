@@ -2,7 +2,7 @@
 #include "RayTracing.hlsli"
 #include "RootSignature.hlsli"
 
-[numthreads(32, 32, 1)]
+[numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     float3 color = 0.0;

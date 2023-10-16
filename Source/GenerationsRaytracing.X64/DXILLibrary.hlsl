@@ -97,21 +97,32 @@ void ReservoirRayGeneration()
 
     Reservoir r = (Reservoir) 0;
 
+    // Generate initial candidates
     uint localLightCount = min(32, g_LocalLightCount);
 
     for (uint i = 0; i < localLightCount; i++)
     {
         uint y = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
-        float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, g_LocalLights[y]) * g_LocalLightCount;
-        UpdateReservoir(r, y, length(localLighting), NextRand(random));
+        UpdateReservoir(r, y, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[y]) * g_LocalLightCount, NextRand(random));
     }
 
-    LocalLight localLight = g_LocalLights[r.Y];
-    float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
-    ComputeReservoirWeight(r, length(localLighting));
-    r.W *= TraceLocalLightShadow(gBufferData.Position, localLight);
+    ComputeReservoirW(r, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[r.Y]));
 
-    g_EmissionTexture[DispatchRaysIndex().xy] += localLighting * r.W;
+    // Temporal reuse
+    int2 temporalNeighbor = round((float2) DispatchRaysIndex().xy + g_MotionVectorsTexture[DispatchRaysIndex().xy]);
+    Reservoir prevFrameReservoir = LoadReservoir(g_PrevReservoirTexture[temporalNeighbor]);
+    prevFrameReservoir.M = min(r.M * 20.0, prevFrameReservoir.M);
+
+    Reservoir s = (Reservoir) 0;
+
+    UpdateReservoir(s, r.Y, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[r.Y]) * r.W * r.M, NextRand(random));
+    UpdateReservoir(s, prevFrameReservoir.Y, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[prevFrameReservoir.Y]) * prevFrameReservoir.W * prevFrameReservoir.M, NextRand(random));
+
+    s.M = r.M + prevFrameReservoir.M;
+    ComputeReservoirW(s, ComputeLocalLightReservoirW(gBufferData, eyeDirection, g_LocalLights[s.Y]));
+
+    g_EmissionTexture[DispatchRaysIndex().xy] += ComputeLocalLighting(gBufferData, eyeDirection, g_LocalLights[s.Y]) * s.W;
+    g_ReservoirTexture[DispatchRaysIndex().xy] = StoreReservoir(s);
 }
 
 [shader("raygeneration")]
@@ -144,14 +155,14 @@ void ReflectionRayGeneration()
 
         if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
         {
-            reflection = TraceReflection(1, 
+            reflection = TraceReflection(0, 
                 gBufferData.Position, 
                 gBufferData.Normal,
                 eyeDirection);
         }
         else
         {
-            reflection = TraceReflection(1,
+            reflection = TraceReflection(0,
                 gBufferData.Position,
                 gBufferData.Normal,
                 gBufferData.SpecularPower,
@@ -169,7 +180,7 @@ void RefractionRayGeneration()
     float3 refraction = 0.0;
     if (gBufferData.Flags & GBUFFER_FLAG_HAS_REFRACTION)
     {
-        refraction = TraceRefraction(1, 
+        refraction = TraceRefraction(0, 
             gBufferData.Position, 
             gBufferData.Normal, 
             normalize(g_EyePosition.xyz - gBufferData.Position));
@@ -229,7 +240,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
     {
-        uint random = InitRand(g_CurrentFrame * 3 + payload.Depth,
+        uint random = InitRand(g_CurrentFrame * 2 + payload.Depth,
             DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
 
         Reservoir r = (Reservoir) 0;
@@ -245,12 +256,12 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
         LocalLight localLight = g_LocalLights[r.Y];
         float3 localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), localLight);
-        ComputeReservoirWeight(r, length(localLighting));
+        ComputeReservoirW(r, length(localLighting));
 
         payload.Color += localLighting * r.W * TraceLocalLightShadow(gBufferData.Position, localLight);
     }
 
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth < 2)
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth == 0)
     {
         payload.Color += TraceGlobalIllumination(payload.Depth + 1,
             gBufferData.Position, gBufferData.Normal) * (gBufferData.Diffuse + gBufferData.Falloff);

@@ -1,6 +1,7 @@
 #ifndef GEOMETRY_SHADING_H
 #define GEOMETRY_SHADING_H
 #include "GBufferData.hlsli"
+#include "Reservoir.hlsli"
 #include "RootSignature.hlsli"
 #include "SharedDefinitions.hlsli"
 
@@ -79,6 +80,12 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
 
     localLighting *= 1.0 - saturate((distance - localLight.InRange) / (localLight.OutRange - localLight.InRange));
     return localLighting;
+}
+
+float ComputeLocalLightReservoirW(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
+{
+    float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
+    return dot(localLighting, float3(0.2126, 0.7152, 0.0722));
 }
 
 float3 ComputeGlobalIllumination(GBufferData gBufferData, float3 globalIllumination)

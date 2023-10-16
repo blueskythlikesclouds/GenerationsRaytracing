@@ -85,7 +85,7 @@ protected:
     // Textures
     uint32_t m_width = 0;
     uint32_t m_height = 0;
-    uint32_t m_uavId = 0;
+    uint32_t m_uavIds[NUM_FRAMES]{};
 
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
@@ -101,6 +101,7 @@ protected:
 
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
     ComPtr<D3D12MA::Allocation> m_reservoirTexture;
+    ComPtr<D3D12MA::Allocation> m_prevReservoirTexture;
     ComPtr<D3D12MA::Allocation> m_globalIlluminationTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
     ComPtr<D3D12MA::Allocation> m_refractionTexture;

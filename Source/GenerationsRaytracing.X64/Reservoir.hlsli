@@ -18,7 +18,7 @@ void UpdateReservoir(inout Reservoir r, uint y, float w, float random)
         r.Y = y;
 }
 
-void ComputeReservoirWeight(inout Reservoir r, float w)
+void ComputeReservoirW(inout Reservoir r, float w)
 {
     if (w > 0.0)
         r.W = (1.0 / w) * ((1.0 / r.M) * r.WSum);

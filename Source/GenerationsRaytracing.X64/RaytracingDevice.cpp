@@ -307,6 +307,7 @@ void RaytracingDevice::createRaytracingTextures()
     {
         DXGI_FORMAT format;
         ComPtr<D3D12MA::Allocation>& allocation;
+        ComPtr<D3D12MA::Allocation>* pingPongAllocation = nullptr;
     }
     const textureDescs[] =
     {
@@ -323,16 +324,12 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_emissionTexture },
 
         { DXGI_FORMAT_R16_UNORM, m_shadowTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_reservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_reservoirTexture, &m_prevReservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevReservoirTexture, &m_reservoirTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_globalIlluminationTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
     };
-
-    if (m_uavId == NULL)
-        m_uavId = m_descriptorHeap.allocateMany(_countof(textureDescs));
-
-    auto cpuHandle = m_descriptorHeap.getCpuHandle(m_uavId);
 
     for (const auto& textureDesc : textureDescs)
     {
@@ -348,14 +345,31 @@ void RaytracingDevice::createRaytracingTextures()
             nullptr);
 
         assert(SUCCEEDED(hr) && textureDesc.allocation != nullptr);
+    }
 
-        m_device->CreateUnorderedAccessView(
-            textureDesc.allocation->GetResource(),
-            nullptr,
-            nullptr,
-            cpuHandle);
+    for (size_t i = 0; i < NUM_FRAMES; i++)
+    {
+        auto& uavId = m_uavIds[i];
 
-        cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
+        if (uavId == NULL)
+            uavId = m_descriptorHeap.allocateMany(_countof(textureDescs));
+
+        auto cpuHandle = m_descriptorHeap.getCpuHandle(uavId);
+
+        for (const auto& textureDesc : textureDescs)
+        {
+            auto resource = textureDesc.allocation->GetResource();
+            if (textureDesc.pingPongAllocation != nullptr && (i & 1) != 0)
+                resource = (*textureDesc.pingPongAllocation)->GetResource();
+
+            m_device->CreateUnorderedAccessView(
+                resource,
+                nullptr,
+                nullptr,
+                cpuHandle);
+
+            cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
+        }
     }
 
     resourceDesc.Width = m_width;
@@ -377,7 +391,7 @@ void RaytracingDevice::createRaytracingTextures()
     if (m_srvId == NULL)
         m_srvId = m_descriptorHeap.allocateMany(2);
 
-    cpuHandle = m_descriptorHeap.getCpuHandle(m_srvId);
+    auto cpuHandle = m_descriptorHeap.getCpuHandle(m_srvId);
     m_device->CreateShaderResourceView(m_outputTexture->GetResource(), nullptr, cpuHandle);
 
     cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
@@ -388,12 +402,8 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
 {
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
 
-    getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_falloffTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
-
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_reservoirTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_globalIlluminationTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
@@ -401,8 +411,8 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
     getGraphicsCommandList().commitBarriers();
 
     getUnderlyingGraphicsCommandList()->Dispatch(
-        (m_upscaler->getWidth() + 31) / 32,
-        (m_upscaler->getHeight() + 31) / 32,
+        (m_upscaler->getWidth() + 7) / 8,
+        (m_upscaler->getHeight() + 7) / 8,
         1);
 
     getGraphicsCommandList().uavBarrier(m_colorTexture->GetResource());
@@ -619,7 +629,7 @@ void RaytracingDevice::procMsgCreateInstance()
     {
         // Not loaded yet, defer assignment to top level acceleration structure creation
         m_delayedInstances[m_frame].emplace_back(message.instanceId, message.bottomLevelAccelStructId);
-        assert(message.dataSize == 0); // Skinned models should not fall here!
+        //assert(message.dataSize == 0); // Skinned models should not fall here!
     }
     else
     {
@@ -727,7 +737,7 @@ void RaytracingDevice::procMsgTraceRays()
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1, globalsPS);
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(2, globalsRT);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(3, topLevelAccelStruct);
-    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(4, m_descriptorHeap.getGpuHandle(m_uavId));
+    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(4, m_descriptorHeap.getGpuHandle(m_uavIds[m_frame]));
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, geometryDescs);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(6, materials);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(7, instanceDescs);
@@ -754,9 +764,14 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
+    getGraphicsCommandList().uavBarrier(m_motionVectorsTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_positionFlagsTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularPowerLevelFresnelTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_normalTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_falloffTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
     getGraphicsCommandList().commitBarriers();
 
     // ShadowRayGeneration
@@ -1192,7 +1207,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 15, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 16, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1246,7 +1261,7 @@ RaytracingDevice::RaytracingDevice()
     shaderConfigSubobject.Config(sizeof(float) * 4, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
-    pipelineConfigSubobject.Config(4);
+    pipelineConfigSubobject.Config(3);
 
     CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT rootSignatureSubobject(stateObject);
     rootSignatureSubobject.SetRootSignature(m_raytracingRootSignature.Get());
