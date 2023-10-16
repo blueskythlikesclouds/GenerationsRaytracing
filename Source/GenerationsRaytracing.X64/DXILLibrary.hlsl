@@ -315,6 +315,10 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     }
 
     payload.Color += gBufferData.Emission;
+
+    if (any(isnan(payload.Color)))
+        payload.Color = 0.0;
+
     payload.T = RayTCurrent();
 }
 

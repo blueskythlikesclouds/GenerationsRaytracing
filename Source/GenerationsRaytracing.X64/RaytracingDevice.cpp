@@ -326,16 +326,16 @@ void RaytracingDevice::createRaytracingTextures()
 
         { DXGI_FORMAT_R16_UNORM, m_shadowTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_diReservoirTexture, &m_prevDIReservoirTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevDIReservoirTexture, &m_diReservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_diReservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevDIReservoirTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture, &m_prevGITexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giPositionTexture, &m_prevGIPositionTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giReservoirTexture, &m_prevGIReservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giPositionTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giReservoirTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGITexture, &m_giTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIPositionTexture, &m_giPositionTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIReservoirTexture, &m_giReservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGITexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIPositionTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIReservoirTexture },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giAccumulationTexture, &m_prevGIAccumulationTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIAccumulationTexture, &m_giAccumulationTexture },
@@ -418,6 +418,8 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_diReservoirTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_giTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_giPositionTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_giReservoirTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
 
