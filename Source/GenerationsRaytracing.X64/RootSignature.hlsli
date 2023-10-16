@@ -155,8 +155,11 @@ RWTexture2D<float3> g_PrevGITexture : register(u17);
 RWTexture2D<float3> g_PrevGIPositionTexture : register(u18);
 RWTexture2D<float3> g_PrevGIReservoirTexture : register(u19);
 
-RWTexture2D<float3> g_ReflectionTexture : register(u20);
-RWTexture2D<float3> g_RefractionTexture : register(u21);
+RWTexture2D<float4> g_GIAccumulationTexture : register(u20);
+RWTexture2D<float4> g_PrevGIAccumulationTexture : register(u21);
+
+RWTexture2D<float3> g_ReflectionTexture : register(u22);
+RWTexture2D<float3> g_RefractionTexture : register(u23);
 
 SamplerState g_SamplerState : register(s0);
 
