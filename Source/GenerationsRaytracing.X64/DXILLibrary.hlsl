@@ -109,23 +109,26 @@ void ReservoirRayGeneration()
         ComputeReservoirWeight(reservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]));
         reservoir.Weight *= TraceLocalLightShadow(gBufferData.Position, g_LocalLights[reservoir.Sample]);
 
-        // Temporal reuse
-        int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
-        Reservoir<uint> prevReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[temporalNeighbor]);
-        prevReservoir.SampleCount = min(reservoir.SampleCount * 20, prevReservoir.SampleCount);
+        if (g_CurrentFrame > 0)
+        {
+            // Temporal reuse
+            int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
+            Reservoir<uint> prevReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[temporalNeighbor]);
+            prevReservoir.SampleCount = min(reservoir.SampleCount * 20, prevReservoir.SampleCount);
 
-        Reservoir<uint> sumReservoir = (Reservoir<uint>) 0;
+            Reservoir<uint> sumReservoir = (Reservoir<uint>) 0;
 
-        UpdateReservoir(sumReservoir, reservoir.Sample, 
-            ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
+            UpdateReservoir(sumReservoir, reservoir.Sample, 
+                ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
 
-        UpdateReservoir(sumReservoir, prevReservoir.Sample, 
-            ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
+            UpdateReservoir(sumReservoir, prevReservoir.Sample, 
+                ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
 
-        sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
-        ComputeReservoirWeight(sumReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sumReservoir.Sample]));
+            sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
+            ComputeReservoirWeight(sumReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sumReservoir.Sample]));
 
-        reservoir = sumReservoir;
+            reservoir = sumReservoir;
+        }
     }
 
     g_DIReservoirTexture[DispatchRaysIndex().xy] = StoreDIReservoir(reservoir);
@@ -145,7 +148,7 @@ void GIRayGeneration()
         RayDesc ray;
 
         ray.Origin = gBufferData.Position;
-        ray.Direction = TangentToWorld(gBufferData.Normal, GetCosineWeightedHemisphere(float2(NextRand(random), NextRand(random))));
+        ray.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRand(random), NextRand(random))));
         ray.TMin = 0.001;
         ray.TMax = 10000.0;
 
@@ -162,34 +165,31 @@ void GIRayGeneration()
             ray,
             payload);
 
-        GISample giSample;
-        giSample.Color = payload.Color;
-        giSample.Position = gBufferData.Position + payload.T * ray.Direction;
+        float pdf = saturate(dot(gBufferData.Normal, ray.Direction)) / PI;
+        if (pdf > 0.0)
+            pdf = 1.0 / pdf;
 
-        float weight = ComputeGIReservoirWeight(gBufferData, giSample);
-        weight /= saturate(dot(gBufferData.Normal, ray.Direction)) / PI;
-        UpdateReservoir(reservoir, giSample, weight, NextRand(random));
-        ComputeReservoirWeight(reservoir, ComputeGIReservoirWeight(gBufferData, giSample));
+        reservoir.Sample.Color = payload.Color;
+        reservoir.Sample.Position = gBufferData.Position + payload.T * ray.Direction;
+        reservoir.WeightSum = ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * pdf;
+        reservoir.SampleCount = 1;
 
-        // Temporal reuse
-        int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
-        Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture,
-            g_PrevGIReservoirTexture, temporalNeighbor);
+        if (g_CurrentFrame > 0)
+        {
+            // Temporal reuse
+            int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
+            Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGIReservoirTexture, temporalNeighbor);
 
-        prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
+            prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
+            uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
 
-        Reservoir<GISample> sumReservoir = (Reservoir<GISample>) 0;
+            UpdateReservoir(reservoir, prevReservoir.Sample,
+                ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
 
-        UpdateReservoir(sumReservoir, reservoir.Sample,
-            ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
+            reservoir.SampleCount = newSampleCount;
+        }
 
-        UpdateReservoir(sumReservoir, prevReservoir.Sample,
-            ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
-
-        sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
-        ComputeReservoirWeight(sumReservoir, ComputeGIReservoirWeight(gBufferData, sumReservoir.Sample));
-
-        reservoir = sumReservoir;
+        ComputeReservoirWeight(reservoir, ComputeGIReservoirWeight(gBufferData, reservoir.Sample));
     }
 
     StoreGIReservoir(g_GITexture, g_GIPositionTexture, g_GIReservoirTexture, DispatchRaysIndex().xy, reservoir);

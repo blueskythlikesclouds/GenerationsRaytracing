@@ -16,14 +16,18 @@ void UpdateReservoir(inout Reservoir<T> reservoir, T sample, float weight, float
     reservoir.WeightSum += weight;
     reservoir.SampleCount += 1;
 
-    if (random < (weight / reservoir.WeightSum))
+    if (random * reservoir.WeightSum < weight)
         reservoir.Sample = sample;
 }
 
 template<typename T>
 void ComputeReservoirWeight(inout Reservoir<T> reservoir, float weight)
 {
-    reservoir.Weight = reservoir.WeightSum / max(0.0001, (float) reservoir.SampleCount * weight);
+    float denominator = (float) reservoir.SampleCount * weight;
+    if (denominator > 0.0)
+        reservoir.Weight = reservoir.WeightSum * (1.0 / denominator);
+    else
+        reservoir.Weight = 0.0;
 }
 
 Reservoir<uint> LoadDIReservoir(float4 value)

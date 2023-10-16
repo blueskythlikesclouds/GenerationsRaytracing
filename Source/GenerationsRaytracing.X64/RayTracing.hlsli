@@ -31,7 +31,16 @@ float4 GetBlueNoise()
     return GetBlueNoise(DispatchRaysIndex().xy);
 }
 
-float3 GetCosineWeightedHemisphere(float2 random)
+float3 GetUniformSample(float2 random)
+{
+    float cosTheta = random.x;
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    float phi = 2.0 * PI * random.y;
+
+    return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+}
+
+float3 GetCosWeightedSample(float2 random)
 {
     float cosTheta = sqrt(random.x);
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
@@ -40,7 +49,7 @@ float3 GetCosineWeightedHemisphere(float2 random)
     return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 }
 
-float4 GetPowerCosineWeightedHemisphere(float2 random, float specularPower)
+float4 GetPowerCosWeightedSample(float2 random, float specularPower)
 {
     float cosTheta = pow(random.x, 1.0 / (specularPower + 1.0));
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
@@ -155,7 +164,7 @@ float3 TraceSecondaryRay(uint depth, float3 position, float3 direction, uint mis
 float3 TraceGI(uint depth, float3 position, float3 normal)
 {
     float4 random = GetBlueNoise();
-    float3 sampleDirection = GetCosineWeightedHemisphere(depth == 0 ? random.xy : random.zw);
+    float3 sampleDirection = GetCosWeightedSample(depth == 0 ? random.xy : random.zw);
 
     return TraceSecondaryRay(depth, position, TangentToWorld(normal, sampleDirection), 2);
 }
@@ -176,7 +185,7 @@ float3 TraceReflection(
     float specularPower,
     float3 eyeDirection)
 {
-    float4 sampleDirection = GetPowerCosineWeightedHemisphere(GetBlueNoise().yz, specularPower);
+    float4 sampleDirection = GetPowerCosWeightedSample(GetBlueNoise().yz, specularPower);
     float3 halfwayDirection = TangentToWorld(normal, sampleDirection.xyz);
 
     float3 reflection = TraceReflection(depth, position, halfwayDirection, eyeDirection);

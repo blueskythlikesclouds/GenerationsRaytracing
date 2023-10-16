@@ -86,7 +86,7 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
 float ComputeDIReservoirWeight(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
     float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
-    return length(localLighting);
+    return dot(localLighting, float3(0.299, 0.587, 0.114));
 }
 
 float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
@@ -105,7 +105,7 @@ float ComputeGIReservoirWeight(GBufferData gBufferData, GISample giSample)
     float3 giLighting = giSample.Color * (gBufferData.Diffuse + gBufferData.Falloff) *
         saturate(dot(gBufferData.Normal, normalize(giSample.Position - gBufferData.Position))) / PI;
 
-    return length(giLighting);
+    return dot(giLighting, float3(0.299, 0.587, 0.114));
 }
 
 float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
