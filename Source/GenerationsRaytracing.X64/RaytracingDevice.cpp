@@ -434,7 +434,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
         1);
 
     getGraphicsCommandList().uavBarrier(m_colorTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_depthTexture->GetResource());
 
     getGraphicsCommandList().transitionBarrier(m_colorTexture->GetResource(), 
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -782,6 +781,7 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
+    getGraphicsCommandList().uavBarrier(m_depthTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_motionVectorsTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_positionFlagsTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());

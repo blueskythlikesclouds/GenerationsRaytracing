@@ -38,6 +38,8 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 
+    g_DepthTexture[DispatchRaysIndex().xy] = 1.0;
+
     g_MotionVectorsTexture[DispatchRaysIndex().xy] = 
         ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
@@ -51,6 +53,8 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
     StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material));
+
+    g_DepthTexture[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
 
     g_MotionVectorsTexture[DispatchRaysIndex().xy] =
         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -

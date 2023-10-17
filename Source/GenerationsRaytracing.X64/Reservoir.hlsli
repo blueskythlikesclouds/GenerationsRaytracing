@@ -105,7 +105,7 @@ float ComputeJacobian(float3 position, float3 normal, float3 neighborPosition, f
     float cosB = dot(neighborNormal, offsetB);
     float cosPhiA = -dot(offsetA, neighborSample.Normal);
     float cosPhiB = -dot(offsetB, neighborSample.Normal);
-    float jacobian = RA2 * cosPhiB <= 0.0 ? 0.0 : (RB2 * cosPhiA / (RA2 * cosPhiB));
+    float jacobian = RB2 * cosPhiA / (RA2 * cosPhiB);
     return isinf(jacobian) || isnan(jacobian) ? 0.0 : jacobian;
 
 }   
