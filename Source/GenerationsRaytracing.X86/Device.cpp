@@ -765,7 +765,13 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetPixelShaderConstantI, UINT StartReg
 
 HRESULT Device::SetPixelShaderConstantB(UINT StartRegister, const BOOL* pConstantData, UINT BoolCount)
 {
-    // nothing to do here...
+    auto& message = s_messageSender.makeMessage<MsgSetPixelShaderConstantB>(BoolCount * sizeof(BOOL));
+
+    message.startRegister = StartRegister;
+    memcpy(message.data, pConstantData, BoolCount * sizeof(BOOL));
+
+    s_messageSender.endMessage();
+
     return S_OK;
 }
 

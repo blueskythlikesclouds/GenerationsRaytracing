@@ -1566,6 +1566,22 @@ void Device::procMsgCopyVertexBuffer()
         message.numBytes);
 }
 
+void Device::procMsgSetPixelShaderConstantB()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSetPixelShaderConstantB>();
+
+    const uint32_t mask = 1 << message.startRegister;
+    const uint32_t value = *reinterpret_cast<const BOOL*>(message.data) << message.startRegister;
+
+    auto& booleans = reinterpret_cast<uint32_t&>(m_globalsPS.floatConstants[GLOBALS_PS_UNUSED_CONSTANT][GLOBALS_PS_BOOLEANS]);
+
+    if ((booleans & mask) != value)
+        m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
+
+    booleans &= ~mask;
+    booleans |= value;
+}
+
 Device::Device()
 {
     HRESULT hr;
@@ -1773,6 +1789,7 @@ void Device::processMessages()
         case MsgReleaseResource::s_id: procMsgReleaseResource(); break;
         case MsgDrawPrimitive::s_id: procMsgDrawPrimitive(); break;
         case MsgCopyVertexBuffer::s_id: procMsgCopyVertexBuffer(); break;
+        case MsgSetPixelShaderConstantB::s_id: procMsgSetPixelShaderConstantB(); break;
 
         }
     }

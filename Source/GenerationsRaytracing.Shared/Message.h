@@ -500,4 +500,12 @@ struct MsgCreateLocalLight
     float outRange;
 };
 
+struct MsgSetPixelShaderConstantB
+{
+    MSG_DEFINE_MESSAGE(MsgCreateLocalLight);
+    uint32_t startRegister;
+    uint8_t dataSize;
+    uint8_t data[1u];
+};
+
 #pragma pack(pop)

@@ -183,6 +183,7 @@ protected:
     void procMsgReleaseResource();
     void procMsgDrawPrimitive();
     void procMsgCopyVertexBuffer();
+    void procMsgSetPixelShaderConstantB();
 
     void processMessages();
     virtual bool processRaytracingMessage() = 0;
