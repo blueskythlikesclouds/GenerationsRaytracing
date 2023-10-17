@@ -94,6 +94,7 @@ protected:
 
     ComPtr<D3D12MA::Allocation> m_positionFlagsTexture;
     ComPtr<D3D12MA::Allocation> m_prevPositionFlagsTexture;
+    ComPtr<D3D12MA::Allocation> m_safeSpawnPointTexture;
     ComPtr<D3D12MA::Allocation> m_diffuseTexture;
     ComPtr<D3D12MA::Allocation> m_specularTexture;
     ComPtr<D3D12MA::Allocation> m_specularPowerLevelFresnelTexture;

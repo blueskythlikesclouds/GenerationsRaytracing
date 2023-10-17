@@ -27,6 +27,7 @@ struct GBufferData
 {
     float3 Position;
     uint Flags;
+    float3 SafeSpawnPoint;
 
     float3 Diffuse;
     float Alpha;
@@ -126,6 +127,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
     GBufferData gBufferData = (GBufferData) 0;
 
     gBufferData.Position = vertex.Position;
+    gBufferData.SafeSpawnPoint = vertex.SafeSpawnPoint;
     gBufferData.Diffuse = material.Diffuse.rgb;
     gBufferData.Alpha = material.OpacityReflectionRefractionSpectype.x;
     gBufferData.Specular = material.Specular.rgb;
@@ -618,6 +620,7 @@ GBufferData LoadGBufferData(uint2 index)
     float4 positionFlags = g_PositionFlagsTexture[index];
     gBufferData.Position = positionFlags.xyz;
     gBufferData.Flags = asuint(positionFlags.w);
+    gBufferData.SafeSpawnPoint = g_SafeSpawnPointTexture[index];
 
     float4 diffuseRefractionAlpha = g_DiffuseRefractionAlphaTexture[index];
     gBufferData.Diffuse = diffuseRefractionAlpha.rgb;
@@ -640,6 +643,7 @@ GBufferData LoadGBufferData(uint2 index)
 void StoreGBufferData(uint2 index, GBufferData gBufferData)
 {
     g_PositionFlagsTexture[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
+    g_SafeSpawnPointTexture[index] = gBufferData.SafeSpawnPoint;
     g_DiffuseRefractionAlphaTexture[index] = float4(gBufferData.Diffuse, gBufferData.RefractionAlpha);
     g_SpecularTexture[index] = gBufferData.Specular;
     g_SpecularPowerLevelFresnelTexture[index] = float3(gBufferData.SpecularPower, gBufferData.SpecularLevel, gBufferData.SpecularFresnel);

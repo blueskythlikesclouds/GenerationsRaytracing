@@ -1,6 +1,7 @@
 #ifndef GEOMETRY_DESC_H
 #define GEOMETRY_DESC_H
 #include "GeometryFlags.h"
+#include "SelfIntersectionAvoidance.hlsl"
 
 struct GeometryDesc
 {
@@ -28,6 +29,7 @@ struct Vertex
 {
     float3 Position;
     float3 PrevPosition;
+    float3 SafeSpawnPoint;
     float3 Normal;
     float3 Tangent;
     float3 Binormal;
@@ -63,7 +65,7 @@ Vertex LoadVertex(
     indices.y = indexBuffer[PrimitiveIndex() * 3 + 1];
     indices.z = indexBuffer[PrimitiveIndex() * 3 + 2];
 
-    uint3 prevPositionOffsets = geometryDesc.PositionOffset + 
+    uint3 prevPositionOffsets = geometryDesc.PositionOffset +
         geometryDesc.VertexCount * geometryDesc.VertexStride + indices * 0xC;
 
     uint3 offsets = indices * geometryDesc.VertexStride;
@@ -75,14 +77,15 @@ Vertex LoadVertex(
 
     Vertex vertex;
 
-    vertex.Position =
-        asfloat(vertexBuffer.Load3(positionOffsets.x)) * uv.x +
-        asfloat(vertexBuffer.Load3(positionOffsets.y)) * uv.y +
-        asfloat(vertexBuffer.Load3(positionOffsets.z)) * uv.z;
+    float3 p0 = asfloat(vertexBuffer.Load3(positionOffsets.x));
+    float3 p1 = asfloat(vertexBuffer.Load3(positionOffsets.y));
+    float3 p2 = asfloat(vertexBuffer.Load3(positionOffsets.z));
+
+    vertex.Position = p0 * uv.x + p1 * uv.y + p2 * uv.z;
 
     if (geometryDesc.Flags & GEOMETRY_FLAG_POSE)
     {
-        vertex.PrevPosition = 
+        vertex.PrevPosition =
             asfloat(vertexBuffer.Load3(prevPositionOffsets.x)) * uv.x +
             asfloat(vertexBuffer.Load3(prevPositionOffsets.y)) * uv.y +
             asfloat(vertexBuffer.Load3(prevPositionOffsets.z)) * uv.z;
@@ -96,6 +99,27 @@ Vertex LoadVertex(
         asfloat(vertexBuffer.Load3(normalOffsets.x)) * uv.x +
         asfloat(vertexBuffer.Load3(normalOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load3(normalOffsets.z)) * uv.z;
+
+    // Some models have correct normals but flipped triangle order
+    // Could check for view direction but that makes plants look bad
+    // as they have spherical normals
+    bool isBackFace = dot(cross(p0 - p2, p0 - p1), vertex.Normal) > 0.0;
+
+    float3 outObjPosition;
+    float3 outWldPosition;
+    float3 outObjNormal;
+    float3 outWldNormal;
+    float outWldOffset;
+    safeSpawnPoint(
+        outObjPosition, outWldPosition,
+        outObjNormal, outWldNormal,
+        outWldOffset,
+        p0, isBackFace ? p2 : p1, isBackFace ? p1 : p2,
+        isBackFace ? attributes.barycentrics.yx : attributes.barycentrics.xy,
+        ObjectToWorld3x4(),
+        WorldToObject3x4());
+
+    vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
 
     vertex.Tangent =
         asfloat(vertexBuffer.Load3(tangentOffsets.x)) * uv.x +

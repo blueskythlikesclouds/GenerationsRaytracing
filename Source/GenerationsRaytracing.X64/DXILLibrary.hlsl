@@ -82,7 +82,7 @@ void ShadowRayGeneration()
 
     float shadow = 0.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT)))
-        shadow = TraceGlobalLightShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
+        shadow = TraceGlobalLightShadow(gBufferData.SafeSpawnPoint, -mrgGlobalLight_Direction.xyz);
 
     g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
 }
@@ -112,7 +112,7 @@ void ReservoirRayGeneration()
         }
 
         ComputeReservoirWeight(reservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]));
-        reservoir.Weight *= TraceLocalLightShadow(gBufferData.Position, g_LocalLights[reservoir.Sample]);
+        reservoir.Weight *= TraceLocalLightShadow(gBufferData.SafeSpawnPoint, g_LocalLights[reservoir.Sample]);
 
         if (g_CurrentFrame > 0)
         {
@@ -158,9 +158,9 @@ void GIRayGeneration()
 
         RayDesc ray;
 
-        ray.Origin = gBufferData.Position;
+        ray.Origin = gBufferData.SafeSpawnPoint;
         ray.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRand(random), NextRand(random))));
-        ray.TMin = 0.001;
+        ray.TMin = 0.0;
         ray.TMax = 10000.0;
 
         SecondaryRayPayload payload;
@@ -181,7 +181,7 @@ void GIRayGeneration()
             pdf = 1.0 / pdf;
 
         reservoir.Sample.Color = payload.Color;
-        reservoir.Sample.Position = gBufferData.Position + payload.T * ray.Direction;
+        reservoir.Sample.Position = gBufferData.SafeSpawnPoint + payload.T * ray.Direction;
         reservoir.Sample.Normal = payload.Normal;
         reservoir.WeightSum = ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * pdf;
         reservoir.SampleCount = 1;
@@ -231,14 +231,14 @@ void ReflectionRayGeneration()
         if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
         {
             reflection = TraceReflection(0, 
-                gBufferData.Position, 
+                gBufferData.SafeSpawnPoint, 
                 gBufferData.Normal,
                 eyeDirection);
         }
         else
         {
             reflection = TraceReflection(0,
-                gBufferData.Position,
+                gBufferData.SafeSpawnPoint,
                 gBufferData.Normal,
                 gBufferData.SpecularPower,
                 eyeDirection);
@@ -256,7 +256,7 @@ void RefractionRayGeneration()
     if (gBufferData.Flags & GBUFFER_FLAG_HAS_REFRACTION)
     {
         refraction = TraceRefraction(0, 
-            gBufferData.Position, 
+            gBufferData.SafeSpawnPoint, 
             gBufferData.Normal, 
             normalize(g_EyePosition.xyz - gBufferData.Position));
     }
@@ -335,7 +335,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         if (g_CurrentFrame > 0 && abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
             globalIllumination = g_PrevGIAccumulationTexture[pixelPosition].rgb;
         else
-            globalIllumination = TraceGI(payload.Depth + 1, gBufferData.Position, gBufferData.Normal);
+            globalIllumination = TraceGI(payload.Depth + 1, gBufferData.SafeSpawnPoint, gBufferData.Normal);
 
         payload.Color += globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
     }

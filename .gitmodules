@@ -16,3 +16,6 @@
 [submodule "Dependencies/DLSS"]
 	path = Dependencies/DLSS
 	url = https://github.com/NVIDIA/DLSS.git
+[submodule "Dependencies/self-intersection-avoidance"]
+	path = Dependencies/self-intersection-avoidance
+	url = https://github.com/NVIDIA/self-intersection-avoidance.git
