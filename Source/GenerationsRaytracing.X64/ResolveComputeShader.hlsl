@@ -24,7 +24,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         for (uint i = 0; i < 5; i++)
         {
-            float radius = 32.0 * NextRand(random);
+            float radius = 16.0 * NextRand(random);
             float angle = 2.0 * PI * NextRand(random);
 
             int2 neighborIndex = round((float2) dispatchThreadId.xy + float2(cos(angle), sin(angle)) * radius);

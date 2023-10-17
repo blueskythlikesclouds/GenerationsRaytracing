@@ -337,11 +337,6 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     }
 
     payload.Color += gBufferData.Emission;
-
-    float luminance = dot(payload.Color, float3(0.2126, 0.7152, 0.0722));
-    if (luminance > 4.0)
-        payload.Color *= 4.0 / luminance;
-
     payload.T = RayTCurrent();
     payload.Normal = gBufferData.Normal;
 }
