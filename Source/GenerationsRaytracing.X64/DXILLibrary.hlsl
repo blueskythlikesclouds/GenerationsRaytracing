@@ -159,7 +159,7 @@ void GIRayGeneration()
         RayDesc ray;
 
         ray.Origin = gBufferData.SafeSpawnPoint;
-        ray.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRand(random), NextRand(random))));
+        ray.Direction = TangentToWorld(gBufferData.Normal, GetUniformSample(float2(NextRand(random), NextRand(random))));
         ray.TMin = 0.0;
         ray.TMax = 10000.0;
 
@@ -176,14 +176,10 @@ void GIRayGeneration()
             ray,
             payload);
 
-        float pdf = saturate(dot(gBufferData.Normal, ray.Direction)) / PI;
-        if (pdf > 0.0)
-            pdf = 1.0 / pdf;
-
         reservoir.Sample.Color = payload.Color;
         reservoir.Sample.Position = gBufferData.SafeSpawnPoint + payload.T * ray.Direction;
         reservoir.Sample.Normal = payload.Normal;
-        reservoir.WeightSum = ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * pdf;
+        reservoir.WeightSum = ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * (2.0 * PI);
         reservoir.SampleCount = 1;
 
         if (g_CurrentFrame > 0)
