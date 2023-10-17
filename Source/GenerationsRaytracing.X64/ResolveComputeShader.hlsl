@@ -8,6 +8,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     float3 color;
 
     GBufferData gBufferData = LoadGBufferData(dispatchThreadId.xy);
+    float depth = g_DepthTexture[dispatchThreadId.xy];
 
     Reservoir<uint> diReservoir = (Reservoir<uint>)0;
     Reservoir<GISample> giReservoir = (Reservoir<GISample>)0;
@@ -25,7 +26,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         for (uint i = 0; i < 5; i++)
         {
-            float radius = 30.0 * NextRand(random);
+            float radius = 32.0 * NextRand(random);
             float angle = 2.0 * PI * NextRand(random);
 
             int2 neighborIndex = round((float2) dispatchThreadId.xy + float2(cos(angle), sin(angle)) * radius);
@@ -38,7 +39,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             float3 position = g_PositionFlagsTexture[neighborIndex].xyz;
             float3 normal = normalize(g_NormalTexture[neighborIndex] * 2.0 - 1.0);
 
-            if (distance(gBufferData.Position, position) <= 0.5 && dot(gBufferData.Normal, normal) >= 0.9063)
+            if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.05 && dot(gBufferData.Normal, normal) >= 0.9063)
             {
                 uint newSampleCount = diReservoir.SampleCount + spatialDIReservoir.SampleCount;
 
@@ -47,7 +48,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
                 diReservoir.SampleCount = newSampleCount;
 
-                float jacobian = ComputeJacobian(gBufferData.Position, gBufferData.Normal, position, normal, spatialGIReservoir.Sample);
+                float jacobian = ComputeJacobian(gBufferData.Position, position, spatialGIReservoir.Sample);
                 if (jacobian >= 1.0 / 10.0 && jacobian <= 10.0)
                 {
                     newSampleCount = giReservoir.SampleCount + spatialGIReservoir.SampleCount;
@@ -59,10 +60,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             }
         }
         ComputeReservoirWeight(diReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[diReservoir.Sample]));
-        diReservoir.SampleCount = min(500, diReservoir.SampleCount);
-
         ComputeReservoirWeight(giReservoir, ComputeGIReservoirWeight(gBufferData, giReservoir.Sample));
-        giReservoir.SampleCount = min(500, giReservoir.SampleCount);
 
         ShadingParams shadingParams;
 

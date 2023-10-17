@@ -196,10 +196,10 @@ void GIRayGeneration()
                 Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, 
                     g_PrevGINormalTexture, g_PrevGIReservoirTexture, temporalNeighbor);
 
-                float jacobian = ComputeJacobian(gBufferData.Position, gBufferData.Normal, prevPosition, prevNormal, prevReservoir.Sample);
+                float jacobian = ComputeJacobian(gBufferData.Position, prevPosition, prevReservoir.Sample);
                 if (jacobian >= 1.0 / 10.0 && jacobian <= 10.0)
                 {
-                    prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
+                    prevReservoir.SampleCount = min(8, prevReservoir.SampleCount);
                     uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
 
                     UpdateReservoir(reservoir, prevReservoir.Sample, ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * 

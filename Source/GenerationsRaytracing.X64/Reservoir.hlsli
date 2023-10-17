@@ -93,22 +93,17 @@ void StoreGIReservoir(
     giReservoirTexture[index] = float3(reservoir.WeightSum, asfloat(reservoir.SampleCount), reservoir.Weight);
 }
 
-float ComputeJacobian(float3 position, float3 normal, float3 neighborPosition, float3 neighborNormal, GISample neighborSample)
+float ComputeJacobian(float3 position, float3 neighborPosition, GISample neighborSample)
 {
-    float3 offsetB = neighborSample.Position - neighborPosition;
-    float3 offsetA = neighborSample.Position - position;
-    float RB2 = dot(offsetB, offsetB);
-    float RA2 = dot(offsetA, offsetA);
-    offsetB = normalize(offsetB);
-    offsetA = normalize(offsetA);
-    float cosA = dot(normal, offsetA);
-    float cosB = dot(neighborNormal, offsetB);
-    float cosPhiA = -dot(offsetA, neighborSample.Normal);
-    float cosPhiB = -dot(offsetB, neighborSample.Normal);
-    float jacobian = RB2 * cosPhiA / (RA2 * cosPhiB);
+    float dist = distance(position, neighborSample.Position);
+    float cosTheta = saturate(dot(normalize(position - neighborSample.Position), neighborSample.Normal));
+
+    float neighborDist = distance(neighborPosition, neighborSample.Position);
+    float neighborCosTheta = saturate(dot(normalize(neighborPosition - neighborSample.Position), neighborSample.Normal));
+
+    float jacobian = (cosTheta * neighborDist * neighborDist) / (neighborCosTheta * dist * dist);
+
     return isinf(jacobian) || isnan(jacobian) ? 0.0 : jacobian;
-
 }   
-
 
 #endif
