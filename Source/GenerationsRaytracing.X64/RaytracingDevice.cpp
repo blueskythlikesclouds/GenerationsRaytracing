@@ -204,7 +204,7 @@ static void haltonJitter(int frame, int phases, float& jitterX, float& jitterY)
     jitterY = haltonSequence(frame % phases + 1, 3) - 0.5f;
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(uint32_t localLightCount)
+D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& message)
 {
     m_globalsRT.useEnvironmentColor = EnvironmentColor::get(m_globalsPS, 
         m_globalsRT.skyColor, m_globalsRT.groundColor);
@@ -217,7 +217,10 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(uint32_t localLightC
     m_globalsRT.blueNoiseOffsetX = distribution(engine);
     m_globalsRT.blueNoiseOffsetY = distribution(engine);
 
-    m_globalsRT.localLightCount = localLightCount;
+    m_globalsRT.localLightCount = message.localLightCount;
+    m_globalsRT.diffusePower = message.diffusePower;
+    m_globalsRT.lightPower = message.lightPower;
+    m_globalsRT.emissivePower = message.emissivePower;
 
     const auto globalsRT = createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
@@ -731,7 +734,7 @@ void RaytracingDevice::procMsgTraceRays()
     const auto globalsPS = createBuffer(&m_globalsPS, 
         offsetof(GlobalsPS, textureIndices), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
-    const auto globalsRT = createGlobalsRT(message.localLightCount);
+    const auto globalsRT = createGlobalsRT(message);
 
     const auto topLevelAccelStruct = m_topLevelAccelStruct != nullptr ? 
         m_topLevelAccelStruct->GetResource()->GetGPUVirtualAddress() : NULL;

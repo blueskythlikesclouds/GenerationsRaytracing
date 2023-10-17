@@ -185,6 +185,10 @@ static void __cdecl implOfSceneRender(void* a1)
         traceRaysMessage.resetAccumulation = resetAccumulation;
         traceRaysMessage.localLightCount = s_localLightCount;
 
+        traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
+        traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
+        traceRaysMessage.emissivePower = RaytracingParams::s_emissivePower;
+
         s_messageSender.endMessage();
     }
     else

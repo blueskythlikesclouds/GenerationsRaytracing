@@ -236,6 +236,14 @@ static void createParameterFile()
         stageParam->CreateParamTypeList(&s_stageIndex, "Stage", "", enumValues);
         paramGroup->Flush();
     }
+
+    auto giParam = paramGroup->CreateParameterCategory("GI", "");
+    {
+        giParam->CreateParamFloat(&RaytracingParams::s_diffusePower, "DiffusePower");
+        giParam->CreateParamFloat(&RaytracingParams::s_lightPower, "LightPower");
+        giParam->CreateParamFloat(&RaytracingParams::s_emissivePower, "EmissivePower");
+        paramGroup->Flush();
+    }
 }
 
 static size_t s_prevStageIndex;

@@ -112,7 +112,6 @@ void ReservoirRayGeneration()
         }
 
         ComputeReservoirWeight(reservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]));
-        reservoir.Weight *= TraceLocalLightShadow(gBufferData.SafeSpawnPoint, g_LocalLights[reservoir.Sample]);
 
         if (g_CurrentFrame > 0)
         {
@@ -297,11 +296,12 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
     GBufferData gBufferData = CreateGBufferData(vertex, material);
+    gBufferData.Diffuse *= g_DiffusePower;
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
     {
         payload.Color = ComputeDirectLighting(gBufferData, -WorldRayDirection(), 
-            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb) * g_LightPower;
 
         payload.Color *= TraceGlobalLightShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
     }
@@ -322,7 +322,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
         {
             Reservoir<uint> diReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[pixelPosition]);
-            payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[diReservoir.Sample]) * diReservoir.Weight;
+            payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[diReservoir.Sample]) * diReservoir.Weight * g_LightPower;
         }
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
@@ -333,14 +333,14 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
         {
             uint sample = min(floor(GetBlueNoise().x * g_LocalLightCount), g_LocalLightCount - 1);
-            payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount;
+            payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount * g_LightPower;
         }
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth == 0)
             payload.Color += ComputeGI(gBufferData, TraceGI(payload.Depth + 1, gBufferData.SafeSpawnPoint, gBufferData.Normal));
     }
 
-    payload.Color += gBufferData.Emission;
+    payload.Color += gBufferData.Emission * g_EmissivePower;
     payload.T = RayTCurrent();
     payload.Normal = gBufferData.Normal;
 }

@@ -365,6 +365,9 @@ struct MsgTraceRays
     uint32_t blueNoiseTextureId;
     bool resetAccumulation;
     uint32_t localLightCount;
+    float diffusePower;
+    float lightPower;
+    float emissivePower;
 };
 
 struct MsgCreateMaterial

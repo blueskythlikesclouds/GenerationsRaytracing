@@ -8,6 +8,8 @@
 #include "Material.h"
 #include "Upscaler.h"
 
+struct MsgTraceRays;
+
 struct alignas(0x10) GlobalsRT
 {
     float prevProj[4][4];
@@ -23,6 +25,9 @@ struct alignas(0x10) GlobalsRT
     uint32_t blueNoiseTextureId;
     uint32_t localLightCount;
     uint32_t currentFrame = 0;
+    float diffusePower;
+    float lightPower;
+    float emissivePower;
 };
 
 struct DelayedTexture
@@ -154,7 +159,7 @@ protected:
 
     void handlePendingBottomLevelAccelStructBuilds();
 
-    D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT(uint32_t localLightCount);
+    D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT(const MsgTraceRays& message);
     bool createTopLevelAccelStruct();
 
     void createRaytracingTextures();

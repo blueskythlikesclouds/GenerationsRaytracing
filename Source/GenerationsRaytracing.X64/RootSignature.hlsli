@@ -113,6 +113,9 @@ cbuffer GlobalsRT : register(b2)
     uint g_BlueNoiseTextureId;
     uint g_LocalLightCount;
     uint g_CurrentFrame;
+    float g_DiffusePower;
+    float g_LightPower;
+    float g_EmissivePower;
 }
 
 struct LocalLight
