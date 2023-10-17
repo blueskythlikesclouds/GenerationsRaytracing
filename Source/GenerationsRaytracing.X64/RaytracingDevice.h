@@ -123,7 +123,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_refractionTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
-    uint32_t m_srvId = 0;
+    uint32_t m_srvIds[NUM_FRAMES]{};
 
     // Resolve
     ComPtr<ID3D12PipelineState> m_resolvePipeline;

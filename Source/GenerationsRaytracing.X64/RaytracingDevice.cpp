@@ -405,14 +405,19 @@ void RaytracingDevice::createRaytracingTextures()
     assert(SUCCEEDED(hr) && m_outputTexture != nullptr);
 
     // Create descriptor heap for copy texture shader
-    if (m_srvId == NULL)
-        m_srvId = m_descriptorHeap.allocateMany(2);
+    for (size_t i = 0; i < NUM_FRAMES; i++)
+    {
+        auto& srvId = m_srvIds[i];
 
-    auto cpuHandle = m_descriptorHeap.getCpuHandle(m_srvId);
-    m_device->CreateShaderResourceView(m_outputTexture->GetResource(), nullptr, cpuHandle);
+        if (srvId == NULL)
+            srvId = m_descriptorHeap.allocateMany(2);
 
-    cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
-    m_device->CreateShaderResourceView(m_depthTexture->GetResource(), nullptr, cpuHandle);
+        auto cpuHandle = m_descriptorHeap.getCpuHandle(srvId);
+        m_device->CreateShaderResourceView(m_outputTexture->GetResource(), nullptr, cpuHandle);
+
+        cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
+        m_device->CreateShaderResourceView((i & 1 ? m_prevDepthTexture : m_depthTexture)->GetResource(), nullptr, cpuHandle);
+    }
 }
 
 void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
@@ -439,7 +444,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
     getGraphicsCommandList().transitionBarrier(m_colorTexture->GetResource(), 
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
+    getGraphicsCommandList().transitionBarrier((m_frame & 1 ? m_prevDepthTexture : m_depthTexture)->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     getGraphicsCommandList().commitBarriers();
@@ -467,7 +472,7 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil()
 
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvId));
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvIds[m_frame]));
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipeline.Get());
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
