@@ -1,8 +1,10 @@
 ﻿#pragma once
+#include "DebugView.h"
 
 struct RaytracingParams
 {
     static inline bool s_enable = true;
+    static inline uint32_t s_debugView;
 
     static inline boost::shared_ptr<Hedgehog::Mirage::CLightData> s_light;
     static inline boost::shared_ptr<Hedgehog::Mirage::CModelData> s_sky;

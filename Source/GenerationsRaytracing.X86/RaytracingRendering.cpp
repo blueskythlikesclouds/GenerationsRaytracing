@@ -93,10 +93,11 @@ static FUNCTION_PTR(void, __cdecl, setSceneSurface, 0x64E960, void*, void*);
 
 static Hedgehog::Mirage::CLightListData* s_curLightList;
 static size_t s_localLightCount;
+static uint32_t s_prevDebugView;
 
 static void __cdecl implOfSceneRender(void* a1)
 {
-    const bool resetAccumulation = RaytracingParams::update();
+    bool resetAccumulation = RaytracingParams::update();
     const bool shouldRender = s_prevRaytracingEnable;
     initRaytracingPatches(RaytracingParams::s_enable);
 
@@ -173,6 +174,11 @@ static void __cdecl implOfSceneRender(void* a1)
             }
         }
 
+        if (s_prevDebugView != RaytracingParams::s_debugView)
+            resetAccumulation = true;
+
+        s_prevDebugView = RaytracingParams::s_debugView;
+
         auto& traceRaysMessage = s_messageSender.makeMessage<MsgTraceRays>();
 
         traceRaysMessage.width = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 4);
@@ -188,6 +194,7 @@ static void __cdecl implOfSceneRender(void* a1)
         traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
         traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
         traceRaysMessage.emissivePower = RaytracingParams::s_emissivePower;
+        traceRaysMessage.debugView = RaytracingParams::s_debugView;
 
         s_messageSender.endMessage();
     }

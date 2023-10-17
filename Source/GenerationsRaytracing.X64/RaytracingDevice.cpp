@@ -3,6 +3,7 @@
 #include "DXILLibrary.h"
 #include "CopyTextureVertexShader.h"
 #include "CopyTexturePixelShader.h"
+#include "DebugView.h"
 #include "DLSS.h"
 #include "EnvironmentColor.h"
 #include "GeometryFlags.h"
@@ -422,7 +423,7 @@ void RaytracingDevice::createRaytracingTextures()
     }
 }
 
-void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
+void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32_t debugView)
 {
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
 
@@ -441,9 +442,24 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
         (m_upscaler->getHeight() + 7) / 8,
         1);
 
-    getGraphicsCommandList().uavBarrier(m_colorTexture->GetResource());
+    ID3D12Resource* colorTexture = m_colorTexture->GetResource();
 
-    getGraphicsCommandList().transitionBarrier(m_colorTexture->GetResource(), 
+    switch (debugView)
+    {
+    case DEBUG_VIEW_DIFFUSE: colorTexture = m_diffuseTexture->GetResource(); break;
+    case DEBUG_VIEW_SPECULAR: colorTexture = m_specularTexture->GetResource(); break;
+    case DEBUG_VIEW_NORMAL: colorTexture = (m_frame & 1 ? m_prevNormalTexture : m_normalTexture)->GetResource(); break;
+    case DEBUG_VIEW_FALLOFF: colorTexture = m_falloffTexture->GetResource(); break;
+    case DEBUG_VIEW_EMISSION: colorTexture = m_emissionTexture->GetResource(); break;
+    case DEBUG_VIEW_SHADOW: colorTexture = m_shadowTexture->GetResource(); break;
+    case DEBUG_VIEW_GI: colorTexture = (m_frame & 1 ? m_prevGIAccumulationTexture : m_giAccumulationTexture)->GetResource(); break;
+    case DEBUG_VIEW_REFLECTION: colorTexture = m_reflectionTexture->GetResource(); break;
+    case DEBUG_VIEW_REFRACTION: colorTexture = m_refractionTexture->GetResource(); break;
+    }
+
+    getGraphicsCommandList().uavBarrier(colorTexture);
+
+    getGraphicsCommandList().transitionBarrier(colorTexture,
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     getGraphicsCommandList().transitionBarrier((m_frame & 1 ? m_prevDepthTexture : m_depthTexture)->GetResource(),
@@ -454,7 +470,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
     m_upscaler->dispatch(
         {
             *this,
-            m_colorTexture->GetResource(),
+            colorTexture,
             m_outputTexture->GetResource(),
             m_depthTexture->GetResource(),
             m_motionVectorsTexture->GetResource(),
@@ -821,7 +837,7 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
-    resolveAndDispatchUpscaler(message.resetAccumulation);
+    resolveAndDispatchUpscaler(message.resetAccumulation, message.debugView);
     copyToRenderTargetAndDepthStencil();
 }
 

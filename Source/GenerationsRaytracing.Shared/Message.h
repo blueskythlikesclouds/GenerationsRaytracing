@@ -368,6 +368,7 @@ struct MsgTraceRays
     float diffusePower;
     float lightPower;
     float emissivePower;
+    uint32_t debugView;
 };
 
 struct MsgCreateMaterial

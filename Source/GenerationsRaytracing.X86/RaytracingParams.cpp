@@ -224,6 +224,18 @@ static void createParameterFile()
     auto commonParam = paramGroup->CreateParameterCategory("Common", "");
     {
         commonParam->CreateParamBool(&RaytracingParams::s_enable, "Enable");
+        commonParam->CreateParamTypeList(&RaytracingParams::s_debugView, "DebugView", "", {
+            { "None", DEBUG_VIEW_NONE },
+            { "Diffuse", DEBUG_VIEW_DIFFUSE },
+            { "Specular", DEBUG_VIEW_SPECULAR },
+            { "Normal", DEBUG_VIEW_NORMAL },
+            { "Falloff", DEBUG_VIEW_FALLOFF },
+            { "Emission", DEBUG_VIEW_EMISSION },
+            { "Shadow", DEBUG_VIEW_SHADOW },
+            { "GI", DEBUG_VIEW_GI },
+            { "Reflection", DEBUG_VIEW_REFLECTION },
+            { "Refraction", DEBUG_VIEW_REFRACTION } });
+
         paramGroup->Flush();
     }
 
