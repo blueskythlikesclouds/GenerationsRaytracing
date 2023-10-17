@@ -149,21 +149,19 @@ RWTexture2D<float> g_ShadowTexture : register(u13);
 RWTexture2D<float4> g_DIReservoirTexture : register(u14);
 RWTexture2D<float4> g_PrevDIReservoirTexture : register(u15);
 
-RWTexture2D<float3> g_GITexture : register(u16);
-RWTexture2D<float3> g_GIPositionTexture : register(u17);
-RWTexture2D<float3> g_GINormalTexture : register(u18);
-RWTexture2D<float3> g_GIReservoirTexture : register(u19);
+RWTexture2D<float4> g_GITexture : register(u16);
+RWTexture2D<float4> g_GIPositionTexture : register(u17);
+RWTexture2D<float4> g_GINormalTexture : register(u18);
 
-RWTexture2D<float3> g_PrevGITexture : register(u20);
-RWTexture2D<float3> g_PrevGIPositionTexture : register(u21);
-RWTexture2D<float3> g_PrevGINormalTexture : register(u22);
-RWTexture2D<float3> g_PrevGIReservoirTexture : register(u23);
+RWTexture2D<float4> g_PrevGITexture : register(u19);
+RWTexture2D<float4> g_PrevGIPositionTexture : register(u20);
+RWTexture2D<float4> g_PrevGINormalTexture : register(u21);
 
-RWTexture2D<float4> g_GIAccumulationTexture : register(u24);
-RWTexture2D<float4> g_PrevGIAccumulationTexture : register(u25);
+RWTexture2D<float4> g_GIAccumulationTexture : register(u22);
+RWTexture2D<float4> g_PrevGIAccumulationTexture : register(u23);
 
-RWTexture2D<float3> g_ReflectionTexture : register(u26);
-RWTexture2D<float3> g_RefractionTexture : register(u27);
+RWTexture2D<float3> g_ReflectionTexture : register(u24);
+RWTexture2D<float3> g_RefractionTexture : register(u25);
 
 SamplerState g_SamplerState : register(s0);
 

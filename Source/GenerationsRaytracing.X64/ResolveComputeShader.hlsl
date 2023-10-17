@@ -18,9 +18,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         uint random = InitRand(g_CurrentFrame, dispatchThreadId.y * 1920 + dispatchThreadId.x);
 
         diReservoir = LoadDIReservoir(g_DIReservoirTexture[dispatchThreadId.xy]);
-
-        giReservoir = LoadGIReservoir(g_GITexture, g_GIPositionTexture,
-            g_GINormalTexture, g_GIReservoirTexture, dispatchThreadId.xy);
+        giReservoir = LoadGIReservoir(g_GITexture, g_GIPositionTexture, g_GINormalTexture, dispatchThreadId.xy);
 
         float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
 
@@ -34,7 +32,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             Reservoir<uint> spatialDIReservoir = LoadDIReservoir(g_DIReservoirTexture[neighborIndex]);
 
             Reservoir<GISample> spatialGIReservoir = LoadGIReservoir(
-                g_GITexture, g_GIPositionTexture, g_GINormalTexture, g_GIReservoirTexture, neighborIndex);
+                g_GITexture, g_GIPositionTexture, g_GINormalTexture, neighborIndex);
 
             float3 position = g_PositionFlagsTexture[neighborIndex].xyz;
             float3 normal = normalize(g_NormalTexture[neighborIndex] * 2.0 - 1.0);
@@ -114,5 +112,5 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     g_ColorTexture[dispatchThreadId.xy] = float4(color, 1.0);
     g_PrevDIReservoirTexture[dispatchThreadId.xy] = StoreDIReservoir(diReservoir);
-    StoreGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGINormalTexture, g_PrevGIReservoirTexture, dispatchThreadId.xy, giReservoir);
+    StoreGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGINormalTexture, dispatchThreadId.xy, giReservoir);
 }

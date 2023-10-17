@@ -60,37 +60,38 @@ struct GISample
 };
 
 Reservoir<GISample> LoadGIReservoir(
-    RWTexture2D<float3> giTexture,
-    RWTexture2D<float3> giPositionTexture,
-    RWTexture2D<float3> giNormalTexture,
-    RWTexture2D<float3> giReservoirTexture,
+    RWTexture2D<float4> giTexture,
+    RWTexture2D<float4> giPositionTexture,
+    RWTexture2D<float4> giNormalTexture,
     uint2 index)
 {
-    Reservoir<GISample> reservoir;
-    reservoir.Sample.Color = giTexture[index];
-    reservoir.Sample.Position = giPositionTexture[index];
-    reservoir.Sample.Normal = giNormalTexture[index];
+    float4 texture = giTexture[index];
+    float4 position = giPositionTexture[index];
+    float4 normal = giNormalTexture[index];
 
-    float3 value = giReservoirTexture[index];
-    reservoir.WeightSum = value.x;
-    reservoir.SampleCount = asuint(value.y);
-    reservoir.Weight = value.z;
+    Reservoir<GISample> reservoir;
+
+    reservoir.Sample.Color = texture.rgb;
+    reservoir.Sample.Position = position.xyz;
+    reservoir.Sample.Normal = normal.xyz;
+
+    reservoir.WeightSum = texture.w;
+    reservoir.SampleCount = asfloat(position.w);
+    reservoir.Weight = normal.w;
 
     return reservoir;
 }
 
 void StoreGIReservoir(
-    RWTexture2D<float3> giTexture,
-    RWTexture2D<float3> giPositionTexture,
-    RWTexture2D<float3> giNormalTexture,
-    RWTexture2D<float3> giReservoirTexture,
+    RWTexture2D<float4> giTexture,
+    RWTexture2D<float4> giPositionTexture,
+    RWTexture2D<float4> giNormalTexture,
     uint2 index,
     Reservoir<GISample> reservoir)
 {
-    giTexture[index] = reservoir.Sample.Color;
-    giPositionTexture[index] = reservoir.Sample.Position;
-    giNormalTexture[index] = reservoir.Sample.Normal;
-    giReservoirTexture[index] = float3(reservoir.WeightSum, asfloat(reservoir.SampleCount), reservoir.Weight);
+    giTexture[index] = float4(reservoir.Sample.Color, reservoir.WeightSum);
+    giPositionTexture[index] = float4(reservoir.Sample.Position, asuint(reservoir.SampleCount));
+    giNormalTexture[index] = float4(reservoir.Sample.Normal, reservoir.Weight);
 }
 
 float ComputeJacobian(float3 position, float3 neighborPosition, GISample neighborSample)

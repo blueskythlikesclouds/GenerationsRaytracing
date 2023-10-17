@@ -334,12 +334,10 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giPositionTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giNormalTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giReservoirTexture },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGITexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIPositionTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGINormalTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIReservoirTexture },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giAccumulationTexture, &m_prevGIAccumulationTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIAccumulationTexture, &m_giAccumulationTexture },
@@ -428,7 +426,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation)
     getGraphicsCommandList().uavBarrier(m_diReservoirTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_giTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_giPositionTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_giReservoirTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_giNormalTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
 
@@ -1232,7 +1230,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 28, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 26, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

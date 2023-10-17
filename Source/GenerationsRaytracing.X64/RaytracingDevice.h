@@ -109,12 +109,10 @@ protected:
     ComPtr<D3D12MA::Allocation> m_giTexture;
     ComPtr<D3D12MA::Allocation> m_giPositionTexture;
     ComPtr<D3D12MA::Allocation> m_giNormalTexture;
-    ComPtr<D3D12MA::Allocation> m_giReservoirTexture;
 
     ComPtr<D3D12MA::Allocation> m_prevGITexture;
     ComPtr<D3D12MA::Allocation> m_prevGIPositionTexture;
     ComPtr<D3D12MA::Allocation> m_prevGINormalTexture;
-    ComPtr<D3D12MA::Allocation> m_prevGIReservoirTexture;
 
     ComPtr<D3D12MA::Allocation> m_giAccumulationTexture;
     ComPtr<D3D12MA::Allocation> m_prevGIAccumulationTexture;

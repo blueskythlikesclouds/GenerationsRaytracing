@@ -195,8 +195,8 @@ void GIRayGeneration()
 
             if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
-                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, 
-                    g_PrevGINormalTexture, g_PrevGIReservoirTexture, temporalNeighbor);
+                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture,
+                    g_PrevGIPositionTexture, g_PrevGINormalTexture, temporalNeighbor);
 
                 float jacobian = ComputeJacobian(gBufferData.Position, prevPosition, prevReservoir.Sample);
                 if (jacobian >= 1.0 / 10.0 && jacobian <= 10.0)
@@ -215,7 +215,7 @@ void GIRayGeneration()
         ComputeReservoirWeight(reservoir, ComputeGIReservoirWeight(gBufferData, reservoir.Sample));
     }
 
-    StoreGIReservoir(g_GITexture, g_GIPositionTexture, g_GINormalTexture, g_GIReservoirTexture, DispatchRaysIndex().xy, reservoir);
+    StoreGIReservoir(g_GITexture, g_GIPositionTexture, g_GINormalTexture, DispatchRaysIndex().xy, reservoir);
 }
 
 [shader("raygeneration")]
