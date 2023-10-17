@@ -67,7 +67,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         shadingParams.EyePosition = g_EyePosition.xyz;
         shadingParams.EyeDirection = eyeDirection;
         shadingParams.Shadow = g_ShadowTexture[dispatchThreadId.xy];
-        shadingParams.DIReservoir = diReservoir;
+
+        if (g_LocalLightCount > 0)
+            shadingParams.DIReservoir = diReservoir;
+        else
+            shadingParams.DIReservoir = (Reservoir<uint>) 0;
+
         shadingParams.GlobalIllumination = ComputeGI(gBufferData, giReservoir);
 
         float giLerpFactor = 0.0;

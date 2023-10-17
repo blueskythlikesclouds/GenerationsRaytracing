@@ -91,6 +91,9 @@ static void initRaytracingPatches(bool enable)
 static FUNCTION_PTR(void, __cdecl, sceneRender, 0x652110, void*);
 static FUNCTION_PTR(void, __cdecl, setSceneSurface, 0x64E960, void*, void*);
 
+static Hedgehog::Mirage::CLightListData* s_curLightList;
+static size_t s_localLightCount;
+
 static void __cdecl implOfSceneRender(void* a1)
 {
     const bool resetAccumulation = RaytracingParams::update();
@@ -144,23 +147,27 @@ static void __cdecl implOfSceneRender(void* a1)
                 gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData &&
                 gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData->IsMadeAll())
             {
-                uint32_t localLightId = 0;
-
-                for (const auto& lightData : gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData->m_Lights)
+                if (s_curLightList != gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData.get())
                 {
-                    if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
+                    s_curLightList = gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData.get();
+                    s_localLightCount = 0;
+
+                    for (const auto& lightData : gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData->m_Lights)
                     {
-                        auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+                        if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
+                        {
+                            auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
 
-                        message.localLightId = localLightId;
-                        memcpy(message.position, lightData->m_Position.data(), sizeof(message.position));
-                        message.inRange = lightData->m_Range.z();
-                        memcpy(message.color, lightData->m_Color.data(), sizeof(message.color));
-                        message.outRange = lightData->m_Range.w();
+                            message.localLightId = s_localLightCount;
+                            memcpy(message.position, lightData->m_Position.data(), sizeof(message.position));
+                            message.inRange = lightData->m_Range.z();
+                            memcpy(message.color, lightData->m_Color.data(), sizeof(message.color));
+                            message.outRange = lightData->m_Range.w();
 
-                        s_messageSender.endMessage();
+                            s_messageSender.endMessage();
 
-                        ++localLightId;
+                            ++s_localLightCount;
+                        }
                     }
                 }
             }
@@ -176,6 +183,7 @@ static void __cdecl implOfSceneRender(void* a1)
             .GetPictureData("blue_noise")->m_pD3DTexture)->getId();
 
         traceRaysMessage.resetAccumulation = resetAccumulation;
+        traceRaysMessage.localLightCount = s_localLightCount;
 
         s_messageSender.endMessage();
     }

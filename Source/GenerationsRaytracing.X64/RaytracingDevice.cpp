@@ -204,7 +204,7 @@ static void haltonJitter(int frame, int phases, float& jitterX, float& jitterY)
     jitterY = haltonSequence(frame % phases + 1, 3) - 0.5f;
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
+D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(uint32_t localLightCount)
 {
     m_globalsRT.useEnvironmentColor = EnvironmentColor::get(m_globalsPS, 
         m_globalsRT.skyColor, m_globalsRT.groundColor);
@@ -217,7 +217,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT()
     m_globalsRT.blueNoiseOffsetX = distribution(engine);
     m_globalsRT.blueNoiseOffsetY = distribution(engine);
 
-    m_globalsRT.localLightCount = static_cast<uint32_t>(m_localLights.size());
+    m_globalsRT.localLightCount = localLightCount;
 
     const auto globalsRT = createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
@@ -727,7 +727,7 @@ void RaytracingDevice::procMsgTraceRays()
     const auto globalsPS = createBuffer(&m_globalsPS, 
         offsetof(GlobalsPS, textureIndices), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
-    const auto globalsRT = createGlobalsRT();
+    const auto globalsRT = createGlobalsRT(message.localLightCount);
 
     const auto topLevelAccelStruct = m_topLevelAccelStruct != nullptr ? 
         m_topLevelAccelStruct->GetResource()->GetGPUVirtualAddress() : NULL;
@@ -799,7 +799,8 @@ void RaytracingDevice::procMsgTraceRays()
 
     // ReservoirRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+    if (message.localLightCount > 0)
+        getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     // GIRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;

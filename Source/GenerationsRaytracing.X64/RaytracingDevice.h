@@ -155,7 +155,7 @@ protected:
 
     void handlePendingBottomLevelAccelStructBuilds();
 
-    D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT();
+    D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT(uint32_t localLightCount);
     bool createTopLevelAccelStruct();
 
     void createRaytracingTextures();
