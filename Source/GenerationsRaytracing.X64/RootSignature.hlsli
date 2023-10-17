@@ -131,38 +131,39 @@ StructuredBuffer<LocalLight> g_LocalLights : register(t4);
 
 RWTexture2D<float4> g_ColorTexture : register(u0);
 RWTexture2D<float> g_DepthTexture : register(u1);
-RWTexture2D<float2> g_MotionVectorsTexture : register(u2);
+RWTexture2D<float> g_PrevDepthTexture : register(u2);
+RWTexture2D<float2> g_MotionVectorsTexture : register(u3);
 
-RWTexture2D<float4> g_PositionFlagsTexture : register(u3);
-RWTexture2D<float4> g_PrevPositionFlagsTexture : register(u4);
-RWTexture2D<float4> g_DiffuseRefractionAlphaTexture : register(u5);
-RWTexture2D<float3> g_SpecularTexture : register(u6);
-RWTexture2D<float3> g_SpecularPowerLevelFresnelTexture : register(u7);
-RWTexture2D<float3> g_NormalTexture : register(u8);
-RWTexture2D<float3> g_PrevNormalTexture : register(u9);
-RWTexture2D<float3> g_FalloffTexture : register(u10);
-RWTexture2D<float3> g_EmissionTexture : register(u11);
+RWTexture2D<float4> g_PositionFlagsTexture : register(u4);
+RWTexture2D<float4> g_PrevPositionFlagsTexture : register(u5);
+RWTexture2D<float4> g_DiffuseRefractionAlphaTexture : register(u6);
+RWTexture2D<float3> g_SpecularTexture : register(u7);
+RWTexture2D<float3> g_SpecularPowerLevelFresnelTexture : register(u8);
+RWTexture2D<float3> g_NormalTexture : register(u9);
+RWTexture2D<float3> g_PrevNormalTexture : register(u10);
+RWTexture2D<float3> g_FalloffTexture : register(u11);
+RWTexture2D<float3> g_EmissionTexture : register(u12);
 
-RWTexture2D<float> g_ShadowTexture : register(u12);
+RWTexture2D<float> g_ShadowTexture : register(u13);
 
-RWTexture2D<float4> g_DIReservoirTexture : register(u13);
-RWTexture2D<float4> g_PrevDIReservoirTexture : register(u14);
+RWTexture2D<float4> g_DIReservoirTexture : register(u14);
+RWTexture2D<float4> g_PrevDIReservoirTexture : register(u15);
 
-RWTexture2D<float3> g_GITexture : register(u15);
-RWTexture2D<float3> g_GIPositionTexture : register(u16);
-RWTexture2D<float3> g_GINormalTexture : register(u17);
-RWTexture2D<float3> g_GIReservoirTexture : register(u18);
+RWTexture2D<float3> g_GITexture : register(u16);
+RWTexture2D<float3> g_GIPositionTexture : register(u17);
+RWTexture2D<float3> g_GINormalTexture : register(u18);
+RWTexture2D<float3> g_GIReservoirTexture : register(u19);
 
-RWTexture2D<float3> g_PrevGITexture : register(u19);
-RWTexture2D<float3> g_PrevGIPositionTexture : register(u20);
-RWTexture2D<float3> g_PrevGINormalTexture : register(u21);
-RWTexture2D<float3> g_PrevGIReservoirTexture : register(u22);
+RWTexture2D<float3> g_PrevGITexture : register(u20);
+RWTexture2D<float3> g_PrevGIPositionTexture : register(u21);
+RWTexture2D<float3> g_PrevGINormalTexture : register(u22);
+RWTexture2D<float3> g_PrevGIReservoirTexture : register(u23);
 
-RWTexture2D<float4> g_GIAccumulationTexture : register(u23);
-RWTexture2D<float4> g_PrevGIAccumulationTexture : register(u24);
+RWTexture2D<float4> g_GIAccumulationTexture : register(u24);
+RWTexture2D<float4> g_PrevGIAccumulationTexture : register(u25);
 
-RWTexture2D<float3> g_ReflectionTexture : register(u25);
-RWTexture2D<float3> g_RefractionTexture : register(u26);
+RWTexture2D<float3> g_ReflectionTexture : register(u26);
+RWTexture2D<float3> g_RefractionTexture : register(u27);
 
 SamplerState g_SamplerState : register(s0);
 

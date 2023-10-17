@@ -75,7 +75,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         int2 prevFrame = (float2) dispatchThreadId.xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[dispatchThreadId.xy];
         float3 prevNormal = normalize(g_PrevNormalTexture[prevFrame] * 2.0 - 1.0);
 
-        if (g_CurrentFrame > 0 && dot(gBufferData.Normal, prevNormal) >= 0.9063)
+        if (g_CurrentFrame > 0 && abs(depth - g_PrevDepthTexture[prevFrame]) <= 0.1 &&
+            dot(gBufferData.Normal, prevNormal) >= 0.9063)
         {
             float4 prevGlobalIllumination = g_PrevGIAccumulationTexture[prevFrame];
             giLerpFactor = min(30.0, prevGlobalIllumination.w + 1.0);

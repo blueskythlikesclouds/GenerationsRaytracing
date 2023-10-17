@@ -312,7 +312,8 @@ void RaytracingDevice::createRaytracingTextures()
     const textureDescs[] =
     {
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture },
-        { DXGI_FORMAT_R32_FLOAT, m_depthTexture },
+        { DXGI_FORMAT_R32_FLOAT, m_depthTexture, &m_prevDepthTexture },
+        { DXGI_FORMAT_R32_FLOAT, m_prevDepthTexture, &m_depthTexture },
         { DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionFlagsTexture, &m_prevPositionFlagsTexture },
@@ -1225,7 +1226,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 27, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 28, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

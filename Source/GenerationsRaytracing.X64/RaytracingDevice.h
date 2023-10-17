@@ -89,6 +89,7 @@ protected:
 
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
+    ComPtr<D3D12MA::Allocation> m_prevDepthTexture;
     ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
 
     ComPtr<D3D12MA::Allocation> m_positionFlagsTexture;
