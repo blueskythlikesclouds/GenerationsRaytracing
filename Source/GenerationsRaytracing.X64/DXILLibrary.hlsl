@@ -325,8 +325,19 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth == 0)
     {
-        payload.Color += TraceGI(payload.Depth + 1,
-            gBufferData.Position, gBufferData.Normal) * (gBufferData.Diffuse + gBufferData.Falloff);
+        float2 pixelPosition = ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
+        float depth = ComputeDepth(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
+        float3 normal = normalize(g_PrevNormalTexture[pixelPosition] * 2.0 - 1.0);
+
+        float3 globalIllumination;
+
+        [branch]
+        if (g_CurrentFrame > 0 && abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
+            globalIllumination = g_PrevGIAccumulationTexture[pixelPosition].rgb;
+        else
+            globalIllumination = TraceGI(payload.Depth + 1, gBufferData.Position, gBufferData.Normal);
+
+        payload.Color += globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
     }
 
     payload.Color += gBufferData.Emission;
