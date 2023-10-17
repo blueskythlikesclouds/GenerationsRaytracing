@@ -313,27 +313,31 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
         payload.Color += ComputeEyeLighting(gBufferData, WorldRayOrigin(), -WorldRayDirection());
 
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
+    float2 pixelPosition = ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
+    float depth = ComputeDepth(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
+    float3 normal = NormalizeSafe(g_PrevNormalTexture[pixelPosition] * 2.0 - 1.0);
+
+    if (g_CurrentFrame > 0 && abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
     {
-        uint sample = min(floor(GetBlueNoise().x * g_LocalLightCount), g_LocalLightCount - 1);
-        payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount;
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
+        {
+            Reservoir<uint> diReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[pixelPosition]);
+            payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[diReservoir.Sample]) * diReservoir.Weight;
+        }
+
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
+            payload.Color += ComputeGI(gBufferData, g_PrevGIAccumulationTexture[pixelPosition].rgb);
     }
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth == 0)
+    else
     {
-        float2 pixelPosition = ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
-        float depth = ComputeDepth(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
-        float3 normal = NormalizeSafe(g_PrevNormalTexture[pixelPosition] * 2.0 - 1.0);
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
+        {
+            uint sample = min(floor(GetBlueNoise().x * g_LocalLightCount), g_LocalLightCount - 1);
+            payload.Color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount;
+        }
 
-        float3 globalIllumination;
-
-        [branch]
-        if (g_CurrentFrame > 0 && abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
-            globalIllumination = g_PrevGIAccumulationTexture[pixelPosition].rgb;
-        else
-            globalIllumination = TraceGI(payload.Depth + 1, gBufferData.SafeSpawnPoint, gBufferData.Normal);
-
-        payload.Color += globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth == 0)
+            payload.Color += ComputeGI(gBufferData, TraceGI(payload.Depth + 1, gBufferData.SafeSpawnPoint, gBufferData.Normal));
     }
 
     payload.Color += gBufferData.Emission;
