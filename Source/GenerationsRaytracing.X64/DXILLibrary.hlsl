@@ -91,6 +91,7 @@ void ShadowRayGeneration()
 void ReservoirRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
+    float depth = g_DepthTexture[DispatchRaysIndex().xy];
     Reservoir<uint> reservoir = (Reservoir<uint>) 0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
@@ -119,7 +120,7 @@ void ReservoirRayGeneration()
             int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
             float3 prevNormal = normalize(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
-            if (dot(prevNormal, gBufferData.Normal) >= 0.9063)
+            if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
                 Reservoir<uint> prevReservoir = LoadDIReservoir(g_PrevDIReservoirTexture[temporalNeighbor]);
                 prevReservoir.SampleCount = min(reservoir.SampleCount * 20, prevReservoir.SampleCount);
@@ -147,6 +148,7 @@ void ReservoirRayGeneration()
 void GIRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
+    float depth = g_DepthTexture[DispatchRaysIndex().xy];
     Reservoir<GISample> reservoir = (Reservoir<GISample>) 0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
@@ -191,7 +193,7 @@ void GIRayGeneration()
             float3 prevPosition = g_PrevPositionFlagsTexture[temporalNeighbor].xyz;
             float3 prevNormal = normalize(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
-            if (dot(prevNormal, gBufferData.Normal) >= 0.9063)
+            if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
                 Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, 
                     g_PrevGINormalTexture, g_PrevGIReservoirTexture, temporalNeighbor);

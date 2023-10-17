@@ -39,7 +39,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             float3 position = g_PositionFlagsTexture[neighborIndex].xyz;
             float3 normal = normalize(g_NormalTexture[neighborIndex] * 2.0 - 1.0);
 
-            if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.05 && dot(gBufferData.Normal, normal) >= 0.9063)
+            if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
             {
                 uint newSampleCount = diReservoir.SampleCount + spatialDIReservoir.SampleCount;
 
