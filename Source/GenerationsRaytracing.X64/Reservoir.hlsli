@@ -97,10 +97,10 @@ void StoreGIReservoir(
 float ComputeJacobian(float3 position, float3 neighborPosition, GISample neighborSample)
 {
     float dist = distance(position, neighborSample.Position);
-    float cosTheta = saturate(dot(normalize(position - neighborSample.Position), neighborSample.Normal));
+    float cosTheta = saturate(dot(NormalizeSafe(position - neighborSample.Position), neighborSample.Normal));
 
     float neighborDist = distance(neighborPosition, neighborSample.Position);
-    float neighborCosTheta = saturate(dot(normalize(neighborPosition - neighborSample.Position), neighborSample.Normal));
+    float neighborCosTheta = saturate(dot(NormalizeSafe(neighborPosition - neighborSample.Position), neighborSample.Normal));
 
     float jacobian = (cosTheta * neighborDist * neighborDist) / (neighborCosTheta * dist * dist);
 

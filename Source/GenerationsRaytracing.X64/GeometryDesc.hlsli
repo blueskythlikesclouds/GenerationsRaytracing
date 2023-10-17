@@ -37,6 +37,15 @@ struct Vertex
     float4 Color;
 };
 
+float3 NormalizeSafe(float3 value)
+{
+    float lengthSquared = dot(value, value);
+    if (lengthSquared > 0.0)
+        value *= rsqrt(lengthSquared);
+
+    return value;
+}
+
 float4 DecodeColor(uint color)
 {
     return float4(
@@ -164,9 +173,9 @@ Vertex LoadVertex(
 
     vertex.Position = mul(ObjectToWorld3x4(), float4(vertex.Position, 1.0)).xyz;
     vertex.PrevPosition = mul(instanceDesc.PrevTransform, float4(vertex.PrevPosition, 1.0)).xyz;
-    vertex.Normal = normalize(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
-    vertex.Tangent = normalize(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
-    vertex.Binormal = normalize(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
+    vertex.Normal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
+    vertex.Tangent = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
+    vertex.Binormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
 
     return vertex;
 }

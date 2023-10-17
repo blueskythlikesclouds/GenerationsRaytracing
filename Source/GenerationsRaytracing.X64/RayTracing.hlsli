@@ -73,7 +73,7 @@ float3 TangentToWorld(float3 normal, float3 value)
 {
     float3 binormal = GetPerpendicularVector(normal);
     float3 tangent = cross(binormal, normal);
-    return normalize(value.x * tangent + value.y * binormal + value.z * normal);
+    return NormalizeSafe(value.x * tangent + value.y * binormal + value.z * normal);
 }
 
 float TraceGlobalLightShadow(float3 position, float3 direction)

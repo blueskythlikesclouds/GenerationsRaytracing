@@ -20,7 +20,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         diReservoir = LoadDIReservoir(g_DIReservoirTexture[dispatchThreadId.xy]);
         giReservoir = LoadGIReservoir(g_GITexture, g_GIPositionTexture, g_GINormalTexture, dispatchThreadId.xy);
 
-        float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
+        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
 
         for (uint i = 0; i < 5; i++)
         {
@@ -35,7 +35,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                 g_GITexture, g_GIPositionTexture, g_GINormalTexture, neighborIndex);
 
             float3 position = g_PositionFlagsTexture[neighborIndex].xyz;
-            float3 normal = normalize(g_NormalTexture[neighborIndex] * 2.0 - 1.0);
+            float3 normal = NormalizeSafe(g_NormalTexture[neighborIndex] * 2.0 - 1.0);
 
             if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
             {
@@ -51,7 +51,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                 {
                     newSampleCount = giReservoir.SampleCount + spatialGIReservoir.SampleCount;
                     UpdateReservoir(giReservoir, spatialGIReservoir.Sample, ComputeGIReservoirWeight(gBufferData, spatialGIReservoir.Sample) *
-                        spatialGIReservoir.Weight * spatialGIReservoir.SampleCount * jacobian, NextRand(random));
+                        spatialGIReservoir.Weight * spatialGIReservoir.SampleCount * clamp(jacobian, 1.0 / 3.0, 3.0), NextRand(random));
 
                     giReservoir.SampleCount = newSampleCount;
                 }
@@ -76,7 +76,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         float giLerpFactor = 0.0;
 
         int2 prevFrame = (float2) dispatchThreadId.xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[dispatchThreadId.xy];
-        float3 prevNormal = normalize(g_PrevNormalTexture[prevFrame] * 2.0 - 1.0);
+        float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[prevFrame] * 2.0 - 1.0);
 
         if (g_CurrentFrame > 0 && abs(depth - g_PrevDepthTexture[prevFrame]) <= 0.1 &&
             dot(gBufferData.Normal, prevNormal) >= 0.9063)

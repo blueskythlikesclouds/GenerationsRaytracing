@@ -38,7 +38,7 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     {
         specularColor *= gBufferData.Specular * gBufferData.SpecularLevel * gBufferData.SpecularFresnel;
 
-        float3 halfwayDirection = normalize(lightDirection + eyeDirection);
+        float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
 
         float cosTheta = dot(gBufferData.Normal, halfwayDirection);
         cosTheta = pow(saturate(cosTheta), gBufferData.SpecularPower);
@@ -97,13 +97,13 @@ float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
 float3 ComputeGI(GBufferData gBufferData, Reservoir<GISample> giReservoir)
 {
     return giReservoir.Sample.Color * giReservoir.Weight * 
-        saturate(dot(gBufferData.Normal, normalize(giReservoir.Sample.Position - gBufferData.Position))) / PI;
+        saturate(dot(gBufferData.Normal, NormalizeSafe(giReservoir.Sample.Position - gBufferData.Position))) / PI;
 }
 
 float ComputeGIReservoirWeight(GBufferData gBufferData, GISample giSample)
 {
     float3 giLighting = giSample.Color * (gBufferData.Diffuse + gBufferData.Falloff) *
-        saturate(dot(gBufferData.Normal, normalize(giSample.Position - gBufferData.Position))) / PI;
+        saturate(dot(gBufferData.Normal, NormalizeSafe(giSample.Position - gBufferData.Position))) / PI;
 
     return dot(giLighting, float3(0.2126, 0.7152, 0.0722));
 }
@@ -155,7 +155,7 @@ float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
 {
     float3 resultShading = 0.0;
 
-    float3 halfwayDirection = normalize(shadingParams.EyeDirection - mrgGlobalLight_Direction.xyz);
+    float3 halfwayDirection = NormalizeSafe(shadingParams.EyeDirection - mrgGlobalLight_Direction.xyz);
     float cosTheta = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularPower);
     float3 specularLight = mrgGlobalLight_Specular.rgb * cosTheta * gBufferData.Specular * gBufferData.SpecularPower * gBufferData.SpecularLevel;
     resultShading += specularLight * shadingParams.Shadow;
@@ -200,7 +200,7 @@ float2 ComputeLightScattering(float3 position, float3 viewPosition)
     r0.x = exp(r0.x);
     r0.y = -r0.x + 1;
     r3.xyz = -position + g_EyePosition.xyz;
-    r4.xyz = normalize(r3.xyz);
+    r4.xyz = NormalizeSafe(r3.xyz);
     r3.x = dot(-mrgGlobalLight_Direction.xyz, r4.xyz);
     r3.y = g_LightScattering_ConstG_FogDensity.z * r3.x + g_LightScattering_ConstG_FogDensity.y;
     r4.x = pow(abs(r3.y), 1.5);

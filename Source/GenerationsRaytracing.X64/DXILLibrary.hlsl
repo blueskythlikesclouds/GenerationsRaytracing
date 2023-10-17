@@ -96,7 +96,7 @@ void ReservoirRayGeneration()
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
     {
-        float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
+        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
 
         uint random = InitRand(g_CurrentFrame,
             DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
@@ -118,7 +118,7 @@ void ReservoirRayGeneration()
         {
             // Temporal reuse
             int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
-            float3 prevNormal = normalize(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
+            float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
             if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
@@ -191,7 +191,7 @@ void GIRayGeneration()
             // Temporal reuse
             int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
             float3 prevPosition = g_PrevPositionFlagsTexture[temporalNeighbor].xyz;
-            float3 prevNormal = normalize(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
+            float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
             if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
@@ -205,7 +205,7 @@ void GIRayGeneration()
                     uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
 
                     UpdateReservoir(reservoir, prevReservoir.Sample, ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * 
-                        prevReservoir.Weight * prevReservoir.SampleCount * jacobian, NextRand(random));
+                        prevReservoir.Weight * prevReservoir.SampleCount * clamp(jacobian, 1.0 / 3.0, 3.0), NextRand(random));
 
                     reservoir.SampleCount = newSampleCount;
                 }
@@ -226,7 +226,7 @@ void ReflectionRayGeneration()
     float3 reflection = 0.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)))
     {
-        float3 eyeDirection = normalize(g_EyePosition.xyz - gBufferData.Position);
+        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
 
         if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
         {
@@ -258,7 +258,7 @@ void RefractionRayGeneration()
         refraction = TraceRefraction(0, 
             gBufferData.SafeSpawnPoint, 
             gBufferData.Normal, 
-            normalize(g_EyePosition.xyz - gBufferData.Position));
+            NormalizeSafe(g_EyePosition.xyz - gBufferData.Position));
     }
     g_RefractionTexture[DispatchRaysIndex().xy] = refraction;
 }
@@ -327,7 +327,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     {
         float2 pixelPosition = ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
         float depth = ComputeDepth(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
-        float3 normal = normalize(g_PrevNormalTexture[pixelPosition] * 2.0 - 1.0);
+        float3 normal = NormalizeSafe(g_PrevNormalTexture[pixelPosition] * 2.0 - 1.0);
 
         float3 globalIllumination;
 
@@ -341,8 +341,10 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     }
 
     payload.Color += gBufferData.Emission;
-    if (any(or(isnan(payload.Color), isinf(payload.Color))))
-        payload.Color = 0.0;
+
+    float luminance = dot(payload.Color, float3(0.2126, 0.7152, 0.0722));
+    if (luminance > 4.0)
+        payload.Color *= 4.0 / luminance;
 
     payload.T = RayTCurrent();
     payload.Normal = gBufferData.Normal;

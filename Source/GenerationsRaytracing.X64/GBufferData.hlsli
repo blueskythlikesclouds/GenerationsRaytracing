@@ -59,7 +59,7 @@ float3 DecodeNormalMap(Vertex vertex, float2 value)
     normalMap.xy = value * 2.0 - 1.0;
     normalMap.z = sqrt(1.0 - saturate(dot(normalMap.xy, normalMap.xy)));
 
-    return normalize(
+    return NormalizeSafe(
         vertex.Tangent * normalMap.x -
         vertex.Binormal * normalMap.y +
         vertex.Normal * normalMap.z);
@@ -119,7 +119,7 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
     float4 normal2 = SampleMaterialTexture2D(material.NormalTexture2,
         vertex.TexCoords[material.NormalTexture2 >> 30] + float2(0.0, offset.y));
     
-    gBufferData.Normal = normalize(DecodeNormalMap(vertex, normal1) + DecodeNormalMap(vertex, normal2));
+    gBufferData.Normal = NormalizeSafe(DecodeNormalMap(vertex, normal1) + DecodeNormalMap(vertex, normal2));
 }
 
 GBufferData CreateGBufferData(Vertex vertex, Material material)
@@ -192,8 +192,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 float4 normalMap = SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords);
 
                 float3 highlightNormal = DecodeNormalMap(vertex, normalMap.zw);
-                float3 lightDirection = normalize(vertex.Position - material.SonicEyeHighLightPosition.xyz);
-                float3 halfwayDirection = normalize(-WorldRayDirection() + lightDirection);
+                float3 lightDirection = NormalizeSafe(vertex.Position - material.SonicEyeHighLightPosition.xyz);
+                float3 halfwayDirection = NormalizeSafe(-WorldRayDirection() + lightDirection);
 
                 float highlightSpecular = saturate(dot(highlightNormal, halfwayDirection));
                 highlightSpecular = pow(highlightSpecular, max(1.0, gBufferData.SpecularPower * gloss.x));
@@ -349,7 +349,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                     if (material.NormalTexture2 != 0)
                     {
                         float3 normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex.TexCoords));
-                        gBufferData.Normal = normalize(gBufferData.Normal + normal);
+                        gBufferData.Normal = NormalizeSafe(gBufferData.Normal + normal);
                     }
                 }
 
@@ -633,7 +633,7 @@ GBufferData LoadGBufferData(uint2 index)
     gBufferData.SpecularLevel = specularPowerLevelFresnel.y;
     gBufferData.SpecularFresnel = specularPowerLevelFresnel.z;
 
-    gBufferData.Normal = normalize(g_NormalTexture[index] * 2.0 - 1.0);
+    gBufferData.Normal = NormalizeSafe(g_NormalTexture[index] * 2.0 - 1.0);
     gBufferData.Falloff = g_FalloffTexture[index];
     gBufferData.Emission = g_EmissionTexture[index];
 
