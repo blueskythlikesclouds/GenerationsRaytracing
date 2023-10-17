@@ -23,7 +23,8 @@ static struct ThreadHolder
 
     ~ThreadHolder()
     {
-        processThread.join();
+        if (processThread.joinable())
+            processThread.join();
     }
 } s_threadHolder;
 
