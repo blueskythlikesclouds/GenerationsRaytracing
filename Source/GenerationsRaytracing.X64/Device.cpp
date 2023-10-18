@@ -1886,7 +1886,7 @@ void Device::runLoop()
 
 void Device::setEvents() const
 {
-    m_cpuEvent.set();
+    m_cpuEvent.reset();
     m_gpuEvent.set();
 }
 

@@ -80,7 +80,7 @@ void MessageSender::commitMessages()
 
 void MessageSender::notifyShouldExit() const
 {
-    m_cpuEvent.set();
+    m_cpuEvent.reset();
     m_gpuEvent.set();
 }
 
