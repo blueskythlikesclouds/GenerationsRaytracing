@@ -154,8 +154,8 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
         bottomLevelAccelStruct.desc.ScratchAccelerationStructureData =
             m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
 
-        m_scratchBufferOffset = m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize
-            + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1 & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
+        m_scratchBufferOffset = (m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize
+            + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
     }
 
     getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
@@ -173,12 +173,8 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[pendingBuild];
 
-        if (bottomLevelAccelStruct.pendingBuild) // Check as it's possible it was freed before this point
-        {
-            assert(bottomLevelAccelStruct.allocation != nullptr);
+        if (bottomLevelAccelStruct.allocation != nullptr)
             buildBottomLevelAccelStruct(bottomLevelAccelStruct);
-            bottomLevelAccelStruct.pendingBuild = false;
-        }
     }
 
     m_pendingPoses.clear();
@@ -262,45 +258,6 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
 bool RaytracingDevice::createTopLevelAccelStruct()
 {
     handlePendingBottomLevelAccelStructBuilds();
-
-    for (const auto& delayedTexture : m_delayedTextures[m_frame])
-    {
-        auto& material = m_materials[delayedTexture.materialId];
-
-        // Process material only if it's the one we want
-        if (material.version == delayedTexture.materialVersion)
-        {
-            if (m_textures.size() > delayedTexture.textureId && 
-                m_textures[delayedTexture.textureId].allocation != nullptr)
-            {
-                (&material.version)[delayedTexture.textureIdOffset] |= m_textures[delayedTexture.textureId].srvIndex;
-            }
-            else
-            {
-                m_delayedTextures[m_nextFrame].push_back(delayedTexture);
-            }
-        }
-    }
-
-    for (const auto& [instanceId, bottomLevelAccelStructId] : m_delayedInstances[m_frame])
-    {
-        if (m_bottomLevelAccelStructs.size() > bottomLevelAccelStructId &&
-            m_bottomLevelAccelStructs[bottomLevelAccelStructId].allocation != nullptr)
-        {
-            auto& instanceDesc = m_instanceDescs[instanceId];
-            auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[bottomLevelAccelStructId];
-            instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
-            instanceDesc.InstanceMask = 1;
-            instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
-        }
-        else
-        {
-            m_delayedInstances[m_nextFrame].emplace_back(instanceId, bottomLevelAccelStructId);
-        }
-    }
-
-    m_delayedTextures[m_frame].clear();
-    m_delayedInstances[m_frame].clear();
 
     if (m_instanceDescs.empty())
         return false;
@@ -616,7 +573,6 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     bottomLevelAccelStruct.desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
     bottomLevelAccelStruct.desc.Inputs.pGeometryDescs = bottomLevelAccelStruct.geometryDescs.data();
     bottomLevelAccelStruct.scratchBufferSize = buildAccelStruct(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
-    bottomLevelAccelStruct.pendingBuild = true;
     
     m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
 }
@@ -630,16 +586,14 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
     case MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct:
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.resourceId];
-        if (bottomLevelAccelStruct.pendingBuild) // Build ASAP since we normally delay it and don't want to deal with freed memory blocks
-        {
-            buildBottomLevelAccelStruct(bottomLevelAccelStruct);
-            bottomLevelAccelStruct.pendingBuild = false;
-        }
 
         m_tempBuffers[m_frame].emplace_back(std::move(bottomLevelAccelStruct.allocation));
         freeGeometryDescs(m_bottomLevelAccelStructs[message.resourceId].geometryId, m_bottomLevelAccelStructs[message.resourceId].geometryCount);
+
         bottomLevelAccelStruct.desc = {};
         bottomLevelAccelStruct.geometryDescs.clear();
+        bottomLevelAccelStruct.scratchBufferSize = 0;
+
         break;
     }
 
@@ -660,13 +614,7 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
     case MsgReleaseRaytracingResource::ResourceType::Material:
     {
         if (m_materials.size() > message.resourceId)
-        {
-            auto& material = m_materials[message.resourceId];
-
-            uint32_t version = material.version + 1;
-            memset(&material, 0, sizeof(Material));
-            material.version = version;
-        }
+            memset(&m_materials[message.resourceId], 0, sizeof(Material));
         break;
     }
 
@@ -693,67 +641,57 @@ void RaytracingDevice::procMsgCreateInstance()
 
     memcpy(instanceDesc.Transform, message.transform, sizeof(message.transform));
 
-    if (m_bottomLevelAccelStructs.size() <= message.bottomLevelAccelStructId ||
-        m_bottomLevelAccelStructs[message.bottomLevelAccelStructId].allocation == nullptr)
-    {
-        // Not loaded yet, defer assignment to top level acceleration structure creation
-        m_delayedInstances[m_frame].emplace_back(message.instanceId, message.bottomLevelAccelStructId);
-        //assert(message.dataSize == 0); // Skinned models should not fall here!
-    }
-    else
-    {
-        auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
+    auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
 
-        if (message.dataSize > 0)
+    if (message.dataSize > 0)
+    {
+        if (m_geometryRanges.size() <= message.instanceId)
+            m_geometryRanges.resize(message.instanceId + 1);
+
+        auto& [geometryId, geometryCount] = m_geometryRanges[message.instanceId];
+
+        if (geometryId == NULL)
         {
-            if (m_geometryRanges.size() <= message.instanceId)
-                m_geometryRanges.resize(message.instanceId + 1);
+            geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
+            geometryCount = bottomLevelAccelStruct.geometryCount;
 
-            auto& [geometryId, geometryCount] = m_geometryRanges[message.instanceId];
+            memcpy(&m_geometryDescs[geometryId], &m_geometryDescs[bottomLevelAccelStruct.geometryId],
+                bottomLevelAccelStruct.geometryCount * sizeof(GeometryDesc));
 
-            if (geometryId == NULL)
+            instanceDesc.InstanceID = geometryId;
+        }
+
+        for (size_t i = 0; i < geometryCount; i++)
+        {
+            const auto& srcGeometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
+            auto& dstGeometry = m_geometryDescs[geometryId + i];
+
+            dstGeometry.materialId = srcGeometry.materialId;
+
+            auto curId = reinterpret_cast<const uint32_t*>(message.data);
+            const auto lastId = reinterpret_cast<const uint32_t*>(message.data + message.dataSize);
+
+            while (curId < lastId)
             {
-                geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
-                geometryCount = bottomLevelAccelStruct.geometryCount;
-
-                memcpy(&m_geometryDescs[geometryId], &m_geometryDescs[bottomLevelAccelStruct.geometryId],
-                    bottomLevelAccelStruct.geometryCount * sizeof(GeometryDesc));
-
-                instanceDesc.InstanceID = geometryId;
-            }
-
-            for (size_t i = 0; i < geometryCount; i++)
-            {
-                const auto& srcGeometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
-                auto& dstGeometry = m_geometryDescs[geometryId + i];
-
-                dstGeometry.materialId = srcGeometry.materialId;
-
-                auto curId = reinterpret_cast<const uint32_t*>(message.data);
-                const auto lastId = reinterpret_cast<const uint32_t*>(message.data + message.dataSize);
-
-                while (curId < lastId)
+                if ((*curId) == srcGeometry.materialId)
                 {
-                    if ((*curId) == srcGeometry.materialId)
-                    {
-                        dstGeometry.materialId = *(curId + 1);
-                        break;
-                    }
-                    else
-                    {
-                        curId += 2;
-                    }
+                    dstGeometry.materialId = *(curId + 1);
+                    break;
+                }
+                else
+                {
+                    curId += 2;
                 }
             }
         }
-        else
-        {
-            instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
-        }
-
-        instanceDesc.InstanceMask = 1;
-        instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
     }
+    else
+    {
+        instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
+    }
+
+    instanceDesc.InstanceMask = 1;
+    instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
 }
 
 void RaytracingDevice::procMsgTraceRays()
@@ -876,7 +814,6 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     auto& material = m_materials[message.materialId];
 
-    ++material.version;
     material.shaderType = message.shaderType;
     material.flags = message.flags;
 
@@ -909,22 +846,6 @@ void RaytracingDevice::procMsgCreateMaterial()
 
         if (srcTexture.id != NULL)
         {
-            if (m_textures.size() <= srcTexture.id || m_textures[srcTexture.id].allocation == nullptr)
-            {
-                // Delay texture assignment if the texture is not loaded yet
-                m_delayedTextures[m_frame].emplace_back(DelayedTexture
-                    {
-                        message.materialId,
-                        material.version,
-                        srcTexture.id,
-                        static_cast<uint32_t>(&dstTexture - &material.version)
-                    });
-            }
-            else
-            {
-                dstTexture = m_textures[srcTexture.id].srvIndex;
-            }
-
             samplerDesc.AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeU);
             samplerDesc.AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeV);
 
@@ -937,6 +858,7 @@ void RaytracingDevice::procMsgCreateMaterial()
                     m_samplerDescriptorHeap.getCpuHandle(sampler));
             }
 
+            dstTexture = m_textures[srcTexture.id].srvIndex;
             dstTexture |= sampler << 20;
             dstTexture |= srcTexture.texCoordIndex << 30;
         }
@@ -948,8 +870,6 @@ void RaytracingDevice::procMsgCreateMaterial()
 void RaytracingDevice::procMsgBuildBottomLevelAccelStruct()
 {
     const auto& message = m_messageReceiver.getMessage<MsgBuildBottomLevelAccelStruct>();
-
-    m_bottomLevelAccelStructs[message.bottomLevelAccelStructId].pendingBuild = true;
 
     m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
 }

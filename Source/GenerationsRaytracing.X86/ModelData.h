@@ -22,6 +22,8 @@ struct ModelData
 {
     static inline FreeListAllocator s_idAllocator;
 
+    static void createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDataEx);
+
     static void createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, 
         const MaterialMap& materialMap, bool isEnabled);
 

@@ -1821,8 +1821,8 @@ void Device::processMessages()
     }
 
     m_fenceValues[m_frame] = m_graphicsQueue.getNextFenceValue();
-    m_graphicsQueue.signal(m_fenceValues[m_frame]);
     m_copyQueue.wait(m_fenceValues[m_frame], m_graphicsQueue);
+    m_graphicsQueue.signal(m_fenceValues[m_frame]);
 
     m_uploadBufferIndex = 0;
     m_uploadBufferOffset = 0;

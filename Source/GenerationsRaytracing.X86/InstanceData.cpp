@@ -10,6 +10,9 @@ public:
     uint32_t m_instanceId;
 };
 
+static std::unordered_set<TerrainInstanceInfoDataEx*> s_instancesToCreate;
+static Mutex s_instanceCreateMutex;
+
 HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor, 0x717350, TerrainInstanceInfoDataEx* This)
 {
     const auto result = originalTerrainInstanceInfoDataConstructor(This);
@@ -21,6 +24,10 @@ HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor,
 
 HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInstanceInfoDataEx* This)
 {
+    s_instanceCreateMutex.lock();
+    s_instancesToCreate.erase(This);
+    s_instanceCreateMutex.unlock();
+
     if (This->m_instanceId != NULL)
     {
         auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
@@ -36,31 +43,8 @@ HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInsta
 
 static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoDataEx* This)
 {
-    if (This->m_spTerrainModel != nullptr)
-    {
-        const auto terrainModelEx = 
-            reinterpret_cast<TerrainModelDataEx*>(This->m_spTerrainModel.get());
-
-        if (terrainModelEx->m_bottomLevelAccelStructId == NULL)
-            terrainModelEx->m_bottomLevelAccelStructId = ModelData::s_idAllocator.allocate();
-
-        auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
-
-        for (size_t i = 0; i < 3; i++)
-        {
-            for (size_t j = 0; j < 4; j++)
-                message.transform[i][j] = (*This->m_scpTransform)(i, j);
-        }
-
-        if (This->m_instanceId == NULL)
-            This->m_instanceId = InstanceData::s_idAllocator.allocate();
-
-        message.instanceId = This->m_instanceId;
-        message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
-        message.storePrevTransform = false;
-
-        s_messageSender.endMessage();
-    }
+    LockGuard lock(s_instanceCreateMutex);
+    s_instancesToCreate.insert(This);
 
     This->SetMadeOne();
 }
@@ -101,6 +85,47 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     This->m_poseVertexBuffer.~ComPtr();
 
     originalInstanceInfoDestructor(This);
+}
+
+void InstanceData::createPendingInstances()
+{
+    LockGuard lock(s_instanceCreateMutex);
+
+    for (auto it = s_instancesToCreate.begin(); it != s_instancesToCreate.end();)
+    {
+        if ((*it)->IsMadeAll())
+        {
+            if ((*it)->m_spTerrainModel != nullptr)
+            {
+                const auto terrainModelEx =
+                    reinterpret_cast<TerrainModelDataEx*>((*it)->m_spTerrainModel.get());
+
+                ModelData::createBottomLevelAccelStruct(*terrainModelEx);
+
+                assert((*it)->m_instanceId == NULL);
+                (*it)->m_instanceId = s_idAllocator.allocate();
+
+                auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
+
+                for (size_t i = 0; i < 3; i++)
+                {
+                    for (size_t j = 0; j < 4; j++)
+                        message.transform[i][j] = (*(*it)->m_scpTransform)(i, j);
+                }
+
+                message.instanceId = (*it)->m_instanceId;
+                message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
+                message.storePrevTransform = false;
+
+                s_messageSender.endMessage();
+            }
+            it = s_instancesToCreate.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 void InstanceData::init()

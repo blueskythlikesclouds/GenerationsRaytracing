@@ -133,6 +133,7 @@ static void __cdecl implOfSceneRender(void* a1)
                 renderSky(skyFindResult->second.get());
         }
 
+        InstanceData::createPendingInstances();
         MaterialData::createPendingMaterials();
 
         const Hedgehog::Base::CStringSymbol symbols[] = { "Object", "Object_Overlay", "Player" };

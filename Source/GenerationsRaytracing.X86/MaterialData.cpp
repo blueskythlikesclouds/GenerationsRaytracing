@@ -189,20 +189,10 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     s_messageSender.endMessage();
 }
 
-static void __fastcall materialDataSetMadeOneV0V1V2(MaterialDataEx* This)
+static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
 {
     LockGuard lock(s_matCreateMutex);
     s_materialsToCreate.emplace(This);
-
-    This->SetMadeOne();
-}
-
-static void __fastcall materialDataSetMadeOneV3(MaterialDataEx* This)
-{
-    if (This->m_materialId == NULL)
-        This->m_materialId = MaterialData::s_idAllocator.allocate();
-
-    createMaterial(*This);
 
     This->SetMadeOne();
 }
@@ -271,10 +261,10 @@ void MaterialData::init()
     INSTALL_HOOK(MaterialDataConstructor);
     INSTALL_HOOK(MaterialDataDestructor);
 
-    WRITE_JUMP(0x74170C, materialDataSetMadeOneV0V1V2);
-    WRITE_JUMP(0x741E00, materialDataSetMadeOneV0V1V2);
-    WRITE_JUMP(0x7424DD, materialDataSetMadeOneV0V1V2);
-    WRITE_JUMP(0x742BED, materialDataSetMadeOneV3);
+    WRITE_JUMP(0x74170C, materialDataSetMadeOne);
+    WRITE_JUMP(0x741E00, materialDataSetMadeOne);
+    WRITE_JUMP(0x7424DD, materialDataSetMadeOne);
+    WRITE_JUMP(0x742BED, materialDataSetMadeOne);
 
     INSTALL_HOOK(SampleTexcoordAnimation);
     INSTALL_HOOK(SampleMaterialAnimation);

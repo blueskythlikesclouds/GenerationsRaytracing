@@ -313,40 +313,6 @@ HOOK(void, __fastcall, TerrainModelDataDestructor, 0x717230, TerrainModelDataEx*
     originalTerrainModelDataDestructor(This);
 }
 
-static std::vector<TerrainModelDataEx*> s_terrainModelList;
-
-static void __fastcall terrainModelDataSetMadeOne(TerrainModelDataEx* This)
-{
-    if (*reinterpret_cast<uint32_t*>(0x1B244D4) != NULL) // Share vertex buffer
-    {
-        s_terrainModelList.push_back(This);
-    }
-    else
-    {
-        if (This->m_bottomLevelAccelStructId == NULL)
-            This->m_bottomLevelAccelStructId = ModelData::s_idAllocator.allocate();
-
-        createBottomLevelAccelStruct(*This, This->m_bottomLevelAccelStructId, NULL);
-    }
-
-    This->SetMadeOne();
-}
-
-HOOK(void, __fastcall, CreateShareVertexBuffer, 0x72EBD0, void* This)
-{
-    originalCreateShareVertexBuffer(This);
-
-    for (const auto terrainModelData : s_terrainModelList)
-    {
-        if (terrainModelData->m_bottomLevelAccelStructId == NULL)
-            terrainModelData->m_bottomLevelAccelStructId = ModelData::s_idAllocator.allocate();
-
-        createBottomLevelAccelStruct(*terrainModelData, terrainModelData->m_bottomLevelAccelStructId, NULL);
-    }
-
-    s_terrainModelList.clear();
-}
-
 HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This)
 {
     const auto result = originalModelDataConstructor(This);
@@ -370,6 +336,17 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
 
     originalModelDataDestructor(This);
 }
+
+void ModelData::createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDataEx)
+{
+    if (terrainModelDataEx.m_bottomLevelAccelStructId == NULL)
+    {
+        terrainModelDataEx.m_bottomLevelAccelStructId = s_idAllocator.allocate();
+
+        ::createBottomLevelAccelStruct(terrainModelDataEx, terrainModelDataEx.m_bottomLevelAccelStructId, NULL);
+    }
+}
+
 void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled)
 {
     if (!isEnabled)
@@ -698,11 +675,6 @@ void ModelData::init()
 
     INSTALL_HOOK(TerrainModelDataConstructor);
     INSTALL_HOOK(TerrainModelDataDestructor);
-
-    WRITE_CALL(0x73A6D3, terrainModelDataSetMadeOne);
-    WRITE_CALL(0x739AB4, terrainModelDataSetMadeOne);
-
-    INSTALL_HOOK(CreateShareVertexBuffer);
 
     WRITE_MEMORY(0x4FA1FC, uint32_t, sizeof(ModelDataEx));
     WRITE_MEMORY(0xE993F1, uint32_t, sizeof(ModelDataEx));

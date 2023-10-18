@@ -15,5 +15,6 @@ struct InstanceData
 {
     static inline FreeListAllocator s_idAllocator;
 
+    static void createPendingInstances();
     static void init();
 };
