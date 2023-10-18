@@ -191,9 +191,9 @@ void GIRayGeneration()
             float3 prevPosition = g_PrevPositionFlagsTexture[temporalNeighbor].xyz;
             float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
-            if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
+            if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.05 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
-                Reservoir < GISample > prevReservoir = LoadGIReservoir(g_PrevGITexture,
+                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture,
                     g_PrevGIPositionTexture, g_PrevGINormalTexture, temporalNeighbor);
 
                 float jacobian = ComputeJacobian(gBufferData.Position, prevPosition, prevReservoir.Sample);
@@ -321,7 +321,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     float3 normal = NormalizeSafe(g_PrevNormalTexture[pixelPosition] * 2.0 - 1.0);
 
     if (g_CurrentFrame > 0 && all(and(pixelPosition >= 0, pixelPosition < g_InternalResolution)) &&
-        abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
+        abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.05 && dot(gBufferData.Normal, normal) >= 0.9063)
     {
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
         {

@@ -41,7 +41,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                 float3 position = g_PositionFlagsTexture[neighborIndex].xyz;
                 float3 normal = NormalizeSafe(g_NormalTexture[neighborIndex] * 2.0 - 1.0);
 
-                if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
+                if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.05 && dot(gBufferData.Normal, normal) >= 0.9063)
                 {
                     uint newSampleCount = diReservoir.SampleCount + spatialDIReservoir.SampleCount;
 
@@ -83,7 +83,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         {
             float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[prevFrame] * 2.0 - 1.0);
 
-            if (abs(depth - g_PrevDepthTexture[prevFrame]) <= 0.1 && dot(gBufferData.Normal, prevNormal) >= 0.9063)
+            if (abs(depth - g_PrevDepthTexture[prevFrame]) <= 0.05 && dot(gBufferData.Normal, prevNormal) >= 0.9063)
             {
                 float4 prevGlobalIllumination = g_PrevGIAccumulationTexture[prevFrame];
                 giLerpFactor = min(30.0, prevGlobalIllumination.w + 1.0);
