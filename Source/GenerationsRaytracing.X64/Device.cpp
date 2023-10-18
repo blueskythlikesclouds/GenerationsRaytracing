@@ -1838,6 +1838,8 @@ void Device::processMessages()
     m_samplerDescsFirst = 0;
     m_samplerDescsLast = _countof(m_samplerDescs) - 1;
 
+    m_copyQueue.wait(m_fenceValues[m_frame], m_graphicsQueue);
+
     m_frame = m_nextFrame;
     m_nextFrame = (m_frame + 1) % NUM_FRAMES;
 
