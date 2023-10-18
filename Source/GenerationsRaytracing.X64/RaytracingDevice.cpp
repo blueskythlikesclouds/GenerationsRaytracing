@@ -6,6 +6,7 @@
 #include "DebugView.h"
 #include "DLSS.h"
 #include "EnvironmentColor.h"
+#include "EnvironmentMode.h"
 #include "GeometryFlags.h"
 #include "Message.h"
 #include "RootSignature.h"
@@ -210,8 +211,29 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     if (message.resetAccumulation)
         m_globalsRT.currentFrame = 0;
 
-    m_globalsRT.useEnvironmentColor = EnvironmentColor::get(m_globalsPS, 
-        m_globalsRT.skyColor, m_globalsRT.groundColor);
+    switch (message.envMode)
+    {
+    case ENVIRONMENT_MODE_AUTO:
+        m_globalsRT.useEnvironmentColor = EnvironmentColor::get(m_globalsPS,
+            m_globalsRT.skyColor, m_globalsRT.groundColor);
+
+        if (m_globalsRT.useEnvironmentColor || (message.skyColor[0] <= 0.0f && 
+            message.skyColor[1] <= 0.0f && message.skyColor[2] <= 0.0f))
+        {
+            break;
+        }
+        // fallthrough
+    case ENVIRONMENT_MODE_COLOR:
+        m_globalsRT.useEnvironmentColor = true;
+        memcpy(m_globalsRT.skyColor, message.skyColor, sizeof(m_globalsRT.skyColor));
+        memcpy(m_globalsRT.groundColor, message.groundColor, sizeof(m_globalsRT.groundColor));
+        break;
+
+    case ENVIRONMENT_MODE_SKY:
+        m_globalsRT.useEnvironmentColor = false;
+        break;
+
+    }
 
     haltonJitter(m_globalsRT.currentFrame, 64, m_globalsRT.pixelJitterX, m_globalsRT.pixelJitterY);
 

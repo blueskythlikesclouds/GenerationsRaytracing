@@ -94,6 +94,9 @@ static FUNCTION_PTR(void, __cdecl, setSceneSurface, 0x64E960, void*, void*);
 static Hedgehog::Mirage::CLightListData* s_curLightList;
 static size_t s_localLightCount;
 static uint32_t s_prevDebugView;
+static uint32_t s_prevEnvMode;
+static Hedgehog::Math::CVector s_prevSkyColor;
+static Hedgehog::Math::CVector s_prevGroundColor;
 
 static void __cdecl implOfSceneRender(void* a1)
 {
@@ -174,10 +177,18 @@ static void __cdecl implOfSceneRender(void* a1)
             }
         }
 
-        if (s_prevDebugView != RaytracingParams::s_debugView)
+        if (s_prevDebugView != RaytracingParams::s_debugView ||
+            s_prevEnvMode != RaytracingParams::s_envMode ||
+            s_prevSkyColor != RaytracingParams::s_skyColor ||
+            s_prevGroundColor != RaytracingParams::s_groundColor)
+        {
             resetAccumulation = true;
+        }
 
         s_prevDebugView = RaytracingParams::s_debugView;
+        s_prevEnvMode = RaytracingParams::s_envMode;
+        s_prevSkyColor = RaytracingParams::s_skyColor;
+        s_prevGroundColor = RaytracingParams::s_groundColor;
 
         auto& traceRaysMessage = s_messageSender.makeMessage<MsgTraceRays>();
 
@@ -195,6 +206,13 @@ static void __cdecl implOfSceneRender(void* a1)
         traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
         traceRaysMessage.emissivePower = RaytracingParams::s_emissivePower;
         traceRaysMessage.debugView = RaytracingParams::s_debugView;
+        traceRaysMessage.envMode = RaytracingParams::s_envMode;
+        memcpy(traceRaysMessage.skyColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.skyColor));
+
+        if (RaytracingParams::s_groundColor.squaredNorm() > 0.0001)
+            memcpy(traceRaysMessage.groundColor, RaytracingParams::s_groundColor.data(), sizeof(traceRaysMessage.groundColor));
+        else
+            memcpy(traceRaysMessage.groundColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.groundColor));
 
         s_messageSender.endMessage();
     }

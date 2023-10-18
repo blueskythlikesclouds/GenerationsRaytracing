@@ -1,5 +1,7 @@
 ﻿#include "RaytracingParams.h"
 
+#include "EnvironmentMode.h"
+
 struct Stage
 {
     const char* name;
@@ -254,6 +256,22 @@ static void createParameterFile()
         giParam->CreateParamFloat(&RaytracingParams::s_diffusePower, "DiffusePower");
         giParam->CreateParamFloat(&RaytracingParams::s_lightPower, "LightPower");
         giParam->CreateParamFloat(&RaytracingParams::s_emissivePower, "EmissivePower");
+        paramGroup->Flush();
+    }
+
+    auto envParam = paramGroup->CreateParameterCategory("Environment", "");
+    {
+        envParam->CreateParamTypeList(&RaytracingParams::s_envMode, "Mode", "", {
+            {"Auto", ENVIRONMENT_MODE_AUTO},
+            {"Sky", ENVIRONMENT_MODE_SKY},
+            {"Color", ENVIRONMENT_MODE_COLOR} });
+
+        envParam->CreateParamFloat(&RaytracingParams::s_skyColor.x(), "SkyColorR");
+        envParam->CreateParamFloat(&RaytracingParams::s_skyColor.y(), "SkyColorG");
+        envParam->CreateParamFloat(&RaytracingParams::s_skyColor.z(), "SkyColorB");
+        envParam->CreateParamFloat(&RaytracingParams::s_groundColor.x(), "GroundColorR");
+        envParam->CreateParamFloat(&RaytracingParams::s_groundColor.y(), "GroundColorG");
+        envParam->CreateParamFloat(&RaytracingParams::s_groundColor.z(), "GroundColorB");
         paramGroup->Flush();
     }
 }

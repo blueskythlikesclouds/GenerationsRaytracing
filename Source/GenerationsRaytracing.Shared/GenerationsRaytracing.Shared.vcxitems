@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)DebugView.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)EnvironmentMode.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Event.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)GeometryFlags.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)LockGuard.h" />
