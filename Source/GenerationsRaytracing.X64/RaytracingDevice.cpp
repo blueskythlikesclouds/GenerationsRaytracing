@@ -207,6 +207,9 @@ static void haltonJitter(int frame, int phases, float& jitterX, float& jitterY)
 
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& message)
 {
+    if (message.resetAccumulation)
+        m_globalsRT.currentFrame = 0;
+
     m_globalsRT.useEnvironmentColor = EnvironmentColor::get(m_globalsPS, 
         m_globalsRT.skyColor, m_globalsRT.groundColor);
 

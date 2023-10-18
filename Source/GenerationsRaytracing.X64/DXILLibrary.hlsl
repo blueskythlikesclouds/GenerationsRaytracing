@@ -278,7 +278,7 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     if (g_UseEnvironmentColor)
     {
-        payload.Color = lerp(g_GroundColor, g_SkyColor, WorldRayDirection().y * 0.5 + 0.5);
+        payload.Color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
         payload.T = 10000.0;
         payload.Normal = -WorldRayDirection();
     }

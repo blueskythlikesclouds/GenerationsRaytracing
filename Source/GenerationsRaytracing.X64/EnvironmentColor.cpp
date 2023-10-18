@@ -130,7 +130,7 @@ static const xxHashMap<std::array<uint8_t, 6>> s_environmentColors =
     { 0xab24577085d0036a, { 200, 191, 231 } },               // ghz100
     { 0x308f8335b0308380, { 59, 73, 179 } },                 // ghz103
     { 0xb7a2ddeb23d3f789, { 0, 58, 105 } },                  // ghz104
-    { 0xb281a7ad61dbf60b, { 135, 181, 237, 86, 243, 255 } }, // ghz200
+    { 0xb281a7ad61dbf60b, { 145, 191, 255, 81, 181, 255 } }, // ghz200
     { 0xb42e0967e6fc9bac, { 136, 206, 223 } },               // pla100, pla200, pla205
     { 0xed11fd7b4d29de26, { 77, 88, 117 } },                 // pla204
     { 0xc59175a5f51dd8bd, { 11, 14, 93 } },                  // sph100
@@ -138,7 +138,7 @@ static const xxHashMap<std::array<uint8_t, 6>> s_environmentColors =
     { 0x7a16b76d55221a78, { 0, 20, 116 } },                  // sph200
     { 0xffba3dbd0480fdfe, { 80, 91, 97 } },                  // ssh100
     { 0x75db373553a02a01, { 62, 29, 24 } },                  // ssh103
-    { 0x4e15efedfbab15ec, { 135, 178, 233 } },               // ssh200
+    { 0x4e15efedfbab15ec, { 125, 169, 203 } },               // ssh200
     { 0x30415167ec9b86ff, { 13, 10, 45 } },                  // ssh201
     { 0x65cc4d5ab937b17a, { 128, 169, 23 } },                // ssh205
     { 0x616a84fd9878922e, { 123, 211, 228 } },               // ssz100
