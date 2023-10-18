@@ -1798,6 +1798,9 @@ void Device::processMessages()
     m_gpuEvent.set();
     m_messageReceiver.reset();
 
+    if (m_swapChain.getWindow().m_shouldExit)
+        return;
+
     if (getCopyCommandList().isOpen())
     {
         getCopyCommandList().close();
