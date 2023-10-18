@@ -102,22 +102,25 @@ void InstanceData::createPendingInstances()
 
                 ModelData::createBottomLevelAccelStruct(*terrainModelEx);
 
-                assert((*it)->m_instanceId == NULL);
-                (*it)->m_instanceId = s_idAllocator.allocate();
-
-                auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
-
-                for (size_t i = 0; i < 3; i++)
+                if (terrainModelEx->m_bottomLevelAccelStructId != NULL)
                 {
-                    for (size_t j = 0; j < 4; j++)
-                        message.transform[i][j] = (*(*it)->m_scpTransform)(i, j);
+                    assert((*it)->m_instanceId == NULL);
+                    (*it)->m_instanceId = s_idAllocator.allocate();
+
+                    auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
+
+                    for (size_t i = 0; i < 3; i++)
+                    {
+                        for (size_t j = 0; j < 4; j++)
+                            message.transform[i][j] = (*(*it)->m_scpTransform)(i, j);
+                    }
+
+                    message.instanceId = (*it)->m_instanceId;
+                    message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
+                    message.storePrevTransform = false;
+
+                    s_messageSender.endMessage();
                 }
-
-                message.instanceId = (*it)->m_instanceId;
-                message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
-                message.storePrevTransform = false;
-
-                s_messageSender.endMessage();
             }
             it = s_instancesToCreate.erase(it);
         }

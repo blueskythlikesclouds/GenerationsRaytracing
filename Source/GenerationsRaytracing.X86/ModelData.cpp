@@ -183,8 +183,10 @@ static void traverseModelData(const TModelData& modelData, const TFunction& func
 }
 
 template<typename T>
-static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLevelAccelStructId, uint32_t poseVertexBufferId)
+static void createBottomLevelAccelStruct(const T& modelData, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId)
 {
+    assert(bottomLevelAccelStructId == NULL);
+
     size_t geometryCount = 0;
 
     traverseModelData(modelData, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
@@ -195,7 +197,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t bottomLeve
     auto& message = s_messageSender.makeMessage<MsgCreateBottomLevelAccelStruct>(
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
-    message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+    message.bottomLevelAccelStructId = (bottomLevelAccelStructId = ModelData::s_idAllocator.allocate());
     message.preferFastBuild = poseVertexBufferId != NULL;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
@@ -340,11 +342,7 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
 void ModelData::createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDataEx)
 {
     if (terrainModelDataEx.m_bottomLevelAccelStructId == NULL)
-    {
-        terrainModelDataEx.m_bottomLevelAccelStructId = s_idAllocator.allocate();
-
         ::createBottomLevelAccelStruct(terrainModelDataEx, terrainModelDataEx.m_bottomLevelAccelStructId, NULL);
-    }
 }
 
 void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled)
@@ -482,9 +480,11 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
         if (instanceInfoEx.m_bottomLevelAccelStructId == NULL)
         {
-            instanceInfoEx.m_bottomLevelAccelStructId = s_idAllocator.allocate();
-            ::createBottomLevelAccelStruct(modelDataEx,
-                instanceInfoEx.m_bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId());
+            ::createBottomLevelAccelStruct(modelDataEx, instanceInfoEx.m_bottomLevelAccelStructId, 
+                instanceInfoEx.m_poseVertexBuffer->getId());
+
+            if (instanceInfoEx.m_bottomLevelAccelStructId == NULL)
+                return;
         }
         else
         {
@@ -501,9 +501,12 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
         if (modelDataEx.m_bottomLevelAccelStructId == NULL)
         {
-            modelDataEx.m_bottomLevelAccelStructId = s_idAllocator.allocate();
             ::createBottomLevelAccelStruct(modelDataEx, modelDataEx.m_bottomLevelAccelStructId, NULL);
+
+            if (modelDataEx.m_bottomLevelAccelStructId == NULL)
+                return;
         }
+
         bottomLevelAccelStructId = modelDataEx.m_bottomLevelAccelStructId;
     }
 
