@@ -13,7 +13,7 @@ protected:
     Event m_gpuEvent{ Event::s_gpuEventName, TRUE };
     Mutex m_mutex;
     uint8_t* m_messages = nullptr;
-    uint32_t m_offset = 0;
+    uint32_t m_offset = sizeof(uint32_t);
     std::atomic<uint32_t> m_pendingMessages;
     MemoryMappedFile m_memoryMappedFile;
     uint8_t* m_memoryMap;

@@ -6,19 +6,22 @@ class MessageReceiver
 {
 protected:
     MemoryMappedFile m_memoryMappedFile;
-    uint8_t* m_messageBuffer;
-    size_t m_offset = 0;
+    uint8_t* m_memoryMap;
+    std::unique_ptr<uint8_t[]> m_messages;
+    uint32_t m_offset = 0;
+    uint32_t m_length = 0;
 
 public:
     MessageReceiver();
     ~MessageReceiver();
 
+    bool hasNext() const;
     uint8_t getId() const;
 
     template <typename T>
     const T& getMessage();
 
-    void reset();
+    void receiveMessages();
 };
 
 #include "MessageReceiver.inl"

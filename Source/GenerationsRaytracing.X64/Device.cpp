@@ -1724,6 +1724,8 @@ void Device::processMessages()
         return;
 
     m_cpuEvent.reset();
+    m_messageReceiver.receiveMessages();
+    m_gpuEvent.set();
 
     getGraphicsCommandList().open();
 
@@ -1735,22 +1737,13 @@ void Device::processMessages()
 
     setDescriptorHeaps();
 
-    bool stop = false;
-
-    while (!stop && !m_swapChain.getWindow().m_shouldExit)
+    while (m_messageReceiver.hasNext() && !m_swapChain.getWindow().m_shouldExit)
     {
         switch (m_messageReceiver.getId())
         {
-        case MsgEof::s_id:
-            stop = true;
-            break;
-
         default:
             if (!processRaytracingMessage())
-            {
                 assert(!"Unknown message type");
-                stop = true;
-            }
             break;
 
         case MsgPadding::s_id: procMsgPadding(); break;
@@ -1792,10 +1785,6 @@ void Device::processMessages()
 
         }
     }
-
-    // Let Generations know we finished processing messages
-    m_gpuEvent.set();
-    m_messageReceiver.reset();
 
     if (m_swapChain.getWindow().m_shouldExit)
         return;

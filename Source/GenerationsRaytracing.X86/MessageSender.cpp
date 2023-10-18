@@ -29,7 +29,7 @@ void* MessageSender::makeMessage(uint32_t byteSize, uint32_t alignment)
         alignedOffset += alignment - 1;
         alignedOffset &= ~(alignment - 1);
     }
-    if (alignedOffset + byteSize >= MemoryMappedFile::s_size)
+    if (alignedOffset + byteSize > (MemoryMappedFile::s_size - sizeof(uint32_t)))
     {
         commitMessages();
         alignedOffset = 0;
@@ -60,12 +60,11 @@ void MessageSender::commitMessages()
     while (m_pendingMessages)
         ;
 
-    m_messages[m_offset] = MsgEof::s_id;
-    ++m_offset;
+    *reinterpret_cast<uint32_t*>(m_messages) = m_offset;
 
     if (!(*s_shouldExit))
     {
-        // Wait for bridge to process messages
+        // Wait for bridge to copy messages
         m_gpuEvent.wait();
         m_gpuEvent.reset();
 
@@ -75,7 +74,7 @@ void MessageSender::commitMessages()
         m_cpuEvent.set();
     }
 
-    m_offset = 0;
+    m_offset = sizeof(uint32_t);
 }
 
 void MessageSender::notifyShouldExit() const

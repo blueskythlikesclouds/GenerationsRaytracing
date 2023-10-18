@@ -8,15 +8,10 @@
 
 #pragma pack(push, 1)
 
-struct MsgEof
-{
-    static constexpr uint32_t s_id = 0;
-    uint8_t id = 0;
-};
-
 struct MsgPadding
 {
-    MSG_DEFINE_MESSAGE(MsgEof);
+    static constexpr uint32_t s_id = 0;
+    uint8_t id;
     uint8_t dataSize;
     uint8_t data[1u];
 };
