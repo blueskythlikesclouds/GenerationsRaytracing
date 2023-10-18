@@ -12,7 +12,7 @@ void PrimaryRayGeneration()
     ray.Origin = g_EyePosition.xyz;
     ray.Direction = normalize(mul(g_MtxView, float4(ndc.x / g_MtxProjection[0][0], -ndc.y / g_MtxProjection[1][1], -1.0, 0.0)).xyz);
     ray.TMin = 0.0;
-    ray.TMax = g_CameraNearFarAspect.y;
+    ray.TMax = FLT_MAX;
 
     PrimaryRayPayload payload;
 
@@ -160,7 +160,7 @@ void GIRayGeneration()
         ray.Origin = gBufferData.SafeSpawnPoint;
         ray.Direction = TangentToWorld(gBufferData.Normal, GetUniformSample(float2(NextRand(random), NextRand(random))));
         ray.TMin = 0.0;
-        ray.TMax = 10000.0;
+        ray.TMax = FLT_MAX;
 
         SecondaryRayPayload payload;
         payload.Depth = 0;

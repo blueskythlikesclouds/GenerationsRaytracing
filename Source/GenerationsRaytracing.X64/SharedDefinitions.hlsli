@@ -2,6 +2,7 @@
 #define SHARED_DEFINITIONS_H
 
 #define PI 3.14159265358979323846
+#define FLT_MAX asfloat(0x7f7fffff)
 
 uint InitRand(uint val0, uint val1, uint backoff = 16)
 {

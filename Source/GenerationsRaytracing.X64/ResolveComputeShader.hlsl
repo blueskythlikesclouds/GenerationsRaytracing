@@ -12,6 +12,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     Reservoir<uint> diReservoir = (Reservoir<uint>)0;
     Reservoir<GISample> giReservoir = (Reservoir<GISample>)0;
+    float3 globalIllumination = 0.0;
+    float giLerpFactor = 0.0;
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
     {
@@ -71,9 +73,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         else
             shadingParams.DIReservoir = (Reservoir<uint>) 0;
 
-        shadingParams.GlobalIllumination = ComputeGI(gBufferData, giReservoir);
-
-        float giLerpFactor = 0.0;
+        globalIllumination = ComputeGI(gBufferData, giReservoir);
 
         int2 prevFrame = (float2) dispatchThreadId.xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[dispatchThreadId.xy];
         float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[prevFrame] * 2.0 - 1.0);
@@ -83,15 +83,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         {
             float4 prevGlobalIllumination = g_PrevGIAccumulationTexture[prevFrame];
             giLerpFactor = min(30.0, prevGlobalIllumination.w + 1.0);
-            shadingParams.GlobalIllumination = lerp(prevGlobalIllumination.rgb, shadingParams.GlobalIllumination, 1.0 / giLerpFactor);
+            globalIllumination = lerp(prevGlobalIllumination.rgb, globalIllumination, 1.0 / giLerpFactor);
         }
 
-        g_GIAccumulationTexture[dispatchThreadId.xy] = float4(shadingParams.GlobalIllumination, giLerpFactor);
+        float luminance = dot(globalIllumination, float3(0.299, 0.587, 0.114));
+        globalIllumination = saturate((globalIllumination - luminance) * g_GI1Scale.w + luminance);
 
-        float luminance = dot(shadingParams.GlobalIllumination, float3(0.299, 0.587, 0.114));
-        shadingParams.GlobalIllumination = saturate((shadingParams.GlobalIllumination - luminance) * g_GI1Scale.w + luminance);
-        shadingParams.GlobalIllumination *= g_GI0Scale.rgb;
-
+        shadingParams.GlobalIllumination = globalIllumination * g_GI0Scale.rgb;
         shadingParams.Reflection = g_ReflectionTexture[dispatchThreadId.xy];
         shadingParams.Refraction = g_RefractionTexture[dispatchThreadId.xy];
 
@@ -113,4 +111,5 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     g_ColorTexture[dispatchThreadId.xy] = float4(color, 1.0);
     g_PrevDIReservoirTexture[dispatchThreadId.xy] = StoreDIReservoir(diReservoir);
     StoreGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGINormalTexture, dispatchThreadId.xy, giReservoir);
+    g_GIAccumulationTexture[dispatchThreadId.xy] = float4(globalIllumination, giLerpFactor);
 }

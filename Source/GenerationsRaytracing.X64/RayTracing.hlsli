@@ -92,7 +92,7 @@ float TraceGlobalLightShadow(float3 position, float3 direction)
     ray.Origin = position;
     ray.Direction = TangentToWorld(direction, sample);
     ray.TMin = 0.0;
-    ray.TMax = 10000.0;
+    ray.TMax = FLT_MAX;
 
     ShadowRayPayload payload = (ShadowRayPayload) 0;
 
@@ -144,7 +144,7 @@ float3 TraceSecondaryRay(uint depth, float3 position, float3 direction, uint mis
     ray.Origin = position;
     ray.Direction = direction;
     ray.TMin = 0.0;
-    ray.TMax = 10000.0;
+    ray.TMax = FLT_MAX;
 
     SecondaryRayPayload payload = (SecondaryRayPayload) 0;
     payload.Depth = depth;
