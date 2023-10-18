@@ -106,7 +106,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
         float2 lightScattering = ComputeLightScattering(gBufferData.Position, viewPosition);
 
-        color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+        if (all(and(!isnan(lightScattering), !isinf(lightScattering))))
+            color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
     }
     else
     {
