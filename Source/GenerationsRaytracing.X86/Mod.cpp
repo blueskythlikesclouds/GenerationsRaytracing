@@ -15,7 +15,6 @@
 #include "Window.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
-static size_t* s_shouldExit = reinterpret_cast<size_t*>(0x1E5E2E8);
 
 static struct ThreadHolder
 {
@@ -30,8 +29,8 @@ static struct ThreadHolder
 
 static void setShouldExit()
 {
-    s_messageSender.notifyShouldExit();
     *s_shouldExit = true;
+    s_messageSender.notifyShouldExit();
 }
 
 extern "C" void __declspec(dllexport) Init()

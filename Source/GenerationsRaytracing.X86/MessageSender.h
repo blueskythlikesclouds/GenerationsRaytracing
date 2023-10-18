@@ -4,6 +4,8 @@
 #include "MemoryMappedFile.h"
 #include "Mutex.h"
 
+static size_t* s_shouldExit = reinterpret_cast<size_t*>(0x1E5E2E8);
+
 class MessageSender
 {
 protected:

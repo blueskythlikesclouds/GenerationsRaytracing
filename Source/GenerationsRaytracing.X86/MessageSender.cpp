@@ -62,14 +62,17 @@ void MessageSender::commitMessages()
     m_messages[m_offset] = MsgEof::s_id;
     ++m_offset;
 
-    // Wait for bridge to process messages
-    m_gpuEvent.wait();
-    m_gpuEvent.reset();
+    if (!(*s_shouldExit))
+    {
+        // Wait for bridge to process messages
+        m_gpuEvent.wait();
+        m_gpuEvent.reset();
 
-    memcpy(m_memoryMap, m_messages.get(), m_offset);
+        memcpy(m_memoryMap, m_messages.get(), m_offset);
 
-    // Let bridge know we copied messages
-    m_cpuEvent.set();
+        // Let bridge know we copied messages
+        m_cpuEvent.set();
+    }
 
     m_offset = 0;
 }
