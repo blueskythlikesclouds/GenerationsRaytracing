@@ -35,6 +35,8 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     GBufferData gBufferData = (GBufferData) 0;
     gBufferData.Position = WorldRayOrigin() + WorldRayDirection() * g_CameraNearFarAspect.y;
     gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
+    gBufferData.SpecularPower = 1.0;
+    gBufferData.Normal = -WorldRayDirection();
     gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 
