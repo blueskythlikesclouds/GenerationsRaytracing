@@ -82,8 +82,8 @@ void ShadowRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
-    float shadow = 0.0;
-    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT)))
+    float shadow = 1.0;
+    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
         shadow = TraceGlobalLightShadow(gBufferData.SafeSpawnPoint, -mrgGlobalLight_Direction.xyz);
 
     g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
@@ -306,7 +306,8 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         payload.Color = ComputeDirectLighting(gBufferData, -WorldRayDirection(), 
             -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb) * g_LightPower;
 
-        payload.Color *= TraceGlobalLightShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
+            payload.Color *= TraceGlobalLightShadow(vertex.Position, -mrgGlobalLight_Direction.xyz);
     }
     else
     {

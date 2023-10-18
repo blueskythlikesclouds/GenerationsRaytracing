@@ -10,18 +10,19 @@
 #define GBUFFER_FLAG_IS_SKY                     (1 << 0)
 #define GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT       (1 << 1)
 #define GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT      (1 << 2)
-#define GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT        (1 << 3)
-#define GBUFFER_FLAG_IGNORE_EYE_LIGHT           (1 << 4)
-#define GBUFFER_FLAG_IGNORE_LOCAL_LIGHT         (1 << 5)
-#define GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION (1 << 6)
-#define GBUFFER_FLAG_IGNORE_REFLECTION          (1 << 7)
-#define GBUFFER_FLAG_HAS_REFRACTION             (1 << 8)
-#define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 9)
-#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 10)
-#define GBUFFER_FLAG_IS_WATER                   (1 << 11)
-#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 12)
-#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 13)
-#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 14)
+#define GBUFFER_FLAG_IGNORE_SHADOW              (1 << 3)
+#define GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT        (1 << 4)
+#define GBUFFER_FLAG_IGNORE_EYE_LIGHT           (1 << 5)
+#define GBUFFER_FLAG_IGNORE_LOCAL_LIGHT         (1 << 6)
+#define GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION (1 << 7)
+#define GBUFFER_FLAG_IGNORE_REFLECTION          (1 << 8)
+#define GBUFFER_FLAG_HAS_REFRACTION             (1 << 9)
+#define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 10)
+#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 11)
+#define GBUFFER_FLAG_IS_WATER                   (1 << 12)
+#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 13)
+#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 14)
+#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 15)
 
 struct GBufferData
 {
@@ -438,8 +439,13 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
-        case SHADER_TYPE_INDIRECT_V:
         case SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW:
+            {
+                gBufferData.Flags = GBUFFER_FLAG_IGNORE_SHADOW;
+                // fallthrough
+            }
+
+        case SHADER_TYPE_INDIRECT_V:
             {
                 float4 offset = SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords);
 
