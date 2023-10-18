@@ -777,16 +777,15 @@ void Device::procMsgSetTexture()
                 m_descriptorHeap.getCpuHandle(texture.srvIndex));
         }
 
-        // NOTE: texture corruption on nvidia with only pixel shader resource
         if (texture.rtvIndex != NULL)
         {
             getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(), 
-                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
+                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
         else if (texture.dsvIndex != NULL)
         {
             getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
-                D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE);
+                D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
 
         if (m_globalsPS.textureIndices[message.stage] != texture.srvIndex)
@@ -1823,6 +1822,7 @@ void Device::processMessages()
 
     m_fenceValues[m_frame] = m_graphicsQueue.getNextFenceValue();
     m_graphicsQueue.signal(m_fenceValues[m_frame]);
+    m_copyQueue.wait(m_fenceValues[m_frame], m_graphicsQueue);
 
     m_uploadBufferIndex = 0;
     m_uploadBufferOffset = 0;
@@ -1837,8 +1837,6 @@ void Device::processMessages()
 
     m_samplerDescsFirst = 0;
     m_samplerDescsLast = _countof(m_samplerDescs) - 1;
-
-    m_copyQueue.wait(m_fenceValues[m_frame], m_graphicsQueue);
 
     m_frame = m_nextFrame;
     m_nextFrame = (m_frame + 1) % NUM_FRAMES;
