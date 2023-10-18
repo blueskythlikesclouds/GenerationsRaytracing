@@ -5,13 +5,14 @@
 
 MessageSender::MessageSender() : m_pendingMessages(0)
 {
-    m_messages = std::make_unique<uint8_t[]>(MemoryMappedFile::s_size);
+    m_messages = static_cast<uint8_t*>(_aligned_malloc(MemoryMappedFile::s_size, 0x10));
     m_memoryMap = static_cast<uint8_t*>(m_memoryMappedFile.map());
 }
 
 MessageSender::~MessageSender()
 {
     m_memoryMappedFile.unmap(m_memoryMap);
+    _aligned_free(m_messages);
 }
 
 void* MessageSender::makeMessage(uint32_t byteSize, uint32_t alignment)
@@ -68,7 +69,7 @@ void MessageSender::commitMessages()
         m_gpuEvent.wait();
         m_gpuEvent.reset();
 
-        memcpy(m_memoryMap, m_messages.get(), m_offset);
+        memcpy(m_memoryMap, m_messages, m_offset);
 
         // Let bridge know we copied messages
         m_cpuEvent.set();

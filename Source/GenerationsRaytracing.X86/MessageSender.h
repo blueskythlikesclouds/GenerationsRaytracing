@@ -12,7 +12,7 @@ protected:
     Event m_cpuEvent{ Event::s_cpuEventName, FALSE };
     Event m_gpuEvent{ Event::s_gpuEventName, TRUE };
     Mutex m_mutex;
-    std::unique_ptr<uint8_t[]> m_messages;
+    uint8_t* m_messages = nullptr;
     uint32_t m_offset = 0;
     std::atomic<uint32_t> m_pendingMessages;
     MemoryMappedFile m_memoryMappedFile;
