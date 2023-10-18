@@ -236,12 +236,15 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     }
 
     haltonJitter(m_globalsRT.currentFrame, 64, m_globalsRT.pixelJitterX, m_globalsRT.pixelJitterY);
+    m_globalsRT.internalResolutionWidth = m_upscaler->getWidth();
+    m_globalsRT.internalResolutionHeight = m_upscaler->getHeight();
 
     static std::default_random_engine engine;
     static std::uniform_int_distribution distribution(0, 1024);
 
     m_globalsRT.blueNoiseOffsetX = distribution(engine);
     m_globalsRT.blueNoiseOffsetY = distribution(engine);
+    m_globalsRT.blueNoiseTextureId = m_textures[message.blueNoiseTextureId].srvIndex;
 
     m_globalsRT.localLightCount = message.localLightCount;
     m_globalsRT.diffusePower = message.diffusePower;
@@ -759,8 +762,6 @@ void RaytracingDevice::procMsgTraceRays()
 
     if (!createTopLevelAccelStruct())
         return;
-
-    m_globalsRT.blueNoiseTextureId = m_textures[message.blueNoiseTextureId].srvIndex;
 
     if (m_width != message.width || m_height != message.height)
     {

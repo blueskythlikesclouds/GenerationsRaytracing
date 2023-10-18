@@ -115,10 +115,10 @@ void ReservoirRayGeneration()
 
         ComputeReservoirWeight(reservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]));
 
-        if (g_CurrentFrame > 0)
+        // Temporal reuse
+        int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
+        if (g_CurrentFrame > 0 && all(and(temporalNeighbor >= 0, temporalNeighbor < g_InternalResolution)))
         {
-            // Temporal reuse
-            int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
             float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
             if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
@@ -128,11 +128,11 @@ void ReservoirRayGeneration()
 
                 Reservoir<uint> sumReservoir = (Reservoir<uint>) 0;
 
-                UpdateReservoir(sumReservoir, reservoir.Sample, 
-                    ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) * reservoir.Weight * reservoir.SampleCount, NextRand(random));
+                UpdateReservoir(sumReservoir, reservoir.Sample, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Sample]) *
+                    reservoir.Weight * reservoir.SampleCount, NextRand(random));
 
-                UpdateReservoir(sumReservoir, prevReservoir.Sample, 
-                    ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) * prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
+                UpdateReservoir(sumReservoir, prevReservoir.Sample, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[prevReservoir.Sample]) *
+                    prevReservoir.Weight * prevReservoir.SampleCount, NextRand(random));
 
                 sumReservoir.SampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
                 ComputeReservoirWeight(sumReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sumReservoir.Sample]));
@@ -183,16 +183,17 @@ void GIRayGeneration()
         reservoir.WeightSum = ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * (2.0 * PI);
         reservoir.SampleCount = 1;
 
-        if (g_CurrentFrame > 0)
+        // Temporal reuse
+        int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
+
+        if (g_CurrentFrame > 0 && all(and(temporalNeighbor >= 0, temporalNeighbor < g_InternalResolution)))
         {
-            // Temporal reuse
-            int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
             float3 prevPosition = g_PrevPositionFlagsTexture[temporalNeighbor].xyz;
             float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
 
             if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
-                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture,
+                Reservoir < GISample > prevReservoir = LoadGIReservoir(g_PrevGITexture,
                     g_PrevGIPositionTexture, g_PrevGINormalTexture, temporalNeighbor);
 
                 float jacobian = ComputeJacobian(gBufferData.Position, prevPosition, prevReservoir.Sample);
@@ -201,7 +202,7 @@ void GIRayGeneration()
                     prevReservoir.SampleCount = min(8, prevReservoir.SampleCount);
                     uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
 
-                    UpdateReservoir(reservoir, prevReservoir.Sample, ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) * 
+                    UpdateReservoir(reservoir, prevReservoir.Sample, ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) *
                         prevReservoir.Weight * prevReservoir.SampleCount * clamp(jacobian, 1.0 / 3.0, 3.0), NextRand(random));
 
                     reservoir.SampleCount = newSampleCount;
@@ -315,11 +316,12 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
         payload.Color += ComputeEyeLighting(gBufferData, WorldRayOrigin(), -WorldRayDirection());
 
-    float2 pixelPosition = ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
+    int2 pixelPosition = round(ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection));
     float depth = ComputeDepth(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
     float3 normal = NormalizeSafe(g_PrevNormalTexture[pixelPosition] * 2.0 - 1.0);
 
-    if (g_CurrentFrame > 0 && abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
+    if (g_CurrentFrame > 0 && all(and(pixelPosition >= 0, pixelPosition < g_InternalResolution)) &&
+        abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.1 && dot(gBufferData.Normal, normal) >= 0.9063)
     {
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
         {
