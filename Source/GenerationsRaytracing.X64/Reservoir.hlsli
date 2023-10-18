@@ -75,7 +75,7 @@ Reservoir<GISample> LoadGIReservoir(
     reservoir.Sample.Normal = normal.xyz;
 
     reservoir.WeightSum = texture.w;
-    reservoir.SampleCount = asfloat(position.w);
+    reservoir.SampleCount = asuint(position.w);
     reservoir.Weight = normal.w;
 
     return reservoir;
@@ -89,7 +89,7 @@ void StoreGIReservoir(
     Reservoir<GISample> reservoir)
 {
     giTexture[index] = float4(reservoir.Sample.Color, reservoir.WeightSum);
-    giPositionTexture[index] = float4(reservoir.Sample.Position, asuint(reservoir.SampleCount));
+    giPositionTexture[index] = float4(reservoir.Sample.Position, asfloat(reservoir.SampleCount));
     giNormalTexture[index] = float4(reservoir.Sample.Normal, reservoir.Weight);
 }
 
