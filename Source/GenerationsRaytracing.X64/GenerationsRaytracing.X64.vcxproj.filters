@@ -174,7 +174,9 @@
       <Filter>Shader</Filter>
     </None>
     <None Include="packages.config" />
-    <None Include="SkySharedDefinitions.hlsli" />
+    <None Include="SkySharedDefinitions.hlsli">
+      <Filter>Shader</Filter>
+    </None>
     <None Include="Reservoir.hlsli">
       <Filter>Shader</Filter>
     </None>
@@ -204,7 +206,11 @@
     <FxCompile Include="ResolveComputeShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="SkyPixelShader.hlsl" />
-    <FxCompile Include="SkyVertexShader.hlsl" />
+    <FxCompile Include="SkyPixelShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="SkyVertexShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
