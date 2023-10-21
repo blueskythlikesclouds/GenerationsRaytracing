@@ -143,9 +143,8 @@ protected:
 
     // Sky
     ComPtr<ID3D12RootSignature> m_skyRootSignature;
-    ComPtr<ID3D12Resource> m_skyTextures[NUM_FRAMES];
-    uint32_t m_skySrvIds[NUM_FRAMES]{};
-    uint32_t m_skyRtvIds[NUM_FRAMES][6]{};
+    ComPtr<ID3D12Resource> m_skyTexture;
+    uint32_t m_skyRtvIndices[6]{};
 
     // Local Light
     std::vector<LocalLight> m_localLights;
