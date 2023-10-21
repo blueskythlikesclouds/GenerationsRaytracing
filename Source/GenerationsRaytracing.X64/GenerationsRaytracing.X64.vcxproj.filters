@@ -45,6 +45,9 @@
     <ClCompile Include="FeatureCaps.cpp">
       <Filter>Device</Filter>
     </ClCompile>
+    <ClCompile Include="PIXEvent.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -146,6 +149,9 @@
     </ClInclude>
     <ClInclude Include="LocalLight.h">
       <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="PIXEvent.h">
+      <Filter>Base</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

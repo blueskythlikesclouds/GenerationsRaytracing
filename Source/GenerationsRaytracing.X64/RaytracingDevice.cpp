@@ -14,6 +14,7 @@
 #include "ResolveComputeShader.h"
 #include "SkyVertexShader.h"
 #include "SkyPixelShader.h"
+#include "PIXEvent.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
@@ -164,6 +165,8 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
 
 void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
 {
+    PIX_EVENT();
+
     for (const auto pendingPose : m_pendingPoses)
         getGraphicsCommandList().uavBarrier(m_vertexBuffers[pendingPose].allocation->GetResource());
 
@@ -261,6 +264,8 @@ bool RaytracingDevice::createTopLevelAccelStruct()
 
     if (m_instanceDescs.empty())
         return false;
+
+    PIX_EVENT();
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
     accelStructDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
@@ -701,6 +706,8 @@ void RaytracingDevice::procMsgTraceRays()
     if (!createTopLevelAccelStruct())
         return;
 
+    PIX_EVENT();
+
     if (m_width != message.width || m_height != message.height)
     {
         m_width = message.width;
@@ -878,6 +885,8 @@ void RaytracingDevice::procMsgComputePose()
 {
     const auto& message = m_messageReceiver.getMessage<MsgComputePose>();
 
+    PIX_EVENT();
+
     if (m_curRootSignature != m_poseRootSignature.Get())
     {
         getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_poseRootSignature.Get());
@@ -986,6 +995,8 @@ static float s_skyProj[] =
 void RaytracingDevice::procMsgRenderSky()
 {
     const auto& message = m_messageReceiver.getMessage<MsgRenderSky>();
+
+    PIX_EVENT();
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
     pipelineDesc.pRootSignature = m_skyRootSignature.Get();

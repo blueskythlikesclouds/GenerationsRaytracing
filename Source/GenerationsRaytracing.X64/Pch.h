@@ -23,3 +23,4 @@ using Microsoft::WRL::ComPtr;
 #include <xxhash.h>
 #include <nvsdk_ngx_helpers.h>
 #include <INIReader.h>
+#include <pix3.h>
