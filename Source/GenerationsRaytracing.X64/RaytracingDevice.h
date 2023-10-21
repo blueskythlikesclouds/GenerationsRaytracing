@@ -50,7 +50,6 @@ struct GlobalsSB
     uint32_t emissionTextureId;
     float ambient[3];
     uint32_t enableAlphaTest;
-    float texCoordOffsets[8];
 };
 
 class RaytracingDevice final : public Device

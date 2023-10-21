@@ -36,29 +36,39 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
     }
 }
 
-static void renderSky(Hedgehog::Mirage::CRenderable* renderable)
+static boost::shared_ptr<Hedgehog::Mirage::CModelData> findSky(Hedgehog::Mirage::CRenderable* renderable)
 {
     if (!renderable->m_Enabled)
-        return;
+        return nullptr;
 
     if (auto element = dynamic_cast<const Hedgehog::Mirage::CSingleElement*>(renderable))
     {
         if (element->m_spModel->IsMadeAll() && 
             (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
         {
-            ModelData::renderSky(*element->m_spModel);
+            return element->m_spModel;
         }
     }
     else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))
     {
         for (const auto& it : bundle->m_RenderableList)
-            renderSky(it.get());
+        {
+            const auto model = findSky(it.get());
+            if (model != nullptr)
+                return model;
+        }
     }
     else if (const auto optimalBundle = dynamic_cast<const Hedgehog::Mirage::COptimalBundle*>(renderable))
     {
         for (const auto it : optimalBundle->m_RenderableList)
-            renderSky(it);
+        {
+            const auto model = findSky(it);
+            if (model != nullptr)
+                return model;
+        }
     }
+
+    return nullptr;
 }
 
 static bool s_prevRaytracingEnable = false;
@@ -91,6 +101,8 @@ static void initRaytracingPatches(bool enable)
 static FUNCTION_PTR(void, __cdecl, sceneRender, 0x652110, void*);
 static FUNCTION_PTR(void, __cdecl, setSceneSurface, 0x64E960, void*, void*);
 
+static boost::shared_ptr<Hedgehog::Mirage::CModelData> s_curSky;
+
 static Hedgehog::Mirage::CLightListData* s_curLightList;
 static size_t s_localLightCount;
 static uint32_t s_prevDebugView;
@@ -122,16 +134,21 @@ static void __cdecl implOfSceneRender(void* a1)
             renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(37, RaytracingParams::s_light->m_Color.data(), 1);
         }
 
+        const auto prevSky = s_curSky;
+
         if (RaytracingParams::s_sky != nullptr && RaytracingParams::s_sky->IsMadeAll())
         {
-            ModelData::renderSky(*RaytracingParams::s_sky);
+            s_curSky = RaytracingParams::s_sky;
         }
         else
         {
             const auto skyFindResult = renderScene->m_BundleMap.find("Sky");
             if (skyFindResult != renderScene->m_BundleMap.end())
-                renderSky(skyFindResult->second.get());
+                s_curSky = findSky(skyFindResult->second.get());
         }
+
+        if (s_curSky != prevSky)
+            ModelData::renderSky(*s_curSky);
 
         InstanceData::createPendingInstances();
         MaterialData::createPendingMaterials();

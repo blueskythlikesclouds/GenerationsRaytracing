@@ -998,6 +998,11 @@ void RaytracingDevice::procMsgRenderSky()
 
     PIX_EVENT();
 
+    getGraphicsCommandList().transitionBarrier(m_skyTexture.Get(), 
+        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+    getGraphicsCommandList().commitBarriers();
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
     pipelineDesc.pRootSignature = m_skyRootSignature.Get();
     pipelineDesc.VS.pShaderBytecode = SkyVertexShader;
@@ -1093,7 +1098,6 @@ void RaytracingDevice::procMsgRenderSky()
             }
 
             memcpy(globalsSB.ambient, geometryDesc->ambient, sizeof(globalsSB.ambient));
-            memcpy(globalsSB.texCoordOffsets, geometryDesc->texCoordOffsets, sizeof(globalsSB.texCoordOffsets));
 
             const auto& vertexDeclaration = m_vertexDeclarations[geometryDesc->vertexDeclarationId];
 
@@ -1144,8 +1148,8 @@ void RaytracingDevice::procMsgRenderSky()
         }
     }
 
-    getGraphicsCommandList().transitionBarrier(m_skyTexture.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, 
-        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    getGraphicsCommandList().transitionBarrier(m_skyTexture.Get(), 
+        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     m_dirtyFlags |=
         DIRTY_FLAG_ROOT_SIGNATURE |
@@ -1425,7 +1429,7 @@ RaytracingDevice::RaytracingDevice()
         &skyHeapProperties,
         D3D12_HEAP_FLAG_NONE,
         &skyResourceDesc,
-        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
         &clearValue,
         IID_PPV_ARGS(m_skyTexture.GetAddressOf()));
 

@@ -6,13 +6,13 @@ float2 GetTexCoord(VertexShaderInput i, uint index)
     {
         case 0:
         default:
-            return i.TexCoord + g_TexCoordOffsets[0].xy;
+            return i.TexCoord;
         case 1:
-            return i.TexCoord1 + g_TexCoordOffsets[0].zw;
+            return i.TexCoord1;
         case 2:
-            return i.TexCoord2 + g_TexCoordOffsets[1].xy;
+            return i.TexCoord2;
         case 3:
-            return i.TexCoord3 + g_TexCoordOffsets[1].zw;
+            return i.TexCoord3;
     }
 }
 

@@ -479,7 +479,6 @@ struct MsgRenderSky
         MsgCreateMaterial::Texture alphaTexture;
         MsgCreateMaterial::Texture emissionTexture;
         float ambient[4];
-        float texCoordOffsets[8];
     };
 
     float backgroundScale;

@@ -565,9 +565,7 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
     const Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
     const Hedgehog::Base::CStringSymbol opacitySymbol("opacity");
     const Hedgehog::Base::CStringSymbol displacementSymbol("displacement");
-
     const Hedgehog::Base::CStringSymbol ambientSymbol("ambient");
-    const Hedgehog::Base::CStringSymbol texCoordOffsetSymbol("mrgTexcoordOffset");
 
     DX_PATCH::IDirect3DBaseTexture9* diffuseTexture = nullptr;
 
@@ -625,9 +623,6 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
             {
                 if (float4Param->m_Name == ambientSymbol)
                     memcpy(geometryDesc->ambient, float4Param->m_spValue.get(), sizeof(geometryDesc->ambient));
-
-                else if (float4Param->m_Name == texCoordOffsetSymbol)
-                    memcpy(geometryDesc->texCoordOffsets, float4Param->m_spValue.get(), sizeof(geometryDesc->texCoordOffsets));
             }
         }
         else

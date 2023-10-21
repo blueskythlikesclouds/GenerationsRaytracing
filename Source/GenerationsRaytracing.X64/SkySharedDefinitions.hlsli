@@ -11,7 +11,6 @@ cbuffer GlobalsSB : register(b0)
     uint g_EmissionTextureId;
     float3 g_Ambient;
     bool g_EnableAlphaTest;
-    float4 g_TexCoordOffsets[2];
 }
 
 struct VertexShaderInput
