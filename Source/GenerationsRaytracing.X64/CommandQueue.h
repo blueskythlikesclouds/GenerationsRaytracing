@@ -13,6 +13,8 @@ protected:
 
     HANDLE m_event = nullptr;
 
+    std::vector<ID3D12CommandList*> m_commandLists; // temp for executeCommandLists func
+
 public:
     void init(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE type);
 
@@ -20,7 +22,7 @@ public:
     ID3D12CommandQueue* getUnderlyingQueue() const;
     uint64_t getNextFenceValue();
 
-    void executeCommandList(const CommandList& commandList) const;
+    void executeCommandLists(size_t numCommandLists, CommandList* commandLists);
     void signal(uint64_t fenceValue) const;
     void wait(uint64_t fenceValue) const;
     void wait(uint64_t fenceValue, const CommandQueue& commandQueue) const;

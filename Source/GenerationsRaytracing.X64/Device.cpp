@@ -177,7 +177,7 @@ void Device::setPrimitiveType(D3DPRIMITIVETYPE primitiveType)
     m_pipelineDesc.PrimitiveTopologyType = primitiveTopologyType;
 }
 
-void Device::setDescriptorHeaps()
+void Device::setDescriptorHeaps(size_t index)
 {
     ID3D12DescriptorHeap* descriptorHeaps[] =
     {
@@ -185,8 +185,9 @@ void Device::setDescriptorHeaps()
         m_samplerDescriptorHeap.getUnderlyingHeap()
     };
 
-    getUnderlyingGraphicsCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-    m_dirtyFlags |= DIRTY_FLAG_ROOT_SIGNATURE;
+    getUnderlyingGraphicsCommandList(index)->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+    if (index == 0)
+        m_dirtyFlags |= DIRTY_FLAG_ROOT_SIGNATURE;
 }
 
 void Device::flushGraphicsState()
@@ -1635,6 +1636,9 @@ Device::Device()
     ComPtr<ID3D12InfoQueue> infoQueue;
     m_device.As(&infoQueue);
 
+    infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+    infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+
     // Disable messages we're aware of and okay with
     D3D12_MESSAGE_ID ids[] =
     {
@@ -1662,8 +1666,11 @@ Device::Device()
     m_graphicsQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
     m_copyQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_COPY);
 
-    for (auto& graphicsCommandList : m_graphicsCommandLists)
-        graphicsCommandList.init(m_device.Get(), m_graphicsQueue);
+    for (auto& graphicsCommandLists : m_graphicsCommandLists)
+    {
+        for (auto& graphicsCommandList : graphicsCommandLists)
+            graphicsCommandList.init(m_device.Get(), m_graphicsQueue);
+    }
 
     for (auto& copyCommandList : m_copyCommandLists)
         copyCommandList.init(m_device.Get(), m_copyQueue);
@@ -1791,8 +1798,7 @@ void Device::processMessages()
 
     if (getCopyCommandList().isOpen())
     {
-        getCopyCommandList().close();
-        m_copyQueue.executeCommandList(getCopyCommandList());
+        m_copyQueue.executeCommandLists(1, &getCopyCommandList());
 
         // Wait for copy command list to finish
         const uint64_t fenceValue = m_copyQueue.getNextFenceValue();
@@ -1800,8 +1806,7 @@ void Device::processMessages()
         m_graphicsQueue.wait(fenceValue, m_copyQueue);
     }
 
-    getGraphicsCommandList().close();
-    m_graphicsQueue.executeCommandList(getGraphicsCommandList());
+    m_graphicsQueue.executeCommandLists(NUM_GRAPHICS_COMMAND_LISTS, m_graphicsCommandLists[m_frame]);
 
     if (m_shouldPresent)
     {
@@ -1898,14 +1903,14 @@ CommandQueue& Device::getCopyQueue()
     return m_copyQueue;
 }
 
-CommandList& Device::getGraphicsCommandList()
+CommandList& Device::getGraphicsCommandList(size_t index)
 {
-    return m_graphicsCommandLists[m_frame];
+    return m_graphicsCommandLists[m_frame][index];
 }
 
-ID3D12GraphicsCommandList4* Device::getUnderlyingGraphicsCommandList() const
+ID3D12GraphicsCommandList4* Device::getUnderlyingGraphicsCommandList(size_t index) const
 {
-    return m_graphicsCommandLists[m_frame].getUnderlyingCommandList();
+    return m_graphicsCommandLists[m_frame][index].getUnderlyingCommandList();
 }
 
 CommandList& Device::getCopyCommandList()

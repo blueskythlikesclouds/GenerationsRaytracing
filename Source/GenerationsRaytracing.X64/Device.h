@@ -44,6 +44,7 @@ enum DirtyFlags
 };
 
 static constexpr size_t NUM_FRAMES = 2;
+static constexpr size_t NUM_GRAPHICS_COMMAND_LISTS = 2;
 
 class Device
 {
@@ -64,7 +65,7 @@ protected:
     CommandQueue m_graphicsQueue;
     CommandQueue m_copyQueue;
 
-    CommandList m_graphicsCommandLists[NUM_FRAMES];
+    CommandList m_graphicsCommandLists[NUM_FRAMES][NUM_GRAPHICS_COMMAND_LISTS];
     CommandList m_copyCommandLists[NUM_FRAMES];
 
     uint64_t m_fenceValues[NUM_FRAMES]{};
@@ -145,7 +146,7 @@ protected:
 
     void setPrimitiveType(D3DPRIMITIVETYPE primitiveType);
 
-    void setDescriptorHeaps();
+    void setDescriptorHeaps(size_t index = 0);
     void flushGraphicsState();
 
     void procMsgPadding();
@@ -202,8 +203,8 @@ public:
     CommandQueue& getGraphicsQueue();
     CommandQueue& getCopyQueue();
 
-    CommandList& getGraphicsCommandList();
-    ID3D12GraphicsCommandList4* getUnderlyingGraphicsCommandList() const;
+    CommandList& getGraphicsCommandList(size_t index = 0);
+    ID3D12GraphicsCommandList4* getUnderlyingGraphicsCommandList(size_t index = 0) const;
 
     CommandList& getCopyCommandList();
     ID3D12GraphicsCommandList4* getUnderlyingCopyCommandList() const;

@@ -38,11 +38,24 @@ uint64_t CommandQueue::getNextFenceValue()
     return InterlockedIncrement(&m_fenceValue);
 }
 
-void CommandQueue::executeCommandList(const CommandList& commandList) const
+void CommandQueue::executeCommandLists(size_t numCommandLists, CommandList* commandLists)
 {
-    ID3D12CommandList* commandLists[] = { commandList.getUnderlyingCommandList() };
-    m_queue->ExecuteCommandLists(1, commandLists);
+    m_commandLists.clear();
+
+    for (size_t i = 0; i < numCommandLists; i++)
+    {
+        auto& commandList = commandLists[i];
+        if (commandList.isOpen())
+        {
+            commandList.close();
+            m_commandLists.push_back(commandList.getUnderlyingCommandList());
+        }
+    }
+
+    if (!m_commandLists.empty())
+        m_queue->ExecuteCommandLists(static_cast<UINT>(m_commandLists.size()), m_commandLists.data());
 }
+
 
 void CommandQueue::signal(uint64_t fenceValue) const
 {
