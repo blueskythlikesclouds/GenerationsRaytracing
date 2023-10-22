@@ -99,42 +99,45 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         textureDesc.dstTexture.addressModeV = D3DTADDRESS_WRAP;
         textureDesc.dstTexture.texCoordIndex = 0;
 
-        uint32_t offset = 0;
-        for (const auto& srcTexture : materialDataEx.m_spTexsetData->m_TextureList)
+        if (materialDataEx.m_spTexsetData != nullptr)
         {
-            if (srcTexture->m_Type == textureDesc.type)
+            uint32_t offset = 0;
+            for (const auto& srcTexture : materialDataEx.m_spTexsetData->m_TextureList)
             {
-                if (textureDesc.offset != offset)
+                if (srcTexture->m_Type == textureDesc.type)
                 {
-                    ++offset;
-                }
-                else
-                {
-                    if (srcTexture->m_spPictureData != nullptr)
+                    if (textureDesc.offset != offset)
                     {
-                        if (srcTexture->m_spPictureData->m_pD3DTexture == nullptr)
-                        {
-                            srcTexture->m_spPictureData->m_pD3DTexture =
-                                reinterpret_cast<DX_PATCH::IDirect3DBaseTexture9*>(new Texture(NULL, NULL, NULL));
-                        }
-
-                        // Skip materials that assign the diffuse texture as opacity
-                        if (srcTexture->m_Type == opacitySymbol && 
-                            srcTexture->m_spPictureData->m_pD3DTexture == textureDescs[0].dxpTexture)
-                        {
-                            continue;
-                        }
-
-                        textureDesc.dstTexture.id = reinterpret_cast<const Texture*>(
-                            srcTexture->m_spPictureData->m_pD3DTexture)->getId();
-
-                        textureDesc.dxpTexture = srcTexture->m_spPictureData->m_pD3DTexture;
+                        ++offset;
                     }
-                    textureDesc.dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
-                    textureDesc.dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
-                    textureDesc.dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
+                    else
+                    {
+                        if (srcTexture->m_spPictureData != nullptr)
+                        {
+                            if (srcTexture->m_spPictureData->m_pD3DTexture == nullptr)
+                            {
+                                srcTexture->m_spPictureData->m_pD3DTexture =
+                                    reinterpret_cast<DX_PATCH::IDirect3DBaseTexture9*>(new Texture(NULL, NULL, NULL));
+                            }
 
-                    break;
+                            // Skip materials that assign the diffuse texture as opacity
+                            if (srcTexture->m_Type == opacitySymbol &&
+                                srcTexture->m_spPictureData->m_pD3DTexture == textureDescs[0].dxpTexture)
+                            {
+                                continue;
+                            }
+
+                            textureDesc.dstTexture.id = reinterpret_cast<const Texture*>(
+                                srcTexture->m_spPictureData->m_pD3DTexture)->getId();
+
+                            textureDesc.dxpTexture = srcTexture->m_spPictureData->m_pD3DTexture;
+                        }
+                        textureDesc.dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
+                        textureDesc.dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
+                        textureDesc.dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
+
+                        break;
+                    }
                 }
             }
         }
