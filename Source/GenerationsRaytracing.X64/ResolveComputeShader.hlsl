@@ -92,9 +92,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         }
 
         float luminance = dot(globalIllumination, float3(0.299, 0.587, 0.114));
-        globalIllumination = saturate((globalIllumination - luminance) * g_GI1Scale.w + luminance);
 
-        shadingParams.GlobalIllumination = globalIllumination * g_GI0Scale.rgb;
+        shadingParams.GlobalIllumination = max(0.0, (globalIllumination - luminance) * g_GI1Scale.w + luminance) * g_GI0Scale.rgb;
         shadingParams.Reflection = g_ReflectionTexture[dispatchThreadId.xy];
         shadingParams.Refraction = g_RefractionTexture[dispatchThreadId.xy];
 
