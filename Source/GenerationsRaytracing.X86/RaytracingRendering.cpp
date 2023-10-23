@@ -85,6 +85,7 @@ static void initRaytracingPatches(bool enable)
         WRITE_MEMORY(0x13DDC20, uint32_t, 0); // Disable reflection map 2
         WRITE_MEMORY(0x13DDCA0, uint32_t, 1); // Override game scene child count
         WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
+        WRITE_MEMORY(0x72E5C0, uint8_t, 0xC2, 0x08, 0x00); // Disable culling
     }
     else
     {
@@ -93,6 +94,7 @@ static void initRaytracingPatches(bool enable)
         WRITE_MEMORY(0x13DDC20, size_t, 22); // Enable reflection map 2
         WRITE_MEMORY(0x13DDCA0, size_t, 22); // Restore game scene child count
         WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
+        WRITE_MEMORY(0x72E5C0, uint8_t, 0x56, 0x8B, 0xF1); // Enable culling
     }
 
     s_prevRaytracingEnable = enable;
