@@ -736,7 +736,7 @@ void RaytracingDevice::procMsgTraceRays()
         static_cast<uint32_t>(m_instanceDescsEx.size() * sizeof(InstanceDesc)), 0x10);
 
     const auto localLights = createBuffer(m_localLights.data(),
-        static_cast<uint32_t>(m_localLights.size() * sizeof(LocalLight)), 0x10);
+        message.localLightCount * sizeof(LocalLight), 0x10);
 
     if (m_curRootSignature != m_raytracingRootSignature.Get())
     {
