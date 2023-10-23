@@ -1459,3 +1459,14 @@ RaytracingDevice::RaytracingDevice()
             &skyRtvDesc, m_rtvDescriptorHeap.getCpuHandle(m_skyRtvIndices[i]));
     }
 }
+
+RaytracingDevice::~RaytracingDevice()
+{
+    // Wait for GPU operations to finish to exit cleanly
+    if (m_graphicsQueue.getUnderlyingQueue() != nullptr)
+    {
+        const uint64_t fenceValue = m_graphicsQueue.getNextFenceValue();
+        m_graphicsQueue.signal(fenceValue);
+        m_graphicsQueue.wait(fenceValue);
+    }
+}

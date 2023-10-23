@@ -7,14 +7,13 @@
         const NVSDK_NGX_Result result = x; \
         if (NVSDK_NGX_FAILED(result)) \
         { \
-            printf("code = %x, string = %ls\n", result, GetNGXResultAsString(result)); \
             assert(!#x); \
         } \
     } while (0)
 
 DLSS::DLSS(const Device& device) : m_device(device.getUnderlyingDevice())
 {
-    THROW_IF_FAILED(NVSDK_NGX_D3D12_Init(0x205452736E654720, L"C:\\Work", device.getUnderlyingDevice()));
+    THROW_IF_FAILED(NVSDK_NGX_D3D12_Init(0x205452736E654720, L".", device.getUnderlyingDevice()));
     THROW_IF_FAILED(NVSDK_NGX_D3D12_GetCapabilityParameters(&m_parameters));
 
     NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
@@ -68,6 +67,9 @@ void DLSS::init(const InitArgs& args)
     params.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
         NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
+
+    if (m_feature != nullptr)
+        THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(m_feature));
 
     THROW_IF_FAILED(NGX_D3D12_CREATE_DLSS_EXT(
         args.device.getUnderlyingGraphicsCommandList(),

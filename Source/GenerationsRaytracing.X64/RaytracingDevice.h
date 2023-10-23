@@ -180,4 +180,5 @@ protected:
 
 public:
     RaytracingDevice();
+    ~RaytracingDevice();
 };

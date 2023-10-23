@@ -1,6 +1,10 @@
 #include "ProcessUtil.h"
 #include "RaytracingDevice.h"
 
+// Required so DLSS objects don't get destructed
+// before we can call the shutdown function
+#pragma init_seg(user)
+
 static constexpr LPCTSTR s_gensProcessName = TEXT("SonicGenerations.exe");
 
 static std::unique_ptr<RaytracingDevice> s_device;
