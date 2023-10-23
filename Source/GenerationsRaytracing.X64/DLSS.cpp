@@ -66,7 +66,8 @@ void DLSS::init(const InitArgs& args)
     params.Feature.InTargetHeight = args.height;
     params.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
-        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
+        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes | 
+        NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
 
     if (m_feature != nullptr)
         THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(m_feature));
