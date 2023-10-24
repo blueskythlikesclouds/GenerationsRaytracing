@@ -56,6 +56,8 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     This->m_instanceId = NULL;
     This->m_bottomLevelAccelStructId = NULL;
     new (std::addressof(This->m_poseVertexBuffer)) ComPtr<VertexBuffer>();
+    This->m_headNodeIndex = 0;
+    This->m_handledEyeMaterials = false;
 
     return result;
 }

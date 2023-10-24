@@ -4,7 +4,9 @@
 class MaterialDataEx : public Hedgehog::Mirage::CMaterialData
 {
 public:
-    uint32_t m_materialId = 0;
+    uint32_t m_materialId;
+    Eigen::Vector3f m_highLightPosition;
+    boost::shared_ptr<float[]> m_highLightParamValue;
 };
 
 struct MaterialData

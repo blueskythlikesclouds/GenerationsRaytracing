@@ -345,6 +345,56 @@ void ModelData::createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDat
         ::createBottomLevelAccelStruct(terrainModelDataEx, terrainModelDataEx.m_bottomLevelAccelStructId, NULL);
 }
 
+void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, MaterialMap& materialMap)
+{
+    if (!instanceInfoEx.m_handledEyeMaterials)
+    {
+        if (modelDataEx.m_spNodes != nullptr)
+        {
+            for (size_t i = 0; i < modelDataEx.m_NodeNum; i++)
+            {
+                if (modelDataEx.m_spNodes[i].m_Name == "Head")
+                {
+                    instanceInfoEx.m_headNodeIndex = i;
+                    break;
+                }
+            }
+        }
+
+        static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionSymbol("g_SonicEyeHighLightPosition");
+
+        traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+        {
+            if (meshDataEx.m_spMaterial == nullptr || meshDataEx.m_spMaterial->m_spShaderListData == nullptr || 
+                strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "ChrEye") == nullptr)
+            {
+                return;
+            }
+
+            auto& materialOverride = materialMap[meshDataEx.m_spMaterial.get()];
+            if (materialOverride == nullptr)
+                materialOverride = meshDataEx.m_spMaterial; // TODO: make a clone instead of assigning to itself
+
+            auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialOverride.get());
+
+            if (materialDataEx.m_highLightParamValue == nullptr)
+            {
+                for (const auto& float4Param : materialDataEx.m_Float4Params)
+                {
+                    if (float4Param->m_Name == s_sonicEyeHighLightPositionSymbol)
+                    {
+                        memcpy(materialDataEx.m_highLightPosition.data(), float4Param->m_spValue.get(), sizeof(materialDataEx.m_highLightPosition));
+                        materialDataEx.m_highLightParamValue = float4Param->m_spValue;
+                        break;
+                    }
+                }
+            }
+        });
+
+        instanceInfoEx.m_handledEyeMaterials = true;
+    }
+}
+
 void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled)
 {
     if (!isEnabled)
@@ -365,6 +415,17 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
     for (auto& [key, value] : materialMap)
     {
+        auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(value.get());
+        if (materialDataEx.m_highLightParamValue != nullptr)
+        {
+            auto& highLightPosition = *reinterpret_cast<Eigen::Vector3f*>(materialDataEx.m_highLightParamValue.get());
+
+            if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > instanceInfoEx.m_headNodeIndex)
+                highLightPosition = instanceInfoEx.m_Transform * (instanceInfoEx.m_spPose->GetMatrixList()[instanceInfoEx.m_headNodeIndex] * materialDataEx.m_highLightPosition);
+            else
+                highLightPosition = instanceInfoEx.m_Transform * materialDataEx.m_highLightPosition;
+        }
+
         MaterialData::create(*value);
     }
 

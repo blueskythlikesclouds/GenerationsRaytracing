@@ -9,6 +9,8 @@ public:
     uint32_t m_instanceId;
     uint32_t m_bottomLevelAccelStructId;
     ComPtr<VertexBuffer> m_poseVertexBuffer;
+    uint32_t m_headNodeIndex;
+    bool m_handledEyeMaterials;
 };
 
 struct InstanceData

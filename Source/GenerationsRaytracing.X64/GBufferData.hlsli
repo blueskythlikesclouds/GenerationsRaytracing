@@ -192,12 +192,12 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 float2 gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).xy;
                 float4 normalMap = SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords);
 
-                float3 highlightNormal = DecodeNormalMap(vertex, normalMap.zw);
+                float3 highlightNormal = DecodeNormalMap(vertex, normalMap.xy);
                 float3 lightDirection = NormalizeSafe(vertex.Position - material.SonicEyeHighLightPosition.xyz);
                 float3 halfwayDirection = NormalizeSafe(-WorldRayDirection() + lightDirection);
 
                 float highlightSpecular = saturate(dot(highlightNormal, halfwayDirection));
-                highlightSpecular = pow(highlightSpecular, max(1.0, gBufferData.SpecularPower * gloss.x));
+                highlightSpecular = pow(highlightSpecular, max(1.0, min(1024.0, gBufferData.SpecularPower * gloss.x)));
                 highlightSpecular *= gBufferData.SpecularLevel * gloss.x;
 
                 gBufferData.Diffuse.rgb *= diffuse.rgb * vertex.Color.rgb;
@@ -206,9 +206,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Specular *= vertex.Color.a;
                 gBufferData.SpecularPower *= gloss.y;    
                 gBufferData.SpecularLevel *= gloss.y;
-                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
-
-                gBufferData.Normal = DecodeNormalMap(vertex, normalMap.xy);
+                gBufferData.SpecularFresnel = ComputeFresnel(DecodeNormalMap(vertex, normalMap.zw)) * 0.7 + 0.3;
                 gBufferData.Emission = highlightSpecular * material.SonicEyeHighLightColor.rgb;
 
                 break;

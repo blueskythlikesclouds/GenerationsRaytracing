@@ -13,13 +13,21 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
 {
     isEnabled &= renderable->m_Enabled;
 
-    if (auto element = dynamic_cast<const Hedgehog::Mirage::CSingleElement*>(renderable))
+    if (auto element = dynamic_cast<Hedgehog::Mirage::CSingleElement*>(renderable))
     {
         if (element->m_spModel->IsMadeAll())
         {
+            auto& modelDataEx = *reinterpret_cast<ModelDataEx*>(element->m_spModel.get());
+            auto& instanceInfoEx = *reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get());
+
+            ModelData::processEyeMaterials(
+                modelDataEx, 
+                instanceInfoEx,
+                element->m_MaterialMap);
+
             ModelData::createBottomLevelAccelStruct(
-                *reinterpret_cast<ModelDataEx*>(element->m_spModel.get()),
-                *reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get()),
+                modelDataEx,
+                instanceInfoEx,
                 element->m_MaterialMap,
                 isEnabled && (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0);
         }

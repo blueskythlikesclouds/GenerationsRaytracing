@@ -24,6 +24,9 @@ struct ModelData
 
     static void createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDataEx);
 
+    static void processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx,
+        MaterialMap& materialMap);
+
     static void createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, 
         const MaterialMap& materialMap, bool isEnabled);
 
