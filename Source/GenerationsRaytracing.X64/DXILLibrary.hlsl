@@ -266,7 +266,7 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
     payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
-    payload.T = 10000.0;
+    payload.T = Z_MAX;
     payload.Normal = -WorldRayDirection();
 }
 
@@ -282,7 +282,7 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     if (g_UseEnvironmentColor)
     {
         payload.Color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
-        payload.T = 10000.0;
+        payload.T = Z_MAX;
         payload.Normal = -WorldRayDirection();
     }
     else
