@@ -212,4 +212,7 @@ public:
     DescriptorHeap& getSamplerDescriptorHeap();
     DescriptorHeap& getRtvDescriptorHeap();
     DescriptorHeap& getDsvDescriptorHeap();
+
+    const GlobalsVS& getGlobalsVS() const;
+    const GlobalsPS& getGlobalsPS() const;
 };

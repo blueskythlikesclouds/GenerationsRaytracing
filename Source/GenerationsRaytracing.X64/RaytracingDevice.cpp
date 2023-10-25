@@ -7,6 +7,7 @@
 #include "DLSS.h"
 #include "EnvironmentColor.h"
 #include "EnvironmentMode.h"
+#include "FSR2.h"
 #include "GeometryFlags.h"
 #include "Message.h"
 #include "RootSignature.h"
@@ -184,27 +185,6 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
     m_pendingBuilds.clear();
 }
 
-static float haltonSequence(int i, int b)
-{
-    float f = 1.0;
-    float r = 0.0;
-
-    while (i > 0)
-    {
-        f = f / float(b);
-        r = r + f * float(i % b);
-        i = i / b;
-    }
-
-    return r;
-}
-
-static void haltonJitter(int frame, int phases, float& jitterX, float& jitterY)
-{
-    jitterX = haltonSequence(frame % phases + 1, 2) - 0.5f;
-    jitterY = haltonSequence(frame % phases + 1, 3) - 0.5f;
-}
-
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& message)
 {
     if (message.resetAccumulation)
@@ -234,7 +214,9 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
 
     }
 
-    haltonJitter(m_globalsRT.currentFrame, 64, m_globalsRT.pixelJitterX, m_globalsRT.pixelJitterY);
+    ffxFsr2GetJitterOffset(&m_globalsRT.pixelJitterX, &m_globalsRT.pixelJitterY, static_cast<int32_t>(m_globalsRT.currentFrame),
+        ffxFsr2GetJitterPhaseCount(static_cast<int32_t>(m_upscaler->getWidth()), static_cast<int32_t>(m_width)));
+
     m_globalsRT.internalResolutionWidth = m_upscaler->getWidth();
     m_globalsRT.internalResolutionHeight = m_upscaler->getHeight();
 
@@ -1389,9 +1371,26 @@ RaytracingDevice::RaytracingDevice()
     {
         m_qualityMode = static_cast<QualityMode>(
             reader.GetInteger("Mod", "QualityMode", static_cast<long>(QualityMode::Balanced)));
+
+        if (static_cast<UpscalerType>(reader.GetInteger("Mod", "Upscaler", static_cast<long>(UpscalerType::FSR2))) == UpscalerType::DLSS)
+        {
+            auto upscaler = std::make_unique<DLSS>(*this);
+            if (!upscaler->valid())
+            {
+                MessageBox(nullptr, 
+                    TEXT("A NVIDIA GPU on latest drivers is required to use DLSS. FSR2 is going to be used as fallback."),
+                    TEXT("GenerationsRaytracing"),
+                    MB_ICONERROR);
+            }
+            else
+            {
+                m_upscaler = std::move(upscaler);
+            }
+        }
     }
 
-    m_upscaler = std::make_unique<DLSS>(*this);
+    if (m_upscaler == nullptr)
+        m_upscaler = std::make_unique<FSR2>(*this);
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC resolvePipelineDesc{};
     resolvePipelineDesc.pRootSignature = m_raytracingRootSignature.Get();

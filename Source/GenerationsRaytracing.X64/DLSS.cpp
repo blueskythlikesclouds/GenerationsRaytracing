@@ -11,14 +11,16 @@
         } \
     } while (0)
 
-DLSS::DLSS(const Device& device) : m_device(device.getUnderlyingDevice())
+DLSS::DLSS(const Device& device)
 {
-    THROW_IF_FAILED(NVSDK_NGX_D3D12_Init(0x205452736E654720, L".", device.getUnderlyingDevice()));
-    THROW_IF_FAILED(NVSDK_NGX_D3D12_GetCapabilityParameters(&m_parameters));
-
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+    if (NVSDK_NGX_SUCCEED(NVSDK_NGX_D3D12_Init(0x205452736E654720, L".", device.getUnderlyingDevice())) &&
+        NVSDK_NGX_SUCCEED(NVSDK_NGX_D3D12_GetCapabilityParameters(&m_parameters)))
+    {
+        m_device = device.getUnderlyingDevice();
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+    }
 }
 
 DLSS::~DLSS()
@@ -101,4 +103,9 @@ void DLSS::dispatch(const DispatchArgs& args)
         m_feature, 
         m_parameters, 
         &params));
+}
+
+bool DLSS::valid() const
+{
+    return m_device != nullptr;
 }

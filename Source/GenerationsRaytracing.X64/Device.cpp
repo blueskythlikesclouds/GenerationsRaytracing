@@ -1937,3 +1937,13 @@ DescriptorHeap& Device::getDsvDescriptorHeap()
 {
     return m_dsvDescriptorHeap;
 }
+
+const GlobalsVS& Device::getGlobalsVS() const
+{
+    return m_globalsVS;
+}
+
+const GlobalsPS& Device::getGlobalsPS() const
+{
+    return m_globalsPS;
+}

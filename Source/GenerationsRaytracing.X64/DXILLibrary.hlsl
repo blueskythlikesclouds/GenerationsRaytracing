@@ -298,8 +298,8 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes);
+
     GBufferData gBufferData = CreateGBufferData(vertex, material);
-    gBufferData.Flags |= GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT;
     gBufferData.Diffuse *= g_DiffusePower;
 
     float3 globalLighting = 0.0;

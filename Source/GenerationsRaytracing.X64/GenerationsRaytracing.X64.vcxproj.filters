@@ -48,6 +48,9 @@
     <ClCompile Include="PIXEvent.cpp">
       <Filter>Base</Filter>
     </ClCompile>
+    <ClCompile Include="FSR2.cpp">
+      <Filter>Upscaler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -152,6 +155,9 @@
     </ClInclude>
     <ClInclude Include="PIXEvent.h">
       <Filter>Base</Filter>
+    </ClInclude>
+    <ClInclude Include="FSR2.h">
+      <Filter>Upscaler</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -11,6 +11,12 @@ enum class QualityMode
     UltraPerformance
 };
 
+enum class UpscalerType
+{
+    DLSS,
+    FSR2
+};
+
 class Upscaler
 {
 protected:
