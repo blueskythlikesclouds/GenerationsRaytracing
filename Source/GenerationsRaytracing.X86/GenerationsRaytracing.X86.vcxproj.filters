@@ -84,9 +84,6 @@
     <ClCompile Include="RaytracingParams.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
-    <ClCompile Include="LightData.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -166,9 +163,6 @@
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="RaytracingParams.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="LightData.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>
