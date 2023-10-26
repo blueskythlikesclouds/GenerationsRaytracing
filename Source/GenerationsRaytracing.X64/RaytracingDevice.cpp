@@ -1378,7 +1378,7 @@ RaytracingDevice::RaytracingDevice()
             if (!upscaler->valid())
             {
                 MessageBox(nullptr, 
-                    TEXT("A NVIDIA GPU on latest drivers is required to use DLSS. FSR2 is going to be used as fallback."),
+                    TEXT("A NVIDIA GPU is required to use DLSS. FSR2 is going to be used as fallback."),
                     TEXT("GenerationsRaytracing"),
                     MB_ICONERROR);
             }
