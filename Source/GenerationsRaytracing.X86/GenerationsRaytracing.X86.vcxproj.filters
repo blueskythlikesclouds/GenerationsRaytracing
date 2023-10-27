@@ -84,6 +84,9 @@
     <ClCompile Include="RaytracingParams.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
+    <ClCompile Include="Sofdec.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -164,6 +167,9 @@
     </ClInclude>
     <ClInclude Include="RaytracingParams.h">
       <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Sofdec.h">
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

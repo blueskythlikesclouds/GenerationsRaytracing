@@ -10,6 +10,7 @@
 #include "ProcessUtil.h"
 #include "RaytracingRendering.h"
 #include "InstanceData.h"
+#include "Sofdec.h"
 #include "TriangleFan.h"
 #include "TriangleStrip.h"
 #include "Window.h"
@@ -48,6 +49,7 @@ extern "C" void __declspec(dllexport) Init()
     InstanceData::init();
     RaytracingRendering::init();
     MaterialData::init();
+    Sofdec::init();
 
 #ifdef _DEBUG
 #if 0

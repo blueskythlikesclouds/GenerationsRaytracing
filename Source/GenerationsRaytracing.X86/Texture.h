@@ -25,4 +25,8 @@ public:
     virtual HRESULT LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags) final;
     virtual HRESULT UnlockRect(UINT Level) final;
     virtual HRESULT AddDirtyRect(const RECT* pDirtyRect) final;
+
+    // The virtual function addresses are patched to point at those for SFD playback.
+    virtual HRESULT BeginSfdDecodeCallback(uintptr_t, Texture*& texture, uintptr_t, uintptr_t) final;
+    virtual HRESULT EndSfdDecodeCallback(uintptr_t) final;
 };
