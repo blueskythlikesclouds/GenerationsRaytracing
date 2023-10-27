@@ -32,7 +32,7 @@ void* MessageSender::makeMessage(uint32_t byteSize, uint32_t alignment)
     if (alignedOffset + byteSize > (MemoryMappedFile::s_size - sizeof(uint32_t)))
     {
         commitMessages();
-        alignedOffset = 0;
+        alignedOffset = sizeof(uint32_t);
     }
 
     if (m_offset != alignedOffset)
@@ -40,9 +40,16 @@ void* MessageSender::makeMessage(uint32_t byteSize, uint32_t alignment)
         const auto padding = reinterpret_cast<MsgPadding*>(&m_messages[m_offset]);
         padding->id = MsgPadding::s_id;
         padding->dataSize = alignedOffset - (m_offset + offsetof(MsgPadding, data));
+
+#ifdef _DEBUG
+        memset(padding->data, 0xCC, padding->dataSize);
+#endif
     }
 
     void* message = &m_messages[alignedOffset];
+#ifdef _DEBUG
+    memset(message, 0xCC, byteSize);
+#endif
     m_offset = alignedOffset + byteSize;
     ++m_pendingMessages;
     return message;
