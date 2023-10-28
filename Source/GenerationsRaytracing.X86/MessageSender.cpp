@@ -32,7 +32,7 @@ void* MessageSender::makeMessage(uint32_t byteSize, uint32_t alignment)
     if (alignedOffset + byteSize > (MemoryMappedFile::s_size - sizeof(uint32_t)))
     {
         commitMessages();
-        alignedOffset = sizeof(uint32_t);
+        alignedOffset = std::max(sizeof(uint32_t), alignment);
     }
 
     if (m_offset != alignedOffset)
