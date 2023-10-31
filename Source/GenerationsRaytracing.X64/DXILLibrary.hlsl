@@ -119,7 +119,7 @@ void ReservoirRayGeneration()
         int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
         if (g_CurrentFrame > 0 && all(and(temporalNeighbor >= 0, temporalNeighbor < g_InternalResolution)))
         {
-            float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
+            float3 prevNormal = g_PrevNormalTexture[temporalNeighbor].xyz;
 
             if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.1 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
@@ -189,17 +189,17 @@ void GIRayGeneration()
         if (g_CurrentFrame > 0 && all(and(temporalNeighbor >= 0, temporalNeighbor < g_InternalResolution)))
         {
             float3 prevPosition = g_PrevPositionFlagsTexture[temporalNeighbor].xyz;
-            float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[temporalNeighbor] * 2.0 - 1.0);
+            float3 prevNormal = g_PrevNormalTexture[temporalNeighbor].xyz;
 
             if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.05 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
             {
-                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGITexture,
+                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGIColorTexture,
                     g_PrevGIPositionTexture, g_PrevGINormalTexture, temporalNeighbor);
 
                 float jacobian = ComputeJacobian(gBufferData.Position, prevPosition, prevReservoir.Sample);
                 if (jacobian >= 1.0 / 10.0 && jacobian <= 10.0)
                 {
-                    prevReservoir.SampleCount = min(8, prevReservoir.SampleCount);
+                    prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
                     uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
 
                     UpdateReservoir(reservoir, prevReservoir.Sample, ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) *
@@ -213,7 +213,7 @@ void GIRayGeneration()
         ComputeReservoirWeight(reservoir, ComputeGIReservoirWeight(gBufferData, reservoir.Sample));
     }
 
-    StoreGIReservoir(g_GITexture, g_GIPositionTexture, g_GINormalTexture, DispatchRaysIndex().xy, reservoir);
+    StoreGIReservoir(g_GIColorTexture, g_GIPositionTexture, g_GINormalTexture, DispatchRaysIndex().xy, reservoir);
 }
 
 [shader("raygeneration")]
@@ -222,27 +222,54 @@ void ReflectionRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 reflection = 0.0;
+    float3 rayDirection = 0.0;
+    float hitDistance = 0.0;
+
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)))
     {
-        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+        float pdf;
 
+        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
         if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
         {
-            reflection = TraceReflection(0, 
-                gBufferData.SafeSpawnPoint, 
-                gBufferData.Normal,
-                eyeDirection);
+            rayDirection = reflect(-eyeDirection, gBufferData.Normal);
+            pdf = 1.0;
         }
         else
         {
-            reflection = TraceReflection(0,
-                gBufferData.SafeSpawnPoint,
-                gBufferData.Normal,
-                gBufferData.SpecularPower,
-                eyeDirection);
+            float4 sampleDirection = GetPowerCosWeightedSample(GetBlueNoise().yz, gBufferData.SpecularPower);
+            float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
+
+            rayDirection = reflect(-eyeDirection, halfwayDirection);
+            pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularPower) / (0.0001 + sampleDirection.w);
         }
+
+        RayDesc ray;
+
+        ray.Origin = gBufferData.SafeSpawnPoint;
+        ray.Direction = rayDirection;
+        ray.TMin = 0.0;
+        ray.TMax = FLT_MAX;
+
+        SecondaryRayPayload payload;
+        payload.Depth = 0;
+
+        TraceRay(
+            g_BVH,
+            0,
+            1,
+            1,
+            0,
+            3,
+            ray,
+            payload);
+
+        reflection = payload.Color * pdf;
+        hitDistance = payload.T;
     }
+
     g_ReflectionTexture[DispatchRaysIndex().xy] = reflection;
+    g_SpecularRayDirectionHitDistanceTexture[DispatchRaysIndex().xy] = float4(rayDirection, hitDistance);
 }
 
 [shader("raygeneration")]
@@ -317,7 +344,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
     int2 pixelPosition = round(ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection));
     float depth = ComputeDepth(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
-    float3 normal = NormalizeSafe(g_PrevNormalTexture[pixelPosition] * 2.0 - 1.0);
+    float3 normal = g_PrevNormalTexture[pixelPosition].xyz;
 
     float3 localLighting = 0.0;
     float3 globalIllumination = 0.0;
@@ -333,7 +360,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         }
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
-            globalIllumination = ComputeGI(gBufferData, g_PrevGIAccumulationTexture[pixelPosition].rgb);
+            globalIllumination = ComputeGI(gBufferData, g_GITexture[pixelPosition].rgb);
     }
     else
     {

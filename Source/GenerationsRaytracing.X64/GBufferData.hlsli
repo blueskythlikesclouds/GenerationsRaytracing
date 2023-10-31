@@ -637,7 +637,7 @@ GBufferData LoadGBufferData(uint2 index)
     gBufferData.SpecularLevel = specularPowerLevelFresnel.y;
     gBufferData.SpecularFresnel = specularPowerLevelFresnel.z;
 
-    gBufferData.Normal = NormalizeSafe(g_NormalTexture[index] * 2.0 - 1.0);
+    gBufferData.Normal = g_NormalTexture[index].xyz;
     gBufferData.Falloff = g_FalloffTexture[index];
     gBufferData.Emission = g_EmissionTexture[index];
 
@@ -651,7 +651,7 @@ void StoreGBufferData(uint2 index, GBufferData gBufferData)
     g_DiffuseRefractionAlphaTexture[index] = float4(gBufferData.Diffuse, gBufferData.RefractionAlpha);
     g_SpecularTexture[index] = gBufferData.Specular;
     g_SpecularPowerLevelFresnelTexture[index] = float3(gBufferData.SpecularPower, gBufferData.SpecularLevel, gBufferData.SpecularFresnel);
-    g_NormalTexture[index] = gBufferData.Normal * 0.5 + 0.5;
+    g_NormalTexture[index] = float4(gBufferData.Normal, 1.0 - (pow(gBufferData.SpecularPower, 0.2) * 0.25));
     g_FalloffTexture[index] = gBufferData.Falloff;
     g_EmissionTexture[index] = gBufferData.Emission;
 }

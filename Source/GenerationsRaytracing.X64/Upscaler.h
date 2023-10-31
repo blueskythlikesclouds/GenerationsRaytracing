@@ -35,10 +35,15 @@ public:
     struct DispatchArgs
     {
         Device& device;
+        ID3D12Resource* diffuseAlbedo = nullptr;
+        ID3D12Resource* specularAlbedo = nullptr;
+        ID3D12Resource* normals = nullptr;
         ID3D12Resource* color = nullptr;
         ID3D12Resource* output = nullptr;
         ID3D12Resource* depth = nullptr;
         ID3D12Resource* motionVectors = nullptr;
+        ID3D12Resource* diffuseRayDirectionHitDistance = nullptr;
+        ID3D12Resource* specularRayDirectionHitDistance = nullptr;
         float jitterX = 0.0f;
         float jitterY = 0.0f;
         bool resetAccumulation = false;

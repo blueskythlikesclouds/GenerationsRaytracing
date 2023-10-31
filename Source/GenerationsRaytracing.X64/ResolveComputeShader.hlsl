@@ -13,14 +13,17 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     Reservoir<uint> diReservoir = (Reservoir<uint>)0;
     Reservoir<GISample> giReservoir = (Reservoir<GISample>)0;
     float3 globalIllumination = 0.0;
-    float giLerpFactor = 0.0;
+    float3 diffuseAlbedo = 0.0;
+    float3 specularAlbedo = 0.0;
+    float3 rayDirection = 0.0;
+    float hitDistance = 0.0;
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
     {
         uint random = InitRand(g_CurrentFrame, dispatchThreadId.y * g_InternalResolution.x + dispatchThreadId.x);
 
         diReservoir = LoadDIReservoir(g_DIReservoirTexture[dispatchThreadId.xy]);
-        giReservoir = LoadGIReservoir(g_GITexture, g_GIPositionTexture, g_GINormalTexture, dispatchThreadId.xy);
+        giReservoir = LoadGIReservoir(g_GIColorTexture, g_GIPositionTexture, g_GINormalTexture, dispatchThreadId.xy);
 
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
 
@@ -36,10 +39,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                 Reservoir<uint> spatialDIReservoir = LoadDIReservoir(g_DIReservoirTexture[neighborIndex]);
 
                 Reservoir<GISample> spatialGIReservoir = LoadGIReservoir(
-                    g_GITexture, g_GIPositionTexture, g_GINormalTexture, neighborIndex);
+                    g_GIColorTexture, g_GIPositionTexture, g_GINormalTexture, neighborIndex);
 
                 float3 position = g_PositionFlagsTexture[neighborIndex].xyz;
-                float3 normal = NormalizeSafe(g_NormalTexture[neighborIndex] * 2.0 - 1.0);
+                float3 normal = g_NormalTexture[neighborIndex].xyz;
 
                 if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.05 && dot(gBufferData.Normal, normal) >= 0.9063)
                 {
@@ -77,19 +80,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             shadingParams.DIReservoir = (Reservoir<uint>) 0;
 
         globalIllumination = ComputeGI(gBufferData, giReservoir);
-
-        int2 prevFrame = (float2) dispatchThreadId.xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[dispatchThreadId.xy];
-        if (g_CurrentFrame > 0 && all(and(prevFrame >= 0, prevFrame < g_InternalResolution)))
-        {
-            float3 prevNormal = NormalizeSafe(g_PrevNormalTexture[prevFrame] * 2.0 - 1.0);
-
-            if (abs(depth - g_PrevDepthTexture[prevFrame]) <= 0.05 && dot(gBufferData.Normal, prevNormal) >= 0.9063)
-            {
-                float4 prevGlobalIllumination = g_PrevGIAccumulationTexture[prevFrame];
-                giLerpFactor = min(30.0, prevGlobalIllumination.w + 1.0);
-                globalIllumination = lerp(prevGlobalIllumination.rgb, globalIllumination, 1.0 / giLerpFactor);
-            }
-        }
+        diffuseAlbedo = ComputeGI(gBufferData, 1.0);
+        specularAlbedo = ComputeReflection(gBufferData, 1.0);
+        rayDirection = giReservoir.Sample.Position - gBufferData.Position;
+        hitDistance = length(rayDirection);
+        rayDirection /= hitDistance;
 
         shadingParams.GlobalIllumination = globalIllumination;
         shadingParams.Reflection = g_ReflectionTexture[dispatchThreadId.xy];
@@ -113,6 +108,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     g_ColorTexture[dispatchThreadId.xy] = float4(color, 1.0);
     g_PrevDIReservoirTexture[dispatchThreadId.xy] = StoreDIReservoir(diReservoir);
-    StoreGIReservoir(g_PrevGITexture, g_PrevGIPositionTexture, g_PrevGINormalTexture, dispatchThreadId.xy, giReservoir);
-    g_GIAccumulationTexture[dispatchThreadId.xy] = float4(globalIllumination, giLerpFactor);
+    StoreGIReservoir(g_PrevGIColorTexture, g_PrevGIPositionTexture, g_PrevGINormalTexture, dispatchThreadId.xy, giReservoir);
+    g_GITexture[dispatchThreadId.xy] = globalIllumination;
+    g_DiffuseAlbedoTexture[dispatchThreadId.xy] = diffuseAlbedo;
+    g_SpecularAlbedoTexture[dispatchThreadId.xy] = specularAlbedo;
+    g_DiffuseRayDirectionHitDistanceTexture[dispatchThreadId.xy] = float4(rayDirection, hitDistance);
 }

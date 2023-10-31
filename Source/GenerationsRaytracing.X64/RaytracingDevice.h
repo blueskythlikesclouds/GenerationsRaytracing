@@ -109,19 +109,22 @@ protected:
     ComPtr<D3D12MA::Allocation> m_diReservoirTexture;
     ComPtr<D3D12MA::Allocation> m_prevDIReservoirTexture;
 
-    ComPtr<D3D12MA::Allocation> m_giTexture;
+    ComPtr<D3D12MA::Allocation> m_giColorTexture;
     ComPtr<D3D12MA::Allocation> m_giPositionTexture;
     ComPtr<D3D12MA::Allocation> m_giNormalTexture;
 
-    ComPtr<D3D12MA::Allocation> m_prevGITexture;
+    ComPtr<D3D12MA::Allocation> m_prevGIColorTexture;
     ComPtr<D3D12MA::Allocation> m_prevGIPositionTexture;
     ComPtr<D3D12MA::Allocation> m_prevGINormalTexture;
 
-    ComPtr<D3D12MA::Allocation> m_giAccumulationTexture;
-    ComPtr<D3D12MA::Allocation> m_prevGIAccumulationTexture;
-
+    ComPtr<D3D12MA::Allocation> m_giTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
     ComPtr<D3D12MA::Allocation> m_refractionTexture;
+
+    ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;
+    ComPtr<D3D12MA::Allocation> m_specularAlbedoTexture;
+    ComPtr<D3D12MA::Allocation> m_diffuseRayDirectionHitDistanceTexture;
+    ComPtr<D3D12MA::Allocation> m_specularRayDirectionHitDistanceTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     uint32_t m_srvIds[NUM_FRAMES]{};

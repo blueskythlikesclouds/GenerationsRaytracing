@@ -21,7 +21,7 @@ using Microsoft::WRL::ComPtr;
 #include <DDSTextureLoader12.h>
 #include <ffx_fsr2.h>
 #include <INIReader.h>
-#include <nvsdk_ngx_helpers.h>
+#include <nvsdk_ngx_helpers_dlssd.h>
 #include <pix3.h>
 #include <xxhash.h>
 #include <ankerl/unordered_dense.h>

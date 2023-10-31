@@ -298,8 +298,8 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularPowerLevelFresnelTexture },
-        { DXGI_FORMAT_R10G10B10A2_UNORM, m_normalTexture, &m_prevNormalTexture },
-        { DXGI_FORMAT_R10G10B10A2_UNORM, m_prevNormalTexture, &m_normalTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_normalTexture, &m_prevNormalTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevNormalTexture, &m_normalTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_falloffTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_emissionTexture },
 
@@ -308,19 +308,22 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_diReservoirTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevDIReservoirTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giColorTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giPositionTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giNormalTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGITexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIColorTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIPositionTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGINormalTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giAccumulationTexture, &m_prevGIAccumulationTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIAccumulationTexture, &m_giAccumulationTexture },
-
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
+
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_diffuseRayDirectionHitDistanceTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularRayDirectionHitDistanceTexture },
     };
 
     for (const auto& textureDesc : textureDescs)
@@ -401,11 +404,15 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
 
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_diReservoirTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_giTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_giColorTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_giPositionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_giNormalTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularAlbedoTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_diffuseRayDirectionHitDistanceTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularRayDirectionHitDistanceTexture->GetResource());
 
     getGraphicsCommandList().commitBarriers();
 
@@ -424,12 +431,21 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
     case DEBUG_VIEW_FALLOFF: colorTexture = m_falloffTexture->GetResource(); break;
     case DEBUG_VIEW_EMISSION: colorTexture = m_emissionTexture->GetResource(); break;
     case DEBUG_VIEW_SHADOW: colorTexture = m_shadowTexture->GetResource(); break;
-    case DEBUG_VIEW_GI: colorTexture = (m_frame & 1 ? m_prevGIAccumulationTexture : m_giAccumulationTexture)->GetResource(); break;
+    case DEBUG_VIEW_GI: colorTexture = m_giTexture->GetResource(); break;
     case DEBUG_VIEW_REFLECTION: colorTexture = m_reflectionTexture->GetResource(); break;
     case DEBUG_VIEW_REFRACTION: colorTexture = m_refractionTexture->GetResource(); break;
     }
 
     getGraphicsCommandList().uavBarrier(colorTexture);
+
+    getGraphicsCommandList().transitionBarrier(m_diffuseAlbedoTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_specularAlbedoTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().transitionBarrier((m_frame & 1 ? m_prevNormalTexture : m_normalTexture)->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     getGraphicsCommandList().transitionBarrier(colorTexture,
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -437,15 +453,26 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
     getGraphicsCommandList().transitionBarrier((m_frame & 1 ? m_prevDepthTexture : m_depthTexture)->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+    getGraphicsCommandList().transitionBarrier(m_diffuseRayDirectionHitDistanceTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_specularRayDirectionHitDistanceTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
     getGraphicsCommandList().commitBarriers();
 
     m_upscaler->dispatch(
         {
             *this,
+            m_diffuseAlbedoTexture->GetResource(),
+            m_specularAlbedoTexture->GetResource(),
+            (m_frame & 1 ? m_prevNormalTexture : m_normalTexture)->GetResource(),
             colorTexture,
             m_outputTexture->GetResource(),
             m_depthTexture->GetResource(),
             m_motionVectorsTexture->GetResource(),
+            m_diffuseRayDirectionHitDistanceTexture->GetResource(),
+            m_specularRayDirectionHitDistanceTexture->GetResource(),
             m_globalsRT.pixelJitterX,
             m_globalsRT.pixelJitterY,
             resetAccumulation
@@ -1145,7 +1172,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 27, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 30, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
