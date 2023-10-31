@@ -109,14 +109,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_diReservoirTexture;
     ComPtr<D3D12MA::Allocation> m_prevDIReservoirTexture;
 
-    ComPtr<D3D12MA::Allocation> m_giColorTexture;
-    ComPtr<D3D12MA::Allocation> m_giPositionTexture;
-    ComPtr<D3D12MA::Allocation> m_giNormalTexture;
-
-    ComPtr<D3D12MA::Allocation> m_prevGIColorTexture;
-    ComPtr<D3D12MA::Allocation> m_prevGIPositionTexture;
-    ComPtr<D3D12MA::Allocation> m_prevGINormalTexture;
-
     ComPtr<D3D12MA::Allocation> m_giTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
     ComPtr<D3D12MA::Allocation> m_refractionTexture;

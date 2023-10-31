@@ -149,18 +149,18 @@ void ReservoirRayGeneration()
 void GIRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
-    float depth = g_DepthTexture[DispatchRaysIndex().xy];
-    Reservoir<GISample> reservoir = (Reservoir<GISample>) 0;
+    float3 globalIllumination = 0.0;
+    float3 rayDirection = 0.0;
+    float hitDistance = 0.0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
     {
-        uint random = InitRand(g_CurrentFrame,
-            DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
+        rayDirection = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy));
 
         RayDesc ray;
 
         ray.Origin = gBufferData.SafeSpawnPoint;
-        ray.Direction = TangentToWorld(gBufferData.Normal, GetUniformSample(float2(NextRand(random), NextRand(random))));
+        ray.Direction = rayDirection;
         ray.TMin = 0.0;
         ray.TMax = FLT_MAX;
 
@@ -177,43 +177,12 @@ void GIRayGeneration()
             ray,
             payload);
 
-        reservoir.Sample.Color = payload.Color;
-        reservoir.Sample.Position = gBufferData.SafeSpawnPoint + payload.T * ray.Direction;
-        reservoir.Sample.Normal = payload.Normal;
-        reservoir.WeightSum = ComputeGIReservoirWeight(gBufferData, reservoir.Sample) * (2.0 * PI);
-        reservoir.SampleCount = 1;
-
-        // Temporal reuse
-        int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
-
-        if (g_CurrentFrame > 0 && all(and(temporalNeighbor >= 0, temporalNeighbor < g_InternalResolution)))
-        {
-            float3 prevPosition = g_PrevPositionFlagsTexture[temporalNeighbor].xyz;
-            float3 prevNormal = g_PrevNormalTexture[temporalNeighbor].xyz;
-
-            if (abs(depth - g_DepthTexture[temporalNeighbor]) <= 0.05 && dot(prevNormal, gBufferData.Normal) >= 0.9063)
-            {
-                Reservoir<GISample> prevReservoir = LoadGIReservoir(g_PrevGIColorTexture,
-                    g_PrevGIPositionTexture, g_PrevGINormalTexture, temporalNeighbor);
-
-                float jacobian = ComputeJacobian(gBufferData.Position, prevPosition, prevReservoir.Sample);
-                if (jacobian >= 1.0 / 10.0 && jacobian <= 10.0)
-                {
-                    prevReservoir.SampleCount = min(30, prevReservoir.SampleCount);
-                    uint newSampleCount = reservoir.SampleCount + prevReservoir.SampleCount;
-
-                    UpdateReservoir(reservoir, prevReservoir.Sample, ComputeGIReservoirWeight(gBufferData, prevReservoir.Sample) *
-                        prevReservoir.Weight * prevReservoir.SampleCount * clamp(jacobian, 1.0 / 3.0, 3.0), NextRand(random));
-
-                    reservoir.SampleCount = newSampleCount;
-                }
-            }
-        }
-
-        ComputeReservoirWeight(reservoir, ComputeGIReservoirWeight(gBufferData, reservoir.Sample));
+        globalIllumination = payload.Color;
+        hitDistance = payload.T;
     }
 
-    StoreGIReservoir(g_GIColorTexture, g_GIPositionTexture, g_GINormalTexture, DispatchRaysIndex().xy, reservoir);
+    g_GITexture[DispatchRaysIndex().xy] = globalIllumination;
+    g_DiffuseRayDirectionHitDistanceTexture[DispatchRaysIndex().xy] = float4(rayDirection, hitDistance);
 }
 
 [shader("raygeneration")]
@@ -294,7 +263,6 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
     payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     payload.T = Z_MAX;
-    payload.Normal = -WorldRayDirection();
 }
 
 [shader("miss")]
@@ -310,7 +278,6 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     {
         payload.Color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
         payload.T = Z_MAX;
-        payload.Normal = -WorldRayDirection();
     }
     else
     {
@@ -376,7 +343,6 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     float3 emissionLighting = gBufferData.Emission * g_EmissivePower;
 
     payload.Color = eyeLighting + localLighting + globalIllumination + emissionLighting;
-    payload.Normal = gBufferData.Normal;
 
     // Done at the end for reducing live state.
     if (traceGlobalIllumination)

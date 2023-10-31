@@ -94,20 +94,6 @@ float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
     return globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
 }
 
-float3 ComputeGI(GBufferData gBufferData, Reservoir<GISample> giReservoir)
-{
-    return giReservoir.Sample.Color * giReservoir.Weight * 
-        saturate(dot(gBufferData.Normal, NormalizeSafe(giReservoir.Sample.Position - gBufferData.Position))) / PI;
-}
-
-float ComputeGIReservoirWeight(GBufferData gBufferData, GISample giSample)
-{
-    float3 giLighting = giSample.Color * (gBufferData.Diffuse + gBufferData.Falloff) *
-        saturate(dot(gBufferData.Normal, NormalizeSafe(giSample.Position - gBufferData.Position))) / PI;
-
-    return dot(giLighting, float3(0.2126, 0.7152, 0.0722));
-}
-
 float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 {
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))

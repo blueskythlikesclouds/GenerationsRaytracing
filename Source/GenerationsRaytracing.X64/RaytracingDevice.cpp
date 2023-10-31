@@ -308,14 +308,6 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_diReservoirTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevDIReservoirTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giColorTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giPositionTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giNormalTexture },
-
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIColorTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGIPositionTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevGINormalTexture },
-
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
@@ -404,9 +396,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
 
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_diReservoirTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_giColorTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_giPositionTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_giNormalTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
@@ -1172,7 +1161,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 30, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 24, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1223,7 +1212,7 @@ RaytracingDevice::RaytracingDevice()
     secondaryHitGroupSubobject.SetClosestHitShaderImport(L"SecondaryClosestHit");
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
-    shaderConfigSubobject.Config(sizeof(float) * 8, sizeof(float) * 2);
+    shaderConfigSubobject.Config(sizeof(float) * 5, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
     pipelineConfigSubobject.Config(3);
