@@ -3,8 +3,6 @@
 
 cbuffer GlobalsSB : register(b0)
 {
-    row_major float4x4 g_MtxProjection;
-    row_major float4x4 g_MtxView;
     float g_BackGroundScale;
     uint g_DiffuseTextureId;
     uint g_AlphaTextureId;
@@ -21,15 +19,17 @@ struct VertexShaderInput
     float2 TexCoord2 : TEXCOORD2;
     float2 TexCoord3 : TEXCOORD3;
     float4 Color : COLOR;
+    uint InstanceID : SV_InstanceID;
 };
 
 struct PixelShaderInput
 {
-    float4 Position : SV_Position;
     float2 DiffuseTexCoord : TEXCOORD;
     float2 AlphaTexCoord : TEXCOORD1;
     float2 EmissionTexCoord : TEXCOORD2;
     float4 Color : COLOR;
+    float4 Position : SV_Position;
+    uint RenderTargetArrayIndex : SV_RenderTargetArrayIndex;
 };
 
 #endif

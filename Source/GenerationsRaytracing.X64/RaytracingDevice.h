@@ -42,8 +42,6 @@ struct DelayedTexture
 
 struct GlobalsSB
 {
-    float proj[4][4];
-    float view[4][4];
     float backgroundScale;
     uint32_t diffuseTextureId;
     uint32_t alphaTextureId;
@@ -143,7 +141,7 @@ protected:
     // Sky
     ComPtr<ID3D12RootSignature> m_skyRootSignature;
     ComPtr<ID3D12Resource> m_skyTexture;
-    uint32_t m_skyRtvIndices[6]{};
+    uint32_t m_skyRtvId{};
 
     // Local Light
     std::vector<LocalLight> m_localLights;

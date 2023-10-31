@@ -933,47 +933,6 @@ void RaytracingDevice::procMsgComputePose()
     m_pendingPoses.push_back(message.vertexBufferId);
 }
 
-static float s_skyView[] =
-{
-    0, 0, -1, 0,
-    0, 1, 0, 0,
-    1, 0, 0, 0,
-    0, 0, 0, 1,
-
-    0, 0, 1, 0,
-    0, 1, 0, 0,
-    -1, 0, 0, 0,
-    0, 0, 0, 1,
-
-    1, 0, 0, 0,
-    0, 0, -1, 0,
-    0, 1, 0, 0,
-    0, 0, 0, 1,
-
-    1, 0, 0, 0,
-    0, 0, 1, 0,
-    0, -1, 0, 0,
-    0, 0, 0, 1,
-
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1,
-
-    -1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, -1, 0,
-    0, 0, 0, 1
-};
-
-static float s_skyProj[] =
-{
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, -1, -1,
-    0, 0, 0, 0
-};
-
 void RaytracingDevice::procMsgRenderSky()
 {
     const auto& message = m_messageReceiver.getMessage<MsgRenderSky>();
@@ -1012,122 +971,115 @@ void RaytracingDevice::procMsgRenderSky()
 
     uint32_t samplerId = NULL;
 
+    const auto renderTarget = m_rtvDescriptorHeap.getCpuHandle(m_skyRtvId);
+    float clearValue[4]{};
+
     constexpr D3D12_VIEWPORT viewport = { 0, 0, CUBE_MAP_RESOLUTION, CUBE_MAP_RESOLUTION, 0.0f, 1.0f };
     constexpr D3D12_RECT scissorRect = { 0, 0, CUBE_MAP_RESOLUTION, CUBE_MAP_RESOLUTION };
 
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_skyRootSignature.Get());
+    getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &renderTarget, FALSE, nullptr);
+    getUnderlyingGraphicsCommandList()->ClearRenderTargetView(renderTarget, clearValue, 0, nullptr);
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
     getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &scissorRect);
     getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
     GlobalsSB globalsSB;
-    memcpy(globalsSB.proj, s_skyProj, sizeof(globalsSB.proj));
     globalsSB.backgroundScale = message.backgroundScale;
 
-    for (size_t i = 0; i < 6; i++)
+    auto geometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data);
+    auto lastGeometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data + message.dataSize);
+
+    while (geometryDesc < lastGeometryDesc)
     {
-        memcpy(globalsSB.view, &s_skyView[i * 16], sizeof(globalsSB.view));
+        globalsSB.enableAlphaTest = (geometryDesc->flags & GEOMETRY_FLAG_PUNCH_THROUGH) != 0;
 
-        const auto renderTarget = m_rtvDescriptorHeap.getCpuHandle(m_skyRtvIndices[i]);
-        getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &renderTarget, FALSE, nullptr);
-
-        float clearValue[4]{};
-        getUnderlyingGraphicsCommandList()->ClearRenderTargetView(renderTarget, clearValue, 0, nullptr);
-
-        auto geometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data);
-        auto lastGeometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data + message.dataSize);
-
-        while (geometryDesc < lastGeometryDesc)
+        std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
         {
-            globalsSB.enableAlphaTest = (geometryDesc->flags & GEOMETRY_FLAG_PUNCH_THROUGH) != 0;
+            { geometryDesc->diffuseTexture, globalsSB.diffuseTextureId },
+            { geometryDesc->alphaTexture, globalsSB.alphaTextureId },
+            { geometryDesc->emissionTexture, globalsSB.emissionTextureId }
+        };
 
-            std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
+        for (auto& [srcTexture, dstTexture] : textures)
+        {
+            if (srcTexture.id != NULL)
             {
-                { geometryDesc->diffuseTexture, globalsSB.diffuseTextureId },
-                { geometryDesc->alphaTexture, globalsSB.alphaTextureId },
-                { geometryDesc->emissionTexture, globalsSB.emissionTextureId }
-            };
+                dstTexture = m_textures[srcTexture.id].srvIndex;
 
-            for (auto& [srcTexture, dstTexture] : textures)
-            {
-                if (srcTexture.id != NULL)
+                if (samplerDesc.AddressU != srcTexture.addressModeU ||
+                    samplerDesc.AddressV != srcTexture.addressModeV)
                 {
-                    dstTexture = m_textures[srcTexture.id].srvIndex;
+                    samplerDesc.AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeU);
+                    samplerDesc.AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeV);
 
-                    if (samplerDesc.AddressU != srcTexture.addressModeU ||
-                        samplerDesc.AddressV != srcTexture.addressModeV)
+                    auto& sampler = m_samplers[XXH3_64bits(&samplerDesc, sizeof(samplerDesc))];
+                    if (!sampler)
                     {
-                        samplerDesc.AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeU);
-                        samplerDesc.AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(srcTexture.addressModeV);
-
-                        auto& sampler = m_samplers[XXH3_64bits(&samplerDesc, sizeof(samplerDesc))];
-                        if (!sampler)
-                        {
-                            sampler = m_samplerDescriptorHeap.allocate();
-                            m_device->CreateSampler(&samplerDesc, m_samplerDescriptorHeap.getCpuHandle(sampler));
-                        }
-
-                        samplerId = sampler;
+                        sampler = m_samplerDescriptorHeap.allocate();
+                        m_device->CreateSampler(&samplerDesc, m_samplerDescriptorHeap.getCpuHandle(sampler));
                     }
 
-                    dstTexture |= samplerId << 20;
-                    dstTexture |= srcTexture.texCoordIndex << 30;
+                    samplerId = sampler;
                 }
-                else
-                {
-                    dstTexture = 0;
-                }
+
+                dstTexture |= samplerId << 20;
+                dstTexture |= srcTexture.texCoordIndex << 30;
             }
-
-            memcpy(globalsSB.ambient, geometryDesc->ambient, sizeof(globalsSB.ambient));
-
-            const auto& vertexDeclaration = m_vertexDeclarations[geometryDesc->vertexDeclarationId];
-
-            const BOOL blendEnable = TRUE; // TODO: Toggling this on/off causes buggy graphics in Planet Wisp
-            const auto destBlend = geometryDesc->isAdditive ? D3D12_BLEND_ONE : D3D12_BLEND_INV_SRC_ALPHA;
-
-            if (pipelineDesc.InputLayout.pInputElementDescs != vertexDeclaration.inputElements.get() ||
-                pipelineDesc.InputLayout.NumElements != vertexDeclaration.inputElementsSize ||
-                pipelineDesc.BlendState.RenderTarget[0].BlendEnable != blendEnable ||
-                pipelineDesc.BlendState.RenderTarget[0].DestBlend != destBlend)
+            else
             {
-                pipelineDesc.InputLayout.pInputElementDescs = vertexDeclaration.inputElements.get();
-                pipelineDesc.InputLayout.NumElements = vertexDeclaration.inputElementsSize;
-                pipelineDesc.BlendState.RenderTarget[0].BlendEnable = blendEnable;
-                pipelineDesc.BlendState.RenderTarget[0].DestBlend = destBlend;
+                dstTexture = 0;
+            }
+        }
 
-                auto& pipeline = m_pipelines[XXH3_64bits(&pipelineDesc, sizeof(pipelineDesc))];
-                if (!pipeline)
-                {
-                    HRESULT hr = m_device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
-                    assert(SUCCEEDED(hr) && pipeline != nullptr);
-                }
+        memcpy(globalsSB.ambient, geometryDesc->ambient, sizeof(globalsSB.ambient));
 
-                getUnderlyingGraphicsCommandList()->SetPipelineState(pipeline.Get());
-                m_curPipeline = pipeline.Get();
+        const auto& vertexDeclaration = m_vertexDeclarations[geometryDesc->vertexDeclarationId];
+
+        const BOOL blendEnable = TRUE; // TODO: Toggling this on/off causes buggy graphics in Planet Wisp
+        const auto destBlend = geometryDesc->isAdditive ? D3D12_BLEND_ONE : D3D12_BLEND_INV_SRC_ALPHA;
+
+        if (pipelineDesc.InputLayout.pInputElementDescs != vertexDeclaration.inputElements.get() ||
+            pipelineDesc.InputLayout.NumElements != vertexDeclaration.inputElementsSize ||
+            pipelineDesc.BlendState.RenderTarget[0].BlendEnable != blendEnable ||
+            pipelineDesc.BlendState.RenderTarget[0].DestBlend != destBlend)
+        {
+            pipelineDesc.InputLayout.pInputElementDescs = vertexDeclaration.inputElements.get();
+            pipelineDesc.InputLayout.NumElements = vertexDeclaration.inputElementsSize;
+            pipelineDesc.BlendState.RenderTarget[0].BlendEnable = blendEnable;
+            pipelineDesc.BlendState.RenderTarget[0].DestBlend = destBlend;
+
+            auto& pipeline = m_pipelines[XXH3_64bits(&pipelineDesc, sizeof(pipelineDesc))];
+            if (!pipeline)
+            {
+                HRESULT hr = m_device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
+                assert(SUCCEEDED(hr) && pipeline != nullptr);
             }
 
-            getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0,
-                createBuffer(&globalsSB, sizeof(GlobalsSB), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
-
-            D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
-            vertexBufferView.BufferLocation = m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
-            vertexBufferView.StrideInBytes = geometryDesc->vertexStride;
-            vertexBufferView.SizeInBytes = geometryDesc->vertexStride * geometryDesc->vertexCount;
-
-            getUnderlyingGraphicsCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
-
-            D3D12_INDEX_BUFFER_VIEW indexBufferView{};
-            indexBufferView.BufferLocation = m_indexBuffers[geometryDesc->indexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
-            indexBufferView.SizeInBytes = geometryDesc->indexCount * 2;
-            indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-                
-            getUnderlyingGraphicsCommandList()->IASetIndexBuffer(&indexBufferView);
-
-            getUnderlyingGraphicsCommandList()->DrawIndexedInstanced(geometryDesc->indexCount, 1, 0, 0, 0);
-
-            ++geometryDesc;
+            getUnderlyingGraphicsCommandList()->SetPipelineState(pipeline.Get());
+            m_curPipeline = pipeline.Get();
         }
+
+        getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0,
+            createBuffer(&globalsSB, sizeof(GlobalsSB), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+
+        D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+        vertexBufferView.BufferLocation = m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
+        vertexBufferView.StrideInBytes = geometryDesc->vertexStride;
+        vertexBufferView.SizeInBytes = geometryDesc->vertexStride * geometryDesc->vertexCount;
+
+        getUnderlyingGraphicsCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
+
+        D3D12_INDEX_BUFFER_VIEW indexBufferView{};
+        indexBufferView.BufferLocation = m_indexBuffers[geometryDesc->indexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
+        indexBufferView.SizeInBytes = geometryDesc->indexCount * 2;
+        indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+            
+        getUnderlyingGraphicsCommandList()->IASetIndexBuffer(&indexBufferView);
+
+        getUnderlyingGraphicsCommandList()->DrawIndexedInstanced(geometryDesc->indexCount, 6, 0, 0, 0);
+
+        ++geometryDesc;
     }
 
     getGraphicsCommandList().transitionBarrier(m_skyTexture.Get(), 
@@ -1221,7 +1173,7 @@ RaytracingDevice::RaytracingDevice()
         _countof(raytracingStaticSamplers),
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS |
-        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | 
+        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
         D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED,
         m_raytracingRootSignature);
 
@@ -1377,7 +1329,7 @@ RaytracingDevice::RaytracingDevice()
             auto upscaler = std::make_unique<DLSS>(*this);
             if (!upscaler->valid())
             {
-                MessageBox(nullptr, 
+                MessageBox(nullptr,
                     TEXT("An NVIDIA GPU is required for DLSS. FSR2 will be used instead as a fallback."),
                     TEXT("GenerationsRaytracing"),
                     MB_ICONERROR);
@@ -1441,22 +1393,19 @@ RaytracingDevice::RaytracingDevice()
     skySrvDesc.TextureCube.MipLevels = 1;
 
     m_globalsRT.skyTextureId = m_descriptorHeap.allocate();
-    m_device->CreateShaderResourceView(m_skyTexture.Get(), 
+    m_device->CreateShaderResourceView(m_skyTexture.Get(),
         &skySrvDesc, m_descriptorHeap.getCpuHandle(m_globalsRT.skyTextureId));
 
-    for (uint32_t i = 0; i < 6; i++)
-    {
-        m_skyRtvIndices[i] = m_rtvDescriptorHeap.allocate();
+    m_skyRtvId = m_rtvDescriptorHeap.allocate();
 
-        D3D12_RENDER_TARGET_VIEW_DESC skyRtvDesc{};
-        skyRtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        skyRtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-        skyRtvDesc.Texture2DArray.FirstArraySlice = i;
-        skyRtvDesc.Texture2DArray.ArraySize = 1;
+    D3D12_RENDER_TARGET_VIEW_DESC skyRtvDesc{};
+    skyRtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    skyRtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+    skyRtvDesc.Texture2DArray.FirstArraySlice = 0;
+    skyRtvDesc.Texture2DArray.ArraySize = 6;
 
-        m_device->CreateRenderTargetView(m_skyTexture.Get(),
-            &skyRtvDesc, m_rtvDescriptorHeap.getCpuHandle(m_skyRtvIndices[i]));
-    }
+    m_device->CreateRenderTargetView(m_skyTexture.Get(),
+        &skyRtvDesc, m_rtvDescriptorHeap.getCpuHandle(m_skyRtvId));
 }
 
 RaytracingDevice::~RaytracingDevice()

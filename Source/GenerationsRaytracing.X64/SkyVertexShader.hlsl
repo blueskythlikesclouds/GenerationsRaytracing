@@ -16,12 +16,61 @@ float2 GetTexCoord(VertexShaderInput i, uint index)
     }
 }
 
+static row_major float4x4 s_view[] =
+{
+    {
+        0, 0, -1, 0,
+        0, 1, 0, 0,
+        1, 0, 0, 0,
+        0, 0, 0, 1
+    },
+    {
+        0, 0, 1, 0,
+        0, 1, 0, 0,
+        -1, 0, 0, 0,
+        0, 0, 0, 1
+    },
+    {
+        1, 0, 0, 0,
+        0, 0, -1, 0,
+        0, 1, 0, 0,
+        0, 0, 0, 1
+    },
+    {
+        1, 0, 0, 0,
+        0, 0, 1, 0,
+        0, -1, 0, 0,
+        0, 0, 0, 1
+    },
+    {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    },
+    {
+        -1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, -1, 0,
+        0, 0, 0, 1
+    }
+};
+
+static row_major float4x4 s_proj =
+{
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, -1, -1,
+    0, 0, 0, 0
+};
+
 void main(in VertexShaderInput i, out PixelShaderInput o)
 {
-    o.Position = mul(float4(mul(float4(i.Position, 0.0), g_MtxView).xyz, 1.0), g_MtxProjection);
+    o.Position = mul(float4(mul(float4(i.Position, 0.0), s_view[i.InstanceID]).xyz, 1.0), s_proj);
     o.DiffuseTexCoord = GetTexCoord(i, g_DiffuseTextureId >> 30);
     o.AlphaTexCoord = GetTexCoord(i, g_AlphaTextureId >> 30);
     o.EmissionTexCoord = GetTexCoord(i, g_EmissionTextureId >> 30);
     o.Color = i.Color;
     o.Color.rgb *= g_BackGroundScale;
+    o.RenderTargetArrayIndex = i.InstanceID;
 }
