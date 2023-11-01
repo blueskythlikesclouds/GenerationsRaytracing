@@ -158,6 +158,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     static Hedgehog::Base::CStringSymbol s_sonicSkinFalloffParamSymbol("g_SonicSkinFalloffParam");
     static Hedgehog::Base::CStringSymbol s_chrEmissionParamSymbol("mrgChrEmissionParam");
     static Hedgehog::Base::CStringSymbol s_cloakParamSymbol("g_CloakParam");
+    static Hedgehog::Base::CStringSymbol s_transColorMaskSymbol("g_TransColorMask");
     static Hedgehog::Base::CStringSymbol s_distortionParamSymbol("mrgDistortionParam");
     static Hedgehog::Base::CStringSymbol s_glassRefractionParamSymbol("mrgGlassRefractionParam");
     static Hedgehog::Base::CStringSymbol s_iceParamSymbol("g_IceParam");
@@ -187,6 +188,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { s_sonicSkinFalloffParamSymbol, message.sonicSkinFalloffParam, 4 },
         { s_chrEmissionParamSymbol, message.chrEmissionParam, 4 },
         //{ s_cloakParamSymbol, message.cloakParam, 4 },
+        { s_transColorMaskSymbol, message.transColorMask, 4 },
         //{ s_distortionParamSymbol, message.distortionParam, 4 },
         //{ s_glassRefractionParamSymbol, message.glassRefractionParam, 4 },
         //{ s_iceParamSymbol, message.iceParam, 4 },

@@ -42,6 +42,7 @@ struct GBufferData
     float3 Normal;
     float3 Falloff;
     float3 Emission;
+    float3 TransColor;
 };
 
 float ComputeFresnel(float3 normal)
@@ -242,6 +243,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+#ifdef ENABLE_SYS_ERROR_FALLBACK
+        default:
+#endif
         case SHADER_TYPE_COMMON:
             {
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
@@ -583,6 +587,29 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_TRANS_THIN:
+            {
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb;
+                gBufferData.Alpha *= diffuse.a;
+
+                if (material.GlossTexture != 0)
+                {
+                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularLevel *= gloss;
+                }
+
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                gBufferData.TransColor = gBufferData.Diffuse * material.TransColorMask.rgb;
+
+                break;
+            }
+
         case SHADER_TYPE_WATER_ADD:
             {
                 CreateWaterGBufferData(vertex, material, gBufferData);
@@ -605,7 +632,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Alpha = 1.0;
                 break;
             }
-
+#ifndef ENABLE_SYS_ERROR_FALLBACK
         default:
             {
                 gBufferData.Flags = 
@@ -615,6 +642,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Emission = float3(1.0, 0.0, 0.0);
                 break;
             }
+#endif
     }
 
     gBufferData.SpecularPower = clamp(gBufferData.SpecularPower, 1.0, 1024.0);
@@ -654,6 +682,7 @@ GBufferData LoadGBufferData(uint2 index)
     gBufferData.Normal = g_NormalTexture[index].xyz;
     gBufferData.Falloff = g_FalloffTexture[index];
     gBufferData.Emission = g_EmissionTexture[index];
+    gBufferData.TransColor = g_TransColorTexture[index];
 
     return gBufferData;
 }
@@ -665,9 +694,10 @@ void StoreGBufferData(uint2 index, GBufferData gBufferData)
     g_DiffuseRefractionAlphaTexture[index] = float4(gBufferData.Diffuse, gBufferData.RefractionAlpha);
     g_SpecularTexture[index] = gBufferData.Specular;
     g_SpecularPowerLevelFresnelTexture[index] = float3(gBufferData.SpecularPower, gBufferData.SpecularLevel, gBufferData.SpecularFresnel);
-    g_NormalTexture[index] = float4(gBufferData.Normal, 1.0 - (pow(gBufferData.SpecularPower, 0.2) * 0.25));
+    g_NormalTexture[index] = float4(gBufferData.Normal, (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION) ? 0.0 : 1.0 - (pow(gBufferData.SpecularPower, 0.2) * 0.25));
     g_FalloffTexture[index] = gBufferData.Falloff;
     g_EmissionTexture[index] = gBufferData.Emission;
+    g_TransColorTexture[index] = gBufferData.TransColor;
 }
 
 #endif

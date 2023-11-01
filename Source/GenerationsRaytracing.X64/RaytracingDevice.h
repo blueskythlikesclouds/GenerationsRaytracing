@@ -105,6 +105,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_prevNormalTexture;
     ComPtr<D3D12MA::Allocation> m_falloffTexture;
     ComPtr<D3D12MA::Allocation> m_emissionTexture;
+    ComPtr<D3D12MA::Allocation> m_transColorTexture;
 
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
     ComPtr<D3D12MA::Allocation> m_diReservoirTexture;

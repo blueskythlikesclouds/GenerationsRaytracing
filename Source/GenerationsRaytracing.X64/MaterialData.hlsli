@@ -34,6 +34,7 @@ struct Material
     float4 SonicSkinFalloffParam;
     float4 ChrEmissionParam;
     //float4 CloakParam;
+    float4 TransColorMask;
     //float4 DistortionParam;
     //float4 GlassRefractionParam;
     //float4 IceParam;

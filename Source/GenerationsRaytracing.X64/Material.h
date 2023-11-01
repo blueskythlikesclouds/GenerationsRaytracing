@@ -33,6 +33,7 @@ struct Material
     float sonicSkinFalloffParam[4];
     float chrEmissionParam[4];
     //float cloakParam[4];
+    float transColorMask[4];
     //float distortionParam[4];
     //float glassRefractionParam[4];
     //float iceParam[4];
