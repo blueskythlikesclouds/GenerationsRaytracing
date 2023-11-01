@@ -362,6 +362,7 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
         }
 
         static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionSymbol("g_SonicEyeHighLightPosition");
+        static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPosition_Raytracing");
 
         traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
@@ -384,10 +385,17 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
                     if (float4Param->m_Name == s_sonicEyeHighLightPositionSymbol)
                     {
                         memcpy(materialDataEx.m_highLightPosition.data(), float4Param->m_spValue.get(), sizeof(materialDataEx.m_highLightPosition));
-                        materialDataEx.m_highLightParamValue = float4Param->m_spValue;
                         break;
                     }
                 }
+
+                const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
+                float4Param->m_Name = s_sonicEyeHighLightPositionRaytracingSymbol;
+                float4Param->m_spValue = boost::make_shared<float[]>(4, 0.0f);
+                float4Param->m_ValueNum = 1;
+
+                materialDataEx.m_Float4Params.push_back(float4Param);
+                materialDataEx.m_highLightParamValue = float4Param->m_spValue;
             }
         });
 

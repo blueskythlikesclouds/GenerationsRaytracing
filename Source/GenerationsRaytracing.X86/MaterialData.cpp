@@ -153,7 +153,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     static Hedgehog::Base::CStringSymbol s_opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
     static Hedgehog::Base::CStringSymbol s_luminanceRangeSymbol("mrgLuminanceRange");
     static Hedgehog::Base::CStringSymbol s_fresnelParamSymbol("mrgFresnelParam");
-    static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionSymbol("g_SonicEyeHighLightPosition");
+    static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPosition_Raytracing");
     static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightColorSymbol("g_SonicEyeHighLightColor");
     static Hedgehog::Base::CStringSymbol s_sonicSkinFalloffParamSymbol("g_SonicSkinFalloffParam");
     static Hedgehog::Base::CStringSymbol s_chrEmissionParamSymbol("mrgChrEmissionParam");
@@ -182,7 +182,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { s_opacityReflectionRefractionSpectypeSymbol, message.opacityReflectionRefractionSpectype, 4 },
         { s_luminanceRangeSymbol, message.luminanceRange, 4 },
         { s_fresnelParamSymbol, message.fresnelParam, 4 },
-        { s_sonicEyeHighLightPositionSymbol, message.sonicEyeHighLightPosition, 4 },
+        { s_sonicEyeHighLightPositionRaytracingSymbol, message.sonicEyeHighLightPosition, 4 },
         { s_sonicEyeHighLightColorSymbol, message.sonicEyeHighLightColor, 4 },
         { s_sonicSkinFalloffParamSymbol, message.sonicSkinFalloffParam, 4 },
         { s_chrEmissionParamSymbol, message.chrEmissionParam, 4 },
