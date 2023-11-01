@@ -117,6 +117,7 @@ cbuffer GlobalsRT : register(b2)
     float g_DiffusePower;
     float g_LightPower;
     float g_EmissivePower;
+    float g_SkyPower;
 }
 
 struct LocalLight

@@ -12,6 +12,7 @@ struct RaytracingParams
     static inline float s_diffusePower = 1.0f;
     static inline float s_lightPower = 1.0f;
     static inline float s_emissivePower = 1.0f;
+    static inline float s_skyPower = 1.0f;
 
     static inline uint32_t s_envMode;
     static inline Hedgehog::Math::CVector s_skyColor;

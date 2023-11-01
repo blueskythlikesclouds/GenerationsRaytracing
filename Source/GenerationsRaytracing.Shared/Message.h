@@ -363,6 +363,7 @@ struct MsgTraceRays
     float diffusePower;
     float lightPower;
     float emissivePower;
+    float skyPower;
     uint32_t debugView;
     uint32_t envMode;
     float skyColor[3];

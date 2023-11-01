@@ -233,6 +233,7 @@ static void __cdecl implOfSceneRender(void* a1)
         traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
         traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
         traceRaysMessage.emissivePower = RaytracingParams::s_emissivePower;
+        traceRaysMessage.skyPower = RaytracingParams::s_skyPower;
         traceRaysMessage.debugView = RaytracingParams::s_debugView;
         traceRaysMessage.envMode = RaytracingParams::s_envMode;
         memcpy(traceRaysMessage.skyColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.skyColor));

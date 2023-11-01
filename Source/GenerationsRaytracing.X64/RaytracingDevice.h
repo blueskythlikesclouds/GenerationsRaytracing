@@ -30,6 +30,7 @@ struct alignas(0x10) GlobalsRT
     float diffusePower;
     float lightPower;
     float emissivePower;
+    float skyPower;
 };
 
 struct DelayedTexture

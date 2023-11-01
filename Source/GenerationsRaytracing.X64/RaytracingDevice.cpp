@@ -231,6 +231,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     m_globalsRT.diffusePower = message.diffusePower;
     m_globalsRT.lightPower = message.lightPower;
     m_globalsRT.emissivePower = message.emissivePower;
+    m_globalsRT.skyPower = message.skyPower;
 
     const auto globalsRT = createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 

@@ -256,6 +256,7 @@ static void createParameterFile()
         giParam->CreateParamFloat(&RaytracingParams::s_diffusePower, "DiffusePower");
         giParam->CreateParamFloat(&RaytracingParams::s_lightPower, "LightPower");
         giParam->CreateParamFloat(&RaytracingParams::s_emissivePower, "EmissivePower");
+        giParam->CreateParamFloat(&RaytracingParams::s_skyPower, "SkyPower");
         paramGroup->Flush();
     }
 
