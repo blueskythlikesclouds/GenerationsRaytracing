@@ -91,6 +91,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\Dependencies\D3D12MemoryAllocator\src\D3D12MemAlloc.cpp" />
     <ClCompile Include="..\..\Dependencies\DDSTextureLoader\DDSTextureLoader12.cpp" />
+    <ClCompile Include="..\..\Dependencies\lz4\lib\lz4.c" />
     <ClCompile Include="..\..\Dependencies\xxHash\xxhash.c" />
   </ItemGroup>
   <ItemGroup>

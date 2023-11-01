@@ -51,14 +51,14 @@ struct MsgCreatePixelShader
     MSG_DEFINE_MESSAGE(MsgCreateVertexDeclaration);
     uint32_t pixelShaderId;
     uint32_t dataSize;
-    uint8_t data[1u];
+    alignas(0x10) uint8_t data[1u];
 };
 struct MsgCreateVertexShader
 {
     MSG_DEFINE_MESSAGE(MsgCreatePixelShader);
     uint32_t vertexShaderId;
     uint32_t dataSize;
-    uint8_t data[1u];
+    alignas(0x10) uint8_t data[1u];
 };
 
 struct MsgSetRenderState
@@ -504,6 +504,11 @@ struct MsgSetPixelShaderConstantB
     uint32_t startRegister;
     uint8_t dataSize;
     uint8_t data[1u];
+};
+
+struct MsgSaveShaderCache
+{
+    MSG_DEFINE_MESSAGE(MsgSetPixelShaderConstantB);
 };
 
 #pragma pack(pop)

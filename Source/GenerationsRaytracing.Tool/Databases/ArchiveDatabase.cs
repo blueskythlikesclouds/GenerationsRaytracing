@@ -1,6 +1,4 @@
-﻿using GenerationsRaytracing.Tool.IO.Extensions;
-
-namespace GenerationsRaytracing.Tool.Databases;
+﻿namespace GenerationsRaytracing.Tool.Databases;
 
 public enum ConflictPolicy
 {
@@ -186,30 +184,6 @@ public class ArchiveDatabase
         {
             if (databaseData.Name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
                 yield return databaseData;
-        }
-    }
-
-    public (DatabaseData DatabaseData, T Data) Get<T>(string name) where T : IBinarySerializable, new()
-    {
-        var databaseData = Get(name);
-        if (databaseData == null)
-            return (null, default);
-
-        var data = new T();
-        data.Load(databaseData.Data);
-        return (databaseData, data);
-    }
-
-    public IEnumerable<(DatabaseData DatabaseData, T Data)> GetMany<T>(string extension) where T : IBinarySerializable, new()
-    {
-        foreach (var databaseData in Contents)
-        {
-            if (!databaseData.Name.EndsWith(extension, StringComparison.OrdinalIgnoreCase)) 
-                continue;
-
-            var data = new T();
-            data.Load(databaseData.Data);
-            yield return (databaseData, data);
         }
     }
 

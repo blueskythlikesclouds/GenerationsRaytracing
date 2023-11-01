@@ -17,4 +17,5 @@ struct MaterialData
     static void createPendingMaterials();
 
     static void init();
+    static void postInit();
 };

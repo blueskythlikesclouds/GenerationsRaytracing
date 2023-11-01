@@ -129,6 +129,7 @@
     <ClCompile Include="RaytracingParams.cpp" />
     <ClCompile Include="RaytracingRendering.cpp" />
     <ClCompile Include="Resource.cpp" />
+    <ClCompile Include="ShaderCache.cpp" />
     <ClCompile Include="Sofdec.cpp" />
     <ClCompile Include="Surface.cpp" />
     <ClCompile Include="Texture.cpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="RaytracingParams.h" />
     <ClInclude Include="RaytracingRendering.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="ShaderCache.h" />
     <ClInclude Include="Sofdec.h" />
     <ClInclude Include="Surface.h" />
     <ClInclude Include="Texture.h" />

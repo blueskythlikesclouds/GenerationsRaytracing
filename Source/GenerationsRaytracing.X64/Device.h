@@ -7,6 +7,7 @@
 #include "Event.h"
 #include "MessageReceiver.h"
 #include "PixelShader.h"
+#include "ShaderCache.h"
 #include "SwapChain.h"
 #include "Texture.h"
 #include "UploadBuffer.h"
@@ -80,6 +81,7 @@ protected:
     std::vector<VertexDeclaration> m_vertexDeclarations;
     std::vector<PixelShader> m_pixelShaders;
     std::vector<VertexShader> m_vertexShaders;
+    std::unique_ptr<ShaderCache> m_shaderCache{ new ShaderCache() };
     xxHashMap<uint32_t> m_samplers;
     std::vector<Buffer> m_vertexBuffers;
     std::vector<Buffer> m_indexBuffers;
@@ -184,6 +186,7 @@ protected:
     void procMsgDrawPrimitive();
     void procMsgCopyVertexBuffer();
     void procMsgSetPixelShaderConstantB();
+    void procMsgSaveShaderCache();
 
     void processMessages();
     virtual bool processRaytracingMessage() = 0;

@@ -286,11 +286,15 @@ void MaterialData::init()
     INSTALL_HOOK(MaterialDataConstructor);
     INSTALL_HOOK(MaterialDataDestructor);
 
+    INSTALL_HOOK(SampleTexcoordAnimation);
+    INSTALL_HOOK(SampleMaterialAnimation);
+}
+
+void MaterialData::postInit()
+{
+    // Better FxPipeline overrides those addresses, patch in PostInit to ensure priority
     WRITE_JUMP(0x74170C, materialDataSetMadeOne);
     WRITE_JUMP(0x741E00, materialDataSetMadeOne);
     WRITE_JUMP(0x7424DD, materialDataSetMadeOne);
     WRITE_JUMP(0x742BED, materialDataSetMadeOne);
-
-    INSTALL_HOOK(SampleTexcoordAnimation);
-    INSTALL_HOOK(SampleMaterialAnimation);
 }

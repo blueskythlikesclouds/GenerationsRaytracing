@@ -10,6 +10,7 @@
 #include "ProcessUtil.h"
 #include "RaytracingRendering.h"
 #include "InstanceData.h"
+#include "ShaderCache.h"
 #include "Sofdec.h"
 #include "TriangleFan.h"
 #include "TriangleStrip.h"
@@ -50,6 +51,7 @@ extern "C" void __declspec(dllexport) Init()
     RaytracingRendering::init();
     MaterialData::init();
     Sofdec::init();
+    ShaderCache::init();
 
 #ifdef _DEBUG
 #if 0
@@ -107,4 +109,9 @@ extern "C" void __declspec(dllexport) Init()
         setShouldExit();
         CloseHandle(processHandle);
     });
+}
+
+extern "C" void __declspec(dllexport) PostInit()
+{
+    MaterialData::postInit();
 }

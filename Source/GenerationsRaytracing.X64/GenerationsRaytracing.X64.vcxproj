@@ -59,7 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.3_DLSS_3.5.10_Plugin_2023.10.17\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.3_DLSS_3.5.10_Plugin_2023.10.17\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\lz4\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
@@ -88,7 +88,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.3_DLSS_3.5.10_Plugin_2023.10.17\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.3_DLSS_3.5.10_Plugin_2023.10.17\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\lz4\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
@@ -156,6 +156,8 @@
     <ClCompile Include="PIXEvent.cpp" />
     <ClCompile Include="RaytracingDevice.cpp" />
     <ClCompile Include="RootSignature.cpp" />
+    <ClCompile Include="ShaderCache.cpp" />
+    <ClCompile Include="ShaderConverter.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="DxgiConverter.cpp" />
     <ClCompile Include="Upscaler.cpp" />
@@ -183,6 +185,8 @@
     <ClInclude Include="RaytracingDevice.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="RootSignature.h" />
+    <ClInclude Include="ShaderCache.h" />
+    <ClInclude Include="ShaderConverter.h" />
     <ClInclude Include="SwapChain.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="DxgiConverter.h" />

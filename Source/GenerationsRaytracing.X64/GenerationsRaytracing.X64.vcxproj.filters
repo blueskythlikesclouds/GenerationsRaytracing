@@ -51,6 +51,12 @@
     <ClCompile Include="FSR2.cpp">
       <Filter>Upscaler</Filter>
     </ClCompile>
+    <ClCompile Include="ShaderCache.cpp">
+      <Filter>Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderConverter.cpp">
+      <Filter>Cache</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -70,6 +76,9 @@
     </Filter>
     <Filter Include="Upscaler">
       <UniqueIdentifier>{f5e3711a-1e56-4981-863d-258bba94bd6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Cache">
+      <UniqueIdentifier>{6b29ae4c-cf09-46c3-82a9-69b14b5b8efb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -158,6 +167,12 @@
     </ClInclude>
     <ClInclude Include="FSR2.h">
       <Filter>Upscaler</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderCache.h">
+      <Filter>Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderConverter.h">
+      <Filter>Cache</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

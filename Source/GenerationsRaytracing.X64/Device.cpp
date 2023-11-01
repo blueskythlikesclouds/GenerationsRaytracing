@@ -524,11 +524,7 @@ void Device::procMsgCreatePixelShader()
         m_pixelShaders.resize(message.pixelShaderId + 1);
 
     auto& pixelShader = m_pixelShaders[message.pixelShaderId];
-
-    pixelShader.byteCode = std::make_unique<uint8_t[]>(message.dataSize);
-    pixelShader.byteSize = message.dataSize;
-
-    memcpy(pixelShader.byteCode.get(), message.data, message.dataSize);
+    pixelShader.byteCode = m_shaderCache->getShader(message.data, message.dataSize, pixelShader.byteSize);
 }
 
 void Device::procMsgCreateVertexShader()
@@ -539,11 +535,7 @@ void Device::procMsgCreateVertexShader()
         m_vertexShaders.resize(message.vertexShaderId + 1);
 
     auto& vertexShader = m_vertexShaders[message.vertexShaderId];
-
-    vertexShader.byteCode = std::make_unique<uint8_t[]>(message.dataSize);
-    vertexShader.byteSize = message.dataSize;
-
-    memcpy(vertexShader.byteCode.get(), message.data, message.dataSize);
+    vertexShader.byteCode = m_shaderCache->getShader(message.data, message.dataSize, vertexShader.byteSize);
 }
 
 static constexpr size_t GLOBALS_VS_UNUSED_CONSTANT = 196;
@@ -1581,6 +1573,17 @@ void Device::procMsgSetPixelShaderConstantB()
     booleans |= value;
 }
 
+void Device::procMsgSaveShaderCache()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgSaveShaderCache>();
+
+    if (m_shaderCache != nullptr)
+    {
+        m_shaderCache->saveShaderCache();
+        m_shaderCache = nullptr;
+    }
+}
+
 Device::Device()
 {
     HRESULT hr;
@@ -1782,6 +1785,7 @@ void Device::processMessages()
         case MsgDrawPrimitive::s_id: procMsgDrawPrimitive(); break;
         case MsgCopyVertexBuffer::s_id: procMsgCopyVertexBuffer(); break;
         case MsgSetPixelShaderConstantB::s_id: procMsgSetPixelShaderConstantB(); break;
+        case MsgSaveShaderCache::s_id: procMsgSaveShaderCache(); break;
 
         }
     }

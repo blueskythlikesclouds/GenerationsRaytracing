@@ -1,8 +1,8 @@
-﻿using GenerationsRaytracing.Tool.Shaders.Constants;
-using GenerationsRaytracing.Tool.Shaders.Instructions;
-using Vortice.Dxc;
+﻿using GenerationsRaytracing.ShaderConverter.Constants;
+using GenerationsRaytracing.ShaderConverter.Instructions;
+using SharpGen.Runtime;
 
-namespace GenerationsRaytracing.Tool.Shaders;
+namespace GenerationsRaytracing.ShaderConverter;
 
 public class ShaderConverter
 {
@@ -33,36 +33,32 @@ public class ShaderConverter
         return hash;
     }
 
-    public static unsafe bool IsCsdShader(void* function, int functionSize)
+    public static unsafe bool IsCsdShader(void* data, int dataSize)
     {
         uint hash;
 
-        return (functionSize == 544 || functionSize == 508 || functionSize == 712 || functionSize == 676) &&
-               ((hash = GetHashCode(function, functionSize)) == 1675967623u || hash == 1353058734u ||
+        return (dataSize == 544 || dataSize == 508 || dataSize == 712 || dataSize == 676) &&
+               ((hash = GetHashCode(data, dataSize)) == 1675967623u || hash == 1353058734u ||
                 hash == 2754048365u || hash == 4044681422u || hash == 3025790305u || hash == 2388726924u ||
                 hash == 602606931u || hash == 781526840u);
     }
 
-    public static unsafe string Convert(byte[] function, out bool isPixelShader)
+    public static unsafe string Convert(byte[] data, out bool isPixelShader)
     {
-        fixed (byte* ptr = function)
-            return Convert(ptr, function.Length, out isPixelShader);
+        fixed (byte* ptr = data)
+            return Convert(ptr, data.Length, out isPixelShader);
     }
 
-    public static unsafe byte[] Convert(byte[] function)
+    public static unsafe byte[] Convert(byte[] data)
     {
-        fixed (byte* ptr = function)
-            return Convert(ptr, function.Length);
+        fixed (byte* ptr = data)
+            return Convert(ptr, data.Length);
     }
 
-    public static unsafe string Convert(void* function, int functionSize, out bool isPixelShader)
+    public static unsafe string Convert(void* data, int dataSize, out bool isPixelShader)
     {
-        string disassembly;
-        {
-            ID3DBlob blob;
-            Disassembler.Disassemble(function, functionSize, 0x50, null, out blob);
-            disassembly = Marshal.PtrToStringAnsi(blob.GetBufferPointer());
-        }
+	    string disassembly = Compiler.Disassemble(new IntPtr(data), new PointerSize(dataSize),
+		    DisasmFlags.DisableDebugInfo | DisasmFlags.InstructionOnly, null).AsString();
 
         int i;
 
@@ -178,7 +174,7 @@ public class ShaderConverter
                 instructions.Add(new Instruction(lines[i]));
         }
 
-        var constants = ConstantParser.Parse(function, functionSize);
+        var constants = ConstantParser.Parse(data, dataSize);
 
         // Auto-populate a constant table if nothing was found in the file.
         if (constants == null)
@@ -437,7 +433,7 @@ public class ShaderConverter
         }
 
         // Prevent half-pixel correction in CSD shaders
-        else if (IsCsdShader(function, functionSize))
+        else if (IsCsdShader(data, dataSize))
             stringBuilder.AppendLine("\to0.xy += float2(g_ViewportSize.z, -g_ViewportSize.w) * o0.w;");
 
         stringBuilder.AppendLine("}");
@@ -445,14 +441,14 @@ public class ShaderConverter
         return stringBuilder.ToString();
     }
 
-    public static unsafe byte[] Convert(void* function, int functionSize)
+    public static unsafe byte[] Convert(void* data, int dataSize)
     {
-        return Compile(Convert(function, functionSize, out bool isPixelShader), isPixelShader);
+        return Compile(Convert(data, dataSize, out bool isPixelShader), isPixelShader);
     }
 
-    public static byte[] Compile(string translated, bool isPixelShader)
+    public static byte[] Compile(string convertedShader, bool isPixelShader)
     {
-        var result = DxcCompiler.Compile(translated, new[] { isPixelShader ? "-T ps_6_6" : "-T vs_6_6" });
+        var result = DxcCompiler.Compile(convertedShader, new[] { isPixelShader ? "-T ps_6_6" : "-T vs_6_6" });
 
         return result.GetObjectBytecode().IsEmpty
             ? throw new Exception(result.GetErrors())

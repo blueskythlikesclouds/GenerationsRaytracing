@@ -1,4 +1,4 @@
-﻿namespace GenerationsRaytracing.Tool.Shaders.Constants;
+﻿namespace GenerationsRaytracing.ShaderConverter.Constants;
 
 public enum ConstantType
 {

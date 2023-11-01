@@ -2,7 +2,7 @@
   "profiles": {
     "GenerationsRaytracing.Tool": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sonic Generations\\disk\\bb3\" \"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sonic Generations\\mods\\GenerationsRaytracing\\disk\\bb3\""
+      "commandLineArgs": "\"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sonic Generations\\disk\\bb3\" \"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sonic Generations\\mods\\GenerationsRaytracing\""
     }
   }
 }

@@ -10,6 +10,9 @@
     <Filter Include="DDSTextureLoader">
       <UniqueIdentifier>{8ca3a346-34ea-493a-b915-b387fddd2f4d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lz4">
+      <UniqueIdentifier>{9577c6f3-5790-44e6-a351-fbccd9296f63}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Dependencies\D3D12MemoryAllocator\src\D3D12MemAlloc.cpp">
@@ -20,6 +23,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Dependencies\DDSTextureLoader\DDSTextureLoader12.cpp">
       <Filter>DDSTextureLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Dependencies\lz4\lib\lz4.c">
+      <Filter>lz4</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

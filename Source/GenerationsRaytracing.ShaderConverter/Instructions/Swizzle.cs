@@ -1,4 +1,4 @@
-﻿namespace GenerationsRaytracing.Tool.Shaders.Instructions;
+﻿namespace GenerationsRaytracing.ShaderConverter.Instructions;
 
 public enum Swizzle
 {

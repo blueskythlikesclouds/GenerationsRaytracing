@@ -26,3 +26,4 @@ using Microsoft::WRL::ComPtr;
 #include <xxhash.h>
 #include <ankerl/unordered_dense.h>
 #include <dx12/ffx_fsr2_dx12.h>
+#include <lz4.h>

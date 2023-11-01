@@ -19,3 +19,6 @@
 [submodule "Dependencies/self-intersection-avoidance"]
 	path = Dependencies/self-intersection-avoidance
 	url = https://github.com/NVIDIA/self-intersection-avoidance.git
+[submodule "Dependencies/lz4"]
+	path = Dependencies/lz4
+	url = https://github.com/lz4/lz4.git
