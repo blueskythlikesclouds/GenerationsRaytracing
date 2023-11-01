@@ -308,6 +308,20 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_FADE_OUT_NORMAL:
+            {
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb;
+                gBufferData.Alpha *= diffuse.a;
+
+                float3 normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+                gBufferData.Normal = normalize(lerp(normal, gBufferData.Normal, vertex.Color.x));
+
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                break;
+            }
+
         case SHADER_TYPE_FALLOFF:
             {
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
