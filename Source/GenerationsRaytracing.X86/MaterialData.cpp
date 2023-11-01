@@ -49,10 +49,16 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     message.shaderType = SHADER_TYPE_COMMON;
     message.flags = materialDataEx.m_Additive ? MATERIAL_FLAG_ADDITIVE : NULL;
 
+    bool hasOpacityTexture = false;
+
     if (materialDataEx.m_spShaderListData != nullptr)
     {
         const auto shaderName = materialDataEx.m_spShaderListData->m_TypeAndName.c_str()
             + sizeof("Mirage.shader-list");
+
+        const char* underscore = strstr(shaderName, "_");
+        if (underscore != nullptr)
+            hasOpacityTexture = strstr(underscore + 1, "a") != nullptr;
 
         for (const auto& [name, type] : s_shaderTypes)
         {
@@ -124,8 +130,8 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                             }
 
                             // Skip materials that assign the diffuse texture as opacity
-                            if (srcTexture->m_Type == s_opacitySymbol &&
-                                srcTexture->m_spPictureData->m_pD3DTexture == textureDescs[0].dxpTexture)
+                            if (srcTexture->m_Type == s_opacitySymbol && (!hasOpacityTexture ||
+                                srcTexture->m_spPictureData->m_pD3DTexture == textureDescs[0].dxpTexture))
                             {
                                 continue;
                             }
