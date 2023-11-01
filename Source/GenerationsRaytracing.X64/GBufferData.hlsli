@@ -312,6 +312,34 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_ENM_IGNORE:
+            {
+                gBufferData.Flags = GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT;
+
+                if (material.DiffuseTexture != 0)
+                {
+                    float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                    gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                    gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+                }
+
+                if (material.SpecularTexture != 0)
+                {
+                    float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
+                    gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
+                }
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                gBufferData.Emission = material.ChrEmissionParam.rgb;
+
+                if (material.DisplacementTexture != 0)
+                    gBufferData.Emission += SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb;
+
+                gBufferData.Emission *= material.Ambient.rgb * material.ChrEmissionParam.w * vertex.Color.rgb;
+
+                break;
+            }
+
         case SHADER_TYPE_FADE_OUT_NORMAL:
             {
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
