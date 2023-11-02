@@ -199,7 +199,7 @@ void ReflectionRayGeneration()
         float pdf;
 
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
-        if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
+        if (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION))
         {
             rayDirection = reflect(-eyeDirection, gBufferData.Normal);
             pdf = 1.0;

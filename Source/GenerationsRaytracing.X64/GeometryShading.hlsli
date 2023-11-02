@@ -112,7 +112,13 @@ float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
 float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 {
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
-        reflection *= min(1.0, gBufferData.Specular * gBufferData.SpecularLevel / PI);
+    {
+        float3 specular = gBufferData.Specular;
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IS_GLASS_REFLECTION))
+            specular = min(1.0, specular * gBufferData.SpecularLevel / PI);
+
+        reflection *= specular;
+    }
 
     return reflection * gBufferData.SpecularFresnel;
 }
