@@ -243,6 +243,34 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_CHR_SKIN_IGNORE:
+            {
+                gBufferData.Flags = GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
+                gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
+
+                gBufferData.Emission = material.ChrEmissionParam.rgb;
+
+                if (material.DisplacementTexture != 0)
+                    gBufferData.Emission += SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb;
+
+                gBufferData.Emission *= material.Ambient.rgb * material.ChrEmissionParam.w * vertex.Color.rgb;
+
+                float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture, mul(float4(vertex.Normal, 0.0), g_MtxView).xy * float2(0.5, -0.5) + 0.5);
+                gBufferData.Diffuse *= reflection.rgb;
+                gBufferData.Emission += gBufferData.Diffuse;
+
+                break;
+            }
+
 #ifdef ENABLE_SYS_ERROR_FALLBACK
         default:
 #endif
