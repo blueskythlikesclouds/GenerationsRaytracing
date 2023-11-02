@@ -429,7 +429,10 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
             }
 
         case SHADER_TYPE_ENM_GLASS:
+        case SHADER_TYPE_FAKE_GLASS:
             {
+                gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
+
                 float4 diffuse = 0.0;
 
                 if (material.DiffuseTexture != 0)
