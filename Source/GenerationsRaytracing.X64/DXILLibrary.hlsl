@@ -247,7 +247,7 @@ void RefractionRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 refraction = 0.0;
-    if (gBufferData.Flags & GBUFFER_FLAG_HAS_REFRACTION)
+    if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY))
     {
         refraction = TraceRefraction(0, 
             gBufferData.SafeSpawnPoint, 
@@ -312,7 +312,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         eyeLighting = ComputeEyeLighting(gBufferData, WorldRayOrigin(), -WorldRayDirection());
 
     int2 pixelPosition = round(ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection));
-    float depth = ComputeDepth(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection);
+    float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxPrevView).xyz;
     float3 normal = g_PrevNormalTexture[pixelPosition].xyz;
 
     float3 localLighting = 0.0;
@@ -320,7 +320,8 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     bool traceGlobalIllumination = false;
 
     if (g_CurrentFrame > 0 && all(and(pixelPosition >= 0, pixelPosition < g_InternalResolution)) &&
-        abs(g_PrevDepthTexture[pixelPosition] - depth) <= 0.05 && dot(gBufferData.Normal, normal) >= 0.9063)
+        all(abs(g_PrevPositionFlagsTexture[pixelPosition].xyz - gBufferData.Position) <= 0.002 * -viewPosition.z) &&
+        dot(gBufferData.Normal, normal) >= 0.9063)
     {
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
         {

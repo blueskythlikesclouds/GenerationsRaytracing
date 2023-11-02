@@ -16,15 +16,14 @@
 #define GBUFFER_FLAG_IGNORE_LOCAL_LIGHT         (1 << 6)
 #define GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION (1 << 7)
 #define GBUFFER_FLAG_IGNORE_REFLECTION          (1 << 8)
-#define GBUFFER_FLAG_HAS_REFRACTION             (1 << 9)
-#define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 10)
-#define GBUFFER_FLAG_HALF_LAMBERT               (1 << 11)
-#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 12)
-#define GBUFFER_FLAG_IS_GLASS_REFLECTION        (1 << 13)
-#define GBUFFER_FLAG_IS_WATER                   (1 << 14)
-#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 15)
-#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 16)
-#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 17)
+#define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 9)
+#define GBUFFER_FLAG_HALF_LAMBERT               (1 << 10)
+#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 11)
+#define GBUFFER_FLAG_IS_GLASS_REFLECTION        (1 << 12)
+#define GBUFFER_FLAG_IS_WATER                   (1 << 13)
+#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 14)
+#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 15)
+#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 16)
 
 struct GBufferData
 {
@@ -107,7 +106,7 @@ float2 ComputeEnvMapTexCoord(float3 eyeDirection, float3 normal)
 void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags = GBUFFER_FLAG_IGNORE_EYE_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT | 
-        GBUFFER_FLAG_HAS_REFRACTION | GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_WATER;
+        GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_WATER;
 
     float2 offset = material.WaterParam.xy * g_TimeParam.y * 0.08;
     
@@ -356,6 +355,44 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_DISTORTION:
+            {
+                gBufferData.Flags = GBUFFER_FLAG_REFRACTION_ADD;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
+                gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
+
+                gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                if (material.NormalTexture2 != 0)
+                    gBufferData.Normal = NormalizeSafe(gBufferData.Normal + DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex.TexCoords)));
+
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                break;
+            }
+
+        case SHADER_TYPE_DISTORTION_OVERLAY:
+            {
+                gBufferData.Flags =
+                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_EYE_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
+                    GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IGNORE_REFLECTION | GBUFFER_FLAG_REFRACTION_MUL;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                if (material.NormalTexture2 != 0)
+                    gBufferData.Normal = NormalizeSafe(gBufferData.Normal + DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex.TexCoords)));
+
+                break;
+            }
+
         case SHADER_TYPE_ENM_EMISSION:
             {
                 gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
@@ -423,7 +460,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Alpha *= diffuse.a;
 
                 float3 normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
-                gBufferData.Normal = normalize(lerp(normal, gBufferData.Normal, vertex.Color.x));
+                gBufferData.Normal = NormalizeSafe(lerp(normal, gBufferData.Normal, vertex.Color.x));
 
                 gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 

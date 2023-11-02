@@ -92,7 +92,6 @@ protected:
 
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
-    ComPtr<D3D12MA::Allocation> m_prevDepthTexture;
     ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
 
     ComPtr<D3D12MA::Allocation> m_positionFlagsTexture;
@@ -121,7 +120,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_specularRayDirectionHitDistanceTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
-    uint32_t m_srvIds[NUM_FRAMES]{};
+    uint32_t m_srvId{};
 
     // Resolve
     ComPtr<ID3D12PipelineState> m_resolvePipeline;

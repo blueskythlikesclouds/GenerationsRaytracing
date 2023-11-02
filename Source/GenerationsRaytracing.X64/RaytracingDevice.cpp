@@ -289,8 +289,7 @@ void RaytracingDevice::createRaytracingTextures()
     const textureDescs[] =
     {
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture },
-        { DXGI_FORMAT_R32_FLOAT, m_depthTexture, &m_prevDepthTexture },
-        { DXGI_FORMAT_R32_FLOAT, m_prevDepthTexture, &m_depthTexture },
+        { DXGI_FORMAT_R32_FLOAT, m_depthTexture },
         { DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionFlagsTexture, &m_prevPositionFlagsTexture },
@@ -377,19 +376,14 @@ void RaytracingDevice::createRaytracingTextures()
     assert(SUCCEEDED(hr) && m_outputTexture != nullptr);
 
     // Create descriptor heap for copy texture shader
-    for (size_t i = 0; i < NUM_FRAMES; i++)
-    {
-        auto& srvId = m_srvIds[i];
+    if (m_srvId == NULL)
+        m_srvId = m_descriptorHeap.allocateMany(2);
 
-        if (srvId == NULL)
-            srvId = m_descriptorHeap.allocateMany(2);
+    auto cpuHandle = m_descriptorHeap.getCpuHandle(m_srvId);
+    m_device->CreateShaderResourceView(m_outputTexture->GetResource(), nullptr, cpuHandle);
 
-        auto cpuHandle = m_descriptorHeap.getCpuHandle(srvId);
-        m_device->CreateShaderResourceView(m_outputTexture->GetResource(), nullptr, cpuHandle);
-
-        cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
-        m_device->CreateShaderResourceView((i & 1 ? m_prevDepthTexture : m_depthTexture)->GetResource(), nullptr, cpuHandle);
-    }
+    cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
+    m_device->CreateShaderResourceView(m_depthTexture->GetResource(), nullptr, cpuHandle);
 }
 
 void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32_t debugView)
@@ -441,7 +435,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
     getGraphicsCommandList().transitionBarrier(colorTexture,
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().transitionBarrier((m_frame & 1 ? m_prevDepthTexture : m_depthTexture)->GetResource(),
+    getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     getGraphicsCommandList().transitionBarrier(m_diffuseRayDirectionHitDistanceTexture->GetResource(),
@@ -480,7 +474,7 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil()
 
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvIds[m_frame]));
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvId));
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipeline.Get());
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
@@ -1163,7 +1157,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 25, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 24, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
