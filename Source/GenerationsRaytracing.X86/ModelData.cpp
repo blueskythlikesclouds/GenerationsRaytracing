@@ -140,7 +140,7 @@ static void traverseMeshGroup(const hh::vector<boost::shared_ptr<Hedgehog::Mirag
     {
         const auto& meshDataEx = *reinterpret_cast<const MeshDataEx*>(meshData.get());
 
-        if (meshDataEx.m_indexCount > 2 && meshDataEx.m_VertexNum > 2 &&
+        if (meshDataEx.m_spMaterial != nullptr && meshDataEx.m_indexCount > 2 && meshDataEx.m_VertexNum > 2 &&
             meshDataEx.m_indices != nullptr && meshDataEx.m_pD3DVertexBuffer != nullptr)
         {
             function(meshDataEx, flags);
@@ -631,10 +631,10 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
 
     auto geometryDesc = reinterpret_cast<MsgRenderSky::GeometryDesc*>(message.data);
 
-    const Hedgehog::Base::CStringSymbol diffuseSymbol("diffuse");
-    const Hedgehog::Base::CStringSymbol opacitySymbol("opacity");
-    const Hedgehog::Base::CStringSymbol displacementSymbol("displacement");
-    const Hedgehog::Base::CStringSymbol ambientSymbol("ambient");
+    static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
+    static Hedgehog::Base::CStringSymbol s_opacitySymbol("opacity");
+    static Hedgehog::Base::CStringSymbol s_displacementSymbol("displacement");
+    static Hedgehog::Base::CStringSymbol s_ambientSymbol("ambient");
 
     DX_PATCH::IDirect3DBaseTexture9* diffuseTexture = nullptr;
 
@@ -662,19 +662,19 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
     
                 MsgCreateMaterial::Texture* textureDesc = nullptr;
     
-                if (texture->m_Type == diffuseSymbol)
+                if (texture->m_Type == s_diffuseSymbol)
                 {
                     textureDesc = &geometryDesc->diffuseTexture;
                     diffuseTexture = texture->m_spPictureData->m_pD3DTexture;
                 }
-                else if (texture->m_Type == opacitySymbol)
+                else if (texture->m_Type == s_opacitySymbol)
                 {
                     if (diffuseTexture == texture->m_spPictureData->m_pD3DTexture)
                         continue;
 
                     textureDesc = &geometryDesc->alphaTexture;
                 }
-                else if (texture->m_Type == displacementSymbol)
+                else if (texture->m_Type == s_displacementSymbol)
                 {
                     textureDesc = &geometryDesc->emissionTexture;
                 }
@@ -690,7 +690,7 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
 
             for (const auto& float4Param : meshDataEx.m_spMaterial->m_Float4Params)
             {
-                if (float4Param->m_Name == ambientSymbol)
+                if (float4Param->m_Name == s_ambientSymbol)
                     memcpy(geometryDesc->ambient, float4Param->m_spValue.get(), sizeof(geometryDesc->ambient));
             }
         }
