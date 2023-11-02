@@ -330,6 +330,32 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_DIM:
+            {
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                if (material.GlossTexture != 0)
+                {
+                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularLevel *= gloss;
+                }
+
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                float3 viewNormal = mul(float4(vertex.Normal, 0.0), g_MtxView).xyz;
+
+                gBufferData.Emission = material.Ambient.rgb * vertex.Color.rgb * 
+                    SampleMaterialTexture2D(material.ReflectionTexture, viewNormal.xy * float2(0.5, -0.5) + 0.5).rgb;
+
+                break;
+            }
+
         case SHADER_TYPE_ENM_EMISSION:
             {
                 gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
