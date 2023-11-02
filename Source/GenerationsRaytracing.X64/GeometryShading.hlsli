@@ -31,7 +31,15 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
         transColor *= saturate(-cosTheta);
 
         if (gBufferData.Flags & GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT)
+        {
             cosTheta = (cosTheta - 0.05) / (1.0 - 0.05);
+        }
+
+        else if (gBufferData.Flags & GBUFFER_FLAG_HALF_LAMBERT)
+        {
+            cosTheta = cosTheta * 0.5 + 0.5;
+            cosTheta *= cosTheta;
+        }
 
         diffuseColor *= saturate(cosTheta);
     }

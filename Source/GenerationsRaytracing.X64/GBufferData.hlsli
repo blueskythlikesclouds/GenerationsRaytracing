@@ -18,11 +18,12 @@
 #define GBUFFER_FLAG_IGNORE_REFLECTION          (1 << 8)
 #define GBUFFER_FLAG_HAS_REFRACTION             (1 << 9)
 #define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 10)
-#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 11)
-#define GBUFFER_FLAG_IS_WATER                   (1 << 12)
-#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 13)
-#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 14)
-#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 15)
+#define GBUFFER_FLAG_HALF_LAMBERT               (1 << 11)
+#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 12)
+#define GBUFFER_FLAG_IS_WATER                   (1 << 13)
+#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 14)
+#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 15)
+#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 16)
 
 struct GBufferData
 {
@@ -239,6 +240,26 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
                 if (material.DisplacementTexture != 0)
                     gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb;
+
+                break;
+            }
+
+        case SHADER_TYPE_CHR_SKIN_HALF:
+            {
+                gBufferData.Flags = GBUFFER_FLAG_HALF_LAMBERT;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
+                gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
+
+                gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
+
+                float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture, mul(float4(vertex.Normal, 0.0), g_MtxView).xy * float2(0.5, -0.5) + 0.5);
+                gBufferData.Diffuse *= reflection.rgb;
 
                 break;
             }
