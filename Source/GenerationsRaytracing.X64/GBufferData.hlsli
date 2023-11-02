@@ -234,7 +234,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.NormalTexture != 0)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
 
-                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
 
                 gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
                 if (material.DisplacementTexture != 0)
@@ -253,7 +253,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
 
                 float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
                 gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
-                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
 
                 gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
 
@@ -323,7 +323,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 {
                     float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
                     gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
-                    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+                    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
                 }
                 else
                 {
@@ -356,7 +356,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                     float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
                     gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
                 }
-                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
 
                 gBufferData.Emission = material.ChrEmissionParam.rgb;
 
