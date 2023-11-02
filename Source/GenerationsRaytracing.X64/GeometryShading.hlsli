@@ -115,7 +115,7 @@ float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
     {
         float3 specular = gBufferData.Specular;
         if (!(gBufferData.Flags & GBUFFER_FLAG_IS_GLASS_REFLECTION))
-            specular = min(1.0, specular * gBufferData.SpecularLevel / PI);
+            specular = min(1.0, specular * gBufferData.SpecularLevel * 0.5);
 
         reflection *= specular;
     }

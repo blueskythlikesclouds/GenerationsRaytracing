@@ -75,8 +75,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         if (all(and(!isnan(lightScattering), !isinf(lightScattering))))
             color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
 
-        diffuseAlbedo = ComputeGI(gBufferData, 1.0);
-        specularAlbedo = ComputeReflection(gBufferData, 1.0);
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
+            diffuseAlbedo = ComputeGI(gBufferData, 1.0);
+
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
+            specularAlbedo = ComputeReflection(gBufferData, 1.0);
     }
     else
     {

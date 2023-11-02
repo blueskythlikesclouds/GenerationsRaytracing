@@ -295,6 +295,24 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_CLOUD:
+        case SHADER_TYPE_ENM_CLOUD:
+            {
+                gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
+
+                gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
+
+                gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
+                gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex.TexCoords).rgb;
+
+                float3 viewNormal = mul(float4(vertex.Normal, 0.0), g_MtxView).xyz;
+                float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture, viewNormal.xy * float2(0.5, -0.5) + 0.5);
+                gBufferData.Alpha *= reflection.a * vertex.Color.a;
+
+                break;
+            }
+
 #ifdef ENABLE_SYS_ERROR_FALLBACK
         default:
 #endif
