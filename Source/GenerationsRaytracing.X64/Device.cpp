@@ -1349,7 +1349,8 @@ void Device::procMsgMakeTexture()
         nullptr,
         &isCubeMap);
 
-    assert(SUCCEEDED(hr) && texture.allocation != nullptr);
+    if (FAILED(hr) || texture.allocation == nullptr)
+        return;
 
     auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
 
