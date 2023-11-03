@@ -1,52 +1,48 @@
 #ifndef RESERVOIR_H
 #define RESERVOIR_H
 
-template<typename T>
 struct Reservoir
 {
-    T Sample;
-    float WeightSum;
-    uint SampleCount;
-    float Weight;
+    uint Y;
+    float WSum;
+    uint M;
+    float W;
 };
 
-template<typename T>
-void UpdateReservoir(inout Reservoir<T> reservoir, T sample, float weight, float random)
+void UpdateReservoir(inout Reservoir reservoir, uint sample, float weight, float random)
 {
-    reservoir.WeightSum += weight;
-    reservoir.SampleCount += 1;
+    reservoir.WSum += weight;
+    reservoir.M += 1;
 
-    if (random * reservoir.WeightSum < weight)
-        reservoir.Sample = sample;
+    if (random * reservoir.WSum < weight)
+        reservoir.Y = sample;
 }
 
-template<typename T>
-void ComputeReservoirWeight(inout Reservoir<T> reservoir, float weight)
+void ComputeReservoirWeight(inout Reservoir reservoir, float weight)
 {
-    if (reservoir.SampleCount > 0 && weight > 0.0)
-        reservoir.Weight = reservoir.WeightSum * (1.0 / reservoir.SampleCount) * (1.0 / weight);
-    else
-        reservoir.Weight = 0.0;
+    float denominator = reservoir.M * weight;
+    if (denominator > 0.0)
+        reservoir.W = reservoir.WSum / denominator;
 }
 
-Reservoir<uint> LoadDIReservoir(float4 value)
+Reservoir LoadReservoir(float4 value)
 {
-    Reservoir<uint> reservoir;
-    reservoir.Sample = asuint(value.x);
-    reservoir.WeightSum = value.y;
-    reservoir.SampleCount = asuint(value.z);
-    reservoir.Weight = value.w;
+    Reservoir reservoir;
+    reservoir.Y = asuint(value.x);
+    reservoir.WSum = value.y;
+    reservoir.M = asuint(value.z);
+    reservoir.W = value.w;
 
     return reservoir;
 }
 
-float4 StoreDIReservoir(Reservoir<uint> reservoir)
+float4 StoreReservoir(Reservoir reservoir)
 {
     float4 value;
-    value.x = asfloat(reservoir.Sample);
-    value.y = reservoir.WeightSum;
-    value.z = asfloat(reservoir.SampleCount);
-    value.w = reservoir.Weight;
+    value.x = asfloat(reservoir.Y);
+    value.y = reservoir.WSum;
+    value.z = asfloat(reservoir.M);
+    value.w = reservoir.W;
 
     return value;
 }

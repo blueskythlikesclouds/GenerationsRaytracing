@@ -97,7 +97,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_positionFlagsTexture;
     ComPtr<D3D12MA::Allocation> m_prevPositionFlagsTexture;
     ComPtr<D3D12MA::Allocation> m_safeSpawnPointTexture;
-    ComPtr<D3D12MA::Allocation> m_diffuseTexture;
+    ComPtr<D3D12MA::Allocation> m_diffuseRefractionAlphaTexture;
     ComPtr<D3D12MA::Allocation> m_specularTexture;
     ComPtr<D3D12MA::Allocation> m_specularPowerLevelFresnelTexture;
     ComPtr<D3D12MA::Allocation> m_normalTexture;
@@ -107,8 +107,8 @@ protected:
     ComPtr<D3D12MA::Allocation> m_transColorTexture;
 
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
-    ComPtr<D3D12MA::Allocation> m_diReservoirTexture;
-    ComPtr<D3D12MA::Allocation> m_prevDIReservoirTexture;
+    ComPtr<D3D12MA::Allocation> m_reservoirTexture;
+    ComPtr<D3D12MA::Allocation> m_prevReservoirTexture;
 
     ComPtr<D3D12MA::Allocation> m_giTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;

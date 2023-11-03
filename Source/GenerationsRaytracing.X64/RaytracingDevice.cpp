@@ -295,7 +295,7 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionFlagsTexture, &m_prevPositionFlagsTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevPositionFlagsTexture, &m_positionFlagsTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_safeSpawnPointTexture },
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseRefractionAlphaTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularPowerLevelFresnelTexture },
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_normalTexture, &m_prevNormalTexture },
@@ -306,8 +306,8 @@ void RaytracingDevice::createRaytracingTextures()
 
         { DXGI_FORMAT_R16_UNORM, m_shadowTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_diReservoirTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevDIReservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_reservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevReservoirTexture },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
@@ -391,14 +391,10 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
 
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_diReservoirTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_reservoirTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_giTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularAlbedoTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_diffuseRayDirectionHitDistanceTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularRayDirectionHitDistanceTexture->GetResource());
-
     getGraphicsCommandList().commitBarriers();
 
     getUnderlyingGraphicsCommandList()->Dispatch(
@@ -410,7 +406,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
 
     switch (debugView)
     {
-    case DEBUG_VIEW_DIFFUSE: colorTexture = m_diffuseTexture->GetResource(); break;
+    case DEBUG_VIEW_DIFFUSE: colorTexture = m_diffuseRefractionAlphaTexture->GetResource(); break;
     case DEBUG_VIEW_SPECULAR: colorTexture = m_specularTexture->GetResource(); break;
     case DEBUG_VIEW_NORMAL: colorTexture = (m_frame & 1 ? m_prevNormalTexture : m_normalTexture)->GetResource(); break;
     case DEBUG_VIEW_FALLOFF: colorTexture = m_falloffTexture->GetResource(); break;
@@ -421,7 +417,11 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
     case DEBUG_VIEW_REFRACTION: colorTexture = m_refractionTexture->GetResource(); break;
     }
 
-    getGraphicsCommandList().uavBarrier(colorTexture);
+    getGraphicsCommandList().uavBarrier(m_colorTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularAlbedoTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_diffuseRayDirectionHitDistanceTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularRayDirectionHitDistanceTexture->GetResource());
 
     getGraphicsCommandList().transitionBarrier(m_diffuseAlbedoTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -772,13 +772,15 @@ void RaytracingDevice::procMsgTraceRays()
 
     getGraphicsCommandList().uavBarrier(m_depthTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_motionVectorsTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_positionFlagsTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_diffuseTexture->GetResource());
+    getGraphicsCommandList().uavBarrier((m_frame & 1 ? m_prevPositionFlagsTexture : m_positionFlagsTexture)->GetResource());
+    getGraphicsCommandList().uavBarrier(m_safeSpawnPointTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_diffuseRefractionAlphaTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularPowerLevelFresnelTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_normalTexture->GetResource());
+    getGraphicsCommandList().uavBarrier((m_frame & 1 ? m_prevNormalTexture : m_normalTexture)->GetResource());
     getGraphicsCommandList().uavBarrier(m_falloffTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_emissionTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_transColorTexture->GetResource());
     getGraphicsCommandList().commitBarriers();
 
     // ShadowRayGeneration

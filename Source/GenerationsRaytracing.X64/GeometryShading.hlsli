@@ -10,7 +10,7 @@ struct ShadingParams
     float3 EyePosition;
     float3 EyeDirection;
     float3 Shadow;
-    Reservoir<uint> DIReservoir;
+    Reservoir Reservoir;
     float3 GlobalIllumination;
     float3 Reflection;
     float3 Refraction;
@@ -98,7 +98,7 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
     return localLighting;
 }
 
-float ComputeDIReservoirWeight(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
+float ComputeReservoirWeight(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
     float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
     return dot(localLighting, float3(0.2126, 0.7152, 0.0722));
@@ -148,7 +148,7 @@ float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingPara
         resultShading += ComputeEyeLighting(gBufferData, shadingParams.EyePosition, shadingParams.EyeDirection);
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
-        resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.DIReservoir.Sample]) * shadingParams.DIReservoir.Weight;
+        resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]) * shadingParams.Reservoir.W;
 
     resultShading += ComputeGI(gBufferData, shadingParams.GlobalIllumination);
     resultShading += ComputeReflection(gBufferData, shadingParams.Reflection);

@@ -152,8 +152,8 @@ RWTexture2D<float3> g_TransColorTexture : register(u13);
 
 RWTexture2D<float> g_ShadowTexture : register(u14);
 
-RWTexture2D<float4> g_DIReservoirTexture : register(u15);
-RWTexture2D<float4> g_PrevDIReservoirTexture : register(u16);
+RWTexture2D<float4> g_ReservoirTexture : register(u15);
+RWTexture2D<float4> g_PrevReservoirTexture : register(u16);
 
 RWTexture2D<float3> g_GITexture : register(u17);
 RWTexture2D<float3> g_ReflectionTexture : register(u18);

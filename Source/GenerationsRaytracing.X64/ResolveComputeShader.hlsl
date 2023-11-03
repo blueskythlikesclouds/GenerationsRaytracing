@@ -10,7 +10,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     GBufferData gBufferData = LoadGBufferData(dispatchThreadId.xy);
     float depth = g_DepthTexture[dispatchThreadId.xy];
 
-    Reservoir<uint> diReservoir = (Reservoir<uint>)0;
+    Reservoir reservoir = (Reservoir)0;
     float3 diffuseAlbedo = 0.0;
     float3 specularAlbedo = 0.0;
 
@@ -18,7 +18,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     {
         uint random = InitRand(g_CurrentFrame, dispatchThreadId.y * g_InternalResolution.x + dispatchThreadId.x);
 
-        diReservoir = LoadDIReservoir(g_DIReservoirTexture[dispatchThreadId.xy]);
+        reservoir = LoadReservoir(g_ReservoirTexture[dispatchThreadId.xy]);
 
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
 
@@ -31,23 +31,21 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
             if (all(and(neighborIndex >= 0, neighborIndex < g_InternalResolution)))
             {
-                Reservoir<uint> spatialDIReservoir = LoadDIReservoir(g_DIReservoirTexture[neighborIndex]);
+                Reservoir spatialReservoir = LoadReservoir(g_ReservoirTexture[neighborIndex]);
 
-                float3 position = g_PositionFlagsTexture[neighborIndex].xyz;
-                float3 normal = g_NormalTexture[neighborIndex].xyz;
-
-                if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.05 && dot(gBufferData.Normal, normal) >= 0.9063)
+                if (abs(depth - g_DepthTexture[neighborIndex]) <= 0.05 && dot(gBufferData.Normal, g_NormalTexture[neighborIndex].xyz) >= 0.9063)
                 {
-                    uint newSampleCount = diReservoir.SampleCount + spatialDIReservoir.SampleCount;
+                    uint newSampleCount = reservoir.M + spatialReservoir.M;
 
-                    UpdateReservoir(diReservoir, spatialDIReservoir.Sample, ComputeDIReservoirWeight(gBufferData, eyeDirection, 
-                        g_LocalLights[spatialDIReservoir.Sample]) * spatialDIReservoir.Weight * spatialDIReservoir.SampleCount, NextRand(random));
+                    UpdateReservoir(reservoir, spatialReservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
+                        g_LocalLights[spatialReservoir.Y]) * spatialReservoir.W * spatialReservoir.M, NextRand(random));
 
-                    diReservoir.SampleCount = newSampleCount;
+                    reservoir.M = newSampleCount;
                 }
             }
         }
-        ComputeReservoirWeight(diReservoir, ComputeDIReservoirWeight(gBufferData, eyeDirection, g_LocalLights[diReservoir.Sample]));
+
+        ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
 
         ShadingParams shadingParams;
 
@@ -56,9 +54,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         shadingParams.Shadow = g_ShadowTexture[dispatchThreadId.xy];
 
         if (g_LocalLightCount > 0)
-            shadingParams.DIReservoir = diReservoir;
+            shadingParams.Reservoir = reservoir;
         else
-            shadingParams.DIReservoir = (Reservoir<uint>) 0;
+            shadingParams.Reservoir = (Reservoir) 0;
 
         shadingParams.GlobalIllumination = g_GITexture[dispatchThreadId.xy];
         shadingParams.Reflection = g_ReflectionTexture[dispatchThreadId.xy];
@@ -87,7 +85,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     g_ColorTexture[dispatchThreadId.xy] = float4(color, 1.0);
-    g_PrevDIReservoirTexture[dispatchThreadId.xy] = StoreDIReservoir(diReservoir);
+    g_PrevReservoirTexture[dispatchThreadId.xy] = StoreReservoir(reservoir);
     g_DiffuseAlbedoTexture[dispatchThreadId.xy] = diffuseAlbedo;
     g_SpecularAlbedoTexture[dispatchThreadId.xy] = specularAlbedo;
 }
