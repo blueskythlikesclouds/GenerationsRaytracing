@@ -201,6 +201,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 float highlightSpecular = saturate(dot(highlightNormal, halfwayDirection));
                 highlightSpecular = pow(highlightSpecular, max(1.0, min(1024.0, gBufferData.SpecularPower * gloss.x)));
                 highlightSpecular *= gBufferData.SpecularLevel * gloss.x;
+                highlightSpecular *= ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
 
                 gBufferData.Diffuse.rgb *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a;
