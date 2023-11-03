@@ -311,14 +311,40 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
     const auto result = originalModelDataConstructor(This);
 
     This->m_bottomLevelAccelStructId = NULL;
+    new (&This->m_noAoModel) boost::shared_ptr<Hedgehog::Mirage::CModelData>();
 
     return result;
 }
 
 HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
 {
+    This->m_noAoModel.~shared_ptr();
     RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
+
     originalModelDataDestructor(This);
+}
+
+HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
+    const Hedgehog::Base::CSharedString& name,
+    const void* data,
+    uint32_t dataSize,
+    const boost::shared_ptr<Hedgehog::Database::CDatabase>& database,
+    Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)
+{
+    if (name == "chr_Sonic_HD" && data != nullptr)
+    {
+        Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
+
+        const auto modelData = wrapper.GetModelData(name);
+        if (!modelData->IsMadeOne())
+        {
+            auto& modelDataEx = *reinterpret_cast<ModelDataEx*>(modelData.get());
+            if (XXH32(data, dataSize, 0) == 0x33CB76CD)
+                modelDataEx.m_noAoModel = wrapper.GetModelData("chr_Sonic_HD_noao");
+        }
+    }
+
+    originalModelDataMake(name, data, dataSize, database, renderingInfrastructure);
 }
 
 void ModelData::createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDataEx)
@@ -750,4 +776,6 @@ void ModelData::init()
 
     INSTALL_HOOK(ModelDataConstructor);
     INSTALL_HOOK(ModelDataDestructor);
+
+    INSTALL_HOOK(ModelDataMake);
 }
