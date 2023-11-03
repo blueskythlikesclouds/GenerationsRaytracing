@@ -23,26 +23,28 @@ void ComputeReservoirWeight(inout Reservoir reservoir, float weight)
     float denominator = reservoir.M * weight;
     if (denominator > 0.0)
         reservoir.W = reservoir.WSum / denominator;
+    else
+        reservoir.W = 0.0;
 }
 
-Reservoir LoadReservoir(float4 value)
+Reservoir LoadReservoir(uint4 value)
 {
     Reservoir reservoir;
-    reservoir.Y = asuint(value.x);
-    reservoir.WSum = value.y;
-    reservoir.M = asuint(value.z);
-    reservoir.W = value.w;
+    reservoir.Y = value.x;
+    reservoir.WSum = asfloat(value.y);
+    reservoir.M = value.z;
+    reservoir.W = asfloat(value.w);
 
     return reservoir;
 }
 
-float4 StoreReservoir(Reservoir reservoir)
+uint4 StoreReservoir(Reservoir reservoir)
 {
-    float4 value;
-    value.x = asfloat(reservoir.Y);
-    value.y = reservoir.WSum;
-    value.z = asfloat(reservoir.M);
-    value.w = reservoir.W;
+    uint4 value;
+    value.x = reservoir.Y;
+    value.y = asuint(reservoir.WSum);
+    value.z = reservoir.M;
+    value.w = asuint(reservoir.W);
 
     return value;
 }

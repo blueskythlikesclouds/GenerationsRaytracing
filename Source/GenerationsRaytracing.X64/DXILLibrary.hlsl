@@ -93,7 +93,6 @@ void ShadowRayGeneration()
 void ReservoirRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
-    float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
     Reservoir reservoir = (Reservoir) 0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
@@ -111,27 +110,6 @@ void ReservoirRayGeneration()
             uint sample = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
             float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
             UpdateReservoir(reservoir, sample, weight, NextRand(random));
-        }
-
-        // Temporal reuse
-        int2 temporalNeighbor = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectorsTexture[DispatchRaysIndex().xy];
-        if (g_CurrentFrame > 0 && all(and(temporalNeighbor >= 0, temporalNeighbor < g_InternalResolution)))
-        {
-            float3 prevPosition = g_PrevPositionFlagsTexture[temporalNeighbor].xyz;
-            float3 prevNormal = g_PrevNormalTexture[temporalNeighbor].xyz;
-
-            if (all(abs(prevPosition.xyz - gBufferData.Position) <= 0.002 * -viewPosition.z) && dot(prevNormal, gBufferData.Normal) >= 0.9063)
-            {
-                Reservoir temporalReservoir = LoadReservoir(g_PrevReservoirTexture[temporalNeighbor]);
-                temporalReservoir.M = min(reservoir.M * 20, temporalReservoir.M);
-
-                uint newSampleCount = reservoir.M + temporalReservoir.M;
-
-                UpdateReservoir(reservoir, temporalReservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection,
-                    g_LocalLights[temporalReservoir.Y]) * temporalReservoir.W * temporalReservoir.M, NextRand(random));
-
-                reservoir.M = newSampleCount;
-            }
         }
 
         ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
