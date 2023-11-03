@@ -244,6 +244,8 @@ static void __cdecl implOfSceneRender(void* a1)
             memcpy(traceRaysMessage.groundColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.groundColor));
 
         s_messageSender.endMessage();
+
+        ++RaytracingRendering::s_frame;
     }
     else
     {

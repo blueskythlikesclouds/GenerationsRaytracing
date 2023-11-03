@@ -14,6 +14,9 @@ class ModelDataEx : public Hedgehog::Mirage::CModelData
 {
 public:
     uint32_t m_bottomLevelAccelStructId;
+    XXH32_hash_t m_modelHash;
+    uint32_t m_visibilityBits;
+    uint32_t m_hashFrame;
 };
 
 using MaterialMap = hh::map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>>;

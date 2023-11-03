@@ -6,6 +6,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "InstanceData.h"
+#include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
 #include "Texture.h"
 #include "VertexBuffer.h"
@@ -408,6 +409,36 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
         MaterialData::create(*value);
     }
 
+    if (modelDataEx.m_hashFrame != RaytracingRendering::s_frame)
+    {
+        const XXH32_hash_t modelHash = XXH32(modelDataEx.m_NodeGroupModels.data(),
+            modelDataEx.m_NodeGroupModels.size() * sizeof(modelDataEx.m_NodeGroupModels[0]), 0);
+
+        uint32_t visibilityBits = 0;
+        for (size_t i = 0; i < modelDataEx.m_NodeGroupModels.size(); i++)
+        {
+            if (modelDataEx.m_NodeGroupModels[i]->m_Visible)
+                visibilityBits |= 1 << i;
+        }
+
+        if (modelDataEx.m_modelHash != modelHash || modelDataEx.m_visibilityBits != visibilityBits)
+            RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, modelDataEx.m_bottomLevelAccelStructId);
+
+        modelDataEx.m_modelHash = modelHash;
+        modelDataEx.m_visibilityBits = visibilityBits;
+        modelDataEx.m_hashFrame = RaytracingRendering::s_frame;
+    }
+
+    if (instanceInfoEx.m_modelHash != modelDataEx.m_modelHash || instanceInfoEx.m_visibilityBits != modelDataEx.m_visibilityBits)
+    {
+        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceInfoEx.m_instanceId);
+        RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, instanceInfoEx.m_bottomLevelAccelStructId);
+        instanceInfoEx.m_poseVertexBuffer = nullptr;
+    }
+
+    instanceInfoEx.m_modelHash = modelDataEx.m_modelHash;
+    instanceInfoEx.m_visibilityBits = modelDataEx.m_visibilityBits;
+
     auto transform = instanceInfoEx.m_Transform;
     uint32_t bottomLevelAccelStructId;
 
@@ -424,7 +455,7 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
             if (length == 0)
                 return;
 
-            instanceInfoEx.m_poseVertexBuffer.Attach(new VertexBuffer(NULL));
+            instanceInfoEx.m_poseVertexBuffer.Attach(new VertexBuffer(length));
 
             auto& message = s_messageSender.makeMessage<MsgCreateVertexBuffer>();
             message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
