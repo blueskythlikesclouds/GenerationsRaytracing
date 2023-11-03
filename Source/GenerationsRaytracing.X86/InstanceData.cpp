@@ -3,6 +3,7 @@
 #include "ModelData.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "RaytracingUtil.h"
 
 class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoData
 {
@@ -28,16 +29,7 @@ HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInsta
     s_instancesToCreate.erase(This);
     s_instanceCreateMutex.unlock();
 
-    if (This->m_instanceId != NULL)
-    {
-        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-        message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
-        message.resourceId = This->m_instanceId;
-        s_messageSender.endMessage();
-
-        InstanceData::s_idAllocator.free(This->m_instanceId);
-    }
-
+    RaytracingUtil::releaseResource(RaytracingResourceType::Instance, This->m_instanceId);
     originalTerrainInstanceInfoDataDestructor(This);
 }
 
@@ -64,25 +56,8 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 
 HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
 {
-    if (This->m_instanceId != NULL)
-    {
-        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-        message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
-        message.resourceId = This->m_instanceId;
-        s_messageSender.endMessage();
-
-        InstanceData::s_idAllocator.free(This->m_instanceId);
-    }
-
-    if (This->m_bottomLevelAccelStructId != NULL)
-    {
-        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-        message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
-        message.resourceId = This->m_bottomLevelAccelStructId;
-        s_messageSender.endMessage();
-
-        ModelData::s_idAllocator.free(This->m_bottomLevelAccelStructId);
-    }
+    RaytracingUtil::releaseResource(RaytracingResourceType::Instance, This->m_instanceId);
+    RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
 
     This->m_poseVertexBuffer.~ComPtr();
 

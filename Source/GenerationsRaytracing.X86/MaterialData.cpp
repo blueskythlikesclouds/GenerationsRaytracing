@@ -4,6 +4,7 @@
 #include "MaterialFlags.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "RaytracingUtil.h"
 #include "ShaderType.h"
 #include "Texture.h"
 
@@ -26,16 +27,7 @@ HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
     s_materialsToCreate.erase(This);
     s_matCreateMutex.unlock();
 
-    if (This->m_materialId != NULL)
-    {
-        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-        message.resourceType = MsgReleaseRaytracingResource::ResourceType::Material;
-        message.resourceId = This->m_materialId;
-        s_messageSender.endMessage();
-
-        MaterialData::s_idAllocator.free(This->m_materialId);
-    }
-
+    RaytracingUtil::releaseResource(RaytracingResourceType::Material, This->m_materialId);
     This->m_highLightParamValue.~shared_ptr();
 
     originalMaterialDataDestructor(This);

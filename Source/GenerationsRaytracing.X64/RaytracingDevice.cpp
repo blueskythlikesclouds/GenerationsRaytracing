@@ -582,7 +582,7 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
 
     switch (message.resourceType)
     {
-    case MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct:
+    case RaytracingResourceType::BottomLevelAccelStruct:
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.resourceId];
 
@@ -596,7 +596,7 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
         break;
     }
 
-    case MsgReleaseRaytracingResource::ResourceType::Instance:
+    case RaytracingResourceType::Instance:
         memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
 
         if (m_geometryRanges.size() > message.resourceId)
@@ -610,7 +610,7 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
 
         break;
 
-    case MsgReleaseRaytracingResource::ResourceType::Material:
+    case RaytracingResourceType::Material:
     {
         if (m_materials.size() > message.resourceId)
             memset(&m_materials[message.resourceId], 0, sizeof(Material));

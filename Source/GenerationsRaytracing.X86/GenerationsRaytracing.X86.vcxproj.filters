@@ -90,6 +90,9 @@
     <ClCompile Include="ShaderCache.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
+    <ClCompile Include="RaytracingUtil.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -176,6 +179,9 @@
     </ClInclude>
     <ClInclude Include="ShaderCache.h">
       <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="RaytracingUtil.h">
+      <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

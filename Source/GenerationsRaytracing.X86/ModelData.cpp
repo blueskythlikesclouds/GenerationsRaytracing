@@ -6,6 +6,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "InstanceData.h"
+#include "RaytracingUtil.h"
 #include "Texture.h"
 #include "VertexBuffer.h"
 #include "VertexDeclaration.h"
@@ -300,18 +301,7 @@ HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, Ter
 
 HOOK(void, __fastcall, TerrainModelDataDestructor, 0x717230, TerrainModelDataEx* This)
 {
-    if (This->m_bottomLevelAccelStructId != NULL)
-    {
-        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-
-        message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
-        message.resourceId = This->m_bottomLevelAccelStructId;
-
-        s_messageSender.endMessage();
-
-        ModelData::s_idAllocator.free(This->m_bottomLevelAccelStructId);
-    }
-
+    RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
     originalTerrainModelDataDestructor(This);
 }
 
@@ -326,16 +316,7 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
 
 HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
 {
-    if (This->m_bottomLevelAccelStructId != NULL)
-    {
-        auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-        message.resourceType = MsgReleaseRaytracingResource::ResourceType::BottomLevelAccelStruct;
-        message.resourceId = This->m_bottomLevelAccelStructId;
-        s_messageSender.endMessage();
-
-        ModelData::s_idAllocator.free(This->m_bottomLevelAccelStructId);
-    }
-
+    RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
     originalModelDataDestructor(This);
 }
 
@@ -407,17 +388,7 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 {
     if (!isEnabled)
     {
-        if (instanceInfoEx.m_instanceId != NULL)
-        {
-            auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
-            message.resourceType = MsgReleaseRaytracingResource::ResourceType::Instance;
-            message.resourceId = instanceInfoEx.m_instanceId;
-            s_messageSender.endMessage();
-
-            InstanceData::s_idAllocator.free(instanceInfoEx.m_instanceId);
-            instanceInfoEx.m_instanceId = NULL;
-        }
-
+        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceInfoEx.m_instanceId);
         return;
     }
 

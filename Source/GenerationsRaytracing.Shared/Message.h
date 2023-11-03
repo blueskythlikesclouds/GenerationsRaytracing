@@ -325,17 +325,18 @@ struct MsgCreateBottomLevelAccelStruct
     uint8_t data[1u];
 };
 
+enum class RaytracingResourceType : uint8_t
+{
+    BottomLevelAccelStruct,
+    Instance,
+    Material
+};
+
 struct MsgReleaseRaytracingResource
 {
     MSG_DEFINE_MESSAGE(MsgCreateBottomLevelAccelStruct);
 
-    enum class ResourceType : uint8_t
-    {
-        BottomLevelAccelStruct,
-        Instance,
-        Material
-    };
-    ResourceType resourceType;
+    RaytracingResourceType resourceType;
     uint32_t resourceId;
 };
 
