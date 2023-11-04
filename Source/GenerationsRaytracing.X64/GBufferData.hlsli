@@ -635,6 +635,27 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 break;
             }
 
+        case SHADER_TYPE_ICE:
+            {
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                if (material.GlossTexture != 0)
+                {
+                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularLevel *= gloss;
+                }
+
+                if (material.NormalTexture != 0)
+                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
+
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                break;
+            }
+
         case SHADER_TYPE_IGNORE_LIGHT:
             {
                 gBufferData.Flags =
