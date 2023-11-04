@@ -4,6 +4,7 @@
 #include "MaterialFlags.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
 #include "ShaderType.h"
 #include "Texture.h"
@@ -16,7 +17,8 @@ HOOK(MaterialDataEx*, __fastcall, MaterialDataConstructor, 0x704CA0, MaterialDat
     const auto result = originalMaterialDataConstructor(This);
 
     This->m_materialId = NULL;
-    new (&This->m_highLightParamValue) boost::shared_ptr<float[]>();
+    new (&This->m_originalHighLightParamValue) boost::shared_ptr<float[]>();
+    new (&This->m_raytracingHighLightParamValue) boost::shared_ptr<float[]>();
 
     return result;
 }
@@ -28,7 +30,8 @@ HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
     s_matCreateMutex.unlock();
 
     RaytracingUtil::releaseResource(RaytracingResourceType::Material, This->m_materialId);
-    This->m_highLightParamValue.~shared_ptr();
+    This->m_originalHighLightParamValue.~shared_ptr();
+    This->m_raytracingHighLightParamValue.~shared_ptr();
 
     originalMaterialDataDestructor(This);
 }
@@ -223,34 +226,71 @@ static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
     This->SetMadeOne();
 }
 
-HOOK(void, __cdecl, SampleTexcoordAnimation, 0x757E50, Hedgehog::Mirage::CMaterialData* materialData, void* a2, float a3, void* a4)
+HOOK(void, __fastcall, MaterialAnimationEnv, 0x57C1C0, uintptr_t This, uintptr_t Edx, float deltaTime)
 {
-    originalSampleTexcoordAnimation(materialData, a2, a3, a4);
+    s_matCreateMutex.lock();
+    s_materialsToCreate.emplace(*reinterpret_cast<Hedgehog::Mirage::CMaterialData**>(This + 12));
+    s_matCreateMutex.unlock();
 
-    auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData);
-    if (materialDataEx.m_materialId != NULL)
-        createMaterial(materialDataEx);
+    originalMaterialAnimationEnv(This, Edx, deltaTime);
 }
 
-HOOK(void, __cdecl, SampleMaterialAnimation, 0x757380, Hedgehog::Mirage::CMaterialData* materialData, void* a2, float a3)
+HOOK(void, __fastcall, TexcoordAnimationEnv, 0x57C380, uintptr_t This, uintptr_t Edx, float deltaTime)
 {
-    originalSampleMaterialAnimation(materialData, a2, a3);
+    s_matCreateMutex.lock();
+    s_materialsToCreate.emplace(*reinterpret_cast<Hedgehog::Mirage::CMaterialData**>(This + 12));
+    s_matCreateMutex.unlock();
 
-    auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData);
-    if (materialDataEx.m_materialId != NULL)
-        createMaterial(materialDataEx);
+    originalTexcoordAnimationEnv(This, Edx, deltaTime);
 }
 
-bool MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData)
+bool MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData, bool checkForHash)
 {
     if (materialData.IsMadeAll())
     {
         auto& materialDataEx = reinterpret_cast<MaterialDataEx&>(materialData);
 
-        if (materialDataEx.m_materialId == NULL)
-            materialDataEx.m_materialId = s_idAllocator.allocate();
+        bool shouldCreate = true;
 
-        createMaterial(materialDataEx);
+        if (materialDataEx.m_materialId == NULL)
+        {
+            materialDataEx.m_materialId = s_idAllocator.allocate();
+        }
+        else if (checkForHash)
+        {
+            if (materialDataEx.m_hashFrame != RaytracingRendering::s_frame)
+            {
+                XXH32_state_t state;
+                XXH32_reset(&state, 0);
+
+                if (materialDataEx.m_spShaderListData != nullptr)
+                    XXH32_update(&state, &materialDataEx.m_spShaderListData, sizeof(materialDataEx.m_spShaderListData));
+
+                for (const auto& float4Param : materialData.m_Float4Params)
+                    XXH32_update(&state, float4Param->m_spValue.get(), float4Param->m_ValueNum * sizeof(float[4]));
+
+                if (materialData.m_spTexsetData != nullptr)
+                {
+                    for (const auto& textureData : materialData.m_spTexsetData->m_TextureList)
+                        XXH32_update(&state, &textureData->m_spPictureData, sizeof(textureData->m_spPictureData));
+                }
+
+                const XXH32_hash_t materialHash = XXH32_digest(&state);
+
+                shouldCreate = materialDataEx.m_materialHash != materialHash;
+
+                materialDataEx.m_materialHash = materialHash;
+                materialDataEx.m_hashFrame = RaytracingRendering::s_frame;
+            }
+            else
+            {
+                shouldCreate = false;
+            }
+        }
+
+        if (shouldCreate)
+            createMaterial(materialDataEx);
+
         return true;
     }
     return false;
@@ -262,7 +302,7 @@ void MaterialData::createPendingMaterials()
 
     for (auto it = s_materialsToCreate.begin(); it != s_materialsToCreate.end();)
     {
-        if (create(**it))
+        if (create(**it, false))
             it = s_materialsToCreate.erase(it);
         else
             ++it;
@@ -286,8 +326,8 @@ void MaterialData::init()
     INSTALL_HOOK(MaterialDataConstructor);
     INSTALL_HOOK(MaterialDataDestructor);
 
-    INSTALL_HOOK(SampleTexcoordAnimation);
-    INSTALL_HOOK(SampleMaterialAnimation);
+    INSTALL_HOOK(MaterialAnimationEnv);
+    INSTALL_HOOK(TexcoordAnimationEnv);
 }
 
 void MaterialData::postInit()

@@ -19,6 +19,7 @@ using Microsoft::WRL::ComPtr;
 #include <detours.h>
 #include <Helpers.h>
 #include <INIReader.h>
+#define XXH_STATIC_LINKING_ONLY
 #include <xxhash.h>
 
 #define FUNCTION_STUB(RETURN_TYPE, RETURN_VALUE, FUNCTION_NAME, ...) \

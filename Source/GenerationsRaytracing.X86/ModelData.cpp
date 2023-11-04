@@ -386,13 +386,13 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
 
             auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialOverride.get());
 
-            if (materialDataEx.m_highLightParamValue == nullptr)
+            if (materialDataEx.m_raytracingHighLightParamValue == nullptr)
             {
                 for (const auto& float4Param : materialDataEx.m_Float4Params)
                 {
                     if (float4Param->m_Name == s_sonicEyeHighLightPositionSymbol)
                     {
-                        memcpy(materialDataEx.m_highLightPosition.data(), float4Param->m_spValue.get(), sizeof(materialDataEx.m_highLightPosition));
+                        materialDataEx.m_originalHighLightParamValue = float4Param->m_spValue;
                         break;
                     }
                 }
@@ -403,7 +403,7 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
                 float4Param->m_ValueNum = 1;
 
                 materialDataEx.m_Float4Params.push_back(float4Param);
-                materialDataEx.m_highLightParamValue = float4Param->m_spValue;
+                materialDataEx.m_raytracingHighLightParamValue = float4Param->m_spValue;
             }
         });
 
@@ -422,20 +422,23 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
     for (auto& [key, value] : materialMap)
     {
         auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(value.get());
-        if (materialDataEx.m_highLightParamValue != nullptr)
+        if (materialDataEx.m_raytracingHighLightParamValue != nullptr)
         {
-            auto& highLightPosition = *reinterpret_cast<Eigen::Vector3f*>(materialDataEx.m_highLightParamValue.get());
+            auto& originalHighLightPosition = *reinterpret_cast<Eigen::Vector3f*>(materialDataEx.m_originalHighLightParamValue.get());
+            auto& raytracingHighLightPosition = *reinterpret_cast<Eigen::Vector3f*>(materialDataEx.m_raytracingHighLightParamValue.get());
 
             if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > instanceInfoEx.m_headNodeIndex)
-                highLightPosition = instanceInfoEx.m_Transform * (instanceInfoEx.m_spPose->GetMatrixList()[instanceInfoEx.m_headNodeIndex] * materialDataEx.m_highLightPosition);
+                raytracingHighLightPosition = instanceInfoEx.m_Transform * (instanceInfoEx.m_spPose->GetMatrixList()[instanceInfoEx.m_headNodeIndex] * originalHighLightPosition);
             else
-                highLightPosition = instanceInfoEx.m_Transform * materialDataEx.m_highLightPosition;
+                raytracingHighLightPosition = instanceInfoEx.m_Transform * originalHighLightPosition;
         }
 
-        MaterialData::create(*value);
+        MaterialData::create(*value, true);
     }
 
-    if (modelDataEx.m_hashFrame != RaytracingRendering::s_frame)
+    const bool shouldCheckForHash = modelDataEx.m_hashFrame != RaytracingRendering::s_frame;
+
+    if (shouldCheckForHash)
     {
         const XXH32_hash_t modelHash = XXH32(modelDataEx.m_NodeGroupModels.data(),
             modelDataEx.m_NodeGroupModels.size() * sizeof(modelDataEx.m_NodeGroupModels[0]), 0);
@@ -570,6 +573,9 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
                 ++vertexElement;
             }
 
+            if (shouldCheckForHash)
+                MaterialData::create(*meshDataEx.m_spMaterial, true);
+
             ++geometryDesc;
         });
 
@@ -593,6 +599,14 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
     }
     else
     {
+        if (shouldCheckForHash)
+        {
+            traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+            {
+                MaterialData::create(*meshDataEx.m_spMaterial, true);
+            });
+        }
+
         if (instanceInfoEx.m_spPose != nullptr)
             transform = transform * (*instanceInfoEx.m_spPose->GetMatrixList());
 
