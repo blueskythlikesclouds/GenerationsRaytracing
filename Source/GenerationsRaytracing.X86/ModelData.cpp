@@ -358,6 +358,9 @@ static boost::shared_ptr<Hedgehog::Mirage::CMaterialData> cloneMaterial(const He
     const auto materialClone = static_cast<Hedgehog::Mirage::CMaterialData*>(__HH_ALLOC(sizeof(MaterialDataEx)));
     Hedgehog::Mirage::fpCMaterialDataCtor(materialClone);
 
+    static Hedgehog::Base::CSharedString s_materialCloneName("RaytracingMaterialClone");
+
+    materialClone->m_TypeAndName = s_materialCloneName;
     materialClone->m_Flags = Hedgehog::Database::eDatabaseDataFlags_IsMadeOne | Hedgehog::Database::eDatabaseDataFlags_IsMadeAll;
     materialClone->m_spTexsetData = material.m_spTexsetData;
     materialClone->m_spShaderListData = material.m_spShaderListData;
@@ -442,7 +445,10 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
 
             auto& materialOverride = materialMap[meshDataEx.m_spMaterial.get()];
             if (materialOverride == nullptr)
+            {
                 materialOverride = cloneMaterial(*meshDataEx.m_spMaterial);
+                materialOverride->m_TypeAndName = meshDataEx.m_MaterialName;
+            }
 
             auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialOverride.get());
 

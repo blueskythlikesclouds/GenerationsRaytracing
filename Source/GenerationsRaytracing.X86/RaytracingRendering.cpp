@@ -30,11 +30,24 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                     instanceInfoEx,
                     element->m_MaterialMap);
 
-                if (element->m_spSingleElementEffect != nullptr)
+                if (RaytracingParams::s_enable)
                 {
-                    ModelData::processSingleElementEffect(
-                        element->m_MaterialMap,
-                        element->m_spSingleElementEffect.get());
+                    if (element->m_spSingleElementEffect != nullptr)
+                    {
+                        ModelData::processSingleElementEffect(
+                            element->m_MaterialMap,
+                            element->m_spSingleElementEffect.get());
+                    }
+                }
+                else
+                {
+                    for (auto it = element->m_MaterialMap.begin(); it != element->m_MaterialMap.end();)
+                    {
+                        if (it->second->m_TypeAndName == "RaytracingMaterialClone")
+                            it = element->m_MaterialMap.erase(it);
+                        else
+                            ++it;
+                    }
                 }
 
                 ModelData::createBottomLevelAccelStruct(
