@@ -363,19 +363,45 @@ static boost::shared_ptr<Hedgehog::Mirage::CMaterialData> cloneMaterial(const He
     materialClone->m_spShaderListData = material.m_spShaderListData;
     materialClone->m_Int4Params = material.m_Int4Params;
 
-    materialClone->m_Float4Params.reserve(material.m_Float4Params.size());
+    static Hedgehog::Base::CStringSymbol s_float4ParamsToClone[] =
+    {
+        "diffuse",
+        "ambient",
+        "specular",
+        "emissive",
+        "power_gloss_level",
+        "opacity_reflection_refraction_spectype"
+    };
 
+    materialClone->m_Float4Params.reserve(material.m_Float4Params.size());
     for (const auto& float4Param : material.m_Float4Params)
     {
-        const auto float4ParamClone = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
+        bool shouldClone = false;
+        for (const auto float4Symbol : s_float4ParamsToClone)
+        {
+            if (float4Param->m_Name == float4Symbol)
+            {
+                shouldClone = true;
+                break;
+            }
+        }
 
-        float4ParamClone->m_Name = float4Param->m_Name;
-        float4ParamClone->m_ValueNum = float4Param->m_ValueNum;
-        float4ParamClone->m_spValue = boost::make_shared<float[]>(4 * float4Param->m_ValueNum);
+        if (shouldClone)
+        {
+            const auto float4ParamClone = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
 
-        memcpy(float4ParamClone->m_spValue.get(), float4Param->m_spValue.get(), float4Param->m_ValueNum * sizeof(float[4]));
+            float4ParamClone->m_Name = float4Param->m_Name;
+            float4ParamClone->m_ValueNum = float4Param->m_ValueNum;
+            float4ParamClone->m_spValue = boost::make_shared<float[]>(4 * float4Param->m_ValueNum);
 
-        materialClone->m_Float4Params.push_back(float4ParamClone);
+            memcpy(float4ParamClone->m_spValue.get(), float4Param->m_spValue.get(), float4Param->m_ValueNum * sizeof(float[4]));
+
+            materialClone->m_Float4Params.push_back(float4ParamClone);
+        }
+        else
+        {
+            materialClone->m_Float4Params.push_back(float4Param);
+        }
     }
 
     materialClone->m_Bool4Params = material.m_Bool4Params;
