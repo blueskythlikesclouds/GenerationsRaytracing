@@ -362,13 +362,59 @@ static boost::shared_ptr<Hedgehog::Mirage::CMaterialData> cloneMaterial(const He
 
     materialClone->m_TypeAndName = s_materialCloneName;
     materialClone->m_Flags = Hedgehog::Database::eDatabaseDataFlags_IsMadeOne | Hedgehog::Database::eDatabaseDataFlags_IsMadeAll;
-    materialClone->m_spTexsetData = material.m_spTexsetData;
+
+    static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
+
+    if (material.m_spTexsetData != nullptr)
+    {
+        const auto texsetClone = boost::make_shared<Hedgehog::Mirage::CTexsetData>();
+        texsetClone->m_Flags = Hedgehog::Database::eDatabaseDataFlags_IsMadeOne | Hedgehog::Database::eDatabaseDataFlags_IsMadeAll;
+
+        bool shouldClone = true;
+
+        texsetClone->m_TextureList.reserve(material.m_spTexsetData->m_TextureList.size());
+        for (const auto& texture : material.m_spTexsetData->m_TextureList)
+        {
+            if (texture->m_Type == s_diffuseSymbol && shouldClone)
+            {
+                auto texClone = boost::make_shared<Hedgehog::Mirage::CTextureData>();
+
+                if (texture->m_spPictureData != nullptr)
+                {
+                    auto picClone = boost::make_shared<Hedgehog::Mirage::CPictureData>();
+                    *picClone = *texture->m_spPictureData;
+
+                    if (picClone->m_pD3DTexture != nullptr)
+                        picClone->m_pD3DTexture->AddRef();
+
+                    texClone->m_spPictureData = picClone;
+                }
+
+                texClone->m_TexcoordIndex = texture->m_TexcoordIndex;
+                texClone->m_SamplerState = texture->m_SamplerState;
+                texClone->m_Type = texture->m_Type;
+
+                texsetClone->m_TextureList.push_back(texClone);
+
+                shouldClone = false;
+            }
+            else
+            {
+                texsetClone->m_TextureList.push_back(texture);
+            }
+        }
+
+        texsetClone->m_TextureNameList = material.m_spTexsetData->m_TextureNameList;
+
+        materialClone->m_spTexsetData = texsetClone;
+    }
+
     materialClone->m_spShaderListData = material.m_spShaderListData;
     materialClone->m_Int4Params = material.m_Int4Params;
 
     static Hedgehog::Base::CStringSymbol s_float4ParamsToClone[] =
     {
-        "diffuse",
+        s_diffuseSymbol,
         "ambient",
         "specular",
         "emissive",
@@ -558,6 +604,37 @@ static void processMaterialMotion(MaterialMap& materialMap, const Hedgehog::Moti
     }
 }
 
+static void processTexpatternMotion(MaterialMap& materialMap, const Hedgehog::Motion::CTexpatternMotion& texpatternMotion)
+{
+    if (texpatternMotion.m_pMaterialData != nullptr && texpatternMotion.m_pPictureData != nullptr)
+    {
+        static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
+
+        auto& material = materialMap[texpatternMotion.m_pMaterialData];
+        if (material == nullptr)
+            material = cloneMaterial(*texpatternMotion.m_pMaterialData);
+
+        if (material->m_spTexsetData != nullptr)
+        {
+            for (const auto& texture : material->m_spTexsetData->m_TextureList)
+            {
+                if (texture->m_Type == s_diffuseSymbol)
+                {
+                    if (texture->m_spPictureData != nullptr)
+                    {
+                        if (texture->m_spPictureData->m_pD3DTexture != nullptr)
+                            texture->m_spPictureData->m_pD3DTexture->Release();
+
+                        texture->m_spPictureData->m_pD3DTexture = texpatternMotion.m_pPictureData->m_pD3DTexture;
+                        texture->m_spPictureData->m_pD3DTexture->AddRef();
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
 void ModelData::processSingleElementEffect(MaterialMap& materialMap, Hedgehog::Mirage::CSingleElementEffect* singleElementEffect)
 {
     if (const auto singleElementEffectMotionAll = dynamic_cast<Hedgehog::Motion::CSingleElementEffectMotionAll*>(singleElementEffect))
@@ -567,6 +644,9 @@ void ModelData::processSingleElementEffect(MaterialMap& materialMap, Hedgehog::M
 
         for (const auto& materialMotion : singleElementEffectMotionAll->m_MaterialMotionList)
             processMaterialMotion(materialMap, materialMotion);
+
+        for (const auto& texpatternMotion : singleElementEffectMotionAll->m_TexpatternMotionList)
+            processTexpatternMotion(materialMap, texpatternMotion);
 
         s_tmpMaterialCnt.clear();
     }

@@ -274,7 +274,10 @@ bool MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData, bool ch
                 if (materialData.m_spTexsetData != nullptr)
                 {
                     for (const auto& textureData : materialData.m_spTexsetData->m_TextureList)
-                        XXH32_update(&state, &textureData->m_spPictureData, sizeof(textureData->m_spPictureData));
+                    {
+                        if (textureData->m_spPictureData != nullptr)
+                            XXH32_update(&state, &textureData->m_spPictureData->m_pD3DTexture, sizeof(textureData->m_spPictureData->m_pD3DTexture));
+                    }
                 }
 
                 const XXH32_hash_t materialHash = XXH32_digest(&state);
