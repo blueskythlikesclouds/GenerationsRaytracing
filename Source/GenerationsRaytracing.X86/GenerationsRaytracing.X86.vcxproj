@@ -86,9 +86,10 @@
       <ExceptionHandling>false</ExceptionHandling>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <StringPooling>true</StringPooling>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <AdditionalOptions>/Ob3 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

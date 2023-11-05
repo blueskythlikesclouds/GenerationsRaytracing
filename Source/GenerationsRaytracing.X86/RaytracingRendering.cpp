@@ -30,6 +30,13 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                     instanceInfoEx,
                     element->m_MaterialMap);
 
+                if (element->m_spSingleElementEffect != nullptr)
+                {
+                    ModelData::processSingleElementEffect(
+                        element->m_MaterialMap,
+                        element->m_spSingleElementEffect.get());
+                }
+
                 ModelData::createBottomLevelAccelStruct(
                     *modelDataEx,
                     instanceInfoEx,

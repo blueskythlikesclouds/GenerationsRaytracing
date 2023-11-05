@@ -95,9 +95,10 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <AdditionalOptions>/Ob3 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

@@ -353,6 +353,40 @@ void ModelData::createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDat
         ::createBottomLevelAccelStruct(terrainModelDataEx, terrainModelDataEx.m_bottomLevelAccelStructId, NULL);
 }
 
+static boost::shared_ptr<Hedgehog::Mirage::CMaterialData> cloneMaterial(const Hedgehog::Mirage::CMaterialData& material)
+{
+    const auto materialClone = static_cast<Hedgehog::Mirage::CMaterialData*>(__HH_ALLOC(sizeof(MaterialDataEx)));
+    Hedgehog::Mirage::fpCMaterialDataCtor(materialClone);
+
+    materialClone->m_Flags = Hedgehog::Database::eDatabaseDataFlags_IsMadeOne | Hedgehog::Database::eDatabaseDataFlags_IsMadeAll;
+    materialClone->m_spTexsetData = material.m_spTexsetData;
+    materialClone->m_spShaderListData = material.m_spShaderListData;
+    materialClone->m_Int4Params = material.m_Int4Params;
+
+    materialClone->m_Float4Params.reserve(material.m_Float4Params.size());
+
+    for (const auto& float4Param : material.m_Float4Params)
+    {
+        const auto float4ParamClone = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
+
+        float4ParamClone->m_Name = float4Param->m_Name;
+        float4ParamClone->m_ValueNum = float4Param->m_ValueNum;
+        float4ParamClone->m_spValue = boost::make_shared<float[]>(4 * float4Param->m_ValueNum);
+
+        memcpy(float4ParamClone->m_spValue.get(), float4Param->m_spValue.get(), float4Param->m_ValueNum * sizeof(float[4]));
+
+        materialClone->m_Float4Params.push_back(float4ParamClone);
+    }
+
+    materialClone->m_Bool4Params = material.m_Bool4Params;
+    materialClone->m_AlphaThreshold = material.m_AlphaThreshold;
+    materialClone->m_DoubleSided = material.m_DoubleSided;
+    materialClone->m_Additive = material.m_Additive;
+    materialClone->m_MaterialFlags = material.m_MaterialFlags;
+    
+    return boost::shared_ptr<Hedgehog::Mirage::CMaterialData>(materialClone);
+}
+
 void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, MaterialMap& materialMap)
 {
     if (!instanceInfoEx.m_handledEyeMaterials)
@@ -382,7 +416,7 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
 
             auto& materialOverride = materialMap[meshDataEx.m_spMaterial.get()];
             if (materialOverride == nullptr)
-                materialOverride = meshDataEx.m_spMaterial; // TODO: make a clone instead of assigning to itself
+                materialOverride = cloneMaterial(*meshDataEx.m_spMaterial);
 
             auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialOverride.get());
 
@@ -408,6 +442,113 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
         });
 
         instanceInfoEx.m_handledEyeMaterials = true;
+    }
+}
+
+static std::unordered_map<Hedgehog::Mirage::CMaterialData*, float*> s_tmpMaterialCnt;
+
+static void processTexcoordMotion(MaterialMap& materialMap, const Hedgehog::Motion::CTexcoordMotion& texcoordMotion)
+{
+    if (texcoordMotion.m_pMaterialData != nullptr)
+    {
+        static Hedgehog::Base::CStringSymbol s_texCoordOffsetSymbol("mrgTexcoordOffset");
+
+        auto& material = materialMap[texcoordMotion.m_pMaterialData];
+        if (material == nullptr)
+            material = cloneMaterial(*texcoordMotion.m_pMaterialData);
+
+        auto& offsets = s_tmpMaterialCnt[texcoordMotion.m_pMaterialData];
+        if (offsets == nullptr)
+        {
+            for (const auto& float4Param : material->m_Float4Params)
+            {
+                if (float4Param->m_Name == s_texCoordOffsetSymbol && float4Param->m_ValueNum == 2)
+                {
+                    offsets = float4Param->m_spValue.get();
+                    std::fill_n(offsets, 8, 0.0f);
+
+                    break;
+                }
+            }
+
+            if (offsets == nullptr)
+            {
+                const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
+                float4Param->m_Name = s_texCoordOffsetSymbol;
+                float4Param->m_ValueNum = 2;
+                float4Param->m_spValue = boost::make_shared<float[]>(8, 0.0f);
+
+                material->m_Float4Params.push_back(float4Param);
+                offsets = float4Param->m_spValue.get();
+            }
+        }
+
+        for (size_t i = 0; i < 8; i++)
+            offsets[i] += texcoordMotion.m_TexcoordOffset[i];
+    }
+}
+
+static void processMaterialMotion(MaterialMap& materialMap, const Hedgehog::Motion::CMaterialMotion& materialMotion)
+{
+    if (materialMotion.m_pMaterialData != nullptr)
+    {
+        static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
+        static Hedgehog::Base::CStringSymbol s_ambientSymbol("ambient");
+        static Hedgehog::Base::CStringSymbol s_specularSymbol("specular");
+        static Hedgehog::Base::CStringSymbol s_emissiveSymbol("emissive");
+        static Hedgehog::Base::CStringSymbol s_powerGlossLevelSymbol("power_gloss_level");
+        static Hedgehog::Base::CStringSymbol s_opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
+
+        auto& material = materialMap[materialMotion.m_pMaterialData];
+        if (material == nullptr)
+            material = cloneMaterial(*materialMotion.m_pMaterialData);
+
+        for (const auto& float4Param : material->m_Float4Params)
+        {
+            if (float4Param->m_Name == s_diffuseSymbol)
+                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.Diffuse, sizeof(float[4]));
+
+            else if (float4Param->m_Name == s_ambientSymbol)
+                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.Ambient, sizeof(float[4]));
+            
+            else if (float4Param->m_Name == s_specularSymbol)
+                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.Specular, sizeof(float[4]));
+            
+            else if (float4Param->m_Name == s_emissiveSymbol)
+                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.Emissive, sizeof(float[4]));
+            
+            else if (float4Param->m_Name == s_powerGlossLevelSymbol)
+                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.PowerGlossLevel, sizeof(float[4]));
+            
+            else if (float4Param->m_Name == s_opacityReflectionRefractionSpectypeSymbol)
+                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.OpacityReflectionRefractionSpectype, sizeof(float[4]));
+        }
+    }
+}
+
+void ModelData::processSingleElementEffect(MaterialMap& materialMap, Hedgehog::Mirage::CSingleElementEffect* singleElementEffect)
+{
+    if (const auto singleElementEffectMotionAll = dynamic_cast<Hedgehog::Motion::CSingleElementEffectMotionAll*>(singleElementEffect))
+    {
+        for (const auto& texcoordMotion : singleElementEffectMotionAll->m_TexcoordMotionList)
+            processTexcoordMotion(materialMap, texcoordMotion);
+
+        for (const auto& materialMotion : singleElementEffectMotionAll->m_MaterialMotionList)
+            processMaterialMotion(materialMap, materialMotion);
+
+        s_tmpMaterialCnt.clear();
+    }
+    else if (const auto singleElementEffectUvMotion = dynamic_cast<Hedgehog::Motion::CSingleElementEffectUvMotion*>(singleElementEffect))
+    {
+        for (const auto& texcoordMotion : singleElementEffectUvMotion->m_TexcoordMotionList)
+            processTexcoordMotion(materialMap, texcoordMotion);
+
+        s_tmpMaterialCnt.clear();
+    }
+    else if (const auto singleElementEffectMatMotion = dynamic_cast<Hedgehog::Motion::CSingleElementEffectMatMotion*>(singleElementEffect))
+    {
+        for (const auto& materialMotion : singleElementEffectMatMotion->m_MaterialMotionList)
+            processMaterialMotion(materialMap, materialMotion);
     }
 }
 

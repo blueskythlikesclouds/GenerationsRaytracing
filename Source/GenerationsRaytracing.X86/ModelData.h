@@ -31,6 +31,9 @@ struct ModelData
     static void processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx,
         MaterialMap& materialMap);
 
+    static void processSingleElementEffect(MaterialMap& materialMap,
+        Hedgehog::Mirage::CSingleElementEffect* singleElementEffect);
+
     static void createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, 
         const MaterialMap& materialMap, bool isEnabled);
 
