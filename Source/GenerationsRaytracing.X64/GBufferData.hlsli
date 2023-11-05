@@ -962,9 +962,7 @@ void StoreGBufferData(uint2 index, GBufferData gBufferData)
     g_DiffuseRefractionAlphaTexture[index] = float4(gBufferData.Diffuse, gBufferData.RefractionAlpha);
     g_SpecularTexture[index] = gBufferData.Specular;
     g_SpecularPowerLevelFresnelTexture[index] = float3(gBufferData.SpecularPower, gBufferData.SpecularLevel, gBufferData.SpecularFresnel);
-    g_NormalTexture[index] = float4(gBufferData.Normal,
-        (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION)) ? 0.0 :
-        (gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION) ? 1.0 : 1.0 - (pow(gBufferData.SpecularPower, 0.2) * 0.25));
+    g_NormalTexture[index] = float4(gBufferData.Normal, 1.0 - (pow(gBufferData.SpecularPower, 0.2) * 0.25));
     g_FalloffTexture[index] = gBufferData.Falloff;
     g_EmissionTexture[index] = gBufferData.Emission;
     g_TransColorTexture[index] = gBufferData.TransColor;
