@@ -19,6 +19,8 @@ HOOK(MaterialDataEx*, __fastcall, MaterialDataConstructor, 0x704CA0, MaterialDat
     This->m_materialId = NULL;
     new (&This->m_originalHighLightParamValue) boost::shared_ptr<float[]>();
     new (&This->m_raytracingHighLightParamValue) boost::shared_ptr<float[]>();
+    This->m_materialHash = 0;
+    This->m_hashFrame = 0;
 
     return result;
 }

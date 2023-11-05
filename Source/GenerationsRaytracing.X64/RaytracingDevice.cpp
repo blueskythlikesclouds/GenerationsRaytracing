@@ -656,9 +656,9 @@ void RaytracingDevice::procMsgCreateInstance()
 
             memcpy(&m_geometryDescs[geometryId], &m_geometryDescs[bottomLevelAccelStruct.geometryId],
                 bottomLevelAccelStruct.geometryCount * sizeof(GeometryDesc));
-
-            instanceDesc.InstanceID = geometryId;
         }
+
+        instanceDesc.InstanceID = geometryId;
 
         for (size_t i = 0; i < geometryCount; i++)
         {
