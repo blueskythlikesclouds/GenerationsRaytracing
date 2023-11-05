@@ -40,10 +40,7 @@ struct Vertex
 float3 NormalizeSafe(float3 value)
 {
     float lengthSquared = dot(value, value);
-    if (lengthSquared > 0.0)
-        value *= rsqrt(lengthSquared);
-
-    return value;
+    return lengthSquared > 0.0 ? value * rsqrt(lengthSquared) : 0.0;
 }
 
 float4 DecodeColor(uint color)
