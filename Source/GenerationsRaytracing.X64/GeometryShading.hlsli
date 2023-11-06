@@ -89,7 +89,9 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
 {
     float3 direction = localLight.Position - gBufferData.Position;
     float distance = length(direction);
-    direction /= distance;
+
+    if (distance > 0.0)
+        direction /= distance;
 
     float3 localLighting = ComputeDirectLighting(gBufferData, eyeDirection,
         direction, localLight.Color, localLight.Color);

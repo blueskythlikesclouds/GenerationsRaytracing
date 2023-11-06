@@ -309,7 +309,7 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture },
         { DXGI_FORMAT_R32G32B32A32_UINT, m_prevReservoirTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_giTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
 

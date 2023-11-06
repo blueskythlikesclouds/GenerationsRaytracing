@@ -5,7 +5,6 @@
 #include "FillTexture.h"
 #include "HalfPixel.h"
 #include "MaterialData.h"
-#include "MemoryAllocator.h"
 #include "MessageSender.h"
 #include "ProcessUtil.h"
 #include "RaytracingRendering.h"
@@ -45,7 +44,6 @@ extern "C" void __declspec(dllexport) Init()
     TriangleFan::init();
     HalfPixel::init();
     TriangleStrip::init();
-    MemoryAllocator::init();
     ModelData::init();
     InstanceData::init();
     RaytracingRendering::init();

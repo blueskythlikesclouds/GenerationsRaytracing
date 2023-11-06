@@ -284,7 +284,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
         eyeLighting = ComputeEyeLighting(gBufferData, WorldRayOrigin(), -WorldRayDirection());
 
-    int2 pixelPosition = round(ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection));
+    int2 pixelPosition = round(ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection));
     float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxPrevView).xyz;
     float3 normal = g_PrevNormalTexture[pixelPosition].xyz;
 
@@ -293,7 +293,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     bool traceGlobalIllumination = false;
 
     if (g_CurrentFrame > 0 && all(and(pixelPosition >= 0, pixelPosition < g_InternalResolution)) &&
-        all(abs(g_PrevPositionFlagsTexture[pixelPosition].xyz - gBufferData.Position) <= 0.002 * -viewPosition.z) &&
+        all(abs(g_PrevPositionFlagsTexture[pixelPosition].xyz - vertex.PrevPosition) <= 0.002 * -viewPosition.z) &&
         dot(gBufferData.Normal, normal) >= 0.9063)
     {
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
