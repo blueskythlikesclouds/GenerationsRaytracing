@@ -527,7 +527,7 @@ static std::unordered_map<Hedgehog::Mirage::CMaterialData*, float*> s_tmpMateria
 
 static void processTexcoordMotion(MaterialMap& materialMap, const Hedgehog::Motion::CTexcoordMotion& texcoordMotion)
 {
-    if (texcoordMotion.m_pMaterialData != nullptr)
+    if (texcoordMotion.m_pMaterialData != nullptr && texcoordMotion.m_pMaterialData->IsMadeAll())
     {
         static Hedgehog::Base::CStringSymbol s_texCoordOffsetSymbol("mrgTexcoordOffset");
 
@@ -571,7 +571,7 @@ static void processTexcoordMotion(MaterialMap& materialMap, const Hedgehog::Moti
 
 static void processMaterialMotion(MaterialMap& materialMap, const Hedgehog::Motion::CMaterialMotion& materialMotion)
 {
-    if (materialMotion.m_pMaterialData != nullptr)
+    if (materialMotion.m_pMaterialData != nullptr && materialMotion.m_pMaterialData->IsMadeAll())
     {
         static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
         static Hedgehog::Base::CStringSymbol s_ambientSymbol("ambient");
@@ -612,7 +612,8 @@ static void processMaterialMotion(MaterialMap& materialMap, const Hedgehog::Moti
 
 static void processTexpatternMotion(MaterialMap& materialMap, const Hedgehog::Motion::CTexpatternMotion& texpatternMotion)
 {
-    if (texpatternMotion.m_pMaterialData != nullptr && texpatternMotion.m_pPictureData != nullptr)
+    if (texpatternMotion.m_pMaterialData != nullptr && texpatternMotion.m_pMaterialData->IsMadeAll() &&
+        texpatternMotion.m_pPictureData != nullptr && texpatternMotion.m_pPictureData->IsMadeAll())
     {
         static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
 

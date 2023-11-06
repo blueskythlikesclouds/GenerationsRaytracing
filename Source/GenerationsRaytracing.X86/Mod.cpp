@@ -9,6 +9,7 @@
 #include "ProcessUtil.h"
 #include "RaytracingRendering.h"
 #include "InstanceData.h"
+#include "MotionData.h"
 #include "ShaderCache.h"
 #include "Sofdec.h"
 #include "TriangleFan.h"
@@ -50,6 +51,7 @@ extern "C" void __declspec(dllexport) Init()
     MaterialData::init();
     Sofdec::init();
     ShaderCache::init();
+    MotionData::init();
 
 #ifdef _DEBUG
 #if 0

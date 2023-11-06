@@ -110,6 +110,7 @@
       </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="BaseTexture.cpp" />
+    <ClCompile Include="MotionData.cpp" />
     <ClCompile Include="RaytracingUtil.cpp" />
     <ClCompile Include="ModelData.cpp" />
     <ClCompile Include="Configuration.cpp" />
@@ -145,6 +146,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseTexture.h" />
+    <ClInclude Include="MotionData.h" />
     <ClInclude Include="RaytracingUtil.h" />
     <ClInclude Include="ModelData.h" />
     <ClInclude Include="Configuration.h" />
