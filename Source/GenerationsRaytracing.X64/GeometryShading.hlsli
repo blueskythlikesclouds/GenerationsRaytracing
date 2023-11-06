@@ -67,24 +67,6 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     return diffuseColor + specularColor + transColor;
 }
 
-float3 ComputeEyeLighting(GBufferData gBufferData, float3 eyePosition, float3 eyeDirection)
-{
-    float3 eyeLighting = ComputeDirectLighting(
-        gBufferData,
-        eyeDirection,
-        eyeDirection,
-        mrgEyeLight_Diffuse.rgb * mrgEyeLight_Diffuse.w,
-        mrgEyeLight_Specular.rgb * mrgEyeLight_Specular.w);
-
-    if (mrgEyeLight_Attribute.x != 0) // If not directional
-    {
-        float distance = length(gBufferData.Position - eyePosition);
-        eyeLighting *= 1.0 - saturate((distance - mrgEyeLight_Range.z) / (mrgEyeLight_Range.w - mrgEyeLight_Range.z));
-    }
-
-    return eyeLighting;
-}
-
 float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
     float3 direction = localLight.Position - gBufferData.Position;
@@ -145,9 +127,6 @@ float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingPara
         resultShading += ComputeDirectLighting(gBufferData, shadingParams.EyeDirection, 
             -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb) * shadingParams.Shadow;
     }
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
-        resultShading += ComputeEyeLighting(gBufferData, shadingParams.EyePosition, shadingParams.EyeDirection);
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
         resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]) * shadingParams.Reservoir.W;

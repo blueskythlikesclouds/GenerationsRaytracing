@@ -12,18 +12,17 @@
 #define GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT      (1 << 2)
 #define GBUFFER_FLAG_IGNORE_SHADOW              (1 << 3)
 #define GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT        (1 << 4)
-#define GBUFFER_FLAG_IGNORE_EYE_LIGHT           (1 << 5)
-#define GBUFFER_FLAG_IGNORE_LOCAL_LIGHT         (1 << 6)
-#define GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION (1 << 7)
-#define GBUFFER_FLAG_IGNORE_REFLECTION          (1 << 8)
-#define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 9)
-#define GBUFFER_FLAG_HALF_LAMBERT               (1 << 10)
-#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 11)
-#define GBUFFER_FLAG_IS_GLASS_REFLECTION        (1 << 12)
-#define GBUFFER_FLAG_IS_WATER                   (1 << 13)
-#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 14)
-#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 15)
-#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 16)
+#define GBUFFER_FLAG_IGNORE_LOCAL_LIGHT         (1 << 5)
+#define GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION (1 << 6)
+#define GBUFFER_FLAG_IGNORE_REFLECTION          (1 << 7)
+#define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 8)
+#define GBUFFER_FLAG_HALF_LAMBERT               (1 << 9)
+#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 10)
+#define GBUFFER_FLAG_IS_GLASS_REFLECTION        (1 << 11)
+#define GBUFFER_FLAG_IS_WATER                   (1 << 12)
+#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 13)
+#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 14)
+#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 15)
 
 struct GBufferData
 {
@@ -105,7 +104,7 @@ float2 ComputeEnvMapTexCoord(float3 eyeDirection, float3 normal)
 
 void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
-    gBufferData.Flags = GBUFFER_FLAG_IGNORE_EYE_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT | 
+    gBufferData.Flags = GBUFFER_FLAG_IGNORE_LOCAL_LIGHT | 
         GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_WATER;
 
     float2 offset = material.WaterParam.xy * g_TimeParam.y * 0.08;
@@ -403,7 +402,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
         case SHADER_TYPE_DISTORTION_OVERLAY:
             {
                 gBufferData.Flags =
-                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_EYE_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
+                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
                     GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IGNORE_REFLECTION | GBUFFER_FLAG_REFRACTION_MUL;
 
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
@@ -661,7 +660,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
         case SHADER_TYPE_IGNORE_LIGHT:
             {
                 gBufferData.Flags =
-                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_EYE_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
+                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
                     GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IGNORE_REFLECTION;
 
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
@@ -686,7 +685,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
         case SHADER_TYPE_IGNORE_LIGHT_TWICE:
             {
                 gBufferData.Flags =
-                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_EYE_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
+                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
                     GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IGNORE_REFLECTION;
 
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
@@ -905,7 +904,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
         default:
             {
                 gBufferData.Flags = 
-                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_EYE_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
+                    GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
                     GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IGNORE_REFLECTION;
 
                 gBufferData.Emission = float3(1.0, 0.0, 0.0);

@@ -279,11 +279,6 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
             -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb) * g_LightPower;
     }
 
-    float3 eyeLighting = 0.0;
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_EYE_LIGHT))
-        eyeLighting = ComputeEyeLighting(gBufferData, WorldRayOrigin(), -WorldRayDirection());
-
     int2 pixelPosition = round(ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection));
     float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxPrevView).xyz;
     float3 normal = g_PrevNormalTexture[pixelPosition].xyz;
@@ -318,7 +313,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     
     float3 emissionLighting = gBufferData.Emission * g_EmissivePower;
 
-    payload.Color = eyeLighting + localLighting + globalIllumination + emissionLighting;
+    payload.Color = localLighting + globalIllumination + emissionLighting;
 
     // Done at the end for reducing live state.
     if (traceGlobalIllumination)
