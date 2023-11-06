@@ -303,7 +303,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
         }
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
-            globalIllumination = ComputeGI(gBufferData, g_GITexture[pixelPosition].rgb);
+            globalIllumination = ComputeGI(gBufferData, g_PrevGITexture[pixelPosition].rgb);
     }
     else
     {

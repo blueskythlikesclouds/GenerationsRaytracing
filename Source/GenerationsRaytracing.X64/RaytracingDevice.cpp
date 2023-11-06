@@ -309,7 +309,8 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture },
         { DXGI_FORMAT_R32G32B32A32_UINT, m_prevReservoirTexture },
 
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, &m_prevGITexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_prevGITexture, &m_giTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
 
@@ -392,7 +393,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
 
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reservoirTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_giTexture->GetResource());
+    getGraphicsCommandList().uavBarrier((m_frame & 1 ? m_prevGITexture : m_giTexture)->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
     getGraphicsCommandList().commitBarriers();
@@ -412,7 +413,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
     case DEBUG_VIEW_FALLOFF: colorTexture = m_falloffTexture->GetResource(); break;
     case DEBUG_VIEW_EMISSION: colorTexture = m_emissionTexture->GetResource(); break;
     case DEBUG_VIEW_SHADOW: colorTexture = m_shadowTexture->GetResource(); break;
-    case DEBUG_VIEW_GI: colorTexture = m_giTexture->GetResource(); break;
+    case DEBUG_VIEW_GI: colorTexture = (m_frame & 1 ? m_prevGITexture : m_giTexture)->GetResource(); break;
     case DEBUG_VIEW_REFLECTION: colorTexture = m_reflectionTexture->GetResource(); break;
     case DEBUG_VIEW_REFRACTION: colorTexture = m_refractionTexture->GetResource(); break;
     }
@@ -1159,7 +1160,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 24, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 25, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

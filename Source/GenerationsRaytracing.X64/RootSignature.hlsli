@@ -156,13 +156,14 @@ RWTexture2D<uint4> g_ReservoirTexture : register(u15);
 RWTexture2D<uint4> g_PrevReservoirTexture : register(u16);
 
 RWTexture2D<float3> g_GITexture : register(u17);
-RWTexture2D<float3> g_ReflectionTexture : register(u18);
-RWTexture2D<float3> g_RefractionTexture : register(u19);
+RWTexture2D<float3> g_PrevGITexture : register(u18);
+RWTexture2D<float3> g_ReflectionTexture : register(u19);
+RWTexture2D<float3> g_RefractionTexture : register(u20);
 
-RWTexture2D<float3> g_DiffuseAlbedoTexture : register(u20);
-RWTexture2D<float3> g_SpecularAlbedoTexture : register(u21);
-RWTexture2D<float4> g_DiffuseRayDirectionHitDistanceTexture : register(u22);
-RWTexture2D<float4> g_SpecularRayDirectionHitDistanceTexture : register(u23);
+RWTexture2D<float3> g_DiffuseAlbedoTexture : register(u21);
+RWTexture2D<float3> g_SpecularAlbedoTexture : register(u22);
+RWTexture2D<float4> g_DiffuseRayDirectionHitDistanceTexture : register(u23);
+RWTexture2D<float4> g_SpecularRayDirectionHitDistanceTexture : register(u24);
 
 SamplerState g_SamplerState : register(s0);
 
