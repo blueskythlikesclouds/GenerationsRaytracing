@@ -62,10 +62,10 @@ float3 DecodeNormalMap(Vertex vertex, float2 value)
     normalMap.xy = value * 2.0 - 1.0;
     normalMap.z = sqrt(1.0 - saturate(dot(normalMap.xy, normalMap.xy)));
 
-    return
+    return NormalizeSafe(
         vertex.Tangent * normalMap.x -
         vertex.Binormal * normalMap.y +
-        vertex.Normal * normalMap.z;
+        vertex.Normal * normalMap.z);
 }
 
 float3 DecodeNormalMap(Vertex vertex, float4 value)
