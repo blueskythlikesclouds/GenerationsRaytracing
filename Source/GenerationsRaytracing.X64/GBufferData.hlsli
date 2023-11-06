@@ -132,7 +132,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
     gBufferData.Position = vertex.Position;
     gBufferData.SafeSpawnPoint = vertex.SafeSpawnPoint;
     gBufferData.Diffuse = material.Diffuse.rgb;
-    gBufferData.Alpha = material.OpacityReflectionRefractionSpectype.x;
+    gBufferData.Alpha = material.Diffuse.a * material.OpacityReflectionRefractionSpectype.x;
     gBufferData.Specular = material.Specular.rgb;
     gBufferData.SpecularPower = material.PowerGlossLevel.y * 500.0;
     gBufferData.SpecularLevel = material.PowerGlossLevel.z * 5.0;
