@@ -224,6 +224,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex.TexCoords);
 
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
                 gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
 
                 if (material.GlossTexture != 0)
