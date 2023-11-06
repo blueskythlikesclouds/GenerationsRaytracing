@@ -561,8 +561,11 @@ static void processTexcoordMotion(MaterialMap& materialMap, const Hedgehog::Moti
             }
         }
 
-        for (size_t i = 0; i < 8; i++)
-            offsets[i] += texcoordMotion.m_TexcoordOffset[i];
+        if ((texcoordMotion.m_Field4 & 0x2) == 0)
+        {
+            for (size_t i = 0; i < 8; i++)
+                offsets[i] += texcoordMotion.m_TexcoordOffset[i];
+        }
     }
 }
 
@@ -581,25 +584,28 @@ static void processMaterialMotion(MaterialMap& materialMap, const Hedgehog::Moti
         if (material == nullptr)
             material = cloneMaterial(*materialMotion.m_pMaterialData);
 
+        const auto& matMotionData = (materialMotion.m_Field4 & 0x2) == 0 ? 
+            materialMotion.m_MaterialMotionData : materialMotion.m_DefaultMaterialMotionData;
+
         for (const auto& float4Param : material->m_Float4Params)
         {
             if (float4Param->m_Name == s_diffuseSymbol)
-                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.Diffuse, sizeof(float[4]));
+                memcpy(float4Param->m_spValue.get(), matMotionData.Diffuse, sizeof(float[4]));
 
             else if (float4Param->m_Name == s_ambientSymbol)
-                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.Ambient, sizeof(float[4]));
+                memcpy(float4Param->m_spValue.get(), matMotionData.Ambient, sizeof(float[4]));
             
             else if (float4Param->m_Name == s_specularSymbol)
-                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.Specular, sizeof(float[4]));
+                memcpy(float4Param->m_spValue.get(), matMotionData.Specular, sizeof(float[4]));
             
             else if (float4Param->m_Name == s_emissiveSymbol)
-                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.Emissive, sizeof(float[4]));
+                memcpy(float4Param->m_spValue.get(), matMotionData.Emissive, sizeof(float[4]));
             
             else if (float4Param->m_Name == s_powerGlossLevelSymbol)
-                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.PowerGlossLevel, sizeof(float[4]));
+                memcpy(float4Param->m_spValue.get(), matMotionData.PowerGlossLevel, sizeof(float[4]));
             
             else if (float4Param->m_Name == s_opacityReflectionRefractionSpectypeSymbol)
-                memcpy(float4Param->m_spValue.get(), materialMotion.m_MaterialMotionData.OpacityReflectionRefractionSpectype, sizeof(float[4]));
+                memcpy(float4Param->m_spValue.get(), matMotionData.OpacityReflectionRefractionSpectype, sizeof(float[4]));
         }
     }
 }
