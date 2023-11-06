@@ -227,6 +227,8 @@ static void __cdecl implOfSceneRender(void* a1)
                             ++s_localLightCount;
                         }
                     }
+
+                    resetAccumulation = true;
                 }
             }
         }
