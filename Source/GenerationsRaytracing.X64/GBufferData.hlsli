@@ -342,6 +342,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 else if (material.SpecularTexture == 0)
                 {
                     gBufferData.Specular = 0.0;
+                    if (material.ReflectionTexture != 0)
+                        gBufferData.Flags = GBUFFER_FLAG_IS_MIRROR_REFLECTION;
                 }
 
                 if (material.NormalTexture != 0)
@@ -638,21 +640,23 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
 
         case SHADER_TYPE_ICE:
             {
+                gBufferData.Flags = GBUFFER_FLAG_IS_MIRROR_REFLECTION;
+
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords);
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a * vertex.Color.a;
-
-                if (material.GlossTexture != 0)
-                {
-                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
-                    gBufferData.SpecularPower *= gloss;
-                    gBufferData.SpecularLevel *= gloss;
-                }
 
                 if (material.NormalTexture != 0)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex.TexCoords));
 
                 gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+
+                if (material.GlossTexture != 0)
+                {
+                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex.TexCoords).x;
+                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularFresnel *= gloss;
+                }
 
                 break;
             }
@@ -777,6 +781,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 else
                 {
                     gBufferData.Specular = 0.0;
+                    if (material.ReflectionTexture != 0)
+                        gBufferData.Flags = GBUFFER_FLAG_IS_MIRROR_REFLECTION;
                 }
 
                 gBufferData.Emission = material.DisplacementTexture != 0 ? 
