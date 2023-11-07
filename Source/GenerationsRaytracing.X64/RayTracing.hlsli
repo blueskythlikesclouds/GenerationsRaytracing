@@ -5,7 +5,8 @@
 
 struct [raypayload] PrimaryRayPayload
 {
-    uint dummy : read() : write();
+    float3 dDdx : read(anyhit, closesthit) : write(caller);
+    float3 dDdy : read(anyhit, closesthit) : write(caller);
 };
 
 struct [raypayload] SecondaryRayPayload

@@ -1,6 +1,8 @@
 #ifndef MATERIAL_DATA_H
 #define MATERIAL_DATA_H
 
+#include "GeometryDesc.hlsli"
+
 struct Material
 {
     uint ShaderType;
@@ -55,9 +57,26 @@ float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)
     return texture.SampleLevel(samplerState, texCoord, 0);
 }
 
-float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoords[4])
+float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex)
 {
-    return SampleMaterialTexture2D(materialTexture, texCoords[materialTexture >> 30]);
+    uint textureId = materialTexture & 0xFFFFF;
+    uint samplerId = (materialTexture >> 20) & 0x3FF;
+    uint texCoordIndex = materialTexture >> 30;
+
+    Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(textureId)];
+    SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(samplerId)];
+
+    if (vertex.EnableGradSampling)
+    {
+        return texture.SampleGrad(samplerState, 
+            vertex.TexCoords[texCoordIndex], 
+            vertex.TexCoordsDdx[texCoordIndex], 
+            vertex.TexCoordsDdy[texCoordIndex]);
+    }
+    else
+    {
+        return texture.SampleLevel(samplerState, vertex.TexCoords[texCoordIndex], 0);
+    }
 }
 
 #endif

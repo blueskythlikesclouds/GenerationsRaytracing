@@ -1,6 +1,7 @@
 #ifndef GEOMETRY_DESC_H
 #define GEOMETRY_DESC_H
 #include "GeometryFlags.h"
+#include "RayDifferentials.hlsli"
 #include "SelfIntersectionAvoidance.hlsl"
 
 struct GeometryDesc
@@ -34,7 +35,10 @@ struct Vertex
     float3 Tangent;
     float3 Binormal;
     float2 TexCoords[4];
+    float2 TexCoordsDdx[4];
+    float2 TexCoordsDdy[4];
     float4 Color;
+    bool EnableGradSampling;
 };
 
 float3 NormalizeSafe(float3 value)
@@ -56,7 +60,10 @@ Vertex LoadVertex(
     GeometryDesc geometryDesc, 
     float4 texCoordOffsets[2],
     InstanceDesc instanceDesc,
-    BuiltInTriangleIntersectionAttributes attributes)
+    BuiltInTriangleIntersectionAttributes attributes,
+    float3 dDdx,
+    float3 dDdy,
+    bool enableGradSampling)
 {
     ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
     Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
@@ -137,15 +144,14 @@ Vertex LoadVertex(
         asfloat(vertexBuffer.Load3(binormalOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load3(binormalOffsets.z)) * uv.z;
 
-    [unroll]
+    float2 texCoords[4][3];
+
     for (uint i = 0; i < 4; i++)
     {
-        uint3 texCoordOffsets = offsets + geometryDesc.TexCoordOffsets[i];
+        for (uint j = 0; j < 3; j++)
+            texCoords[i][j] = asfloat(vertexBuffer.Load2(offsets[j] + geometryDesc.TexCoordOffsets[i]));
 
-        vertex.TexCoords[i] =
-            asfloat(vertexBuffer.Load2(texCoordOffsets.x)) * uv.x +
-            asfloat(vertexBuffer.Load2(texCoordOffsets.y)) * uv.y +
-            asfloat(vertexBuffer.Load2(texCoordOffsets.z)) * uv.z;
+        vertex.TexCoords[i] = texCoords[i][0] * uv.x + texCoords[i][1] * uv.y + texCoords[i][2] * uv.z;
     }
 
     vertex.TexCoords[0] += texCoordOffsets[0].xy;
@@ -166,6 +172,39 @@ Vertex LoadVertex(
             asfloat(vertexBuffer.Load4(colorOffsets.x)) * uv.x +
             asfloat(vertexBuffer.Load4(colorOffsets.y)) * uv.y +
             asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
+    }
+
+    if (enableGradSampling)
+    {
+        RayDiff rayDiff = (RayDiff) 0;
+        rayDiff.dDdx = dDdx;
+        rayDiff.dDdy = dDdy;
+
+        float2 dBarydx;
+        float2 dBarydy;
+        ComputeBarycentricDifferentials(
+            PropagateRayDifferentials(rayDiff, WorldRayOrigin(), WorldRayDirection(), RayTCurrent(), outWldNormal),
+            WorldRayDirection(),
+            mul(ObjectToWorld3x4(), float4(p1 - p0, 0.0)).xyz,
+            mul(ObjectToWorld3x4(), float4(p2 - p0, 0.0)).xyz,
+            outWldNormal, 
+            dBarydx, 
+            dBarydy);
+
+        for (uint i = 0; i < 4; i++)
+            InterpolateDifferentials(dBarydx, dBarydy, texCoords[i][0], texCoords[i][1], texCoords[i][2], vertex.TexCoordsDdx[i], vertex.TexCoordsDdy[i]);
+
+        vertex.EnableGradSampling = true;
+    }
+    else
+    {
+        for (uint i = 0; i < 4; i++)
+        {
+            vertex.TexCoordsDdx[i] = 0.0;
+            vertex.TexCoordsDdy[i] = 0.0;
+        }
+
+        vertex.EnableGradSampling = false;
     }
 
     vertex.Position = mul(ObjectToWorld3x4(), float4(vertex.Position, 1.0)).xyz;
