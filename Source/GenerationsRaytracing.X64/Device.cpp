@@ -277,16 +277,31 @@ void Device::flushGraphicsState()
     {
         for (uint32_t i = m_samplerDescsFirst; i <= m_samplerDescsLast; i++)
         {
-            const XXH64_hash_t samplerHash = XXH3_64bits(&m_samplerDescs[i], sizeof(m_samplerDescs[i]));
+            auto& samplerDesc = m_samplerDescs[i];
+
+            if (m_anisotropicFiltering > 0 && samplerDesc.Filter == D3D12_FILTER_MIN_MAG_MIP_LINEAR)
+            {
+                samplerDesc.Filter = D3D12_FILTER_ANISOTROPIC;
+                samplerDesc.MaxAnisotropy = m_anisotropicFiltering;
+            }
+
+            const XXH64_hash_t samplerHash = XXH3_64bits(&samplerDesc, sizeof(samplerDesc));
             auto& sampler = m_samplers[samplerHash];
             if (sampler == NULL)
             {
                 sampler = m_samplerDescriptorHeap.allocate();
 
                 m_device->CreateSampler(
-                    &m_samplerDescs[i],
+                    &samplerDesc,
                     m_samplerDescriptorHeap.getCpuHandle(sampler));
             }
+
+            if (samplerDesc.Filter == D3D12_FILTER_ANISOTROPIC)
+            {
+                samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                samplerDesc.MaxAnisotropy = 0;
+            }
+
             if (m_globalsPS.samplerIndices[i] != sampler)
                 m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
 

@@ -841,10 +841,19 @@ void RaytracingDevice::procMsgCreateMaterial()
     };
 
     D3D12_SAMPLER_DESC samplerDesc{};
-    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
     samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
     samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+
+    if (m_anisotropicFiltering > 0)
+    {
+        samplerDesc.Filter = D3D12_FILTER_ANISOTROPIC;
+        samplerDesc.MaxAnisotropy = m_anisotropicFiltering;
+    }
+    else
+    {
+        samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    }
 
     for (const auto& [srcTexture, dstTexture] : textures)
     {
@@ -981,10 +990,19 @@ void RaytracingDevice::procMsgRenderSky()
     pipelineDesc.SampleDesc.Count = 1;
 
     D3D12_SAMPLER_DESC samplerDesc{};
-    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
     samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
     samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+
+    if (m_anisotropicFiltering > 0)
+    {
+        samplerDesc.Filter = D3D12_FILTER_ANISOTROPIC;
+        samplerDesc.MaxAnisotropy = m_anisotropicFiltering;
+    }
+    else
+    {
+        samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    }
 
     uint32_t samplerId = NULL;
 
@@ -1356,6 +1374,8 @@ RaytracingDevice::RaytracingDevice()
                 m_upscaler = std::move(upscaler);
             }
         }
+
+        m_anisotropicFiltering = static_cast<UINT>(reader.GetInteger("Mod", "AnisotropicFiltering", 0));
     }
 
     if (m_upscaler == nullptr)

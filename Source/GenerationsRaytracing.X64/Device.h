@@ -121,6 +121,8 @@ protected:
 
     uint32_t m_dirtyFlags = ~0;
 
+    uint32_t m_anisotropicFiltering = 0;
+
     // Place chonky variables at the end.
     GlobalsVS m_globalsVS{};
     GlobalsPS m_globalsPS{};
