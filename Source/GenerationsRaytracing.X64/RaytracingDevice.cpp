@@ -232,6 +232,8 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     m_globalsRT.lightPower = message.lightPower;
     m_globalsRT.emissivePower = message.emissivePower;
     m_globalsRT.skyPower = message.skyPower;
+    memcpy(m_globalsRT.backgroundColor, message.backgroundColor, sizeof(m_globalsRT.backgroundColor));
+    m_globalsRT.useSkyTexture = message.useSkyTexture;
 
     const auto globalsRT = createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
@@ -387,7 +389,7 @@ void RaytracingDevice::createRaytracingTextures()
     m_device->CreateShaderResourceView(m_depthTexture->GetResource(), nullptr, cpuHandle);
 }
 
-void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32_t debugView)
+void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
 {
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
 
@@ -405,7 +407,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
 
     ID3D12Resource* colorTexture = m_colorTexture->GetResource();
 
-    switch (debugView)
+    switch (message.debugView)
     {
     case DEBUG_VIEW_DIFFUSE: colorTexture = m_diffuseRefractionAlphaTexture->GetResource(); break;
     case DEBUG_VIEW_SPECULAR: colorTexture = m_specularTexture->GetResource(); break;
@@ -461,7 +463,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(bool resetAccumulation, uint32
             m_specularRayDirectionHitDistanceTexture->GetResource(),
             m_globalsRT.pixelJitterX,
             m_globalsRT.pixelJitterY,
-            resetAccumulation
+            message.resetAccumulation
         });
 
     setDescriptorHeaps();
@@ -805,7 +807,7 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
-    resolveAndDispatchUpscaler(message.resetAccumulation, message.debugView);
+    resolveAndDispatchUpscaler(message);
     copyToRenderTargetAndDepthStencil();
 }
 

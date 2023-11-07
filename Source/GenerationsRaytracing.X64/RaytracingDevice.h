@@ -16,6 +16,8 @@ struct alignas(0x10) GlobalsRT
     float prevView[4][4];
     float skyColor[3];
     uint32_t skyTextureId;
+    float backgroundColor[3];
+    uint32_t useSkyTexture;
     float groundColor[3];
     uint32_t useEnvironmentColor;
     float pixelJitterX;
@@ -157,7 +159,7 @@ protected:
     bool createTopLevelAccelStruct();
 
     void createRaytracingTextures();
-    void resolveAndDispatchUpscaler(bool resetAccumulation, uint32_t debugView);
+    void resolveAndDispatchUpscaler(const MsgTraceRays& message);
     void copyToRenderTargetAndDepthStencil();
 
     void procMsgCreateBottomLevelAccelStruct();

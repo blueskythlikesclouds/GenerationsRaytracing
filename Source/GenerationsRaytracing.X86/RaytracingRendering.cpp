@@ -181,10 +181,17 @@ static void __cdecl implOfSceneRender(void* a1)
             const auto skyFindResult = renderScene->m_BundleMap.find("Sky");
             if (skyFindResult != renderScene->m_BundleMap.end())
                 s_curSky = findSky(skyFindResult->second.get());
+            else
+                s_curSky = nullptr;
         }
 
         if (s_curSky != prevSky)
-            ModelData::renderSky(*s_curSky);
+        {
+            if (s_curSky != nullptr)
+                ModelData::renderSky(*s_curSky);
+
+            resetAccumulation = true;
+        }
 
         InstanceData::createPendingInstances();
         MaterialData::createPendingMaterials();
@@ -270,6 +277,23 @@ static void __cdecl implOfSceneRender(void* a1)
             memcpy(traceRaysMessage.groundColor, RaytracingParams::s_groundColor.data(), sizeof(traceRaysMessage.groundColor));
         else
             memcpy(traceRaysMessage.groundColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.groundColor));
+
+        traceRaysMessage.useSkyTexture = s_curSky != nullptr;
+
+        if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
+        {
+            const auto renderDirector = gameDocument->m_pMember->m_spRenderDirector.get();
+            const auto mtfxInternal = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(renderDirector) + 0xC4);
+            const auto bgColor = reinterpret_cast<uint8_t*>(mtfxInternal + 0x1A0);
+
+            traceRaysMessage.backgroundColor[0] = static_cast<float>(bgColor[2]) / 255.0f;
+            traceRaysMessage.backgroundColor[1] = static_cast<float>(bgColor[1]) / 255.0f;
+            traceRaysMessage.backgroundColor[2] = static_cast<float>(bgColor[0]) / 255.0f;
+        }
+        else
+        {
+            memset(traceRaysMessage.backgroundColor, 0, sizeof(traceRaysMessage.backgroundColor));
+        }
 
         s_messageSender.endMessage();
 

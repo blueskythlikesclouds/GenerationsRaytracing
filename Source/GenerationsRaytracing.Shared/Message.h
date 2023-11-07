@@ -369,6 +369,8 @@ struct MsgTraceRays
     uint32_t envMode;
     float skyColor[3];
     float groundColor[3];
+    bool useSkyTexture;
+    float backgroundColor[3];
 };
 
 struct MsgCreateMaterial

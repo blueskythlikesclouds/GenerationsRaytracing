@@ -37,7 +37,12 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
     gBufferData.SpecularPower = 1.0;
     gBufferData.Normal = -WorldRayDirection();
-    gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+
+    if (g_UseSkyTexture)
+        gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+    else
+        gBufferData.Emission = g_BackgroundColor;
+
     StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 
     g_DepthTexture[DispatchRaysIndex().xy] = 1.0;
@@ -233,8 +238,16 @@ void RefractionRayGeneration()
 [shader("miss")]
 void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
-    TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
-    payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+    if (g_UseSkyTexture)
+    {
+        TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
+        payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+    }
+    else
+    {
+        payload.Color = 0.0;
+    }
+
     payload.T = Z_MAX;
 }
 
@@ -250,14 +263,17 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     if (g_UseEnvironmentColor)
     {
         payload.Color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
-        payload.T = Z_MAX;
     }
-    else
+    else if (g_UseSkyTexture)
     {
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
         payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_SkyPower;
-        payload.T = Z_MAX;
     }
+    else
+    {
+        payload.Color = 0.0;
+    }
+    payload.T = Z_MAX;
 }
 
 [shader("closesthit")]

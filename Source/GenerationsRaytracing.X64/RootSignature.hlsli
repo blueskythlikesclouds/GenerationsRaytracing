@@ -106,6 +106,8 @@ cbuffer GlobalsRT : register(b2)
     row_major float4x4 g_MtxPrevView;
     float3 g_SkyColor;
     uint g_SkyTextureId;
+    float3 g_BackgroundColor;
+    bool g_UseSkyTexture;
     float3 g_GroundColor;
     bool g_UseEnvironmentColor;
     float2 g_PixelJitter;
