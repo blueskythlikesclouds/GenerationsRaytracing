@@ -75,7 +75,7 @@ static const xxHashMap<std::array<uint8_t, 6>> s_environmentColors =
     { 0x38ce5a5b25b24596, { 0, 0, 0 } },                     // Event_temple
     { 0xeb5c0e38aab9b282, { 0, 0, 0 } },                     // ExStageTails1
     { 0x304c2eb9550248dc, { 0, 0, 0 } },                     // ExStageTails2
-    { 0x7ca14cdc575ce805, { 179, 153, 128 } },               // Title
+    { 0x7ca14cdc575ce805, { 229, 204, 178 } },               // Title
     { 0x15f8f352b5d4bf90, { 0, 0, 0 } },                     // Town_Africa
     { 0x52666cacba8a4e74, { 0, 0, 0 } },                     // Town_AfricaETF
     { 0x41adb4f67aac7fc2, { 0, 0, 0 } },                     // Town_AfricaETF_Night, Town_Africa_Night
