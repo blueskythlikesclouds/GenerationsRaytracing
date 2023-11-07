@@ -342,8 +342,6 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 else if (material.SpecularTexture == 0)
                 {
                     gBufferData.Specular = 0.0;
-                    if (material.ReflectionTexture != 0)
-                        gBufferData.Flags = GBUFFER_FLAG_IS_MIRROR_REFLECTION;
                 }
 
                 if (material.NormalTexture != 0)
@@ -781,8 +779,6 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 else
                 {
                     gBufferData.Specular = 0.0;
-                    if (material.ReflectionTexture != 0)
-                        gBufferData.Flags = GBUFFER_FLAG_IS_MIRROR_REFLECTION;
                 }
 
                 gBufferData.Emission = material.DisplacementTexture != 0 ? 
