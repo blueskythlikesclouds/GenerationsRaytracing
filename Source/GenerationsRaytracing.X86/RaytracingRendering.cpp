@@ -9,13 +9,15 @@
 #include "InstanceData.h"
 #include "RaytracingParams.h"
 
-static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable, bool isEnabled)
+static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable)
 {
-    isEnabled &= renderable->m_Enabled;
+    if (!renderable->m_Enabled)
+        return;
 
     if (auto element = dynamic_cast<Hedgehog::Mirage::CSingleElement*>(renderable))
     {
-        if (element->m_spModel != nullptr && element->m_spModel->IsMadeOne())
+        if (element->m_spModel != nullptr && element->m_spModel->IsMadeOne() &&
+            (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
         {
             auto modelDataEx = reinterpret_cast<ModelDataEx*>(element->m_spModel.get());
             if (modelDataEx->m_noAoModel != nullptr)
@@ -50,16 +52,12 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                     }
                 }
 
-                isEnabled &= (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0;
-
                 ModelData::createBottomLevelAccelStruct(
                     *modelDataEx,
                     *instanceInfoEx,
-                    element->m_MaterialMap,
-                    isEnabled);
+                    element->m_MaterialMap);
 
-                if (isEnabled)
-                    InstanceData::trackInstance(instanceInfoEx);
+                InstanceData::trackInstance(instanceInfoEx);
             }
 
         }
@@ -67,12 +65,12 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
     else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))
     {
         for (const auto& it : bundle->m_RenderableList)
-            createInstancesAndBottomLevelAccelStructs(it.get(), isEnabled);
+            createInstancesAndBottomLevelAccelStructs(it.get());
     }
     else if (const auto optimalBundle = dynamic_cast<const Hedgehog::Mirage::COptimalBundle*>(renderable))
     {
         for (const auto it : optimalBundle->m_RenderableList)
-            createInstancesAndBottomLevelAccelStructs(it, isEnabled);
+            createInstancesAndBottomLevelAccelStructs(it);
     }
 }
 
@@ -208,7 +206,7 @@ static void __cdecl implOfSceneRender(void* a1)
         {
             const auto categoryFindResult = renderScene->m_BundleMap.find(symbol);
             if (categoryFindResult != renderScene->m_BundleMap.end())
-                createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get(), true);
+                createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get());
         }
 
         InstanceData::releaseUnusedInstances();

@@ -35,7 +35,7 @@ struct ModelData
         Hedgehog::Mirage::CSingleElementEffect* singleElementEffect);
 
     static void createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, 
-        const MaterialMap& materialMap, bool isEnabled);
+        const MaterialMap& materialMap);
 
     static void renderSky(Hedgehog::Mirage::CModelData& modelData);
 

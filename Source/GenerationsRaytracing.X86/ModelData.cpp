@@ -671,14 +671,8 @@ void ModelData::processSingleElementEffect(MaterialMap& materialMap, Hedgehog::M
     }
 }
 
-void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap, bool isEnabled)
+void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap)
 {
-    if (!isEnabled)
-    {
-        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceInfoEx.m_instanceId);
-        return;
-    }
-
     for (auto& [key, value] : materialMap)
     {
         auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(value.get());
