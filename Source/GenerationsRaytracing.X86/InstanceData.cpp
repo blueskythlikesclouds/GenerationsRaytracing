@@ -3,6 +3,7 @@
 #include "ModelData.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
 
 class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoData
@@ -13,6 +14,9 @@ public:
 
 static std::unordered_set<TerrainInstanceInfoDataEx*> s_instancesToCreate;
 static Mutex s_instanceCreateMutex;
+
+static std::unordered_set<InstanceInfoEx*> s_trackedInstances;
+static Mutex s_instanceTrackMutex;
 
 HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor, 0x717350, TerrainInstanceInfoDataEx* This)
 {
@@ -50,42 +54,25 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     new (std::addressof(This->m_poseVertexBuffer)) ComPtr<VertexBuffer>();
     This->m_headNodeIndex = 0;
     This->m_handledEyeMaterials = false;
+    This->m_modelHash = 0;
+    This->m_visibilityBits = 0;
+    This->m_hashFrame = 0;
 
     return result;
 }
 
 HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
 {
+    s_instanceTrackMutex.lock();
+    s_trackedInstances.erase(This);
+    s_instanceTrackMutex.unlock();
+
     RaytracingUtil::releaseResource(RaytracingResourceType::Instance, This->m_instanceId);
     RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
 
     This->m_poseVertexBuffer.~ComPtr();
 
     originalInstanceInfoDestructor(This);
-}
-
-static void removeRenderable(Hedgehog::Mirage::CRenderable* renderable)
-{
-    if (const auto singleElement = dynamic_cast<Hedgehog::Mirage::CSingleElement*>(renderable))
-    {
-        const auto instanceInfoEx = reinterpret_cast<InstanceInfoEx*>(singleElement->m_spInstanceInfo.get());
-        if (instanceInfoEx != nullptr)
-            RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceInfoEx->m_instanceId);
-    }
-}
-
-HOOK(void, __fastcall, OptimalBundleRemoveRenderable, 0x71B0F0,
-    Hedgehog::Mirage::COptimalBundle* This, const boost::shared_ptr<Hedgehog::Mirage::CRenderable>& renderable)
-{
-    removeRenderable(renderable.get());
-    return originalOptimalBundleRemoveRenderable(This, renderable);
-}
-
-HOOK(void, __fastcall, BundleRemoveRenderable, 0x6FAA50,
-    Hedgehog::Mirage::CBundle* This, const boost::shared_ptr<Hedgehog::Mirage::CRenderable>& renderable)
-{
-    removeRenderable(renderable.get());
-    return originalBundleRemoveRenderable(This, renderable);
 }
 
 void InstanceData::createPendingInstances()
@@ -132,6 +119,30 @@ void InstanceData::createPendingInstances()
     }
 }
 
+void InstanceData::trackInstance(InstanceInfoEx* instanceInfoEx)
+{
+    LockGuard lock(s_instanceTrackMutex);
+    s_trackedInstances.emplace(instanceInfoEx);
+}
+
+void InstanceData::releaseUnusedInstances()
+{
+    LockGuard lock(s_instanceTrackMutex);
+
+    for (auto it = s_trackedInstances.begin(); it != s_trackedInstances.end();)
+    {
+        if ((*it)->m_hashFrame != RaytracingRendering::s_frame)
+        {
+            RaytracingUtil::releaseResource(RaytracingResourceType::Instance, (*it)->m_instanceId);
+            it = s_trackedInstances.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
 void InstanceData::init()
 {
     WRITE_MEMORY(0x7176AC, uint32_t, sizeof(TerrainInstanceInfoDataEx));
@@ -153,7 +164,4 @@ void InstanceData::init()
 
     INSTALL_HOOK(InstanceInfoConstructor);
     INSTALL_HOOK(InstanceInfoDestructor);
-
-    INSTALL_HOOK(OptimalBundleRemoveRenderable);
-    INSTALL_HOOK(BundleRemoveRenderable);
 }

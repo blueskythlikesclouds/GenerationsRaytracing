@@ -13,6 +13,7 @@ public:
     bool m_handledEyeMaterials;
     XXH32_hash_t m_modelHash;
     uint32_t m_visibilityBits;
+    uint32_t m_hashFrame;
 };
 
 struct InstanceData
@@ -20,5 +21,9 @@ struct InstanceData
     static inline FreeListAllocator s_idAllocator;
 
     static void createPendingInstances();
+
+    static void trackInstance(InstanceInfoEx* instanceInfoEx);
+    static void releaseUnusedInstances();
+
     static void init();
 };

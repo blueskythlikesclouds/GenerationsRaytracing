@@ -727,6 +727,7 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
     instanceInfoEx.m_modelHash = modelDataEx.m_modelHash;
     instanceInfoEx.m_visibilityBits = modelDataEx.m_visibilityBits;
+    instanceInfoEx.m_hashFrame = modelDataEx.m_hashFrame;
 
     auto transform = instanceInfoEx.m_Transform;
     uint32_t bottomLevelAccelStructId;

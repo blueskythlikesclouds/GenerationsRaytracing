@@ -23,11 +23,11 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
 
             if (modelDataEx->IsMadeAll())
             {
-                auto& instanceInfoEx = *reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get());
+                const auto instanceInfoEx = reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get());
 
                 ModelData::processEyeMaterials(
                     *modelDataEx,
-                    instanceInfoEx,
+                    *instanceInfoEx,
                     element->m_MaterialMap);
 
                 if (RaytracingParams::s_enable)
@@ -50,12 +50,18 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                     }
                 }
 
+                isEnabled &= (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0;
+
                 ModelData::createBottomLevelAccelStruct(
                     *modelDataEx,
-                    instanceInfoEx,
+                    *instanceInfoEx,
                     element->m_MaterialMap,
-                    isEnabled && (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0);
+                    isEnabled);
+
+                if (isEnabled)
+                    InstanceData::trackInstance(instanceInfoEx);
             }
+
         }
     }
     else if (const auto bundle = dynamic_cast<const Hedgehog::Mirage::CBundle*>(renderable))
@@ -204,6 +210,8 @@ static void __cdecl implOfSceneRender(void* a1)
             if (categoryFindResult != renderScene->m_BundleMap.end())
                 createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get(), true);
         }
+
+        InstanceData::releaseUnusedInstances();
 
         if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
         {
