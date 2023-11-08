@@ -64,6 +64,30 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     originalInstanceInfoDestructor(This);
 }
 
+static void removeRenderable(Hedgehog::Mirage::CRenderable* renderable)
+{
+    if (const auto singleElement = dynamic_cast<Hedgehog::Mirage::CSingleElement*>(renderable))
+    {
+        const auto instanceInfoEx = reinterpret_cast<InstanceInfoEx*>(singleElement->m_spInstanceInfo.get());
+        if (instanceInfoEx != nullptr)
+            RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceInfoEx->m_instanceId);
+    }
+}
+
+HOOK(void, __fastcall, OptimalBundleRemoveRenderable, 0x71B0F0,
+    Hedgehog::Mirage::COptimalBundle* This, const boost::shared_ptr<Hedgehog::Mirage::CRenderable>& renderable)
+{
+    removeRenderable(renderable.get());
+    return originalOptimalBundleRemoveRenderable(This, renderable);
+}
+
+HOOK(void, __fastcall, BundleRemoveRenderable, 0x6FAA50,
+    Hedgehog::Mirage::CBundle* This, const boost::shared_ptr<Hedgehog::Mirage::CRenderable>& renderable)
+{
+    removeRenderable(renderable.get());
+    return originalBundleRemoveRenderable(This, renderable);
+}
+
 void InstanceData::createPendingInstances()
 {
     LockGuard lock(s_instanceCreateMutex);
@@ -129,4 +153,7 @@ void InstanceData::init()
 
     INSTALL_HOOK(InstanceInfoConstructor);
     INSTALL_HOOK(InstanceInfoDestructor);
+
+    INSTALL_HOOK(OptimalBundleRemoveRenderable);
+    INSTALL_HOOK(BundleRemoveRenderable);
 }
