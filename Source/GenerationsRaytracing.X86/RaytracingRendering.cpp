@@ -213,10 +213,10 @@ static void __cdecl implOfSceneRender(void* a1)
 
         if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
         {
-            if (gameDocument->m_pMember->m_spLightManager &&
-                gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext &&
-                gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData &&
-                gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData->IsMadeAll())
+            const auto lightManager = gameDocument->m_pMember->m_spLightManager;
+
+            if (lightManager && lightManager->m_pStaticLightContext && lightManager->m_pStaticLightContext->m_spLightListData &&
+                lightManager->m_pStaticLightContext->m_spLightListData->IsMadeAll())
             {
                 if (s_curLightList != gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData.get())
                 {
