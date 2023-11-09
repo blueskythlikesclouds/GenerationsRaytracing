@@ -47,8 +47,18 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     shadingParams[GBUFFER_DATA_PRIMARY].Reflection =
         ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_SECONDARY_REFLECTION], shadingParams[GBUFFER_DATA_SECONDARY_REFLECTION]);
 
-    g_ColorTexture[dispatchThreadId.xy] = 
-        float4(ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_PRIMARY], shadingParams[GBUFFER_DATA_PRIMARY]), 1.0);
+    float3 color = ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_PRIMARY], shadingParams[GBUFFER_DATA_PRIMARY]);
+
+    if (!(gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IS_SKY))
+    {
+        float3 viewPosition = mul(float4(gBufferDatas[GBUFFER_DATA_PRIMARY].Position, 1.0), g_MtxView).xyz;
+        float2 lightScattering = ComputeLightScattering(gBufferDatas[GBUFFER_DATA_PRIMARY].Position, viewPosition);
+
+        if (all(and(!isnan(lightScattering), !isinf(lightScattering))))
+            color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+    }
+
+    g_ColorTexture[dispatchThreadId.xy] = float4(color, 1.0);
 
     g_DiffuseAlbedoTexture[dispatchThreadId.xy] = gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION ? 0.0 :
         float4(ComputeGI(gBufferDatas[GBUFFER_DATA_PRIMARY], 1.0), 0.0);
