@@ -131,7 +131,10 @@ void SecondaryRayGeneration()
                     float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
 
                     rayDirection = reflect(-eyeDirection, halfwayDirection);
+
                     float pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                    g_GBufferTexture2[uint3(DispatchRaysIndex().xy, 0)].w = pdf;
+
                 }
 
                 break;

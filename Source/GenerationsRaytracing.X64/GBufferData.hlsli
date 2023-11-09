@@ -30,6 +30,7 @@ struct GBufferData
     float Alpha;
 
     float3 Specular;
+    float SpecularPDF;
 
     float SpecularGloss;
     float SpecularLevel;
@@ -129,6 +130,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
     gBufferData.Diffuse = material.Diffuse.rgb;
     gBufferData.Alpha = material.Diffuse.a * material.OpacityReflectionRefractionSpectype.x;
     gBufferData.Specular = material.Specular.rgb;
+    gBufferData.SpecularPDF = 1.0;
     gBufferData.SpecularGloss = material.PowerGlossLevel.y * 500.0;
     gBufferData.SpecularLevel = material.PowerGlossLevel.z * 5.0;
     gBufferData.Normal = vertex.Normal;
@@ -970,6 +972,7 @@ GBufferData LoadGBufferData(uint3 index)
     gBufferData.Alpha = gBuffer1.a;
 
     gBufferData.Specular = gBuffer2.rgb;
+    gBufferData.SpecularPDF = gBuffer2.a;
 
     gBufferData.SpecularGloss = gBuffer3.x;
     gBufferData.SpecularLevel = gBuffer3.y;
@@ -988,7 +991,7 @@ void StoreGBufferData(uint3 index, GBufferData gBufferData)
 {
     g_GBufferTexture0[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
     g_GBufferTexture1[index] = float4(gBufferData.Diffuse, gBufferData.Alpha);
-    g_GBufferTexture2[index] = float4(gBufferData.Specular, 0.0);
+    g_GBufferTexture2[index] = float4(gBufferData.Specular, gBufferData.SpecularPDF);
     g_GBufferTexture3[index] = float4(gBufferData.SpecularGloss, gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.Refraction);
     g_GBufferTexture4[index] = float4(gBufferData.Normal * 0.5 + 0.5, 0.0);
     g_GBufferTexture5[index] = float4(gBufferData.Falloff, 0.0);

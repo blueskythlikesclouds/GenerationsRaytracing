@@ -44,7 +44,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     shadingParams[GBUFFER_DATA_PRIMARY].GlobalIllumination =
         ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_SECONDARY_GI], shadingParams[GBUFFER_DATA_SECONDARY_GI]);
 
-    shadingParams[GBUFFER_DATA_PRIMARY].Reflection =
+    shadingParams[GBUFFER_DATA_PRIMARY].Reflection = gBufferDatas[GBUFFER_DATA_PRIMARY].SpecularPDF *
         ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_SECONDARY_REFLECTION], shadingParams[GBUFFER_DATA_SECONDARY_REFLECTION]);
 
     float3 color = ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_PRIMARY], shadingParams[GBUFFER_DATA_PRIMARY]);
