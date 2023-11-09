@@ -124,15 +124,24 @@ float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingPara
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
     {
         resultShading += ComputeDirectLighting(gBufferData, shadingParams.EyeDirection, 
-            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb) * shadingParams.Shadow;
+            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
+            resultShading *= shadingParams.Shadow;
     }
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
         resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]) * shadingParams.Reservoir.W;
 
-    resultShading += ComputeGI(gBufferData, shadingParams.GlobalIllumination);
-    resultShading += ComputeReflection(gBufferData, shadingParams.Reflection);
-    resultShading += ComputeRefraction(gBufferData, shadingParams.Refraction);
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
+        resultShading += ComputeGI(gBufferData, shadingParams.GlobalIllumination);
+
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
+        resultShading += ComputeReflection(gBufferData, shadingParams.Reflection);
+
+    if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY))
+        resultShading += ComputeRefraction(gBufferData, shadingParams.Refraction);
+
     resultShading += gBufferData.Emission;
 
     return resultShading;

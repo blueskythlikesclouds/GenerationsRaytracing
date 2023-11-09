@@ -926,7 +926,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
     return gBufferData;
 }
 
-GBufferData CreateMissGBufferData()
+GBufferData CreateMissGBufferData(bool useSkyTexture, float3 backgroundColor)
 {
     TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
 
@@ -936,12 +936,18 @@ GBufferData CreateMissGBufferData()
     gBufferData.SpecularGloss = 1.0;
     gBufferData.Normal = -WorldRayDirection();
 
-    if (g_UseSkyTexture)
+    [branch]
+    if (useSkyTexture && g_UseSkyTexture)
         gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     else
-        gBufferData.Emission = g_BackgroundColor;
+        gBufferData.Emission = backgroundColor;
 
     return gBufferData;
+}
+
+GBufferData CreateMissGBufferData(bool useSkyTexture)
+{
+    return CreateMissGBufferData(useSkyTexture, WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor);
 }
 
 GBufferData LoadGBufferData(uint3 index)

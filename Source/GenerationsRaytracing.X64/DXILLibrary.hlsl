@@ -43,7 +43,7 @@ void PrimaryRayGeneration()
 [shader("miss")]
 void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 {
-    GBufferData gBufferData = CreateMissGBufferData();
+    GBufferData gBufferData = CreateMissGBufferData(true, g_BackgroundColor);
     StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
 
     g_DepthTexture[DispatchRaysIndex().xy] = 1.0;
@@ -100,7 +100,7 @@ void SecondaryRayGeneration()
     GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, 0));
 
     float2 random = GetBlueNoise().xy;
-    float3 sample = 0.0;
+    float3 rayDirection = 0.0;
     float zMax = Z_MAX;
 
     switch (DispatchRaysIndex().z)
@@ -110,7 +110,7 @@ void SecondaryRayGeneration()
                 if (gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
                     zMax = 0.0;
 
-                sample = GetCosWeightedSample(random);
+                rayDirection = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(random));
                 break;
             }
 
@@ -119,7 +119,21 @@ void SecondaryRayGeneration()
                 if (gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION))
                     zMax = 0.0;
 
-                sample = GetPowerCosWeightedSample(random, gBufferData.SpecularGloss).xyz;
+                float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+
+                if (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION))
+                {
+                    rayDirection = reflect(-eyeDirection, gBufferData.Normal);
+                }
+                else
+                {
+                    float4 sampleDirection = GetPowerCosWeightedSample(random, gBufferData.SpecularGloss);
+                    float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
+
+                    rayDirection = reflect(-eyeDirection, halfwayDirection);
+                    float pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                }
+
                 break;
             }
     }
@@ -127,7 +141,7 @@ void SecondaryRayGeneration()
     RayDesc ray;
 
     ray.Origin = gBufferData.Position;
-    ray.Direction = TangentToWorld(gBufferData.Normal, sample);
+    ray.Direction = rayDirection;
     ray.TMin = 0.0;
     ray.TMax = zMax;
 
@@ -147,7 +161,8 @@ void SecondaryRayGeneration()
 [shader("miss")]
 void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
-    StoreGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 1), CreateMissGBufferData());
+    StoreGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 1), 
+        CreateMissGBufferData(DispatchRaysIndex().z != 0 || !g_UseEnvironmentColor));
 }
 
 [shader("closesthit")]
@@ -208,7 +223,7 @@ void TertiaryRayGeneration()
 [shader("miss")]
 void TertiaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
-    StoreGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 3), CreateMissGBufferData());
+    StoreGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 3), CreateMissGBufferData(!g_UseEnvironmentColor));
 }
 
 [shader("closesthit")]

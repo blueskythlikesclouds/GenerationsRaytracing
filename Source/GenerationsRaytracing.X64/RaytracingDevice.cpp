@@ -767,7 +767,6 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.Depth = 5;
     getGraphicsCommandList().commitBarriers();
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
-    getGraphicsCommandList().uavBarrier(nullptr);
 
     resolveAndDispatchUpscaler(message);
     copyToRenderTargetAndDepthStencil();

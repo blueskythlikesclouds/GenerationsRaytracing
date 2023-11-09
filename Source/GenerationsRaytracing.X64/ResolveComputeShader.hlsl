@@ -10,6 +10,9 @@
 [numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+    if (any(dispatchThreadId.xy >= g_InternalResolution))
+        return;
+
     GBufferData gBufferDatas[GBUFFER_DATA_MAX];
     ShadingParams shadingParams[GBUFFER_DATA_MAX];
 
