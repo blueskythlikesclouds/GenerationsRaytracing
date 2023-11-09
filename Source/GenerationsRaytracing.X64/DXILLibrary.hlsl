@@ -17,7 +17,7 @@ void PrimaryRayGeneration()
     ray.Origin = g_EyePosition.xyz;
     ray.Direction = normalize(rayDirection);
     ray.TMin = 0.0;
-    ray.TMax = FLT_MAX;
+    ray.TMax = INF;
 
     PrimaryRayPayload payload = (PrimaryRayPayload) 0;
 
@@ -101,14 +101,14 @@ void SecondaryRayGeneration()
 
     float2 random = GetBlueNoise().xy;
     float3 rayDirection = 0.0;
-    float zMax = Z_MAX;
+    float tMax = INF;
 
     switch (DispatchRaysIndex().z)
     {
         case 0:
             {
                 if (gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
-                    zMax = 0.0;
+                    tMax = 0.0;
 
                 rayDirection = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(random));
                 break;
@@ -117,7 +117,7 @@ void SecondaryRayGeneration()
         case 1:
             {
                 if (gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION))
-                    zMax = 0.0;
+                    tMax = 0.0;
 
                 float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
 
@@ -143,7 +143,7 @@ void SecondaryRayGeneration()
     ray.Origin = gBufferData.Position;
     ray.Direction = rayDirection;
     ray.TMin = 0.0;
-    ray.TMax = zMax;
+    ray.TMax = tMax;
 
     SecondaryRayPayload payload;
 
@@ -205,7 +205,7 @@ void TertiaryRayGeneration()
     ray.Origin = gBufferData.Position;
     ray.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().zw));
     ray.TMin = 0.0;
-    ray.TMax = gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) ? 0.0 : Z_MAX;
+    ray.TMax = gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) ? 0.0 : INF;
 
     SecondaryRayPayload payload;
 
@@ -257,7 +257,7 @@ void ShadowRayGeneration()
     ray.Origin = gBufferData.Position;
     ray.Direction = TangentToWorld(-mrgGlobalLight_Direction.xyz, sample);
     ray.TMin = 0.0;
-    ray.TMax = gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_SHADOW | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT) ? 0.0 : Z_MAX;
+    ray.TMax = gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_SHADOW | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT) ? 0.0 : INF;
 
     SecondaryRayPayload payload;
 

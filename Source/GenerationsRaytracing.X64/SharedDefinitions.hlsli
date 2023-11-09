@@ -3,7 +3,7 @@
 
 #define PI 3.14159265358979323846
 #define FLT_MAX asfloat(0x7f7fffff)
-#define Z_MAX 10000.0
+#define INF asfloat(0x7f800000)
 
 uint InitRand(uint val0, uint val1, uint backoff = 16)
 {
