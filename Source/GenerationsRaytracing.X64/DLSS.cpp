@@ -96,7 +96,7 @@ void DLSS::dispatch(const DispatchArgs& args)
 
     params.pInDiffuseAlbedo = args.diffuseAlbedo;
     params.pInSpecularAlbedo = args.specularAlbedo;
-    params.pInNormals = args.normals;
+    params.pInNormals = args.normalsRoughness;
     params.pInColor = args.color;
     params.pInOutput = args.output;
     params.pInDepth = args.depth;
@@ -106,6 +106,7 @@ void DLSS::dispatch(const DispatchArgs& args)
     params.InRenderSubrectDimensions.Width = m_width;
     params.InRenderSubrectDimensions.Height = m_height;
     params.InReset = args.resetAccumulation;
+    params.pInReflectedAlbedo = args.reflectedAlbedo;
     params.pInDiffuseRayDirectionHitDistance = args.diffuseRayDirectionHitDistance;
     params.pInSpecularRayDirectionHitDistance = args.specularRayDirectionHitDistance;
     params.pInWorldToViewMatrix = const_cast<float*>(&args.device.getGlobalsVS().floatConstants[4][0]);

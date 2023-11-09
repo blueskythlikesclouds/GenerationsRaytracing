@@ -179,9 +179,6 @@
     <None Include="MessageReceiver.inl">
       <Filter>Message</Filter>
     </None>
-    <None Include="RayTracing.hlsli">
-      <Filter>Shader</Filter>
-    </None>
     <None Include="RootSignature.hlsli">
       <Filter>Shader</Filter>
     </None>

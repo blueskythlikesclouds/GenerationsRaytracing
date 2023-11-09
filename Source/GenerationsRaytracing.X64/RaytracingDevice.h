@@ -90,35 +90,27 @@ protected:
     // Textures
     uint32_t m_width = 0;
     uint32_t m_height = 0;
-    uint32_t m_uavIds[NUM_FRAMES]{};
+    uint32_t m_uavId = 0;
 
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
     ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
 
-    ComPtr<D3D12MA::Allocation> m_positionFlagsTexture;
-    ComPtr<D3D12MA::Allocation> m_prevPositionFlagsTexture;
-    ComPtr<D3D12MA::Allocation> m_safeSpawnPointTexture;
-    ComPtr<D3D12MA::Allocation> m_diffuseRefractionAlphaTexture;
-    ComPtr<D3D12MA::Allocation> m_specularTexture;
-    ComPtr<D3D12MA::Allocation> m_specularPowerLevelFresnelTexture;
-    ComPtr<D3D12MA::Allocation> m_normalTexture;
-    ComPtr<D3D12MA::Allocation> m_prevNormalTexture;
-    ComPtr<D3D12MA::Allocation> m_falloffTexture;
-    ComPtr<D3D12MA::Allocation> m_emissionTexture;
-    ComPtr<D3D12MA::Allocation> m_transColorTexture;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture0;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture1;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture2;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture3;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture4;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture5;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture6;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture7;
 
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
-    ComPtr<D3D12MA::Allocation> m_reservoirTexture;
-    ComPtr<D3D12MA::Allocation> m_prevReservoirTexture;
-
-    ComPtr<D3D12MA::Allocation> m_giTexture;
-    ComPtr<D3D12MA::Allocation> m_prevGITexture;
-    ComPtr<D3D12MA::Allocation> m_reflectionTexture;
-    ComPtr<D3D12MA::Allocation> m_refractionTexture;
 
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_specularAlbedoTexture;
+    ComPtr<D3D12MA::Allocation> m_normalsRoughnessTexture;
+    ComPtr<D3D12MA::Allocation> m_reflectedAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_diffuseRayDirectionHitDistanceTexture;
     ComPtr<D3D12MA::Allocation> m_specularRayDirectionHitDistanceTexture;
 
