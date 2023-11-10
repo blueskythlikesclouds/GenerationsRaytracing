@@ -304,14 +304,12 @@ void RaytracingDevice::createRaytracingTextures()
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7 },
 
-        { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture },
-
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture },
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R8_UNORM, m_shadowTexture },
 
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture },
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture },
         { 1, DXGI_FORMAT_R32G32B32A32_FLOAT, m_normalsRoughnessTexture },
-        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectedAlbedoTexture },
         { 1, DXGI_FORMAT_R32G32B32A32_FLOAT, m_diffuseRayDirectionHitDistanceTexture },
         { 1, DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularRayDirectionHitDistanceTexture }
     };
@@ -410,7 +408,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         m_colorTexture->GetResource(),
         m_depthTexture->GetResource(),
         m_motionVectorsTexture->GetResource(),
-        m_reflectedAlbedoTexture->GetResource(),
         m_diffuseRayDirectionHitDistanceTexture->GetResource(),
         m_specularRayDirectionHitDistanceTexture->GetResource()
     };
@@ -435,7 +432,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
             m_outputTexture->GetResource(),
             m_depthTexture->GetResource(),
             m_motionVectorsTexture->GetResource(),
-            m_reflectedAlbedoTexture->GetResource(),
             m_diffuseRayDirectionHitDistanceTexture->GetResource(),
             m_specularRayDirectionHitDistanceTexture->GetResource(),
             m_globalsRT.pixelJitterX,
@@ -780,24 +776,45 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRays(primaryRayGeneration, GBUFFER_DATA_PRIMARY);
     gBufferUavBarrier();
 
-    dispatchRays(reservoirRayGeneration, GBUFFER_DATA_PRIMARY);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_PRIMARY);
+
     dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_GI);
     dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_REFLECTION);
     dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_REFRACTION);
+
+    if (message.localLightCount > 0)
+        dispatchRays(reservoirRayGeneration, GBUFFER_DATA_PRIMARY);
+
     gBufferUavBarrier();
 
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_SECONDARY_GI);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_SECONDARY_REFLECTION);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_SECONDARY_REFRACTION);
+
     dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_GI);
     dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_REFLECTION_GI);
     dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_REFRACTION_GI);
+
+    if (message.localLightCount > 0)
+    {
+        dispatchRays(reservoirRayGeneration, GBUFFER_DATA_SECONDARY_GI);
+        dispatchRays(reservoirRayGeneration, GBUFFER_DATA_SECONDARY_REFLECTION);
+        dispatchRays(reservoirRayGeneration, GBUFFER_DATA_SECONDARY_REFRACTION);
+    }
+
     gBufferUavBarrier();
 
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_GI);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_REFLECTION_GI);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_REFRACTION_GI);
+
+    if (message.localLightCount > 0)
+    {
+        dispatchRays(reservoirRayGeneration, GBUFFER_DATA_TERTIARY_GI);
+        dispatchRays(reservoirRayGeneration, GBUFFER_DATA_TERTIARY_REFLECTION_GI);
+        dispatchRays(reservoirRayGeneration, GBUFFER_DATA_TERTIARY_REFRACTION_GI);
+    }
+
     getGraphicsCommandList().uavBarrier(m_reservoirTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
 

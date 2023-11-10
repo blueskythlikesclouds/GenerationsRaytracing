@@ -114,7 +114,7 @@
       <ObjectFileOutput />
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
-      <AdditionalOptions>-all-resources-bound %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-all-resources-bound -ffinite-math-only -O3 %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

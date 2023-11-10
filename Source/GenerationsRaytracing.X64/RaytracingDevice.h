@@ -104,7 +104,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_specularAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_normalsRoughnessTexture;
-    ComPtr<D3D12MA::Allocation> m_reflectedAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_diffuseRayDirectionHitDistanceTexture;
     ComPtr<D3D12MA::Allocation> m_specularRayDirectionHitDistanceTexture;
 

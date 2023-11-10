@@ -41,15 +41,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
 
     [unroll]
     for (uint i = 0; i < GBUFFER_DATA_NUM; i++)
-        shadingParams[i].EyeDirection = NormalizeSafe(shadingParams[i].EyePosition - gBufferDatas[i].Position);
-
-    shadingParams[GBUFFER_DATA_PRIMARY].Reservoir = LoadReservoir(g_Reservoir[dispatchThreadId]);
-
-    [unroll]
-    for (uint i = GBUFFER_DATA_PRIMARY + 1; i < GBUFFER_DATA_NUM; i++)
     {
-        shadingParams[i].Reservoir.Y = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
-        shadingParams[i].Reservoir.W = g_LocalLightCount;
+        shadingParams[i].EyeDirection = NormalizeSafe(shadingParams[i].EyePosition - gBufferDatas[i].Position);
+        shadingParams[i].Reservoir = LoadReservoir(g_Reservoir[uint3(dispatchThreadId, i)]);
     }
 
     shadingParams[GBUFFER_DATA_SECONDARY_GI].GlobalIllumination =
@@ -91,9 +85,6 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
 
     g_NormalsRoughness[dispatchThreadId] =
         float4(gBufferDatas[GBUFFER_DATA_PRIMARY].Normal, 1.0 - pow(gBufferDatas[GBUFFER_DATA_PRIMARY].SpecularGloss, 0.2) * 0.25);
-
-    g_ReflectedAlbedo[dispatchThreadId] = gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IGNORE_REFLECTION ? 0.0 :
-        float4(ComputeGI(gBufferDatas[GBUFFER_DATA_SECONDARY_REFLECTION], 1.0), 0.0);
 
     float3 diffuseRayDirection = gBufferDatas[GBUFFER_DATA_SECONDARY_GI].Position - gBufferDatas[GBUFFER_DATA_PRIMARY].Position;
     float diffuseHitDistance = length(diffuseRayDirection);
