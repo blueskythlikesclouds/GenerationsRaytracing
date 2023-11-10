@@ -974,7 +974,7 @@ GBufferData LoadGBufferData(uint3 index)
     gBufferData.Specular = gBuffer2.rgb;
     gBufferData.SpecularPDF = gBuffer2.a;
 
-    gBufferData.SpecularGloss = gBuffer3.x;
+    gBufferData.SpecularGloss = (gBuffer3.x / 65504.0) * 1024.0;
     gBufferData.SpecularLevel = gBuffer3.y;
     gBufferData.SpecularFresnel = gBuffer3.z;
     gBufferData.Refraction = gBuffer3.w;
@@ -992,7 +992,7 @@ void StoreGBufferData(uint3 index, GBufferData gBufferData)
     g_GBuffer0[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
     g_GBuffer1[index] = float4(gBufferData.Diffuse, gBufferData.Alpha);
     g_GBuffer2[index] = float4(gBufferData.Specular, gBufferData.SpecularPDF);
-    g_GBuffer3[index] = float4(gBufferData.SpecularGloss, gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.Refraction);
+    g_GBuffer3[index] = float4((gBufferData.SpecularGloss / 1024.0) * 65504.0, gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.Refraction);
     g_GBuffer4[index] = float4(gBufferData.Normal * 0.5 + 0.5, 0.0);
     g_GBuffer5[index] = float4(gBufferData.Falloff, 0.0);
     g_GBuffer6[index] = float4(gBufferData.Emission, 0.0);

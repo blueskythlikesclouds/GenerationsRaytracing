@@ -1,5 +1,6 @@
 #include "GBufferData.h"
 #include "GeometryShading.hlsli"
+#include "SharedDefinitions.hlsli"
 #include "ThreadGroupTilingX.hlsli"
 
 [numthreads(8, 8, 1)]
@@ -11,6 +12,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         8,
         groupThreadId,
         groupId);
+
+    uint random = InitRand(g_CurrentFrame, dispatchThreadId.y * g_InternalResolution.x + dispatchThreadId.x);
 
     GBufferData gBufferDatas[GBUFFER_DATA_NUM];
     ShadingParams shadingParams[GBUFFER_DATA_NUM];
@@ -39,6 +42,15 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     [unroll]
     for (uint i = 0; i < GBUFFER_DATA_NUM; i++)
         shadingParams[i].EyeDirection = NormalizeSafe(shadingParams[i].EyePosition - gBufferDatas[i].Position);
+
+    shadingParams[GBUFFER_DATA_PRIMARY].Reservoir = LoadReservoir(g_Reservoir[dispatchThreadId]);
+
+    [unroll]
+    for (uint i = GBUFFER_DATA_PRIMARY + 1; i < GBUFFER_DATA_NUM; i++)
+    {
+        shadingParams[i].Reservoir.Y = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
+        shadingParams[i].Reservoir.W = g_LocalLightCount;
+    }
 
     shadingParams[GBUFFER_DATA_SECONDARY_GI].GlobalIllumination =
         ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_TERTIARY_GI], shadingParams[GBUFFER_DATA_TERTIARY_GI]);

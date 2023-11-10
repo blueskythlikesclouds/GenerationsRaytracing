@@ -97,6 +97,8 @@ protected:
     ComPtr<D3D12MA::Allocation> m_gBufferTexture6;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture7;
 
+    ComPtr<D3D12MA::Allocation> m_reservoirTexture;
+
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
 
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;

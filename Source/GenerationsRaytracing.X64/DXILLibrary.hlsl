@@ -90,6 +90,33 @@ void PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTr
         IgnoreHit();
 }
 
+[shader("raygeneration")]
+void ReservoirRayGeneration()
+{
+    GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, g_GBufferDataIndex));
+
+    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
+    {
+        Reservoir reservoir = (Reservoir) 0;
+        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+
+        uint random = InitRand(g_CurrentFrame,
+            DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
+
+        uint localLightCount = min(32, g_LocalLightCount);
+
+        for (uint i = 0; i < localLightCount; i++)
+        {
+            uint sample = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
+            float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
+            UpdateReservoir(reservoir, sample, weight, NextRand(random));
+        }
+
+        ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
+        g_Reservoir[DispatchRaysIndex().xy] = StoreReservoir(reservoir);
+    }
+}
+
 struct [raypayload] SecondaryRayPayload
 {
     uint Dummy : read() : write();
