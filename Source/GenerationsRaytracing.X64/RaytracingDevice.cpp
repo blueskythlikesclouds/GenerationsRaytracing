@@ -295,16 +295,16 @@ void RaytracingDevice::createRaytracingTextures()
         { 1, DXGI_FORMAT_R32_FLOAT, m_depthTexture },
         { 1, DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
 
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0 },
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1 },
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2 },
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture3 },
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R10G10B10A2_UNORM, m_gBufferTexture4 },
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5 },
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture3 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R10G10B10A2_UNORM, m_gBufferTexture4 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7 },
 
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R8_UNORM, m_shadowTexture },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R8_UNORM, m_shadowTexture },
 
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture },
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture },
@@ -762,16 +762,20 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_PRIMARY);
     dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_GI);
     dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_REFLECTION);
+    dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_REFRACTION);
     getGraphicsCommandList().uavBarrier(nullptr);
 
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_SECONDARY_GI);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_SECONDARY_REFLECTION);
+    dispatchRays(shadowRayGeneration, GBUFFER_DATA_SECONDARY_REFRACTION);
     dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_GI);
     dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_REFLECTION_GI);
+    dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_REFRACTION_GI);
     getGraphicsCommandList().uavBarrier(nullptr);
 
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_GI);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_REFLECTION_GI);
+    dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_REFRACTION_GI);
     getGraphicsCommandList().uavBarrier(nullptr);
 
     resolveAndDispatchUpscaler(message);

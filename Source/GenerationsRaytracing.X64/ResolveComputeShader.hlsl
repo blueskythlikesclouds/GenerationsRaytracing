@@ -12,15 +12,15 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         groupThreadId,
         groupId);
 
-    GBufferData gBufferDatas[GBUFFER_DATA_MAX];
-    ShadingParams shadingParams[GBUFFER_DATA_MAX];
+    GBufferData gBufferDatas[GBUFFER_DATA_NUM];
+    ShadingParams shadingParams[GBUFFER_DATA_NUM];
 
     [unroll]
-    for (uint i = 0; i < GBUFFER_DATA_MAX; i++)
+    for (uint i = 0; i < GBUFFER_DATA_NUM; i++)
         gBufferDatas[i] = LoadGBufferData(uint3(dispatchThreadId, i));
 
     [unroll]
-    for (uint i = 0; i < GBUFFER_DATA_MAX; i++)
+    for (uint i = 0; i < GBUFFER_DATA_NUM; i++)
     {
         shadingParams[i] = (ShadingParams) 0;
         shadingParams[i].Shadow = g_Shadow[uint3(dispatchThreadId, i)];
@@ -30,12 +30,14 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
 
     shadingParams[GBUFFER_DATA_SECONDARY_GI].EyePosition = gBufferDatas[GBUFFER_DATA_PRIMARY].Position;
     shadingParams[GBUFFER_DATA_SECONDARY_REFLECTION].EyePosition = gBufferDatas[GBUFFER_DATA_PRIMARY].Position;
+    shadingParams[GBUFFER_DATA_SECONDARY_REFRACTION].EyePosition = gBufferDatas[GBUFFER_DATA_PRIMARY].Position;
 
     shadingParams[GBUFFER_DATA_TERTIARY_GI].EyePosition = gBufferDatas[GBUFFER_DATA_SECONDARY_GI].Position;
     shadingParams[GBUFFER_DATA_TERTIARY_REFLECTION_GI].EyePosition = gBufferDatas[GBUFFER_DATA_SECONDARY_REFLECTION].Position;
+    shadingParams[GBUFFER_DATA_TERTIARY_REFRACTION_GI].EyePosition = gBufferDatas[GBUFFER_DATA_SECONDARY_REFRACTION].Position;
 
     [unroll]
-    for (uint i = 0; i < GBUFFER_DATA_MAX; i++)
+    for (uint i = 0; i < GBUFFER_DATA_NUM; i++)
         shadingParams[i].EyeDirection = NormalizeSafe(shadingParams[i].EyePosition - gBufferDatas[i].Position);
 
     shadingParams[GBUFFER_DATA_SECONDARY_GI].GlobalIllumination =
@@ -44,11 +46,17 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     shadingParams[GBUFFER_DATA_SECONDARY_REFLECTION].GlobalIllumination =
         ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_TERTIARY_REFLECTION_GI], shadingParams[GBUFFER_DATA_TERTIARY_REFLECTION_GI]);
 
+    shadingParams[GBUFFER_DATA_SECONDARY_REFRACTION].GlobalIllumination =
+        ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_TERTIARY_REFRACTION_GI], shadingParams[GBUFFER_DATA_TERTIARY_REFRACTION_GI]);
+
     shadingParams[GBUFFER_DATA_PRIMARY].GlobalIllumination =
         ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_SECONDARY_GI], shadingParams[GBUFFER_DATA_SECONDARY_GI]);
 
     shadingParams[GBUFFER_DATA_PRIMARY].Reflection = gBufferDatas[GBUFFER_DATA_PRIMARY].SpecularPDF *
         ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_SECONDARY_REFLECTION], shadingParams[GBUFFER_DATA_SECONDARY_REFLECTION]);
+
+    shadingParams[GBUFFER_DATA_PRIMARY].Refraction = gBufferDatas[GBUFFER_DATA_PRIMARY].SpecularPDF *
+        ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_SECONDARY_REFRACTION], shadingParams[GBUFFER_DATA_SECONDARY_REFRACTION]);
 
     float3 color = ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_PRIMARY], shadingParams[GBUFFER_DATA_PRIMARY]);
 

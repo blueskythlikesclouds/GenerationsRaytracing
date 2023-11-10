@@ -140,6 +140,17 @@ void SecondaryRayGeneration()
 
                 break;
             }
+
+        case GBUFFER_DATA_SECONDARY_REFRACTION:
+            {
+                if (!(gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY)))
+                    tMax = 0.0;
+
+                float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+                rayDirection = refract(-eyeDirection, gBufferData.Normal, 0.95);
+
+                break;
+            }
     }
 
     RayDesc ray;
@@ -202,7 +213,7 @@ void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in Built
 [shader("raygeneration")]
 void TertiaryRayGeneration()
 {
-    GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, g_GBufferDataIndex - 2));
+    GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, g_GBufferDataIndex - GBUFFER_DATA_TERTIARY_GI + GBUFFER_DATA_SECONDARY_GI));
 
     RayDesc ray;
 
