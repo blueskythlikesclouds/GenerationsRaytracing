@@ -15,9 +15,11 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     GBufferData gBufferDatas[GBUFFER_DATA_MAX];
     ShadingParams shadingParams[GBUFFER_DATA_MAX];
 
+    [unroll]
     for (uint i = 0; i < GBUFFER_DATA_MAX; i++)
         gBufferDatas[i] = LoadGBufferData(uint3(dispatchThreadId, i));
-    
+
+    [unroll]
     for (uint i = 0; i < GBUFFER_DATA_MAX; i++)
     {
         shadingParams[i] = (ShadingParams) 0;
@@ -32,6 +34,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     shadingParams[GBUFFER_DATA_TERTIARY_GI].EyePosition = gBufferDatas[GBUFFER_DATA_SECONDARY_GI].Position;
     shadingParams[GBUFFER_DATA_TERTIARY_REFLECTION_GI].EyePosition = gBufferDatas[GBUFFER_DATA_SECONDARY_REFLECTION].Position;
 
+    [unroll]
     for (uint i = 0; i < GBUFFER_DATA_MAX; i++)
         shadingParams[i].EyeDirection = NormalizeSafe(shadingParams[i].EyePosition - gBufferDatas[i].Position);
 
