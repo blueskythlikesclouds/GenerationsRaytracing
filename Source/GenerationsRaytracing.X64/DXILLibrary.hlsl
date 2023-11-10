@@ -1,3 +1,4 @@
+#include "GBufferData.h"
 #include "GeometryShading.hlsli"
 #include "SharedDefinitions.hlsli"
 
@@ -44,7 +45,7 @@ void PrimaryRayGeneration()
 void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 {
     GBufferData gBufferData = CreateMissGBufferData(true, g_BackgroundColor);
-    StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
+    StoreGBufferData(uint3(DispatchRaysIndex().xy, GBUFFER_DATA_PRIMARY), gBufferData);
 
     g_Depth[DispatchRaysIndex().xy] = 1.0;
 
@@ -60,7 +61,7 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, true);
-    StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), CreateGBufferData(vertex, material));
+    StoreGBufferData(uint3(DispatchRaysIndex().xy, GBUFFER_DATA_PRIMARY), CreateGBufferData(vertex, material));
 
     g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
 
@@ -97,15 +98,15 @@ struct [raypayload] SecondaryRayPayload
 [shader("raygeneration")]
 void SecondaryRayGeneration()
 {
-    GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, 0));
+    GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, GBUFFER_DATA_PRIMARY));
 
     float2 random = GetBlueNoise().xy;
     float3 rayDirection = 0.0;
     float tMax = INF;
 
-    switch (DispatchRaysIndex().z)
+    switch (g_GBufferDataIndex)
     {
-        case 0:
+        case GBUFFER_DATA_SECONDARY_GI:
             {
                 if (gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
                     tMax = 0.0;
@@ -114,7 +115,7 @@ void SecondaryRayGeneration()
                 break;
             }
 
-        case 1:
+        case GBUFFER_DATA_SECONDARY_REFLECTION:
             {
                 if (gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION))
                     tMax = 0.0;
@@ -164,8 +165,8 @@ void SecondaryRayGeneration()
 [shader("miss")]
 void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
-    StoreGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 1), 
-        CreateMissGBufferData(DispatchRaysIndex().z != 0 || !g_UseEnvironmentColor));
+    StoreGBufferData(uint3(DispatchRaysIndex().xy, g_GBufferDataIndex), 
+        CreateMissGBufferData(g_GBufferDataIndex == GBUFFER_DATA_SECONDARY_REFLECTION || !g_UseEnvironmentColor));
 }
 
 [shader("closesthit")]
@@ -175,7 +176,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, false);
-    StoreGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 1), CreateGBufferData(vertex, material));
+    StoreGBufferData(uint3(DispatchRaysIndex().xy, g_GBufferDataIndex), CreateGBufferData(vertex, material));
 }
 
 [shader("anyhit")]
@@ -201,7 +202,7 @@ void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in Built
 [shader("raygeneration")]
 void TertiaryRayGeneration()
 {
-    GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 1));
+    GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, g_GBufferDataIndex - 2));
 
     RayDesc ray;
 
@@ -216,36 +217,17 @@ void TertiaryRayGeneration()
         g_BVH,
         0,
         1,
-        2,
+        1,
         0,
-        2,
+        1,
         ray,
         payload);
-}
-
-[shader("miss")]
-void TertiaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
-{
-    StoreGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 3), CreateMissGBufferData(!g_UseEnvironmentColor));
-}
-
-[shader("closesthit")]
-void TertiaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
-{
-    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
-    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, false);
-    StoreGBufferData(uint3(DispatchRaysIndex().xy, DispatchRaysIndex().z + 3), CreateGBufferData(vertex, material));
 }
 
 [shader("raygeneration")]
 void ShadowRayGeneration()
 {
-    uint3 index = DispatchRaysIndex();
-    index.z += g_GBufferDataIndex;
-
-    g_Shadow[index] = 0.0;
+    g_Shadow[uint3(DispatchRaysIndex().xy, g_GBufferDataIndex)] = 0.0;
 
     float2 random = GetBlueNoise().xy;
     float radius = sqrt(random.x) * 0.01;
@@ -256,7 +238,7 @@ void ShadowRayGeneration()
     sample.y = sin(angle) * radius;
     sample.z = sqrt(1.0 - saturate(dot(sample.xy, sample.xy)));
 
-    GBufferData gBufferData = LoadGBufferData(index);
+    GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, g_GBufferDataIndex));
 
     RayDesc ray;
 
@@ -273,7 +255,7 @@ void ShadowRayGeneration()
         1,
         1,
         0,
-        3,
+        2,
         ray,
         payload);
 }
@@ -281,7 +263,5 @@ void ShadowRayGeneration()
 [shader("miss")]
 void ShadowMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
-    uint3 index = DispatchRaysIndex();
-    index.z += g_GBufferDataIndex;
-    g_Shadow[index] = 1.0;
+    g_Shadow[uint3(DispatchRaysIndex().xy, g_GBufferDataIndex)] = 1.0;
 }
