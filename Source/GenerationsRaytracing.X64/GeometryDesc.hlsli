@@ -147,8 +147,10 @@ Vertex LoadVertex(
 
     float2 texCoords[4][3];
 
+    [unroll]
     for (uint i = 0; i < 4; i++)
     {
+        [unroll]
         for (uint j = 0; j < 3; j++)
             texCoords[i][j] = asfloat(vertexBuffer.Load2(offsets[j] + geometryDesc.TexCoordOffsets[i]));
 
@@ -192,6 +194,7 @@ Vertex LoadVertex(
             dBarydx, 
             dBarydy);
 
+        [unroll]
         for (uint i = 0; i < 4; i++)
             InterpolateDifferentials(dBarydx, dBarydy, texCoords[i][0], texCoords[i][1], texCoords[i][2], vertex.TexCoordsDdx[i], vertex.TexCoordsDdy[i]);
 
@@ -199,6 +202,7 @@ Vertex LoadVertex(
     }
     else
     {
+        [unroll]
         for (uint i = 0; i < 4; i++)
         {
             vertex.TexCoordsDdx[i] = 0.0;
