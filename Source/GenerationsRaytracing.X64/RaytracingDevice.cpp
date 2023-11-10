@@ -400,8 +400,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         (m_upscaler->getHeight() + 7) / 8,
         1);
 
-    getGraphicsCommandList().uavBarrier(nullptr);
-
     ID3D12Resource* const texturesToTransition[] =
     {
         m_diffuseAlbedoTexture->GetResource(),
@@ -417,6 +415,8 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
 
     for (auto textureToTransition : texturesToTransition)
     {
+        getGraphicsCommandList().uavBarrier(textureToTransition);
+
         getGraphicsCommandList().transitionBarrier(textureToTransition,
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
@@ -756,14 +756,32 @@ void RaytracingDevice::procMsgTraceRays()
         getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
     };
 
+    ID3D12Resource* const gBufferTextures[] =
+    {
+        m_gBufferTexture0->GetResource(),
+        m_gBufferTexture1->GetResource(),
+        m_gBufferTexture2->GetResource(),
+        m_gBufferTexture3->GetResource(),
+        m_gBufferTexture4->GetResource(),
+        m_gBufferTexture5->GetResource(),
+        m_gBufferTexture6->GetResource(),
+        m_gBufferTexture7->GetResource(),
+    };
+
+    auto gBufferUavBarrier = [&]()
+    {
+        for (const auto gBufferTexture : gBufferTextures)
+            getGraphicsCommandList().uavBarrier(gBufferTexture);
+    };
+
     dispatchRays(primaryRayGeneration, GBUFFER_DATA_PRIMARY);
-    getGraphicsCommandList().uavBarrier(nullptr);
+    gBufferUavBarrier();
 
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_PRIMARY);
     dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_GI);
     dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_REFLECTION);
     dispatchRays(secondaryRayGeneration, GBUFFER_DATA_SECONDARY_REFRACTION);
-    getGraphicsCommandList().uavBarrier(nullptr);
+    gBufferUavBarrier();
 
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_SECONDARY_GI);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_SECONDARY_REFLECTION);
@@ -771,12 +789,12 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_GI);
     dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_REFLECTION_GI);
     dispatchRays(tertiaryRayGeneration, GBUFFER_DATA_TERTIARY_REFRACTION_GI);
-    getGraphicsCommandList().uavBarrier(nullptr);
+    gBufferUavBarrier();
 
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_GI);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_REFLECTION_GI);
     dispatchRays(shadowRayGeneration, GBUFFER_DATA_TERTIARY_REFRACTION_GI);
-    getGraphicsCommandList().uavBarrier(nullptr);
+    getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
 
     resolveAndDispatchUpscaler(message);
     copyToRenderTargetAndDepthStencil();
