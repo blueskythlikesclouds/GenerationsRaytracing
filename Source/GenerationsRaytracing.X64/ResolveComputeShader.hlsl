@@ -96,6 +96,6 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     if (specularHitDistance > 0.0)
         specularRayDirection /= specularHitDistance;
 
-    g_DiffuseRayDirectionHitDistance[dispatchThreadId] = gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IGNORE_REFLECTION ? 0.0 :
+    g_SpecularRayDirectionHitDistance[dispatchThreadId] = gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IGNORE_REFLECTION ? 0.0 :
         float4(specularRayDirection, specularHitDistance);
 }
