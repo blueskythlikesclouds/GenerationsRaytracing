@@ -954,14 +954,14 @@ GBufferData CreateMissGBufferData(bool useSkyTexture)
 
 GBufferData LoadGBufferData(uint3 index)
 {
-    float4 gBuffer0 = g_GBufferTexture0[index];
-    float4 gBuffer1 = g_GBufferTexture1[index];
-    float4 gBuffer2 = g_GBufferTexture2[index];
-    float4 gBuffer3 = g_GBufferTexture3[index];
-    float4 gBuffer4 = g_GBufferTexture4[index];
-    float4 gBuffer5 = g_GBufferTexture5[index];
-    float4 gBuffer6 = g_GBufferTexture6[index];
-    float4 gBuffer7 = g_GBufferTexture7[index];
+    float4 gBuffer0 = g_GBuffer0[index];
+    float4 gBuffer1 = g_GBuffer1[index];
+    float4 gBuffer2 = g_GBuffer2[index];
+    float4 gBuffer3 = g_GBuffer3[index];
+    float4 gBuffer4 = g_GBuffer4[index];
+    float4 gBuffer5 = g_GBuffer5[index];
+    float4 gBuffer6 = g_GBuffer6[index];
+    float4 gBuffer7 = g_GBuffer7[index];
 
     GBufferData gBufferData;
 
@@ -989,14 +989,14 @@ GBufferData LoadGBufferData(uint3 index)
 
 void StoreGBufferData(uint3 index, GBufferData gBufferData)
 {
-    g_GBufferTexture0[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
-    g_GBufferTexture1[index] = float4(gBufferData.Diffuse, gBufferData.Alpha);
-    g_GBufferTexture2[index] = float4(gBufferData.Specular, gBufferData.SpecularPDF);
-    g_GBufferTexture3[index] = float4(gBufferData.SpecularGloss, gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.Refraction);
-    g_GBufferTexture4[index] = float4(gBufferData.Normal * 0.5 + 0.5, 0.0);
-    g_GBufferTexture5[index] = float4(gBufferData.Falloff, 0.0);
-    g_GBufferTexture6[index] = float4(gBufferData.Emission, 0.0);
-    g_GBufferTexture7[index] = float4(gBufferData.TransColor, 0.0);
+    g_GBuffer0[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
+    g_GBuffer1[index] = float4(gBufferData.Diffuse, gBufferData.Alpha);
+    g_GBuffer2[index] = float4(gBufferData.Specular, gBufferData.SpecularPDF);
+    g_GBuffer3[index] = float4(gBufferData.SpecularGloss, gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.Refraction);
+    g_GBuffer4[index] = float4(gBufferData.Normal * 0.5 + 0.5, 0.0);
+    g_GBuffer5[index] = float4(gBufferData.Falloff, 0.0);
+    g_GBuffer6[index] = float4(gBufferData.Emission, 0.0);
+    g_GBuffer7[index] = float4(gBufferData.TransColor, 0.0);
 }
 
 #endif

@@ -46,9 +46,9 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     GBufferData gBufferData = CreateMissGBufferData(true, g_BackgroundColor);
     StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
 
-    g_DepthTexture[DispatchRaysIndex().xy] = 1.0;
+    g_Depth[DispatchRaysIndex().xy] = 1.0;
 
-    g_MotionVectorsTexture[DispatchRaysIndex().xy] =
+    g_MotionVectors[DispatchRaysIndex().xy] =
         ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
 }
@@ -62,9 +62,9 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, true);
     StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), CreateGBufferData(vertex, material));
 
-    g_DepthTexture[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
+    g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
 
-    g_MotionVectorsTexture[DispatchRaysIndex().xy] =
+    g_MotionVectors[DispatchRaysIndex().xy] =
         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 }
@@ -133,7 +133,7 @@ void SecondaryRayGeneration()
                     rayDirection = reflect(-eyeDirection, halfwayDirection);
 
                     float pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
-                    g_GBufferTexture2[uint3(DispatchRaysIndex().xy, 0)].w = pdf;
+                    g_GBuffer2[uint3(DispatchRaysIndex().xy, 0)].w = pdf;
 
                 }
 
@@ -242,7 +242,7 @@ void TertiaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in Bu
 [shader("raygeneration")]
 void ShadowRayGeneration()
 {
-    g_ShadowTexture[DispatchRaysIndex()] = 0.0;
+    g_Shadow[DispatchRaysIndex()] = 0.0;
 
     float2 random = GetBlueNoise().xy;
     float radius = sqrt(random.x) * 0.01;
@@ -278,5 +278,5 @@ void ShadowRayGeneration()
 [shader("miss")]
 void ShadowMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
-    g_ShadowTexture[DispatchRaysIndex()] = 1.0;
+    g_Shadow[DispatchRaysIndex()] = 1.0;
 }

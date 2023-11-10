@@ -304,7 +304,7 @@ void RaytracingDevice::createRaytracingTextures()
         { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
         { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7 },
 
-        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16_UNORM, m_shadowTexture },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R8_UNORM, m_shadowTexture },
 
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture },
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture },
