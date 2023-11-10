@@ -8,6 +8,7 @@
 #include "EnvironmentColor.h"
 #include "EnvironmentMode.h"
 #include "FSR2.h"
+#include "GBufferData.h"
 #include "GeometryFlags.h"
 #include "Message.h"
 #include "RootSignature.h"
@@ -294,16 +295,16 @@ void RaytracingDevice::createRaytracingTextures()
         { 1, DXGI_FORMAT_R32_FLOAT, m_depthTexture },
         { 1, DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
 
-        { 5, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0 },
-        { 5, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1 },
-        { 5, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2 },
-        { 5, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture3 },
-        { 5, DXGI_FORMAT_R10G10B10A2_UNORM, m_gBufferTexture4 },
-        { 5, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5 },
-        { 5, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
-        { 5, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7 },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0 },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1 },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2 },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture3 },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R10G10B10A2_UNORM, m_gBufferTexture4 },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5 },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7 },
 
-        { 5, DXGI_FORMAT_R16_UNORM, m_shadowTexture },
+        { GBUFFER_DATA_MAX, DXGI_FORMAT_R16_UNORM, m_shadowTexture },
 
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture },
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture },

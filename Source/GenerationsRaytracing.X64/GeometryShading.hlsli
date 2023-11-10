@@ -1,5 +1,5 @@
-#ifndef GEOMETRY_SHADING_H
-#define GEOMETRY_SHADING_H
+#ifndef GEOMETRY_SHADING_HLSLI_INCLUDED
+#define GEOMETRY_SHADING_HLSLI_INCLUDED
 
 #include "GBufferData.hlsli"
 #include "Reservoir.hlsli"

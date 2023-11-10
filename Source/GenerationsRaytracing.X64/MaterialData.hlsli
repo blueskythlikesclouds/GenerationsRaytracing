@@ -1,5 +1,5 @@
-#ifndef MATERIAL_DATA_H
-#define MATERIAL_DATA_H
+#ifndef MATERIAL_DATA_HLSLI_INCLUDED
+#define MATERIAL_DATA_HLSLI_INCLUDED
 
 #include "GeometryDesc.hlsli"
 

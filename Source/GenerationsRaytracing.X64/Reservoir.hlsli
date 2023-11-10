@@ -1,5 +1,5 @@
-#ifndef RESERVOIR_H
-#define RESERVOIR_H
+#ifndef RESERVOIR_HLSLI_INCLUDED
+#define RESERVOIR_HLSLI_INCLUDED
 
 struct Reservoir
 {

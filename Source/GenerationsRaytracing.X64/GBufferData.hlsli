@@ -1,5 +1,5 @@
-#ifndef GBUFFER_DATA_H
-#define GBUFFER_DATA_H
+#ifndef GBUFFER_DATA_HLSLI_INCLUDED
+#define GBUFFER_DATA_HLSLI_INCLUDED
 
 #include "RootSignature.hlsli"
 #include "ShaderType.h"

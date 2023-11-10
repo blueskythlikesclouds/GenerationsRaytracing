@@ -1,0 +1,11 @@
+#ifndef GBUFFER_DATA_H_INCLUDED
+#define GBUFFER_DATA_H_INCLUDED
+
+#define GBUFFER_DATA_PRIMARY                0
+#define GBUFFER_DATA_SECONDARY_GI           1
+#define GBUFFER_DATA_SECONDARY_REFLECTION   2
+#define GBUFFER_DATA_TERTIARY_GI            3
+#define GBUFFER_DATA_TERTIARY_REFLECTION_GI 4
+#define GBUFFER_DATA_MAX                    5
+
+#endif
