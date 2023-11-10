@@ -35,14 +35,6 @@ struct alignas(0x10) GlobalsRT
     float skyPower;
 };
 
-struct DelayedTexture
-{
-    uint32_t materialId;
-    uint32_t materialVersion;
-    uint32_t textureId;
-    uint32_t textureIdOffset;
-};
-
 struct GlobalsSB
 {
     float backgroundScale;

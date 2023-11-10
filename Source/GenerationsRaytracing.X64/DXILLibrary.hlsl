@@ -242,7 +242,10 @@ void TertiaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in Bu
 [shader("raygeneration")]
 void ShadowRayGeneration()
 {
-    g_Shadow[DispatchRaysIndex()] = 0.0;
+    uint3 index = DispatchRaysIndex();
+    index.z += g_GBufferDataIndex;
+
+    g_Shadow[index] = 0.0;
 
     float2 random = GetBlueNoise().xy;
     float radius = sqrt(random.x) * 0.01;
@@ -253,7 +256,7 @@ void ShadowRayGeneration()
     sample.y = sin(angle) * radius;
     sample.z = sqrt(1.0 - saturate(dot(sample.xy, sample.xy)));
 
-    GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex());
+    GBufferData gBufferData = LoadGBufferData(index);
 
     RayDesc ray;
 
@@ -278,5 +281,7 @@ void ShadowRayGeneration()
 [shader("miss")]
 void ShadowMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
-    g_Shadow[DispatchRaysIndex()] = 1.0;
+    uint3 index = DispatchRaysIndex();
+    index.z += g_GBufferDataIndex;
+    g_Shadow[index] = 1.0;
 }

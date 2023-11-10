@@ -122,6 +122,11 @@ cbuffer GlobalsRT : register(b2)
     float g_SkyPower;
 }
 
+cbuffer PushConstants : register(b3)
+{
+    uint g_GBufferDataIndex;
+}
+
 struct LocalLight
 {
     float3 Position;
