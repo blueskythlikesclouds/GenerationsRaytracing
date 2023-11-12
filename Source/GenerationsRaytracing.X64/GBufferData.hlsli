@@ -35,7 +35,7 @@ struct GBufferData
     float Refraction;
 
     float3 Specular;
-    float SpecularPower;
+    float SpecularGloss;
     float SpecularLevel;
     float SpecularFresnel;
 
@@ -132,7 +132,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
     gBufferData.Diffuse = material.Diffuse.rgb;
     gBufferData.Alpha = material.Diffuse.a * material.OpacityReflectionRefractionSpectype.x;
     gBufferData.Specular = material.Specular.rgb;
-    gBufferData.SpecularPower = material.PowerGlossLevel.y * 500.0;
+    gBufferData.SpecularGloss = material.PowerGlossLevel.y * 500.0;
     gBufferData.SpecularLevel = material.PowerGlossLevel.z * 5.0;
     gBufferData.Normal = vertex.Normal;
 
@@ -165,7 +165,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                     if (material.GlossTexture2 != 0)
                         gloss = lerp(gloss, SampleMaterialTexture2D(material.GlossTexture2, vertex).x, blendFactor);
 
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                 }
                 else if (material.SpecularTexture == 0)
@@ -197,7 +197,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 float3 halfwayDirection = NormalizeSafe(-WorldRayDirection() + lightDirection);
 
                 float highlightSpecular = saturate(dot(highlightNormal, halfwayDirection));
-                highlightSpecular = pow(highlightSpecular, max(1.0, min(1024.0, gBufferData.SpecularPower * gloss.x)));
+                highlightSpecular = pow(highlightSpecular, max(1.0, min(1024.0, gBufferData.SpecularGloss * gloss.x)));
                 highlightSpecular *= gBufferData.SpecularLevel * gloss.x;
                 highlightSpecular *= ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
 
@@ -205,7 +205,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Alpha *= diffuse.a;
 
                 gBufferData.Specular *= vertex.Color.a;
-                gBufferData.SpecularPower *= gloss.y;    
+                gBufferData.SpecularGloss *= gloss.y;    
                 gBufferData.SpecularLevel *= gloss.y;
                 gBufferData.SpecularFresnel = ComputeFresnel(DecodeNormalMap(vertex, normalMap.zw)) * 0.7 + 0.3;
                 gBufferData.Emission = highlightSpecular * material.SonicEyeHighLightColor.rgb;
@@ -229,7 +229,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                 }
 
@@ -335,7 +335,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                 }
                 else if (material.SpecularTexture == 0)
@@ -360,7 +360,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                 }
 
@@ -539,7 +539,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                     gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
                 }
@@ -574,7 +574,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                     gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
                 }
@@ -615,7 +615,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                     float4 gloss = SampleMaterialTexture2D(material.GlossTexture, vertex);
                     if (material.SpecularTexture != 0)
                     {
-                        gBufferData.SpecularPower *= gloss.x;
+                        gBufferData.SpecularGloss *= gloss.x;
                         gBufferData.SpecularLevel *= gloss.x;
                     }
                     else
@@ -651,7 +651,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularFresnel *= gloss;
                 }
 
@@ -713,7 +713,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a * vertex.Color.a;
 
-                gBufferData.SpecularPower *= gloss;
+                gBufferData.SpecularGloss *= gloss;
                 gBufferData.SpecularLevel *= gloss;
 
                 if (material.NormalTexture != 0)
@@ -746,7 +746,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Diffuse *= diffuse.rgb;
                 gBufferData.Alpha *= diffuse.a;
 
-                gBufferData.SpecularPower *= gloss;
+                gBufferData.SpecularGloss *= gloss;
                 gBufferData.SpecularLevel *= gloss;
 
                 if (material.NormalTexture != 0)
@@ -771,7 +771,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                     gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
                 }
@@ -805,7 +805,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                     if (material.GlossTexture2 != 0)
                         gloss = lerp(gloss, SampleMaterialTexture2D(material.GlossTexture2, vertex).x, vertex.Color.w);
 
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                     gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 
@@ -844,7 +844,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 gBufferData.Alpha *= diffuse.a;
 
                 float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex);
-                gBufferData.Specular *= specular.rgb * gBufferData.SpecularPower;
+                gBufferData.Specular *= specular.rgb * gBufferData.SpecularGloss;
                 gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
 
                 float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture,
@@ -865,7 +865,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
                 if (material.GlossTexture != 0)
                 {
                     float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
-                    gBufferData.SpecularPower *= gloss;
+                    gBufferData.SpecularGloss *= gloss;
                     gBufferData.SpecularLevel *= gloss;
                 }
 
@@ -914,7 +914,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
 #endif
     }
 
-    gBufferData.SpecularPower = clamp(gBufferData.SpecularPower, 1.0, 1024.0);
+    gBufferData.SpecularGloss = clamp(gBufferData.SpecularGloss, 1.0, 1024.0);
 
     if (dot(gBufferData.Diffuse, gBufferData.Diffuse) == 0.0)
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION;
@@ -943,8 +943,8 @@ GBufferData LoadGBufferData(uint2 index)
 
     gBufferData.Specular = g_SpecularTexture[index];
 
-    float3 specularPowerLevelFresnel = g_SpecularPowerLevelFresnelTexture[index];
-    gBufferData.SpecularPower = specularPowerLevelFresnel.x;
+    float3 specularPowerLevelFresnel = g_SpecularGlossLevelFresnelTexture[index];
+    gBufferData.SpecularGloss = specularPowerLevelFresnel.x;
     gBufferData.SpecularLevel = specularPowerLevelFresnel.y;
     gBufferData.SpecularFresnel = specularPowerLevelFresnel.z;
 
@@ -961,10 +961,10 @@ void StoreGBufferData(uint2 index, GBufferData gBufferData)
     g_PositionAndFlagsTexture[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
     g_DiffuseAndRefractionTexture[index] = float4(gBufferData.Diffuse, gBufferData.Refraction);
     g_SpecularTexture[index] = gBufferData.Specular;
-    g_SpecularPowerLevelFresnelTexture[index] = float3(gBufferData.SpecularPower, gBufferData.SpecularLevel, gBufferData.SpecularFresnel);
+    g_SpecularGlossLevelFresnelTexture[index] = float3(gBufferData.SpecularGloss, gBufferData.SpecularLevel, gBufferData.SpecularFresnel);
     g_NormalTexture[index] = float4(gBufferData.Normal,
         (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION)) ? 0.0 :
-        (gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION) ? 1.0 : 1.0 - (pow(gBufferData.SpecularPower, 0.2) * 0.25));
+        (gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION) ? 1.0 : 1.0 - (pow(gBufferData.SpecularGloss, 0.2) * 0.25));
     g_FalloffTexture[index] = gBufferData.Falloff;
     g_EmissionTexture[index] = gBufferData.Emission;
     g_TransColorTexture[index] = gBufferData.TransColor;

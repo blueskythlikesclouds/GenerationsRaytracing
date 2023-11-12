@@ -44,7 +44,7 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     GBufferData gBufferData = (GBufferData) 0;
     gBufferData.Position = WorldRayOrigin() + WorldRayDirection() * g_CameraNearFarAspect.y;
     gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
-    gBufferData.SpecularPower = 1.0;
+    gBufferData.SpecularGloss = 1.0;
     gBufferData.Normal = -WorldRayDirection();
 
     if (g_UseSkyTexture)
@@ -186,11 +186,11 @@ void ReflectionRayGeneration()
         }
         else
         {
-            float4 sampleDirection = GetPowerCosWeightedSample(GetBlueNoise().yz, gBufferData.SpecularPower);
+            float4 sampleDirection = GetPowerCosWeightedSample(GetBlueNoise().yz, gBufferData.SpecularGloss);
             float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
 
             rayDirection = reflect(-eyeDirection, halfwayDirection);
-            pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularPower) / (0.0001 + sampleDirection.w);
+            pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
         }
 
         RayDesc ray;

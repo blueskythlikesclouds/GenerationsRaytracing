@@ -144,7 +144,7 @@ RWTexture2D<float4> g_PositionAndFlagsTexture : register(u3);
 RWTexture2D<float4> g_PrevPositionAndFlagsTexture : register(u4);
 RWTexture2D<float4> g_DiffuseAndRefractionTexture : register(u5);
 RWTexture2D<float3> g_SpecularTexture : register(u6);
-RWTexture2D<float3> g_SpecularPowerLevelFresnelTexture : register(u7);
+RWTexture2D<float3> g_SpecularGlossLevelFresnelTexture : register(u7);
 RWTexture2D<float4> g_NormalTexture : register(u8);
 RWTexture2D<float3> g_PrevNormalTexture : register(u9);
 RWTexture2D<float3> g_FalloffTexture : register(u10);
