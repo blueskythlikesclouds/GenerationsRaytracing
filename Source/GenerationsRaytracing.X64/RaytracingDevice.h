@@ -52,8 +52,15 @@ protected:
     ID3D12RootSignature* m_curRootSignature = nullptr;
     ComPtr<ID3D12RootSignature> m_raytracingRootSignature;
     ComPtr<ID3D12StateObject> m_stateObject;
+    ComPtr<ID3D12StateObjectProperties> m_properties;
     std::vector<uint8_t> m_shaderTable;
     GlobalsRT m_globalsRT;
+
+    size_t m_primaryStackSize = 0;
+    size_t m_reservoirStackSize = 0;
+    size_t m_shadowStackSize = 0;
+    size_t m_secondaryStackSize = 0;
+    size_t m_tertiaryStackSize = 0;
 
     // Accel Struct
     ComPtr<D3D12MA::Allocation> m_scratchBuffers[NUM_FRAMES];
