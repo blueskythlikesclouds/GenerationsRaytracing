@@ -299,19 +299,16 @@ void RaytracingDevice::createRaytracingTextures()
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1 },
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2 },
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3 },
-        { GBUFFER_DATA_NUM, DXGI_FORMAT_R10G10B10A2_UNORM, m_gBufferTexture4 },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture4 },
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5 },
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
-        { GBUFFER_DATA_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7 },
 
         { GBUFFER_DATA_NUM, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture },
-        { GBUFFER_DATA_NUM, DXGI_FORMAT_R8_UNORM, m_shadowTexture },
+        { GBUFFER_DATA_NUM, DXGI_FORMAT_R16_FLOAT, m_shadowTexture },
 
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture },
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture },
-        { 1, DXGI_FORMAT_R32G32B32A32_FLOAT, m_normalsRoughnessTexture },
-        { 1, DXGI_FORMAT_R32G32B32A32_FLOAT, m_diffuseRayDirectionHitDistanceTexture },
-        { 1, DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularRayDirectionHitDistanceTexture }
+        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_normalsRoughnessTexture }
     };
 
     for (const auto& textureDesc : textureDescs)
@@ -407,9 +404,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         m_normalsRoughnessTexture->GetResource(),
         m_colorTexture->GetResource(),
         m_depthTexture->GetResource(),
-        m_motionVectorsTexture->GetResource(),
-        m_diffuseRayDirectionHitDistanceTexture->GetResource(),
-        m_specularRayDirectionHitDistanceTexture->GetResource()
+        m_motionVectorsTexture->GetResource()
     };
 
     for (auto textureToTransition : texturesToTransition)
@@ -432,8 +427,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
             m_outputTexture->GetResource(),
             m_depthTexture->GetResource(),
             m_motionVectorsTexture->GetResource(),
-            m_diffuseRayDirectionHitDistanceTexture->GetResource(),
-            m_specularRayDirectionHitDistanceTexture->GetResource(),
             m_globalsRT.pixelJitterX,
             m_globalsRT.pixelJitterY,
             message.resetAccumulation
@@ -763,8 +756,7 @@ void RaytracingDevice::procMsgTraceRays()
         m_gBufferTexture3->GetResource(),
         m_gBufferTexture4->GetResource(),
         m_gBufferTexture5->GetResource(),
-        m_gBufferTexture6->GetResource(),
-        m_gBufferTexture7->GetResource(),
+        m_gBufferTexture6->GetResource()
     };
 
     auto gBufferUavBarrier = [&]()
@@ -1191,7 +1183,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 19, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 15, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[10];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

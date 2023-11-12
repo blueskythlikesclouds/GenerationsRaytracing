@@ -46,24 +46,24 @@ struct Material
     float4 WaterParam;
 };
 
-float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)
+min16float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)
 {
     uint textureId = materialTexture & 0xFFFFF;
     uint samplerId = (materialTexture >> 20) & 0x3FF;
 
-    Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(textureId)];
+    Texture2D<min16float4> texture = ResourceDescriptorHeap[NonUniformResourceIndex(textureId)];
     SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(samplerId)];
 
     return texture.SampleLevel(samplerState, texCoord, 0);
 }
 
-float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex)
+min16float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex)
 {
     uint textureId = materialTexture & 0xFFFFF;
     uint samplerId = (materialTexture >> 20) & 0x3FF;
     uint texCoordIndex = vertex.Flags & VERTEX_FLAG_MULTI_UV ? materialTexture >> 30 : 0;
 
-    Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(textureId)];
+    Texture2D<min16float4> texture = ResourceDescriptorHeap[NonUniformResourceIndex(textureId)];
     SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(samplerId)];
 
     if (vertex.Flags & VERTEX_FLAG_MIP_MAP)

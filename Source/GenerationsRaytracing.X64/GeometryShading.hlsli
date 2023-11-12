@@ -7,24 +7,24 @@
 struct ShadingParams
 {
     float3 EyePosition;
-    float3 EyeDirection;
-    float3 Shadow;
+    min16float3 EyeDirection;
+    min16float Shadow;
     Reservoir Reservoir;
-    float3 GlobalIllumination;
-    float3 Reflection;
-    float3 Refraction;
+    min16float3 GlobalIllumination;
+    min16float3 Reflection;
+    min16float3 Refraction;
 };
 
-float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
-    float3 lightDirection, float3 diffuseColor, float3 specularColor)
+min16float3 ComputeDirectLighting(GBufferData gBufferData, min16float3 eyeDirection,
+    min16float3 lightDirection, min16float3 diffuseColor, min16float3 specularColor)
 {
-    float3 transColor = diffuseColor;
+    min16float3 transColor = diffuseColor;
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
     {
         diffuseColor *= gBufferData.Diffuse;
 
-        float cosTheta = dot(gBufferData.Normal, lightDirection);
+        min16float cosTheta = dot(gBufferData.Normal, lightDirection);
 
         transColor *= gBufferData.TransColor;
         transColor *= saturate(-cosTheta);
@@ -52,9 +52,9 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     {
         specularColor *= gBufferData.Specular * gBufferData.SpecularLevel * gBufferData.SpecularFresnel;
 
-        float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
+        min16float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
 
-        float cosTheta = dot(gBufferData.Normal, halfwayDirection);
+        min16float cosTheta = dot(gBufferData.Normal, halfwayDirection);
         cosTheta = pow(saturate(cosTheta), gBufferData.SpecularGloss);
         specularColor *= cosTheta;
     }
@@ -66,7 +66,7 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     return diffuseColor + specularColor + transColor;
 }
 
-float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
+min16float3 ComputeLocalLighting(GBufferData gBufferData, min16float3 eyeDirection, LocalLight localLight)
 {
     float3 direction = localLight.Position - gBufferData.Position;
     float distance = length(direction);
@@ -74,29 +74,29 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
     if (distance > 0.0)
         direction /= distance;
 
-    float3 localLighting = ComputeDirectLighting(gBufferData, eyeDirection,
-        direction, localLight.Color, localLight.Color);
+    min16float3 localLighting = ComputeDirectLighting(gBufferData, eyeDirection,
+        (min16float3) direction, (min16float3) localLight.Color, (min16float3) localLight.Color);
 
-    localLighting *= 1.0 - saturate((distance - localLight.InRange) / (localLight.OutRange - localLight.InRange));
+    localLighting *= 1.0 - (min16float) saturate((distance - localLight.InRange) / (localLight.OutRange - localLight.InRange));
     return localLighting;
 }
 
-float ComputeReservoirWeight(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
+float ComputeReservoirWeight(GBufferData gBufferData, min16float3 eyeDirection, LocalLight localLight)
 {
-    float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
-    return dot(localLighting, float3(0.2126, 0.7152, 0.0722));
+    min16float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
+    return dot(localLighting, min16float3(0.2126, 0.7152, 0.0722));
 }
 
-float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
+min16float3 ComputeGI(GBufferData gBufferData, min16float3 globalIllumination)
 {
     return globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
 }
 
-float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
+min16float3 ComputeReflection(GBufferData gBufferData, min16float3 reflection)
 {
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
     {
-        float3 specular = gBufferData.Specular;
+        min16float3 specular = gBufferData.Specular;
         if (!(gBufferData.Flags & GBUFFER_FLAG_IS_GLASS_REFLECTION))
             specular = min(1.0, specular * gBufferData.SpecularLevel * 0.5);
 
@@ -106,7 +106,7 @@ float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
     return reflection * gBufferData.SpecularFresnel;
 }
 
-float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)
+min16float3 ComputeRefraction(GBufferData gBufferData, min16float3 refraction)
 {
     if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_MUL)
         return refraction * gBufferData.Diffuse;
@@ -117,21 +117,24 @@ float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)
     return refraction;
 }
 
-float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingParams)
+min16float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingParams)
 {
-    float3 resultShading = 0.0;
+    min16float3 resultShading = 0.0;
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
     {
-        resultShading += ComputeDirectLighting(gBufferData, shadingParams.EyeDirection, 
-            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+        resultShading += ComputeDirectLighting(gBufferData, 
+            shadingParams.EyeDirection, 
+            (min16float3) -mrgGlobalLight_Direction.xyz, 
+            (min16float3) mrgGlobalLight_Diffuse.rgb, 
+            (min16float3) mrgGlobalLight_Specular.rgb);
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
             resultShading *= shadingParams.Shadow;
     }
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
-        resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]) * shadingParams.Reservoir.W;
+        resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]) * (min16float) shadingParams.Reservoir.W;
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
         resultShading += ComputeGI(gBufferData, shadingParams.GlobalIllumination);
@@ -147,31 +150,31 @@ float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingPara
     return resultShading;
 }
 
-float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
+min16float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
 {
-    float3 resultShading = 0.0;
+    min16float3 resultShading = 0.0;
 
-    float3 halfwayDirection = NormalizeSafe(shadingParams.EyeDirection - mrgGlobalLight_Direction.xyz);
-    float cosTheta = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss);
-    float3 specularLight = mrgGlobalLight_Specular.rgb * cosTheta * gBufferData.Specular * gBufferData.SpecularGloss * gBufferData.SpecularLevel;
+    min16float3 halfwayDirection = NormalizeSafe(shadingParams.EyeDirection - (min16float3) mrgGlobalLight_Direction.xyz);
+    min16float cosTheta = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss);
+    min16float3 specularLight = (min16float3) mrgGlobalLight_Specular.rgb * cosTheta * gBufferData.Specular * gBufferData.SpecularGloss * gBufferData.SpecularLevel;
     resultShading += specularLight * shadingParams.Shadow;
 
-    float specularFresnel = 1.0 - abs(dot(gBufferData.Normal, shadingParams.EyeDirection));
+    min16float specularFresnel = 1.0 - abs(dot(gBufferData.Normal, shadingParams.EyeDirection));
     specularFresnel *= specularFresnel;
     specularFresnel *= specularFresnel;
 
-    float diffuseFresnel = (1.0 - specularFresnel) * 
-        pow(abs(dot(gBufferData.Normal, g_EyeDirection.xyz)), gBufferData.SpecularGloss);
+    min16float diffuseFresnel = (1.0 - specularFresnel) *
+        pow(abs(dot(gBufferData.Normal, (min16float3) g_EyeDirection.xyz)), gBufferData.SpecularGloss);
 
     resultShading += shadingParams.GlobalIllumination * diffuseFresnel;
 
-    float luminance = dot(resultShading, float3(0.2126, 0.7152, 0.0722));
+    min16float luminance = dot(resultShading, min16float3(0.2126, 0.7152, 0.0722));
     resultShading += shadingParams.Reflection * specularFresnel * (1.0 - saturate(luminance));
 
-    float3 diffuseLight = 0.0;
+    min16float3 diffuseLight = 0.0;
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
     {
-        diffuseLight = mrgGlobalLight_Diffuse.rgb * saturate(dot(gBufferData.Normal, -mrgGlobalLight_Direction.xyz)) * shadingParams.Shadow;
+        diffuseLight = (min16float3) mrgGlobalLight_Diffuse.rgb * saturate(dot(gBufferData.Normal, (min16float3) -mrgGlobalLight_Direction.xyz)) * shadingParams.Shadow;
         diffuseLight += shadingParams.GlobalIllumination;
         diffuseLight *= gBufferData.Diffuse;
         diffuseLight *= gBufferData.Refraction;
@@ -183,7 +186,7 @@ float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
     return resultShading;
 }
 
-float3 ComputeGeometryShadingAux(GBufferData gBufferData, ShadingParams shadingParams)
+min16float3 ComputeGeometryShadingAux(GBufferData gBufferData, ShadingParams shadingParams)
 {
     if (gBufferData.Flags & GBUFFER_FLAG_IS_SKY)
         return gBufferData.Emission;
@@ -195,7 +198,7 @@ float3 ComputeGeometryShadingAux(GBufferData gBufferData, ShadingParams shadingP
         return ComputeGeometryShading(gBufferData, shadingParams);
 }
 
-float2 ComputeLightScattering(float3 position, float3 viewPosition)
+min16float2 ComputeLightScattering(float3 position, float3 viewPosition)
 {
     float4 r0, r3, r4;
 
@@ -220,7 +223,7 @@ float2 ComputeLightScattering(float3 position, float3 viewPosition)
     r0.z = r0.z * r3.x;
     r0.y = r0.y * r0.z;
 
-    return float2(r0.x, r0.y * g_LightScatteringFarNearScale.w);
+    return min16float2(r0.x, r0.y * g_LightScatteringFarNearScale.w);
 }
 
 float2 ComputePixelPosition(float3 position, float4x4 view, float4x4 projection)

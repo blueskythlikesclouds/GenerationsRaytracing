@@ -141,27 +141,24 @@ StructuredBuffer<Material> g_Materials : register(t2);
 StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t3);
 StructuredBuffer<LocalLight> g_LocalLights : register(t4);
 
-RWTexture2D<float4> g_Color : register(u0);
+RWTexture2D<min16float4> g_Color : register(u0);
 RWTexture2D<float> g_Depth : register(u1);
 RWTexture2D<float2> g_MotionVectors : register(u2);
 
 RWTexture2DArray<float4> g_GBuffer0 : register(u3);
-RWTexture2DArray<float4> g_GBuffer1 : register(u4);
-RWTexture2DArray<float4> g_GBuffer2 : register(u5);
-RWTexture2DArray<float4> g_GBuffer3 : register(u6);
-RWTexture2DArray<float4> g_GBuffer4 : register(u7);
-RWTexture2DArray<float4> g_GBuffer5 : register(u8);
-RWTexture2DArray<float4> g_GBuffer6 : register(u9);
-RWTexture2DArray<float4> g_GBuffer7 : register(u10);
+RWTexture2DArray<min16float4> g_GBuffer1 : register(u4);
+RWTexture2DArray<min16float4> g_GBuffer2 : register(u5);
+RWTexture2DArray<min16float4> g_GBuffer3 : register(u6);
+RWTexture2DArray<min16float4> g_GBuffer4 : register(u7);
+RWTexture2DArray<min16float4> g_GBuffer5 : register(u8);
+RWTexture2DArray<min16float4> g_GBuffer6 : register(u9);
 
-RWTexture2DArray<uint4> g_Reservoir : register(u11);
-RWTexture2DArray<float> g_Shadow : register(u12);
+RWTexture2DArray<uint4> g_Reservoir : register(u10);
+RWTexture2DArray<min16float> g_Shadow : register(u11);
 
-RWTexture2D<float4> g_DiffuseAlbedo : register(u13);
-RWTexture2D<float4> g_SpecularAlbedo : register(u14);
-RWTexture2D<float4> g_NormalsRoughness : register(u15);
-RWTexture2D<float4> g_DiffuseRayDirectionHitDistance : register(u16);
-RWTexture2D<float4> g_SpecularRayDirectionHitDistance : register(u17);
+RWTexture2D<min16float4> g_DiffuseAlbedo : register(u12);
+RWTexture2D<min16float4> g_SpecularAlbedo : register(u13);
+RWTexture2D<min16float4> g_NormalsRoughness : register(u14);
 
 SamplerState g_SamplerState : register(s0);
 

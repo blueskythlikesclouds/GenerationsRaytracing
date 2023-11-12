@@ -95,7 +95,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_gBufferTexture4;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture5;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture6;
-    ComPtr<D3D12MA::Allocation> m_gBufferTexture7;
 
     ComPtr<D3D12MA::Allocation> m_reservoirTexture;
 
@@ -104,8 +103,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_specularAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_normalsRoughnessTexture;
-    ComPtr<D3D12MA::Allocation> m_diffuseRayDirectionHitDistanceTexture;
-    ComPtr<D3D12MA::Allocation> m_specularRayDirectionHitDistanceTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     uint32_t m_srvId{};

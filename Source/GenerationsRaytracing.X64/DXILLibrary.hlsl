@@ -70,9 +70,9 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 }
 
-float4 GetBlueNoise()
+min16float4 GetBlueNoise()
 {
-    Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
+    Texture2D<min16float4> texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
     return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
 }
 
@@ -84,10 +84,18 @@ void PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTr
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
     GBufferData gBufferData = CreateGBufferData(vertex, material);
-    float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : GetBlueNoise().x;
 
-    if (gBufferData.Alpha < alphaThreshold)
-        IgnoreHit();
+    [branch]
+    if (geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH)
+    {
+        if (gBufferData.Alpha < 0.5)
+            IgnoreHit();
+    }
+    else
+    {
+        if (gBufferData.Alpha < GetBlueNoise().x)
+            IgnoreHit();
+    }
 }
 
 [shader("raygeneration")]
@@ -162,7 +170,7 @@ void SecondaryRayGeneration()
                     rayDirection = reflect(-eyeDirection, halfwayDirection);
 
                     float pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
-                    g_GBuffer2[uint3(DispatchRaysIndex().xy, 0)].w = pdf;
+                    g_GBuffer2[uint3(DispatchRaysIndex().xy, 0)].w = (min16float) pdf;
 
                 }
 

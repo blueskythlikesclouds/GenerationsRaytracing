@@ -36,19 +36,25 @@ struct Vertex
     float3 Position;
     float3 PrevPosition;
     float3 SafeSpawnPoint;
-    float3 Normal;
-    float3 Tangent;
-    float3 Binormal;
+    min16float3 Normal;
+    min16float3 Tangent;
+    min16float3 Binormal;
     float2 TexCoords[4];
     float2 TexCoordsDdx[4];
     float2 TexCoordsDdy[4];
-    float4 Color;
+    min16float4 Color;
     uint Flags;
 };
 
 float3 NormalizeSafe(float3 value)
 {
     float lengthSquared = dot(value, value);
+    return lengthSquared > 0.0 ? value * rsqrt(lengthSquared) : 0.0;
+}
+
+min16float3 NormalizeSafe(min16float3 value)
+{
+    min16float lengthSquared = dot(value, value);
     return lengthSquared > 0.0 ? value * rsqrt(lengthSquared) : 0.0;
 }
 
@@ -113,7 +119,7 @@ Vertex LoadVertex(
         vertex.PrevPosition = vertex.Position;
     }
 
-    vertex.Normal =
+    float3 normal =
         asfloat(vertexBuffer.Load3(normalOffsets.x)) * uv.x +
         asfloat(vertexBuffer.Load3(normalOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load3(normalOffsets.z)) * uv.z;
@@ -121,7 +127,7 @@ Vertex LoadVertex(
     // Some models have correct normals but flipped triangle order
     // Could check for view direction but that makes plants look bad
     // as they have spherical normals
-    bool isBackFace = dot(cross(p0 - p2, p0 - p1), vertex.Normal) > 0.0;
+    bool isBackFace = dot(cross(p0 - p2, p0 - p1), normal) > 0.0;
 
     float3 outObjPosition;
     float3 outWldPosition;
@@ -139,12 +145,12 @@ Vertex LoadVertex(
 
     vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
 
-    vertex.Tangent =
+    float3 tangent =
         asfloat(vertexBuffer.Load3(tangentOffsets.x)) * uv.x +
         asfloat(vertexBuffer.Load3(tangentOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load3(tangentOffsets.z)) * uv.z;
 
-    vertex.Binormal =
+    float3 binormal =
         asfloat(vertexBuffer.Load3(binormalOffsets.x)) * uv.x +
         asfloat(vertexBuffer.Load3(binormalOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load3(binormalOffsets.z)) * uv.z;
@@ -168,17 +174,17 @@ Vertex LoadVertex(
 
     if (geometryDesc.Flags & GEOMETRY_FLAG_D3DCOLOR)
     {
-        vertex.Color =
+        vertex.Color = min16float4(
             DecodeColor(vertexBuffer.Load(colorOffsets.x)) * uv.x +
             DecodeColor(vertexBuffer.Load(colorOffsets.y)) * uv.y +
-            DecodeColor(vertexBuffer.Load(colorOffsets.z)) * uv.z;
+            DecodeColor(vertexBuffer.Load(colorOffsets.z)) * uv.z);
     }
     else
     {
-        vertex.Color =
+        vertex.Color = min16float4(
             asfloat(vertexBuffer.Load4(colorOffsets.x)) * uv.x +
             asfloat(vertexBuffer.Load4(colorOffsets.y)) * uv.y +
-            asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
+            asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z);
     }
 
     vertex.Flags = flags;
@@ -216,9 +222,9 @@ Vertex LoadVertex(
 
     vertex.Position = mul(ObjectToWorld3x4(), float4(vertex.Position, 1.0)).xyz;
     vertex.PrevPosition = mul(instanceDesc.PrevTransform, float4(vertex.PrevPosition, 1.0)).xyz;
-    vertex.Normal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
-    vertex.Tangent = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
-    vertex.Binormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
+    vertex.Normal = (min16float3) NormalizeSafe(mul(ObjectToWorld3x4(), float4(normal, 0.0)).xyz);
+    vertex.Tangent = (min16float3) NormalizeSafe(mul(ObjectToWorld3x4(), float4(tangent, 0.0)).xyz);
+    vertex.Binormal = (min16float3) NormalizeSafe(mul(ObjectToWorld3x4(), float4(binormal, 0.0)).xyz);
 
     return vertex;
 }

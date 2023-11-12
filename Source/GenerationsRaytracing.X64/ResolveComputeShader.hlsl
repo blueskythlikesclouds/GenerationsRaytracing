@@ -13,8 +13,6 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         groupThreadId,
         groupId);
 
-    uint random = InitRand(g_CurrentFrame, dispatchThreadId.y * g_InternalResolution.x + dispatchThreadId.x);
-
     GBufferData gBufferDatas[GBUFFER_DATA_NUM];
     ShadingParams shadingParams[GBUFFER_DATA_NUM];
 
@@ -42,7 +40,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     [unroll]
     for (uint i = 0; i < GBUFFER_DATA_NUM; i++)
     {
-        shadingParams[i].EyeDirection = NormalizeSafe(shadingParams[i].EyePosition - gBufferDatas[i].Position);
+        shadingParams[i].EyeDirection = (min16float3) NormalizeSafe(shadingParams[i].EyePosition - gBufferDatas[i].Position);
         shadingParams[i].Reservoir = LoadReservoir(g_Reservoir[uint3(dispatchThreadId, i)]);
     }
 
@@ -64,41 +62,25 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     shadingParams[GBUFFER_DATA_PRIMARY].Refraction = gBufferDatas[GBUFFER_DATA_PRIMARY].SpecularPDF *
         ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_SECONDARY_REFRACTION], shadingParams[GBUFFER_DATA_SECONDARY_REFRACTION]);
 
-    float3 color = ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_PRIMARY], shadingParams[GBUFFER_DATA_PRIMARY]);
+    min16float3 color = ComputeGeometryShadingAux(gBufferDatas[GBUFFER_DATA_PRIMARY], shadingParams[GBUFFER_DATA_PRIMARY]);
 
     if (!(gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IS_SKY))
     {
         float3 viewPosition = mul(float4(gBufferDatas[GBUFFER_DATA_PRIMARY].Position, 1.0), g_MtxView).xyz;
-        float2 lightScattering = ComputeLightScattering(gBufferDatas[GBUFFER_DATA_PRIMARY].Position, viewPosition);
+        min16float2 lightScattering = ComputeLightScattering(gBufferDatas[GBUFFER_DATA_PRIMARY].Position, viewPosition);
 
         if (all(and(!isnan(lightScattering), !isinf(lightScattering))))
-            color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+            color = color * lightScattering.x + (min16float3) g_LightScatteringColor.rgb * lightScattering.y;
     }
 
-    g_Color[dispatchThreadId] = float4(color, 1.0);
+    g_Color[dispatchThreadId] = min16float4(color, 1.0);
 
     g_DiffuseAlbedo[dispatchThreadId] = gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION ? 0.0 :
-        float4(ComputeGI(gBufferDatas[GBUFFER_DATA_PRIMARY], 1.0), 0.0);
+        min16float4(ComputeGI(gBufferDatas[GBUFFER_DATA_PRIMARY], 1.0), 0.0);
 
     g_SpecularAlbedo[dispatchThreadId] = gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IGNORE_REFLECTION ? 0.0 :
-        float4(ComputeReflection(gBufferDatas[GBUFFER_DATA_PRIMARY], 1.0), 0.0);
+        min16float4(ComputeReflection(gBufferDatas[GBUFFER_DATA_PRIMARY], 1.0), 0.0);
 
     g_NormalsRoughness[dispatchThreadId] =
-        float4(gBufferDatas[GBUFFER_DATA_PRIMARY].Normal, 1.0 - pow(gBufferDatas[GBUFFER_DATA_PRIMARY].SpecularGloss, 0.2) * 0.25);
-
-    float3 diffuseRayDirection = gBufferDatas[GBUFFER_DATA_SECONDARY_GI].Position - gBufferDatas[GBUFFER_DATA_PRIMARY].Position;
-    float diffuseHitDistance = length(diffuseRayDirection);
-    if (diffuseHitDistance > 0.0)
-        diffuseRayDirection /= diffuseHitDistance;
-
-    g_DiffuseRayDirectionHitDistance[dispatchThreadId] = gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION ? 0.0 :
-        float4(diffuseRayDirection, diffuseHitDistance);
-
-    float3 specularRayDirection = gBufferDatas[GBUFFER_DATA_SECONDARY_REFLECTION].Position - gBufferDatas[GBUFFER_DATA_PRIMARY].Position;
-    float specularHitDistance = length(specularRayDirection);
-    if (specularHitDistance > 0.0)
-        specularRayDirection /= specularHitDistance;
-
-    g_SpecularRayDirectionHitDistance[dispatchThreadId] = gBufferDatas[GBUFFER_DATA_PRIMARY].Flags & GBUFFER_FLAG_IGNORE_REFLECTION ? 0.0 :
-        float4(specularRayDirection, specularHitDistance);
+        min16float4(gBufferDatas[GBUFFER_DATA_PRIMARY].Normal, 1.0 - pow(gBufferDatas[GBUFFER_DATA_PRIMARY].SpecularGloss, 0.2) * 0.25);
 }
