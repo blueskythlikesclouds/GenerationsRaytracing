@@ -61,12 +61,12 @@ float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex)
 {
     uint textureId = materialTexture & 0xFFFFF;
     uint samplerId = (materialTexture >> 20) & 0x3FF;
-    uint texCoordIndex = materialTexture >> 30;
+    uint texCoordIndex = vertex.Flags & VERTEX_FLAG_MULTI_UV ? materialTexture >> 30 : 0;
 
     Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(textureId)];
     SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(samplerId)];
 
-    if (vertex.EnableGradSampling)
+    if (vertex.Flags & VERTEX_FLAG_MIPMAP)
     {
         return texture.SampleGrad(samplerState, 
             vertex.TexCoords[texCoordIndex], 

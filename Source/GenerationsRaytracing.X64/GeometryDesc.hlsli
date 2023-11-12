@@ -26,6 +26,10 @@ struct InstanceDesc
     row_major float3x4 PrevTransform;
 };
 
+#define VERTEX_FLAG_NONE     (0 << 0)
+#define VERTEX_FLAG_MIPMAP   (1 << 0)
+#define VERTEX_FLAG_MULTI_UV (1 << 0)
+
 struct Vertex
 {
     float3 Position;
@@ -38,7 +42,7 @@ struct Vertex
     float2 TexCoordsDdx[4];
     float2 TexCoordsDdy[4];
     float4 Color;
-    bool EnableGradSampling;
+    uint Flags;
 };
 
 float3 NormalizeSafe(float3 value)
@@ -63,7 +67,7 @@ Vertex LoadVertex(
     BuiltInTriangleIntersectionAttributes attributes,
     float3 dDdx,
     float3 dDdy,
-    bool enableGradSampling)
+    uint flags)
 {
     ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
     Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
@@ -146,8 +150,10 @@ Vertex LoadVertex(
 
     float2 texCoords[4][3];
 
+    [unroll]
     for (uint i = 0; i < 4; i++)
     {
+        [unroll]
         for (uint j = 0; j < 3; j++)
             texCoords[i][j] = asfloat(vertexBuffer.Load2(offsets[j] + geometryDesc.TexCoordOffsets[i]));
 
@@ -174,7 +180,9 @@ Vertex LoadVertex(
             asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
     }
 
-    if (enableGradSampling)
+    vertex.Flags = flags;
+
+    if (flags & VERTEX_FLAG_MIPMAP)
     {
         RayDiff rayDiff = (RayDiff) 0;
         rayDiff.dDdx = dDdx;
@@ -191,20 +199,18 @@ Vertex LoadVertex(
             dBarydx, 
             dBarydy);
 
+        [unroll]
         for (uint i = 0; i < 4; i++)
             InterpolateDifferentials(dBarydx, dBarydy, texCoords[i][0], texCoords[i][1], texCoords[i][2], vertex.TexCoordsDdx[i], vertex.TexCoordsDdy[i]);
-
-        vertex.EnableGradSampling = true;
     }
     else
     {
+        [unroll]
         for (uint i = 0; i < 4; i++)
         {
             vertex.TexCoordsDdx[i] = 0.0;
             vertex.TexCoordsDdy[i] = 0.0;
         }
-
-        vertex.EnableGradSampling = false;
     }
 
     vertex.Position = mul(ObjectToWorld3x4(), float4(vertex.Position, 1.0)).xyz;

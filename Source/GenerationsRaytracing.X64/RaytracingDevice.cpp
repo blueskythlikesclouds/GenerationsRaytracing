@@ -294,19 +294,18 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R32_FLOAT, m_depthTexture },
         { DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
 
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionFlagsTexture, &m_prevPositionFlagsTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevPositionFlagsTexture, &m_positionFlagsTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_safeSpawnPointTexture },
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseRefractionAlphaTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_positionAndFlagsTexture, &m_prevPositionAndFlagsTexture },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevPositionAndFlagsTexture, &m_positionAndFlagsTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAndRefractionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularPowerLevelFresnelTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_normalTexture, &m_prevNormalTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_prevNormalTexture, &m_normalTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularPowerLevelFresnelTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_normalTexture, &m_prevNormalTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_prevNormalTexture, &m_normalTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_falloffTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_emissionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_transColorTexture },
 
-        { DXGI_FORMAT_R16_UNORM, m_shadowTexture },
+        { DXGI_FORMAT_R8_UNORM, m_shadowTexture },
 
         { DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture },
         { DXGI_FORMAT_R32G32B32A32_UINT, m_prevReservoirTexture },
@@ -317,9 +316,7 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
 
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture },
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_diffuseRayDirectionHitDistanceTexture },
-        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_specularRayDirectionHitDistanceTexture },
+        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture }
     };
 
     for (const auto& textureDesc : textureDescs)
@@ -409,7 +406,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
 
     switch (message.debugView)
     {
-    case DEBUG_VIEW_DIFFUSE: colorTexture = m_diffuseRefractionAlphaTexture->GetResource(); break;
+    case DEBUG_VIEW_DIFFUSE: colorTexture = m_diffuseAndRefractionTexture->GetResource(); break;
     case DEBUG_VIEW_SPECULAR: colorTexture = m_specularTexture->GetResource(); break;
     case DEBUG_VIEW_NORMAL: colorTexture = (m_frame & 1 ? m_prevNormalTexture : m_normalTexture)->GetResource(); break;
     case DEBUG_VIEW_FALLOFF: colorTexture = m_falloffTexture->GetResource(); break;
@@ -423,8 +420,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
     getGraphicsCommandList().uavBarrier(m_colorTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularAlbedoTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_diffuseRayDirectionHitDistanceTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularRayDirectionHitDistanceTexture->GetResource());
 
     getGraphicsCommandList().transitionBarrier(m_diffuseAlbedoTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -441,12 +436,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
     getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().transitionBarrier(m_diffuseRayDirectionHitDistanceTexture->GetResource(),
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-    getGraphicsCommandList().transitionBarrier(m_specularRayDirectionHitDistanceTexture->GetResource(),
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
     getGraphicsCommandList().commitBarriers();
 
     m_upscaler->dispatch(
@@ -459,8 +448,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
             m_outputTexture->GetResource(),
             m_depthTexture->GetResource(),
             m_motionVectorsTexture->GetResource(),
-            m_diffuseRayDirectionHitDistanceTexture->GetResource(),
-            m_specularRayDirectionHitDistanceTexture->GetResource(),
             m_globalsRT.pixelJitterX,
             m_globalsRT.pixelJitterY,
             message.resetAccumulation
@@ -771,13 +758,13 @@ void RaytracingDevice::procMsgTraceRays()
 
     // PrimaryRayGeneration
     getGraphicsCommandList().commitBarriers();
+    m_properties->SetPipelineStackSize(m_primaryStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     getGraphicsCommandList().uavBarrier(m_depthTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_motionVectorsTexture->GetResource());
-    getGraphicsCommandList().uavBarrier((m_frame & 1 ? m_prevPositionFlagsTexture : m_positionFlagsTexture)->GetResource());
-    getGraphicsCommandList().uavBarrier(m_safeSpawnPointTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_diffuseRefractionAlphaTexture->GetResource());
+    getGraphicsCommandList().uavBarrier((m_frame & 1 ? m_prevPositionAndFlagsTexture : m_positionAndFlagsTexture)->GetResource());
+    getGraphicsCommandList().uavBarrier(m_diffuseAndRefractionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularPowerLevelFresnelTexture->GetResource());
     getGraphicsCommandList().uavBarrier((m_frame & 1 ? m_prevNormalTexture : m_normalTexture)->GetResource());
@@ -788,23 +775,30 @@ void RaytracingDevice::procMsgTraceRays()
 
     // ShadowRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    m_properties->SetPipelineStackSize(m_shadowStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     // ReservoirRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     if (message.localLightCount > 0)
+    {
+        m_properties->SetPipelineStackSize(m_reservoirStackSize);
         getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+    }
 
     // GIRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    m_properties->SetPipelineStackSize(m_giStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     // ReflectionRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    m_properties->SetPipelineStackSize(m_reflectionStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     // RefractionRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    m_properties->SetPipelineStackSize(m_refractionStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     resolveAndDispatchUpscaler(message);
@@ -1180,7 +1174,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 25, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 22, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1242,27 +1236,45 @@ RaytracingDevice::RaytracingDevice()
     HRESULT hr = m_device->CreateStateObject(stateObject, IID_PPV_ARGS(m_stateObject.GetAddressOf()));
     assert(SUCCEEDED(hr) && m_stateObject != nullptr);
 
-    ComPtr<ID3D12StateObjectProperties> properties;
-    hr = m_stateObject.As(std::addressof(properties));
-
-    assert(SUCCEEDED(hr) && properties != nullptr);
+    hr = m_stateObject.As(std::addressof(m_properties));
+    assert(SUCCEEDED(hr) && m_properties != nullptr);
 
     m_shaderTable.resize(18 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-    memcpy(&m_shaderTable[0 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ShadowRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ReservoirRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[6 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"GIRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[8 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ReflectionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"RefractionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[0 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ReservoirRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[6 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"GIRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[8 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ReflectionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"RefractionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-    memcpy(&m_shaderTable[12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[13 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"ShadowMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"GIMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[15 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"SecondaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[13 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"GIMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[15 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"SecondaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-    memcpy(&m_shaderTable[16 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"PrimaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[17 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], properties->GetShaderIdentifier(L"SecondaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[16 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[17 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"SecondaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+    m_primaryStackSize = m_properties->GetShaderStackSize(L"PrimaryRayGeneration") + std::max(std::max(m_properties->GetShaderStackSize(L"PrimaryHitGroup::anyhit"),
+        m_properties->GetShaderStackSize(L"PrimaryHitGroup::closesthit")), m_properties->GetShaderStackSize(L"PrimaryMiss"));
+
+    m_shadowStackSize = m_properties->GetShaderStackSize(L"ShadowRayGeneration") +
+        std::max(m_properties->GetShaderStackSize(L"SecondaryHitGroup::anyhit"), m_properties->GetShaderStackSize(L"ShadowMiss"));
+
+    m_reservoirStackSize = m_properties->GetShaderStackSize(L"ReservoirRayGeneration");
+
+    m_giStackSize = m_properties->GetShaderStackSize(L"GIRayGeneration") + std::max(std::max(m_properties->GetShaderStackSize(L"SecondaryHitGroup::anyhit"),
+        m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit")), m_properties->GetShaderStackSize(L"GIMiss")) + std::max(
+            m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"GIMiss"));
+
+    m_reflectionStackSize = m_properties->GetShaderStackSize(L"ReflectionRayGeneration") + std::max(std::max(m_properties->GetShaderStackSize(L"SecondaryHitGroup::anyhit"),
+        m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit")), m_properties->GetShaderStackSize(L"SecondaryMiss")) + std::max(
+            m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"SecondaryMiss"));
+
+    m_refractionStackSize = m_properties->GetShaderStackSize(L"RefractionRayGeneration") + std::max(std::max(m_properties->GetShaderStackSize(L"SecondaryHitGroup::anyhit"),
+        m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit")), m_properties->GetShaderStackSize(L"SecondaryMiss")) + std::max(
+            m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"SecondaryMiss"));
 
     for (auto& scratchBuffer : m_scratchBuffers)
     {

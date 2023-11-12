@@ -13,7 +13,7 @@ void PrimaryRayGeneration()
     ray.Origin = g_EyePosition.xyz;
     ray.Direction = normalize(rayDirection);
     ray.TMin = 0.0;
-    ray.TMax = FLT_MAX;
+    ray.TMax = INF;
 
     PrimaryRayPayload payload = (PrimaryRayPayload) 0;
 
@@ -67,7 +67,7 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, true);
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV);
     StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material));
 
     g_DepthTexture[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
@@ -83,7 +83,7 @@ void PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTr
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, true);
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
     GBufferData gBufferData = CreateGBufferData(vertex, material);
     float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : GetBlueNoise().x;
 
@@ -98,7 +98,7 @@ void ShadowRayGeneration()
 
     float shadow = 1.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
-        shadow = TraceGlobalLightShadow(gBufferData.SafeSpawnPoint, -mrgGlobalLight_Direction.xyz);
+        shadow = TraceGlobalLightShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
 
     g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
 }
@@ -137,19 +137,15 @@ void GIRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
     float3 globalIllumination = 0.0;
-    float3 rayDirection = 0.0;
-    float hitDistance = 0.0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
     {
-        rayDirection = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy));
-
         RayDesc ray;
 
-        ray.Origin = gBufferData.SafeSpawnPoint;
-        ray.Direction = rayDirection;
+        ray.Origin = gBufferData.Position;
+        ray.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy));
         ray.TMin = 0.0;
-        ray.TMax = FLT_MAX;
+        ray.TMax = INF;
 
         SecondaryRayPayload payload;
         payload.Depth = 0;
@@ -165,11 +161,9 @@ void GIRayGeneration()
             payload);
 
         globalIllumination = payload.Color;
-        hitDistance = payload.T;
     }
 
     g_GITexture[DispatchRaysIndex().xy] = globalIllumination;
-    g_DiffuseRayDirectionHitDistanceTexture[DispatchRaysIndex().xy] = float4(rayDirection, hitDistance);
 }
 
 [shader("raygeneration")]
@@ -178,11 +172,10 @@ void ReflectionRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     float3 reflection = 0.0;
-    float3 rayDirection = 0.0;
-    float hitDistance = 0.0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)))
     {
+        float3 rayDirection;
         float pdf;
 
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
@@ -202,10 +195,10 @@ void ReflectionRayGeneration()
 
         RayDesc ray;
 
-        ray.Origin = gBufferData.SafeSpawnPoint;
+        ray.Origin = gBufferData.Position;
         ray.Direction = rayDirection;
         ray.TMin = 0.0;
-        ray.TMax = FLT_MAX;
+        ray.TMax = INF;
 
         SecondaryRayPayload payload;
         payload.Depth = 0;
@@ -221,11 +214,9 @@ void ReflectionRayGeneration()
             payload);
 
         reflection = payload.Color * pdf;
-        hitDistance = payload.T;
     }
 
     g_ReflectionTexture[DispatchRaysIndex().xy] = reflection;
-    g_SpecularRayDirectionHitDistanceTexture[DispatchRaysIndex().xy] = float4(rayDirection, hitDistance);
 }
 
 [shader("raygeneration")]
@@ -237,7 +228,7 @@ void RefractionRayGeneration()
     if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY))
     {
         refraction = TraceRefraction(0, 
-            gBufferData.SafeSpawnPoint, 
+            gBufferData.Position, 
             gBufferData.Normal, 
             NormalizeSafe(g_EyePosition.xyz - gBufferData.Position));
     }
@@ -256,8 +247,6 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     {
         payload.Color = 0.0;
     }
-
-    payload.T = Z_MAX;
 }
 
 [shader("miss")]
@@ -282,7 +271,6 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     {
         payload.Color = 0.0;
     }
-    payload.T = Z_MAX;
 }
 
 [shader("closesthit")]
@@ -291,7 +279,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, false);
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
 
     GBufferData gBufferData = CreateGBufferData(vertex, material);
     gBufferData.Diffuse *= g_DiffusePower;
@@ -313,7 +301,7 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
     bool traceGlobalIllumination = false;
 
     if (g_CurrentFrame > 0 && all(and(pixelPosition >= 0, pixelPosition < g_InternalResolution)) &&
-        all(abs(g_PrevPositionFlagsTexture[pixelPosition].xyz - vertex.PrevPosition) <= 0.002 * -viewPosition.z) &&
+        all(abs(g_PrevPositionAndFlagsTexture[pixelPosition].xyz - vertex.PrevPosition) <= 0.002 * -viewPosition.z) &&
         dot(gBufferData.Normal, normal) >= 0.9063)
     {
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
@@ -342,13 +330,12 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
     // Done at the end for reducing live state.
     if (traceGlobalIllumination)
-        payload.Color += ComputeGI(gBufferData, TraceGI(payload.Depth + 1, gBufferData.SafeSpawnPoint, gBufferData.Normal));
+        payload.Color += ComputeGI(gBufferData, TraceGI(payload.Depth + 1, vertex.SafeSpawnPoint, gBufferData.Normal));
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
         globalLighting *= TraceGlobalLightShadow(vertex.SafeSpawnPoint, -mrgGlobalLight_Direction.xyz);
 
     payload.Color += globalLighting;
-    payload.T = RayTCurrent();
 }
 
 [shader("anyhit")]
@@ -364,7 +351,7 @@ void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in Built
     {
         Material material = g_Materials[geometryDesc.MaterialId];
         InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, false);
+        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
 
         if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0]).a < 0.5)
             IgnoreHit();

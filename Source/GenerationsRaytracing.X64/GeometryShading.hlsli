@@ -113,7 +113,7 @@ float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)
         return refraction * gBufferData.Diffuse;
 
     if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_OPACITY)
-        return refraction * (1.0 - gBufferData.RefractionAlpha);
+        return refraction * (1.0 - gBufferData.Refraction);
 
     return refraction;
 }
@@ -166,7 +166,7 @@ float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
         diffuseLight = mrgGlobalLight_Diffuse.rgb * saturate(dot(gBufferData.Normal, -mrgGlobalLight_Direction.xyz)) * shadingParams.Shadow;
         diffuseLight += shadingParams.GlobalIllumination;
         diffuseLight *= gBufferData.Diffuse;
-        diffuseLight *= gBufferData.RefractionAlpha;
+        diffuseLight *= gBufferData.Refraction;
     }
 
     resultShading += diffuseLight;

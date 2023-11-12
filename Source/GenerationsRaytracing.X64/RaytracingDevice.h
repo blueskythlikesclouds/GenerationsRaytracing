@@ -60,7 +60,14 @@ protected:
     ID3D12RootSignature* m_curRootSignature = nullptr;
     ComPtr<ID3D12RootSignature> m_raytracingRootSignature;
     ComPtr<ID3D12StateObject> m_stateObject;
+    ComPtr<ID3D12StateObjectProperties> m_properties;
     std::vector<uint8_t> m_shaderTable;
+    size_t m_primaryStackSize = 0;
+    size_t m_shadowStackSize = 0;
+    size_t m_reservoirStackSize = 0;
+    size_t m_giStackSize = 0;
+    size_t m_reflectionStackSize = 0;
+    size_t m_refractionStackSize = 0;
     GlobalsRT m_globalsRT;
 
     // Accel Struct
@@ -96,10 +103,9 @@ protected:
     ComPtr<D3D12MA::Allocation> m_depthTexture;
     ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
 
-    ComPtr<D3D12MA::Allocation> m_positionFlagsTexture;
-    ComPtr<D3D12MA::Allocation> m_prevPositionFlagsTexture;
-    ComPtr<D3D12MA::Allocation> m_safeSpawnPointTexture;
-    ComPtr<D3D12MA::Allocation> m_diffuseRefractionAlphaTexture;
+    ComPtr<D3D12MA::Allocation> m_positionAndFlagsTexture;
+    ComPtr<D3D12MA::Allocation> m_prevPositionAndFlagsTexture;
+    ComPtr<D3D12MA::Allocation> m_diffuseAndRefractionTexture;
     ComPtr<D3D12MA::Allocation> m_specularTexture;
     ComPtr<D3D12MA::Allocation> m_specularPowerLevelFresnelTexture;
     ComPtr<D3D12MA::Allocation> m_normalTexture;
@@ -119,8 +125,6 @@ protected:
 
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_specularAlbedoTexture;
-    ComPtr<D3D12MA::Allocation> m_diffuseRayDirectionHitDistanceTexture;
-    ComPtr<D3D12MA::Allocation> m_specularRayDirectionHitDistanceTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     uint32_t m_srvId{};
