@@ -1,5 +1,5 @@
-#ifndef SHADER_TYPE_H
-#define SHADER_TYPE_H
+#ifndef SHADER_TYPE_H_INCLUDED
+#define SHADER_TYPE_H_INCLUDED
 
 #define SHADER_TYPE_BILLBOARD_PARTICLE            0
 #define SHADER_TYPE_BILLBOARD_Y                   1

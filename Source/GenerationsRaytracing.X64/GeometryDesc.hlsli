@@ -1,5 +1,6 @@
-#ifndef GEOMETRY_DESC_H
-#define GEOMETRY_DESC_H
+#ifndef GEOMETRY_DESC_HLSLI_INCLUDED
+#define GEOMETRY_DESC_HLSLI_INCLUDED
+
 #include "GeometryFlags.h"
 #include "RayDifferentials.hlsli"
 #include "SelfIntersectionAvoidance.hlsl"

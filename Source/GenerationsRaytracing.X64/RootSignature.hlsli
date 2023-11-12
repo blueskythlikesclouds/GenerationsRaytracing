@@ -1,5 +1,5 @@
-#ifndef ROOT_SIGNATURE_H
-#define ROOT_SIGNATURE_H
+#ifndef ROOT_SIGNATURE_HLSLI_INCLUDED
+#define ROOT_SIGNATURE_HLSLI_INCLUDED
 
 #include "GeometryDesc.hlsli"
 #include "MaterialData.hlsli"
