@@ -49,7 +49,7 @@ struct Vertex
 float3 NormalizeSafe(float3 value)
 {
     float lengthSquared = dot(value, value);
-    return lengthSquared > 0.0 ? value * rsqrt(lengthSquared) : 0.0;
+    return select(lengthSquared > 0.0, value * rsqrt(lengthSquared), 0.0);
 }
 
 float4 DecodeColor(uint color)

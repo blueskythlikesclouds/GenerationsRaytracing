@@ -1,7 +1,12 @@
 #include "GBufferData.hlsli"
 #include "GeometryShading.hlsli"
-#include "RayTracing.hlsli"
 #include "Reservoir.hlsli"
+
+struct [raypayload] PrimaryRayPayload
+{
+    float3 dDdx : read(closesthit) : write(caller);
+    float3 dDdy : read(closesthit) : write(caller);
+};
 
 [shader("raygeneration")]
 void PrimaryRayGeneration()
@@ -54,9 +59,9 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 
     StoreGBufferData(DispatchRaysIndex().xy, gBufferData);
 
-    g_DepthTexture[DispatchRaysIndex().xy] = 1.0;
+    g_Depth[DispatchRaysIndex().xy] = 1.0;
 
-    g_MotionVectorsTexture[DispatchRaysIndex().xy] = 
+    g_MotionVectors[DispatchRaysIndex().xy] = 
         ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
 }
@@ -70,11 +75,17 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV);
     StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material));
 
-    g_DepthTexture[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
+    g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
 
-    g_MotionVectorsTexture[DispatchRaysIndex().xy] =
+    g_MotionVectors[DispatchRaysIndex().xy] =
         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
+}
+
+float4 GetBlueNoise()
+{
+    Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
+    return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
 }
 
 [shader("anyhit")]
@@ -91,23 +102,88 @@ void PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTr
         IgnoreHit();
 }
 
+struct [raypayload] ShadowRayPayload
+{
+    bool Miss : read(caller) : write(caller, miss);
+};
+
+float TraceShadow(float3 position, float3 direction, float2 random)
+{
+    float radius = sqrt(random.x) * 0.01;
+    float angle = random.y * 2.0 * PI;
+
+    float3 sample;
+    sample.x = cos(angle) * radius;
+    sample.y = sin(angle) * radius;
+    sample.z = sqrt(1.0 - saturate(dot(sample.xy, sample.xy)));
+
+    RayDesc ray;
+
+    ray.Origin = position;
+    ray.Direction = TangentToWorld(direction, sample);
+    ray.TMin = 0.0;
+    ray.TMax = INF;
+
+    ShadowRayPayload payload = (ShadowRayPayload) 0;
+
+    TraceRay(
+        g_BVH,
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
+        1,
+        1,
+        0,
+        1,
+        ray,
+        payload);
+
+    return payload.Miss ? 1.0 : 0.0;
+}
+
 [shader("raygeneration")]
 void ShadowRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
-    float shadow = 1.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
-        shadow = TraceGlobalLightShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz);
+        g_Shadow[DispatchRaysIndex().xy] = TraceShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz, GetBlueNoise().xy);
+}
 
-    g_ShadowTexture[DispatchRaysIndex().xy] = shadow;
+[shader("miss")]
+void ShadowMiss(inout ShadowRayPayload payload : SV_RayPayload)
+{
+    payload.Miss = true;
+}
+
+void AnyHit(in BuiltInTriangleIntersectionAttributes attributes)
+{
+    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
+
+    [branch]
+    if (geometryDesc.Flags & GEOMETRY_FLAG_TRANSPARENT)
+    {
+        IgnoreHit();
+    }
+    else
+    {
+        Material material = g_Materials[geometryDesc.MaterialId];
+        InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
+
+        if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0]).a < 0.5)
+            IgnoreHit();
+    }
+}
+
+[shader("anyhit")]
+void ShadowAnyHit(inout ShadowRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+{
+    AnyHit(attributes);
 }
 
 [shader("raygeneration")]
 void ReservoirRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
-    Reservoir reservoir = (Reservoir) 0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
     {
@@ -117,6 +193,7 @@ void ReservoirRayGeneration()
             DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
 
         // Generate initial candidates
+        Reservoir reservoir = (Reservoir) 0;
         uint localLightCount = min(32, g_LocalLightCount);
 
         for (uint i = 0; i < localLightCount; i++)
@@ -127,51 +204,113 @@ void ReservoirRayGeneration()
         }
 
         ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
+        g_Reservoir[DispatchRaysIndex().xy] = StoreReservoir(reservoir);
+    }
+}
+
+struct [raypayload] SecondaryRayPayload
+{
+    float3 Color         : read(caller) : write(closesthit, miss);
+    float NormalX        : read(caller) : write(closesthit);
+    float3 Diffuse       : read(caller) : write(closesthit, miss);
+    float NormalY        : read(caller) : write(closesthit);
+    float3 Position      : read(caller) : write(closesthit);
+    float NormalZ        : read(caller) : write(closesthit);
+};
+
+float3 TracePath(float3 position, float3 direction, uint missShaderIndex)
+{
+    uint random = InitRand(g_CurrentFrame, DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
+    float3 radiance = 0.0;
+    float3 throughput = 1.0;
+
+    RayDesc ray;
+    ray.Origin = position;
+    ray.Direction = direction;
+    ray.TMin = 0.0;
+    ray.TMax = INF;
+
+    [unroll]
+    for (uint i = 0; i < 2; i++)
+    {
+        SecondaryRayPayload payload;
+
+        TraceRay(
+            g_BVH,
+            i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
+            1,
+            2,
+            0,
+            i == 0 ? missShaderIndex : 2,
+            ray,
+            payload);
+
+        float3 color = payload.Color;
+        float3 normal = float3(payload.NormalX, payload.NormalY, payload.NormalZ);
+
+        [branch]
+        if (any(payload.Diffuse != 0))
+        {
+            color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
+                TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRand(random), NextRand(random)));
+        }
+
+        radiance += throughput * color;
+        throughput *= payload.Diffuse;
+
+        [branch]
+        if (any(throughput == 0.0))
+            break;
+
+        if (i >= 2)
+        {
+            float probability = max(max(throughput.x, throughput.y), throughput.z);
+            if (NextRand(random) > probability)
+                break;
+
+            throughput /= probability;
+        }
+
+        ray.Origin = payload.Position;
+        ray.Direction = TangentToWorld(normal, GetCosWeightedSample(float2(NextRand(random), NextRand(random))));
     }
 
-    g_ReservoirTexture[DispatchRaysIndex().xy] = StoreReservoir(reservoir);
+    return radiance;
 }
 
 [shader("raygeneration")]
 void GIRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
-    float3 globalIllumination = 0.0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
+        g_GlobalIllumination[DispatchRaysIndex().xy] = TracePath(gBufferData.Position, TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy)), 2);
+}
+
+[shader("miss")]
+void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+{
+    if (g_UseEnvironmentColor)
     {
-        RayDesc ray;
-
-        ray.Origin = gBufferData.Position;
-        ray.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy));
-        ray.TMin = 0.0;
-        ray.TMax = INF;
-
-        SecondaryRayPayload payload;
-        payload.Depth = 0;
-
-        TraceRay(
-            g_BVH,
-            0,
-            1,
-            1,
-            0,
-            2,
-            ray,
-            payload);
-
-        globalIllumination = payload.Color;
+        payload.Color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
+    }
+    else if (g_UseSkyTexture)
+    {
+        TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
+        payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_SkyPower;
+    }
+    else
+    {
+        payload.Color = 0.0;
     }
 
-    g_GITexture[DispatchRaysIndex().xy] = globalIllumination;
+    payload.Diffuse = 0.0;
 }
 
 [shader("raygeneration")]
 void ReflectionRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
-
-    float3 reflection = 0.0;
 
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)))
     {
@@ -193,30 +332,8 @@ void ReflectionRayGeneration()
             pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
         }
 
-        RayDesc ray;
-
-        ray.Origin = gBufferData.Position;
-        ray.Direction = rayDirection;
-        ray.TMin = 0.0;
-        ray.TMax = INF;
-
-        SecondaryRayPayload payload;
-        payload.Depth = 0;
-
-        TraceRay(
-            g_BVH,
-            0,
-            1,
-            1,
-            0,
-            3,
-            ray,
-            payload);
-
-        reflection = payload.Color * pdf;
+        g_Reflection[DispatchRaysIndex().xy] = TracePath(gBufferData.Position, rayDirection, 3) * pdf;
     }
-
-    g_ReflectionTexture[DispatchRaysIndex().xy] = reflection;
 }
 
 [shader("raygeneration")]
@@ -224,15 +341,11 @@ void RefractionRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
-    float3 refraction = 0.0;
     if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY))
     {
-        refraction = TraceRefraction(0, 
-            gBufferData.Position, 
-            gBufferData.Normal, 
-            NormalizeSafe(g_EyePosition.xyz - gBufferData.Position));
+        float3 eyeDirection = NormalizeSafe(gBufferData.Position - g_EyePosition.xyz);
+        g_Refraction[DispatchRaysIndex().xy] = TracePath(gBufferData.Position, refract(eyeDirection, gBufferData.Normal, 0.95), 3);
     }
-    g_RefractionTexture[DispatchRaysIndex().xy] = refraction;
 }
 
 [shader("miss")]
@@ -247,30 +360,8 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     {
         payload.Color = 0.0;
     }
-}
 
-[shader("miss")]
-void ShadowMiss(inout ShadowRayPayload payload : SV_RayPayload)
-{
-    payload.Miss = true;
-}
-
-[shader("miss")]
-void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
-{
-    if (g_UseEnvironmentColor)
-    {
-        payload.Color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
-    }
-    else if (g_UseSkyTexture)
-    {
-        TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
-        payload.Color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_SkyPower;
-    }
-    else
-    {
-        payload.Color = 0.0;
-    }
+    payload.Diffuse = 0.0;
 }
 
 [shader("closesthit")]
@@ -283,78 +374,27 @@ void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in B
 
     GBufferData gBufferData = CreateGBufferData(vertex, material);
     gBufferData.Diffuse *= g_DiffusePower;
+    gBufferData.Emission *= g_EmissivePower;
 
-    float3 globalLighting = 0.0;
+    float3 color = gBufferData.Emission;
 
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
     {
-        globalLighting = ComputeDirectLighting(gBufferData, -WorldRayDirection(), 
-            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb) * g_LightPower;
+        uint sample = min(floor(GetBlueNoise().x * g_LocalLightCount), g_LocalLightCount - 1);
+        color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount * g_LightPower;
     }
 
-    int2 pixelPosition = round(ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection));
-    float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxPrevView).xyz;
-    float3 normal = g_PrevNormalTexture[pixelPosition].xyz;
-
-    float3 localLighting = 0.0;
-    float3 globalIllumination = 0.0;
-    bool traceGlobalIllumination = false;
-
-    if (g_CurrentFrame > 0 && all(and(pixelPosition >= 0, pixelPosition < g_InternalResolution)) &&
-        all(abs(g_PrevPositionAndFlagsTexture[pixelPosition].xyz - vertex.PrevPosition) <= 0.002 * -viewPosition.z) &&
-        dot(gBufferData.Normal, normal) >= 0.9063)
-    {
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
-        {
-            Reservoir reservoir = LoadReservoir(g_PrevReservoirTexture[pixelPosition]);
-            localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[reservoir.Y]) * reservoir.W * g_LightPower;
-        }
-
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
-            globalIllumination = ComputeGI(gBufferData, g_PrevGITexture[pixelPosition].rgb);
-    }
-    else
-    {
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
-        {
-            uint sample = min(floor(GetBlueNoise().x * g_LocalLightCount), g_LocalLightCount - 1);
-            localLighting = ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount * g_LightPower;
-        }
-
-        traceGlobalIllumination = !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION) && payload.Depth == 0;
-    }
-    
-    float3 emissionLighting = gBufferData.Emission * g_EmissivePower;
-
-    payload.Color = localLighting + globalIllumination + emissionLighting;
-
-    // Done at the end for reducing live state.
-    if (traceGlobalIllumination)
-        payload.Color += ComputeGI(gBufferData, TraceGI(payload.Depth + 1, vertex.SafeSpawnPoint, gBufferData.Normal));
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
-        globalLighting *= TraceGlobalLightShadow(vertex.SafeSpawnPoint, -mrgGlobalLight_Direction.xyz);
-
-    payload.Color += globalLighting;
+    payload.Color = color;
+    payload.Diffuse = gBufferData.Diffuse;
+    payload.Position = gBufferData.Position;
+    payload.NormalX = gBufferData.Normal.x;
+    payload.NormalY = gBufferData.Normal.y;
+    payload.NormalZ = gBufferData.Normal.z;
 }
 
 [shader("anyhit")]
 void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
-    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-
-    [branch] if (geometryDesc.Flags & GEOMETRY_FLAG_TRANSPARENT)
-    {
-        IgnoreHit();
-    }
-    else
-    {
-        Material material = g_Materials[geometryDesc.MaterialId];
-        InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-
-        if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0]).a < 0.5)
-            IgnoreHit();
-    }
+    AnyHit(attributes);
 }
 

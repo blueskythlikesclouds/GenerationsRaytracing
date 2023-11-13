@@ -25,4 +25,39 @@ float NextRand(inout uint s)
     return float(s & 0x00FFFFFF) / float(0x01000000);
 }
 
+float3 GetCosWeightedSample(float2 random)
+{
+    float cosTheta = sqrt(random.x);
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    float phi = 2.0 * PI * random.y;
+
+    return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+}
+
+float4 GetPowerCosWeightedSample(float2 random, float specularGloss)
+{
+    float cosTheta = pow(random.x, 1.0 / (specularGloss + 1.0));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    float phi = 2.0 * PI * random.y;
+    float pdf = pow(cosTheta, specularGloss);
+     
+    return float4(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta, pdf);
+}
+
+float3 GetPerpendicularVector(float3 u)
+{
+    float3 a = abs(u);
+    uint xm = ((a.x - a.y) < 0 && (a.x - a.z) < 0) ? 1 : 0;
+    uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;
+    uint zm = 1 ^ (xm | ym);
+    return cross(u, float3(xm, ym, zm));
+}
+
+float3 TangentToWorld(float3 normal, float3 value)
+{
+    float3 binormal = GetPerpendicularVector(normal);
+    float3 tangent = cross(binormal, normal);
+    return NormalizeSafe(value.x * tangent + value.y * binormal + value.z * normal);
+}
+
 #endif

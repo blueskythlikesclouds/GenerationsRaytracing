@@ -136,33 +136,26 @@ StructuredBuffer<Material> g_Materials : register(t2);
 StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t3);
 StructuredBuffer<LocalLight> g_LocalLights : register(t4);
 
-RWTexture2D<float4> g_ColorTexture : register(u0);
-RWTexture2D<float> g_DepthTexture : register(u1);
-RWTexture2D<float2> g_MotionVectorsTexture : register(u2);
+RWTexture2D<float4> g_Color : register(u0);
+RWTexture2D<float> g_Depth : register(u1);
+RWTexture2D<float2> g_MotionVectors : register(u2);
 
-RWTexture2D<float4> g_PositionAndFlagsTexture : register(u3);
-RWTexture2D<float4> g_PrevPositionAndFlagsTexture : register(u4);
-RWTexture2D<float4> g_DiffuseAndRefractionTexture : register(u5);
-RWTexture2D<float3> g_SpecularTexture : register(u6);
-RWTexture2D<float3> g_SpecularGlossLevelFresnelTexture : register(u7);
-RWTexture2D<float4> g_NormalTexture : register(u8);
-RWTexture2D<float3> g_PrevNormalTexture : register(u9);
-RWTexture2D<float3> g_FalloffTexture : register(u10);
-RWTexture2D<float3> g_EmissionTexture : register(u11);
-RWTexture2D<float3> g_TransColorTexture : register(u12);
+RWTexture2D<float4> g_GBuffer0 : register(u3);
+RWTexture2D<float4> g_GBuffer1 : register(u4);
+RWTexture2D<float4> g_GBuffer2 : register(u5);
+RWTexture2D<float4> g_GBuffer3 : register(u6);
+RWTexture2D<float4> g_GBuffer4 : register(u7);
+RWTexture2D<float4> g_GBuffer5 : register(u8);
+RWTexture2D<float4> g_GBuffer6 : register(u9);
 
-RWTexture2D<float> g_ShadowTexture : register(u13);
+RWTexture2D<float> g_Shadow : register(u10);
+RWTexture2D<uint4> g_Reservoir : register(u11);
+RWTexture2D<float3> g_GlobalIllumination : register(u12);
+RWTexture2D<float3> g_Reflection : register(u13);
+RWTexture2D<float3> g_Refraction : register(u14);
 
-RWTexture2D<uint4> g_ReservoirTexture : register(u14);
-RWTexture2D<uint4> g_PrevReservoirTexture : register(u15);
-
-RWTexture2D<float3> g_GITexture : register(u16);
-RWTexture2D<float3> g_PrevGITexture : register(u17);
-RWTexture2D<float3> g_ReflectionTexture : register(u18);
-RWTexture2D<float3> g_RefractionTexture : register(u19);
-
-RWTexture2D<float3> g_DiffuseAlbedoTexture : register(u20);
-RWTexture2D<float3> g_SpecularAlbedoTexture : register(u21);
+RWTexture2D<float3> g_DiffuseAlbedo : register(u15);
+RWTexture2D<float3> g_SpecularAlbedo : register(u16);
 
 SamplerState g_SamplerState : register(s0);
 
