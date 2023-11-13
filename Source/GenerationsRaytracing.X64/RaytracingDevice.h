@@ -62,6 +62,12 @@ protected:
     ComPtr<ID3D12StateObject> m_stateObject;
     ComPtr<ID3D12StateObjectProperties> m_properties;
     std::vector<uint8_t> m_shaderTable;
+    size_t m_primaryStackSize = 0;
+    size_t m_shadowStackSize = 0;
+    size_t m_reservoirStackSize = 0;
+    size_t m_giStackSize = 0;
+    size_t m_reflectionStackSize = 0;
+    size_t m_refractionStackSize = 0;
     GlobalsRT m_globalsRT;
 
     // Accel Struct
