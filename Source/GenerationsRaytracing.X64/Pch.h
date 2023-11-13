@@ -23,6 +23,7 @@ using Microsoft::WRL::ComPtr;
 #include <INIReader.h>
 #include <nvsdk_ngx_helpers_dlssd.h>
 #include <pix3.h>
+#define XXH_STATIC_LINKING_ONLY
 #include <xxhash.h>
 #include <ankerl/unordered_dense.h>
 #include <dx12/ffx_fsr2_dx12.h>

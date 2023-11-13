@@ -498,8 +498,8 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
 
         assert((geometryDesc.indexCount % 3) == 0);
         assert(m_indexBuffers[geometryDesc.indexBufferId].byteSize >= geometryDesc.indexCount * sizeof(uint16_t));
-        assert(m_vertexBuffers[geometryDesc.vertexBufferId].byteSize - geometryDesc.positionOffset >= geometryDesc.vertexCount * geometryDesc.vertexStride);
-        assert((geometryDesc.positionOffset % 4) == 0);
+        assert(m_vertexBuffers[geometryDesc.vertexBufferId].byteSize - geometryDesc.vertexOffset >= geometryDesc.vertexCount * geometryDesc.vertexStride);
+        assert((geometryDesc.vertexOffset % 4) == 0);
 
         // BVH GeometryDesc
         {
@@ -1067,10 +1067,7 @@ void RaytracingDevice::procMsgRenderSky()
 
             auto& pipeline = m_pipelines[XXH3_64bits(&pipelineDesc, sizeof(pipelineDesc))];
             if (!pipeline)
-            {
-                HRESULT hr = m_device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
-                assert(SUCCEEDED(hr) && pipeline != nullptr);
-            }
+                m_pipelineLibrary.createGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
 
             getUnderlyingGraphicsCommandList()->SetPipelineState(pipeline.Get());
             m_curPipeline = pipeline.Get();
@@ -1329,9 +1326,7 @@ RaytracingDevice::RaytracingDevice()
     copyPipelineDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     copyPipelineDesc.SampleDesc.Count = 1;
 
-    hr = m_device->CreateGraphicsPipelineState(&copyPipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
-
-    assert(SUCCEEDED(hr) && m_copyTexturePipeline != nullptr);
+    m_pipelineLibrary.createGraphicsPipelineState(&copyPipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
 
     CD3DX12_ROOT_PARAMETER1 poseRootParams[4];
     poseRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1354,9 +1349,7 @@ RaytracingDevice::RaytracingDevice()
     posePipelineDesc.CS.pShaderBytecode = PoseComputeShader;
     posePipelineDesc.CS.BytecodeLength = sizeof(PoseComputeShader);
 
-    hr = m_device->CreateComputePipelineState(&posePipelineDesc, IID_PPV_ARGS(m_posePipeline.GetAddressOf()));
-
-    assert(SUCCEEDED(hr) && m_posePipeline != nullptr);
+    m_pipelineLibrary.createComputePipelineState(&posePipelineDesc, IID_PPV_ARGS(m_posePipeline.GetAddressOf()));
 
     const INIReader reader("GenerationsRaytracing.ini");
     if (reader.ParseError() == 0)
@@ -1391,9 +1384,7 @@ RaytracingDevice::RaytracingDevice()
     resolvePipelineDesc.CS.pShaderBytecode = ResolveComputeShader;
     resolvePipelineDesc.CS.BytecodeLength = sizeof(ResolveComputeShader);
 
-    hr = m_device->CreateComputePipelineState(&resolvePipelineDesc, IID_PPV_ARGS(m_resolvePipeline.GetAddressOf()));
-
-    assert(SUCCEEDED(hr) && m_resolvePipeline != nullptr);
+    m_pipelineLibrary.createComputePipelineState(&resolvePipelineDesc, IID_PPV_ARGS(m_resolvePipeline.GetAddressOf()));
 
     CD3DX12_ROOT_PARAMETER1 skyRootParams[1];
     skyRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);

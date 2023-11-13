@@ -6,6 +6,7 @@
 #include "DescriptorHeap.h"
 #include "Event.h"
 #include "MessageReceiver.h"
+#include "PipelineLibrary.h"
 #include "PixelShader.h"
 #include "ShaderCache.h"
 #include "SwapChain.h"
@@ -99,6 +100,7 @@ protected:
 
     xxHashMap<ComPtr<ID3D12PipelineState>> m_pipelines;
     ID3D12PipelineState* m_curPipeline = nullptr;
+    PipelineLibrary m_pipelineLibrary;
 
     uint32_t m_samplerDescsFirst = 0;
     uint32_t m_samplerDescsLast = _countof(m_samplerDescs) - 1;
@@ -196,6 +198,7 @@ protected:
 
 public:
     Device();
+    ~Device();
 
     void runLoop();
 

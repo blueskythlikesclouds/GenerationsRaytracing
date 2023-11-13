@@ -57,6 +57,9 @@
     <ClCompile Include="ShaderConverter.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
+    <ClCompile Include="PipelineLibrary.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -174,13 +177,13 @@
     <ClInclude Include="ShaderConverter.h">
       <Filter>Cache</Filter>
     </ClInclude>
+    <ClInclude Include="PipelineLibrary.h">
+      <Filter>Device</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
       <Filter>Message</Filter>
-    </None>
-    <None Include="RayTracing.hlsli">
-      <Filter>Shader</Filter>
     </None>
     <None Include="RootSignature.hlsli">
       <Filter>Shader</Filter>
