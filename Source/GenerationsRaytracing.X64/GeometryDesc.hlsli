@@ -7,17 +7,24 @@
 
 struct GeometryDesc
 {
-    uint Flags;
+    uint Flags : 12;
+    uint IndexBufferId : 20;
+
+    uint VertexBufferId : 20;
+    uint VertexStride : 12;
     uint VertexCount;
-    uint IndexBufferId;
-    uint VertexBufferId;
-    uint VertexStride;
-    uint PositionOffset;
-    uint NormalOffset;
-    uint TangentOffset;
-    uint BinormalOffset;
-    uint TexCoordOffsets[4];
-    uint ColorOffset;
+    uint VertexOffset;
+
+    uint NormalOffset : 8;
+    uint TangentOffset : 8;
+    uint BinormalOffset : 8;
+    uint ColorOffset : 8;
+
+    uint TexCoordOffset0 : 8;
+    uint TexCoordOffset1 : 8;
+    uint TexCoordOffset2 : 8;
+    uint TexCoordOffset3 : 8;
+
     uint MaterialId;
     uint Padding0;
 };
@@ -63,7 +70,7 @@ float4 DecodeColor(uint color)
 
 Vertex LoadVertex(
     GeometryDesc geometryDesc, 
-    float4 texCoordOffsets[2],
+    float4 texCoordOffset[2],
     InstanceDesc instanceDesc,
     BuiltInTriangleIntersectionAttributes attributes,
     float3 dDdx,
@@ -83,11 +90,10 @@ Vertex LoadVertex(
     indices.y = indexBuffer[PrimitiveIndex() * 3 + 1];
     indices.z = indexBuffer[PrimitiveIndex() * 3 + 2];
 
-    uint3 prevPositionOffsets = geometryDesc.PositionOffset +
+    uint3 prevPositionOffsets = geometryDesc.VertexOffset +
         geometryDesc.VertexCount * geometryDesc.VertexStride + indices * 0xC;
 
-    uint3 offsets = indices * geometryDesc.VertexStride;
-    uint3 positionOffsets = offsets + geometryDesc.PositionOffset;
+    uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride;
     uint3 normalOffsets = offsets + geometryDesc.NormalOffset;
     uint3 tangentOffsets = offsets + geometryDesc.TangentOffset;
     uint3 binormalOffsets = offsets + geometryDesc.BinormalOffset;
@@ -95,9 +101,9 @@ Vertex LoadVertex(
 
     Vertex vertex;
 
-    float3 p0 = asfloat(vertexBuffer.Load3(positionOffsets.x));
-    float3 p1 = asfloat(vertexBuffer.Load3(positionOffsets.y));
-    float3 p2 = asfloat(vertexBuffer.Load3(positionOffsets.z));
+    float3 p0 = asfloat(vertexBuffer.Load3(offsets.x));
+    float3 p1 = asfloat(vertexBuffer.Load3(offsets.y));
+    float3 p2 = asfloat(vertexBuffer.Load3(offsets.z));
 
     vertex.Position = p0 * uv.x + p1 * uv.y + p2 * uv.z;
 
@@ -149,6 +155,9 @@ Vertex LoadVertex(
         asfloat(vertexBuffer.Load3(binormalOffsets.y)) * uv.y +
         asfloat(vertexBuffer.Load3(binormalOffsets.z)) * uv.z;
 
+    uint texCoordOffsets[4] = { geometryDesc.TexCoordOffset0, geometryDesc.TexCoordOffset1,
+        geometryDesc.TexCoordOffset2, geometryDesc.TexCoordOffset3 };
+
     float2 texCoords[4][3];
 
     [unroll]
@@ -156,15 +165,15 @@ Vertex LoadVertex(
     {
         [unroll]
         for (uint j = 0; j < 3; j++)
-            texCoords[i][j] = asfloat(vertexBuffer.Load2(offsets[j] + geometryDesc.TexCoordOffsets[i]));
+            texCoords[i][j] = asfloat(vertexBuffer.Load2(offsets[j] + texCoordOffsets[i]));
 
         vertex.TexCoords[i] = texCoords[i][0] * uv.x + texCoords[i][1] * uv.y + texCoords[i][2] * uv.z;
     }
 
-    vertex.TexCoords[0] += texCoordOffsets[0].xy;
-    vertex.TexCoords[1] += texCoordOffsets[0].zw;
-    vertex.TexCoords[2] += texCoordOffsets[1].xy;
-    vertex.TexCoords[3] += texCoordOffsets[1].zw;
+    vertex.TexCoords[0] += texCoordOffset[0].xy;
+    vertex.TexCoords[1] += texCoordOffset[0].zw;
+    vertex.TexCoords[2] += texCoordOffset[1].xy;
+    vertex.TexCoords[3] += texCoordOffset[1].zw;
 
     if (geometryDesc.Flags & GEOMETRY_FLAG_D3DCOLOR)
     {

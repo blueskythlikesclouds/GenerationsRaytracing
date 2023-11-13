@@ -212,9 +212,8 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t& bottomLev
             flags |= GEOMETRY_FLAG_POSE;
 
         geometryDesc->flags = flags;
-        geometryDesc->indexCount = meshDataEx.m_indexCount;
-        geometryDesc->vertexCount = meshDataEx.m_VertexNum;
         geometryDesc->indexBufferId = meshDataEx.m_indices->getId();
+        geometryDesc->indexCount = meshDataEx.m_indexCount;
 
         uint32_t vertexOffset = meshDataEx.m_VertexOffset;
         if (poseVertexBufferId != NULL)
@@ -228,6 +227,8 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t& bottomLev
             geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
         }
         geometryDesc->vertexStride = meshDataEx.m_VertexSize;
+        geometryDesc->vertexCount = meshDataEx.m_VertexNum;
+        geometryDesc->vertexOffset = vertexOffset;
 
         const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
             meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
@@ -237,33 +238,27 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t& bottomLev
 
         while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
         {
-            const uint32_t offset = vertexOffset + vertexElement->Offset;
-
             switch (vertexElement->Usage)
             {
-            case D3DDECLUSAGE_POSITION:
-                geometryDesc->positionOffset = offset;
-                break;
-
             case D3DDECLUSAGE_NORMAL:
-                geometryDesc->normalOffset = offset;
+                geometryDesc->normalOffset = vertexElement->Offset;
                 break;
 
             case D3DDECLUSAGE_TANGENT:
-                geometryDesc->tangentOffset = offset;
+                geometryDesc->tangentOffset = vertexElement->Offset;
                 break;
 
             case D3DDECLUSAGE_BINORMAL:
-                geometryDesc->binormalOffset = offset;
+                geometryDesc->binormalOffset = vertexElement->Offset;
                 break;
 
             case D3DDECLUSAGE_TEXCOORD:
                 assert(vertexElement->UsageIndex < 4);
-                texCoordOffsets[vertexElement->UsageIndex] = offset;
+                texCoordOffsets[vertexElement->UsageIndex] = vertexElement->Offset;
                 break;
 
             case D3DDECLUSAGE_COLOR:
-                geometryDesc->colorOffset = offset;
+                geometryDesc->colorOffset = vertexElement->Offset;
                 if (vertexElement->Type != D3DDECLTYPE_FLOAT4)
                     geometryDesc->flags |= GEOMETRY_FLAG_D3DCOLOR;
                 break;

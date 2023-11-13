@@ -518,7 +518,7 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
             triangles.IndexCount = geometryDesc.indexCount;
             triangles.VertexCount = geometryDesc.vertexCount;
             triangles.IndexBuffer = m_indexBuffers[geometryDesc.indexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
-            triangles.VertexBuffer.StartAddress = m_vertexBuffers[geometryDesc.vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc.positionOffset;
+            triangles.VertexBuffer.StartAddress = m_vertexBuffers[geometryDesc.vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc.vertexOffset;
             triangles.VertexBuffer.StrideInBytes = geometryDesc.vertexStride;
         }
 
@@ -527,16 +527,19 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
             auto& dstGeometryDesc = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
 
             dstGeometryDesc.flags = geometryDesc.flags;
-            dstGeometryDesc.vertexCount = geometryDesc.vertexCount;
             dstGeometryDesc.indexBufferId = m_indexBuffers[geometryDesc.indexBufferId].srvIndex;
             dstGeometryDesc.vertexBufferId = m_vertexBuffers[geometryDesc.vertexBufferId].srvIndex;
             dstGeometryDesc.vertexStride = geometryDesc.vertexStride;
-            dstGeometryDesc.positionOffset = geometryDesc.positionOffset;
+            dstGeometryDesc.vertexCount = geometryDesc.vertexCount;
+            dstGeometryDesc.vertexOffset = geometryDesc.vertexOffset;
             dstGeometryDesc.normalOffset = geometryDesc.normalOffset;
             dstGeometryDesc.tangentOffset = geometryDesc.tangentOffset;
             dstGeometryDesc.binormalOffset = geometryDesc.binormalOffset;
-            memcpy(dstGeometryDesc.texCoordOffsets, geometryDesc.texCoordOffsets, sizeof(dstGeometryDesc.texCoordOffsets));
             dstGeometryDesc.colorOffset = geometryDesc.colorOffset;
+            dstGeometryDesc.texCoordOffset0 = geometryDesc.texCoordOffsets[0];
+            dstGeometryDesc.texCoordOffset1 = geometryDesc.texCoordOffsets[1];
+            dstGeometryDesc.texCoordOffset2 = geometryDesc.texCoordOffsets[2];
+            dstGeometryDesc.texCoordOffset3 = geometryDesc.texCoordOffsets[3];
             dstGeometryDesc.materialId = geometryDesc.materialId;
         }
     }
