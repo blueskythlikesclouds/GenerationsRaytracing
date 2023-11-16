@@ -75,7 +75,7 @@
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput />
-      <AdditionalOptions>-all-resources-bound -Qembed_debug %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-HV 2021 -all-resources-bound -Qembed_debug %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
     </FxCompile>
@@ -114,7 +114,7 @@
       <ObjectFileOutput />
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
-      <AdditionalOptions>-all-resources-bound %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-HV 2021 -all-resources-bound %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
