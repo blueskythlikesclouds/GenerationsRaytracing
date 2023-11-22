@@ -5,8 +5,8 @@
 
 struct Material
 {
-    uint ShaderType;
-    uint Flags;
+    uint ShaderType : 16;
+    uint Flags : 16;
     uint DiffuseTexture;
     uint DiffuseTexture2;
     uint SpecularTexture;
@@ -18,32 +18,24 @@ struct Material
     uint ReflectionTexture;
     uint OpacityTexture;
     uint DisplacementTexture;
-    uint DisplacementTexture1;
-    uint DisplacementTexture2;
-    uint Padding0;
 
     float4 TexCoordOffsets[2];
     float4 Diffuse;
-    float4 Ambient;
-    float4 Specular;
-    float4 Emissive;
-    float4 PowerGlossLevel;
-    float4 OpacityReflectionRefractionSpectype;
-    float4 LuminanceRange;
-    float4 FresnelParam;
-    float4 SonicEyeHighLightPosition;
-    float4 SonicEyeHighLightColor;
-    float4 SonicSkinFalloffParam;
+    float3 Ambient;
+    float3 Specular;
+    float3 Emissive;
+    float3 PowerGlossLevel;
+    float OpacityReflectionRefractionSpectype;
+    float LuminanceRange;
+    float2 FresnelParam;
+    float3 SonicEyeHighLightPosition;
+    float3 SonicEyeHighLightColor;
+    float3 SonicSkinFalloffParam;
     float4 ChrEmissionParam;
-    //float4 CloakParam;
-    float4 TransColorMask;
-    //float4 DistortionParam;
-    //float4 GlassRefractionParam;
-    //float4 IceParam;
+    float3 TransColorMask;
     float4 EmissionParam;
-    float4 OffsetParam;
-    float4 HeightParam;
-    float4 WaterParam;
+    float2 OffsetParam;
+    float2 WaterParam;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)

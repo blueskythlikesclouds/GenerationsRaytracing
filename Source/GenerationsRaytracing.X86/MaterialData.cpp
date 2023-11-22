@@ -94,8 +94,6 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { s_reflectionSymbol, 0, message.reflectionTexture },
         { s_opacitySymbol, 0, message.opacityTexture },
         { s_displacementSymbol, 0, message.displacementTexture },
-        { s_displacementSymbol, 1, message.displacementTexture1 },
-        { s_displacementSymbol, 2, message.displacementTexture2 },
     };
 
     for (auto& textureDesc : textureDescs)
@@ -160,14 +158,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightColorSymbol("g_SonicEyeHighLightColor");
     static Hedgehog::Base::CStringSymbol s_sonicSkinFalloffParamSymbol("g_SonicSkinFalloffParam");
     static Hedgehog::Base::CStringSymbol s_chrEmissionParamSymbol("mrgChrEmissionParam");
-    static Hedgehog::Base::CStringSymbol s_cloakParamSymbol("g_CloakParam");
     static Hedgehog::Base::CStringSymbol s_transColorMaskSymbol("g_TransColorMask");
-    static Hedgehog::Base::CStringSymbol s_distortionParamSymbol("mrgDistortionParam");
-    static Hedgehog::Base::CStringSymbol s_glassRefractionParamSymbol("mrgGlassRefractionParam");
-    static Hedgehog::Base::CStringSymbol s_iceParamSymbol("g_IceParam");
     static Hedgehog::Base::CStringSymbol s_emissionParamSymbol("g_EmissionParam");
     static Hedgehog::Base::CStringSymbol s_offsetParamSymbol("g_OffsetParam");
-    static Hedgehog::Base::CStringSymbol s_heightParamSymbol("g_HeightParam");
     static Hedgehog::Base::CStringSymbol s_waterParamSymbol("g_WaterParam");
 
     struct
@@ -179,26 +172,21 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     {
         { s_texcoordOffsetSymbol, message.texCoordOffsets, 8 },
         { s_diffuseSymbol, message.diffuse, 4 },
-        { s_ambientSymbol, message.ambient, 4 },
-        { s_specularSymbol, message.specular, 4 },
-        { s_emissiveSymbol, message.emissive, 4 },
-        { s_powerGlossLevelSymbol, message.powerGlossLevel, 4 },
-        { s_opacityReflectionRefractionSpectypeSymbol, message.opacityReflectionRefractionSpectype, 4 },
-        { s_luminanceRangeSymbol, message.luminanceRange, 4 },
-        { s_fresnelParamSymbol, message.fresnelParam, 4 },
-        { s_sonicEyeHighLightPositionRaytracingSymbol, message.sonicEyeHighLightPosition, 4 },
-        { s_sonicEyeHighLightColorSymbol, message.sonicEyeHighLightColor, 4 },
-        { s_sonicSkinFalloffParamSymbol, message.sonicSkinFalloffParam, 4 },
+        { s_ambientSymbol, message.ambient, 3 },
+        { s_specularSymbol, message.specular, 3 },
+        { s_emissiveSymbol, message.emissive, 3 },
+        { s_powerGlossLevelSymbol, message.powerGlossLevel, 3 },
+        { s_opacityReflectionRefractionSpectypeSymbol, message.opacityReflectionRefractionSpectype, 1 },
+        { s_luminanceRangeSymbol, message.luminanceRange, 1 },
+        { s_fresnelParamSymbol, message.fresnelParam, 2 },
+        { s_sonicEyeHighLightPositionRaytracingSymbol, message.sonicEyeHighLightPosition, 3 },
+        { s_sonicEyeHighLightColorSymbol, message.sonicEyeHighLightColor, 3 },
+        { s_sonicSkinFalloffParamSymbol, message.sonicSkinFalloffParam, 3 },
         { s_chrEmissionParamSymbol, message.chrEmissionParam, 4 },
-        //{ s_cloakParamSymbol, message.cloakParam, 4 },
-        { s_transColorMaskSymbol, message.transColorMask, 4 },
-        //{ s_distortionParamSymbol, message.distortionParam, 4 },
-        //{ s_glassRefractionParamSymbol, message.glassRefractionParam, 4 },
-        //{ s_iceParamSymbol, message.iceParam, 4 },
+        { s_transColorMaskSymbol, message.transColorMask, 3 },
         { s_emissionParamSymbol, message.emissionParam, 4 },
-        { s_offsetParamSymbol, message.offsetParam, 4 },
-        { s_heightParamSymbol, message.heightParam, 4 },
-        { s_waterParamSymbol, message.waterParam, 4 }
+        { s_offsetParamSymbol, message.offsetParam, 2 },
+        { s_waterParamSymbol, message.waterParam, 2 }
     };
 
     for (const auto& parameterDesc : parameterDescs)

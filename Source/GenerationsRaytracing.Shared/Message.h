@@ -401,31 +401,24 @@ struct MsgCreateMaterial
     Texture reflectionTexture;
     Texture opacityTexture;
     Texture displacementTexture;
-    Texture displacementTexture1;
-    Texture displacementTexture2;
 
     float texCoordOffsets[8];
     float diffuse[4];
-    float ambient[4];
-    float specular[4];
-    float emissive[4];
-    float powerGlossLevel[4];
-    float opacityReflectionRefractionSpectype[4];
-    float luminanceRange[4];
-    float fresnelParam[4];
-    float sonicEyeHighLightPosition[4];
-    float sonicEyeHighLightColor[4];
-    float sonicSkinFalloffParam[4];
+    float ambient[3];
+    float specular[3];
+    float emissive[3];
+    float powerGlossLevel[3];
+    float opacityReflectionRefractionSpectype[1];
+    float luminanceRange[1];
+    float fresnelParam[2];
+    float sonicEyeHighLightPosition[3];
+    float sonicEyeHighLightColor[3];
+    float sonicSkinFalloffParam[3];
     float chrEmissionParam[4];
-    //float cloakParam[4];
-    float transColorMask[4];
-    //float distortionParam[4];
-    //float glassRefractionParam[4];
-    //float iceParam[4];
+    float transColorMask[3];
     float emissionParam[4];
-    float offsetParam[4];
-    float heightParam[4];
-    float waterParam[4];
+    float offsetParam[2];
+    float waterParam[2];
 };
 
 struct MsgComputePose
