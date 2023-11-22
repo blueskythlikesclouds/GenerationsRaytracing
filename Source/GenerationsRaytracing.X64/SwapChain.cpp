@@ -39,7 +39,7 @@ ID3D12Resource* SwapChain::getResource() const
 
 void SwapChain::present() const
 {
-    const HRESULT hr = m_swapChain->Present(0, 0);
+    const HRESULT hr = m_swapChain->Present(m_syncInterval, 0);
     assert(SUCCEEDED(hr));
 }
 
@@ -59,6 +59,7 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
     desc.Scaling = DXGI_SCALING_STRETCH;
     desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     desc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+    desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
     ComPtr<IDXGISwapChain1> swapChain;
 
@@ -75,6 +76,8 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
     hr = swapChain.As(&m_swapChain);
 
     assert(SUCCEEDED(hr) && m_swapChain != nullptr);
+
+    m_syncInterval = message.syncInterval;
 
     for (uint32_t i = 0; i < message.bufferCount; i++)
     {

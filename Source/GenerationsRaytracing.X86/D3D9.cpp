@@ -148,6 +148,7 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
     message.renderWidth = pPresentationParameters->BackBufferWidth;
     message.renderHeight = pPresentationParameters->BackBufferHeight;
     message.bufferCount = pPresentationParameters->BackBufferCount;
+    message.syncInterval = pPresentationParameters->PresentationInterval;
     message.textureId = (*ppReturnedDeviceInterface)->getBackBuffer()->getId();
 
     s_messageSender.endMessage();

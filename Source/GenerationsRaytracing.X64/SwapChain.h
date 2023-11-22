@@ -12,6 +12,7 @@ protected:
     ComPtr<IDXGIFactory4> m_factory;
     Window m_window;
     ComPtr<IDXGISwapChain3> m_swapChain;
+    uint8_t m_syncInterval = 0;
     std::vector<Texture> m_textures;
     std::vector<ComPtr<ID3D12Resource>> m_resources;
 
