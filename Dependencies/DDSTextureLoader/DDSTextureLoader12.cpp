@@ -1242,6 +1242,7 @@ namespace
     HRESULT CreateTextureResource(
         _In_ ID3D12Device* d3dDevice,
         _In_ D3D12MA::Allocator* allocator,
+        D3D12_HEAP_TYPE heapType,
         D3D12_RESOURCE_DIMENSION resDim,
         size_t width,
         size_t height,
@@ -1280,7 +1281,7 @@ namespace
         desc.Dimension = resDim;
 
         D3D12MA::ALLOCATION_DESC allocationDesc = {};
-        allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        allocationDesc.HeapType = heapType;
 
         hr = allocator->CreateResource(
             &allocationDesc,
@@ -1307,6 +1308,7 @@ namespace
         _In_reads_bytes_(bitSize) const uint8_t* bitData,
         size_t bitSize,
         size_t maxsize,
+        D3D12_HEAP_TYPE heapType,
         D3D12_RESOURCE_FLAGS resFlags,
         DDS_LOADER_FLAGS loadFlags,
         _Outptr_ ID3D12Resource** texture,
@@ -1562,7 +1564,7 @@ namespace
                     CountMips(width, height));
             }
 
-            hr = CreateTextureResource(d3dDevice, allocator, resDim, twidth, theight, tdepth, reservedMips - skipMip, arraySize,
+            hr = CreateTextureResource(d3dDevice, allocator, heapType, resDim, twidth, theight, tdepth, reservedMips - skipMip, arraySize,
                 format, resFlags, loadFlags, texture, allocation);
 
             if (FAILED(hr) && !maxsize && (mipCount > 1))
@@ -1580,7 +1582,7 @@ namespace
                     twidth, theight, tdepth, skipMip, subresources);
                 if (SUCCEEDED(hr))
                 {
-                    hr = CreateTextureResource(d3dDevice, allocator, resDim, twidth, theight, tdepth, mipCount - skipMip, arraySize,
+                    hr = CreateTextureResource(d3dDevice, allocator, heapType, resDim, twidth, theight, tdepth, mipCount - skipMip, arraySize,
                         format, resFlags, loadFlags, texture, allocation);
                 }
             }
@@ -1657,6 +1659,7 @@ HRESULT DirectX::LoadDDSTextureFromMemory(
     D3D12MA::Allocator* allocator,
     const uint8_t* ddsData,
     size_t ddsDataSize,
+    D3D12_HEAP_TYPE heapType,
     ID3D12Resource** texture,
     D3D12MA::Allocation** allocation,
     std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
@@ -1670,6 +1673,7 @@ HRESULT DirectX::LoadDDSTextureFromMemory(
         ddsData,
         ddsDataSize,
         maxsize,
+        heapType,
         D3D12_RESOURCE_FLAG_NONE,
         DDS_LOADER_DEFAULT,
         texture,
@@ -1687,6 +1691,7 @@ HRESULT DirectX::LoadDDSTextureFromMemoryEx(
     const uint8_t* ddsData,
     size_t ddsDataSize,
     size_t maxsize,
+    D3D12_HEAP_TYPE heapType,
     D3D12_RESOURCE_FLAGS resFlags,
     DDS_LOADER_FLAGS loadFlags,
     ID3D12Resource** texture,
@@ -1731,7 +1736,7 @@ HRESULT DirectX::LoadDDSTextureFromMemoryEx(
 
     hr = CreateTextureFromDDS(d3dDevice, allocator,
         header, bitData, bitSize, maxsize,
-        resFlags, loadFlags,
+        heapType, resFlags, loadFlags,
         texture, allocation, subresources, isCubeMap);
     if (SUCCEEDED(hr))
     {
@@ -1751,6 +1756,7 @@ HRESULT DirectX::LoadDDSTextureFromFile(
     ID3D12Device* d3dDevice,
     D3D12MA::Allocator* allocator,
     const wchar_t* fileName,
+    D3D12_HEAP_TYPE heapType,
     ID3D12Resource** texture,
     D3D12MA::Allocation** allocation,
     std::unique_ptr<uint8_t[]>& ddsData,
@@ -1764,6 +1770,7 @@ HRESULT DirectX::LoadDDSTextureFromFile(
         allocator,
         fileName,
         maxsize,
+        heapType,
         D3D12_RESOURCE_FLAG_NONE,
         DDS_LOADER_DEFAULT,
         texture,
@@ -1780,6 +1787,7 @@ HRESULT DirectX::LoadDDSTextureFromFileEx(
     D3D12MA::Allocator* allocator,
     const wchar_t* fileName,
     size_t maxsize,
+    D3D12_HEAP_TYPE heapType,
     D3D12_RESOURCE_FLAGS resFlags,
     DDS_LOADER_FLAGS loadFlags,
     ID3D12Resource** texture,
@@ -1824,7 +1832,7 @@ HRESULT DirectX::LoadDDSTextureFromFileEx(
 
     hr = CreateTextureFromDDS(d3dDevice, allocator,
         header, bitData, bitSize, maxsize,
-        resFlags, loadFlags,
+        heapType, resFlags, loadFlags,
         texture, allocation, subresources, isCubeMap);
 
     if (SUCCEEDED(hr))

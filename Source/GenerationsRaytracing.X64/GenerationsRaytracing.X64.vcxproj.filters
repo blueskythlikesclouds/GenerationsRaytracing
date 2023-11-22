@@ -203,7 +203,6 @@
     <None Include="SharedDefinitions.hlsli">
       <Filter>Shader</Filter>
     </None>
-    <None Include="packages.config" />
     <None Include="SkySharedDefinitions.hlsli">
       <Filter>Shader</Filter>
     </None>
@@ -213,6 +212,7 @@
     <None Include="RayDifferentials.hlsli">
       <Filter>Shader</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

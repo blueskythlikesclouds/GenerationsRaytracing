@@ -38,7 +38,10 @@ HRESULT VertexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, D
 
     message.vertexBufferId = m_id;
     message.offset = OffsetToLock;
+    message.initialWrite = m_pendingWrite;
     *ppbData = message.data;
+
+    m_pendingWrite = false;
 
     return S_OK;
 }

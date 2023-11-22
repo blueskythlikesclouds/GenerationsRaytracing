@@ -1270,7 +1270,6 @@ RaytracingDevice::RaytracingDevice()
     {
         D3D12MA::ALLOCATION_DESC allocDesc{};
         allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
         const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(
             SCRATCH_BUFFER_SIZE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);

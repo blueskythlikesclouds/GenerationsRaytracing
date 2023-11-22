@@ -8,6 +8,7 @@ public:
 protected:
     uint32_t m_id;
     uint32_t m_byteSize;
+    bool m_pendingWrite = true;
 
 public:
     explicit IndexBuffer(uint32_t byteSize);

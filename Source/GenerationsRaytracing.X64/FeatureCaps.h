@@ -2,5 +2,5 @@
 
 struct FeatureCaps
 {
-    static bool ensureMinimumCapability(ID3D12Device* device);
+    static bool ensureMinimumCapability(ID3D12Device* device, bool& gpuUploadHeapSupported);
 };

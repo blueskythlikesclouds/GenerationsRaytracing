@@ -37,46 +37,65 @@ void Device::writeBuffer(
     const uint8_t* memory, 
     uint32_t offset, 
     uint32_t dataSize, 
-    ID3D12Resource* dstResource)
+    ID3D12Resource* dstResource,
+    bool mapWrite)
 {
-    if (m_uploadBufferOffset + dataSize <= UPLOAD_BUFFER_SIZE && m_uploadBuffers[m_frame].size() > m_uploadBufferIndex &&
-        m_uploadBuffers[m_frame][m_uploadBufferIndex].allocation != nullptr)
+    if (mapWrite)
     {
-        const auto& uploadBuffer = m_uploadBuffers[m_frame][m_uploadBufferIndex];
+        constexpr D3D12_RANGE readRange{};
+        void* mappedData = nullptr;
 
-        memcpy(uploadBuffer.memory + m_uploadBufferOffset, memory, dataSize);
+        const HRESULT hr = dstResource->Map(0, &readRange, &mappedData);
+        assert(SUCCEEDED(hr) && data != nullptr);
 
-        getCopyCommandList().open();
-        getUnderlyingCopyCommandList()->CopyBufferRegion(
-            dstResource,
-            offset,
-            uploadBuffer.allocation->GetResource(),
-            m_uploadBufferOffset,
-            dataSize);
+        memcpy(static_cast<uint8_t*>(mappedData) + offset, memory, dataSize);
 
-        m_uploadBufferOffset += dataSize;
+        const D3D12_RANGE writtenRange{ offset, dataSize };
+        dstResource->Unmap(0, &writtenRange);
     }
     else
     {
-        auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
-        createBuffer(D3D12_HEAP_TYPE_UPLOAD, dataSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
+        if (m_uploadBufferOffset + dataSize <= UPLOAD_BUFFER_SIZE && m_uploadBuffers[m_frame].size() > m_uploadBufferIndex &&
+            m_uploadBuffers[m_frame][m_uploadBufferIndex].allocation != nullptr)
+        {
+            const auto& uploadBuffer = m_uploadBuffers[m_frame][m_uploadBufferIndex];
 
-        void* mappedData = nullptr;
-        const HRESULT hr = uploadBuffer->GetResource()->Map(0, nullptr, &mappedData);
+            memcpy(uploadBuffer.memory + m_uploadBufferOffset, memory, dataSize);
 
-        assert(SUCCEEDED(hr) && mappedData != nullptr);
+            getCopyCommandList().open();
+            getUnderlyingCopyCommandList()->CopyBufferRegion(
+                dstResource,
+                offset,
+                uploadBuffer.allocation->GetResource(),
+                m_uploadBufferOffset,
+                dataSize);
 
-        memcpy(mappedData, memory, dataSize);
+            m_uploadBufferOffset += dataSize;
+        }
+        else
+        {
+            auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
+            createBuffer(D3D12_HEAP_TYPE_UPLOAD, dataSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
 
-        uploadBuffer->GetResource()->Unmap(0, nullptr);
+            constexpr D3D12_RANGE readRange{};
+            void* mappedData = nullptr;
+            const HRESULT hr = uploadBuffer->GetResource()->Map(0, &readRange, &mappedData);
 
-        getCopyCommandList().open();
-        getUnderlyingCopyCommandList()->CopyBufferRegion(
-            dstResource,
-            offset,
-            uploadBuffer->GetResource(),
-            0,
-            dataSize);
+            assert(SUCCEEDED(hr) && mappedData != nullptr);
+
+            memcpy(mappedData, memory, dataSize);
+
+            const D3D12_RANGE writtenRange{ 0, dataSize };
+            uploadBuffer->GetResource()->Unmap(0, &writtenRange);
+
+            getCopyCommandList().open();
+            getUnderlyingCopyCommandList()->CopyBufferRegion(
+                dstResource,
+                offset,
+                uploadBuffer->GetResource(),
+                0,
+                dataSize);
+        }
     }
 }
 
@@ -99,8 +118,7 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::createBuffer(const void* memory, uint32_t data
     if (uploadBuffer.allocation == nullptr)
     {
         D3D12MA::ALLOCATION_DESC allocDesc{};
-        allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-        allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
+        allocDesc.HeapType = m_gpuUploadHeapSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
 
         const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(UPLOAD_BUFFER_SIZE);
 
@@ -115,9 +133,11 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::createBuffer(const void* memory, uint32_t data
 
         assert(SUCCEEDED(hr) && uploadBuffer.allocation != nullptr);
 
+        constexpr D3D12_RANGE readRange{};
+
         hr = uploadBuffer.allocation->GetResource()->Map(
             0,
-            nullptr,
+            &readRange,
             reinterpret_cast<void**>(&uploadBuffer.memory));
 
         assert(SUCCEEDED(hr) && uploadBuffer.memory != nullptr);
@@ -1188,7 +1208,7 @@ void Device::procMsgCreateVertexBuffer()
     auto& vertexBuffer = m_vertexBuffers[message.vertexBufferId];
 
     createBuffer(
-        D3D12_HEAP_TYPE_DEFAULT,
+        m_gpuUploadHeapSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
         message.length,
         message.allowUnorderedAccess ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_COMMON,
@@ -1221,11 +1241,28 @@ void Device::procMsgWriteVertexBuffer()
 {
     const auto& message = m_messageReceiver.getMessage<MsgWriteVertexBuffer>();
 
+    auto& vertexBuffer = m_vertexBuffers[message.vertexBufferId];
+
+    if (m_gpuUploadHeapSupported && !message.initialWrite)
+    {
+        std::swap(vertexBuffer.allocation, vertexBuffer.nextAllocation);
+        if (vertexBuffer.allocation == nullptr)
+        {
+            createBuffer(
+                D3D12_HEAP_TYPE_GPU_UPLOAD,
+                vertexBuffer.byteSize, 
+                D3D12_RESOURCE_FLAG_NONE,
+                D3D12_RESOURCE_STATE_COMMON, 
+                vertexBuffer.allocation);
+        }
+    }
+
     writeBuffer(
         message.data,
         message.offset, 
         message.dataSize,
-        m_vertexBuffers[message.vertexBufferId].allocation->GetResource());
+        vertexBuffer.allocation->GetResource(),
+        m_gpuUploadHeapSupported);
 }
 
 void Device::procMsgCreateIndexBuffer()
@@ -1238,7 +1275,7 @@ void Device::procMsgCreateIndexBuffer()
     auto& indexBuffer = m_indexBuffers[message.indexBufferId];
 
     createBuffer(
-        D3D12_HEAP_TYPE_DEFAULT,
+        m_gpuUploadHeapSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
         message.length,
         D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_COMMON,
@@ -1271,11 +1308,28 @@ void Device::procMsgWriteIndexBuffer()
 {
     const auto& message = m_messageReceiver.getMessage<MsgWriteIndexBuffer>();
 
+    auto& indexBuffer = m_indexBuffers[message.indexBufferId];
+
+    if (m_gpuUploadHeapSupported && !message.initialWrite)
+    {
+        std::swap(indexBuffer.allocation, indexBuffer.nextAllocation);
+        if (indexBuffer.allocation == nullptr)
+        {
+            createBuffer(
+                D3D12_HEAP_TYPE_GPU_UPLOAD,
+                indexBuffer.byteSize,
+                D3D12_RESOURCE_FLAG_NONE,
+                D3D12_RESOURCE_STATE_COMMON,
+                indexBuffer.allocation);
+        }
+    }
+
     writeBuffer(
         message.data,
         message.offset,
         message.dataSize,
-        m_indexBuffers[message.indexBufferId].allocation->GetResource());
+        indexBuffer.allocation->GetResource(),
+        m_gpuUploadHeapSupported);
 }
 
 void Device::procMsgWriteTexture()
@@ -1314,9 +1368,10 @@ void Device::procMsgWriteTexture()
         auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
         createBuffer(D3D12_HEAP_TYPE_UPLOAD, message.dataSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, uploadBuffer);
 
+        constexpr D3D12_RANGE readRange{};
         void* mappedData = nullptr;
-        const HRESULT hr = uploadBuffer->GetResource()->Map(0, nullptr, &mappedData);
 
+        const HRESULT hr = uploadBuffer->GetResource()->Map(0, &readRange, &mappedData);
         assert(SUCCEEDED(hr) && mappedData != nullptr);
 
         memcpy(mappedData, message.data, message.dataSize);
@@ -1350,11 +1405,12 @@ void Device::procMsgMakeTexture()
 
     assert(texture.allocation == nullptr);
 
-    const HRESULT hr = DirectX::LoadDDSTextureFromMemory(
+    HRESULT hr = DirectX::LoadDDSTextureFromMemory(
         m_device.Get(),
         m_allocator.Get(),
         message.data,
         message.dataSize,
+        m_gpuUploadHeapSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
         nullptr,
         texture.allocation.GetAddressOf(),
         subResources,
@@ -1365,25 +1421,49 @@ void Device::procMsgMakeTexture()
     if (FAILED(hr) || texture.allocation == nullptr)
         return;
 
-    auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
+    if (m_gpuUploadHeapSupported)
+    {
+        for (uint32_t i = 0; i < subResources.size(); i++)
+        {
+            constexpr D3D12_RANGE readRange{};
+            hr = texture.allocation->GetResource()->Map(i, &readRange, nullptr);
+            assert(SUCCEEDED(hr));
 
-    createBuffer(
-        D3D12_HEAP_TYPE_UPLOAD,
-        static_cast<uint32_t>(GetRequiredIntermediateSize(texture.allocation->GetResource(), 0, static_cast<UINT>(subResources.size()))),
-        D3D12_RESOURCE_FLAG_NONE,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        uploadBuffer);
+            auto& subResource = subResources[i];
+            hr = texture.allocation->GetResource()->WriteToSubresource(
+                i, 
+                nullptr,
+                subResource.pData, 
+                static_cast<uint32_t>(subResource.RowPitch), 
+                static_cast<uint32_t>(subResource.SlicePitch));
 
-    getCopyCommandList().open();
+            assert(SUCCEEDED(hr));
 
-    UpdateSubresources(
-        getUnderlyingCopyCommandList(),
-        texture.allocation->GetResource(),
-        uploadBuffer->GetResource(),
-        0,
-        0,
-        static_cast<UINT>(subResources.size()),
-        subResources.data());
+            texture.allocation->GetResource()->Unmap(i, nullptr);
+        }
+    }
+    else
+    {
+        auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
+
+        createBuffer(
+            D3D12_HEAP_TYPE_UPLOAD,
+            static_cast<uint32_t>(GetRequiredIntermediateSize(texture.allocation->GetResource(), 0, static_cast<UINT>(subResources.size()))),
+            D3D12_RESOURCE_FLAG_NONE,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            uploadBuffer);
+
+        getCopyCommandList().open();
+
+        UpdateSubresources(
+            getUnderlyingCopyCommandList(),
+            texture.allocation->GetResource(),
+            uploadBuffer->GetResource(),
+            0,
+            0,
+            static_cast<UINT>(subResources.size()),
+            subResources.data());
+    }
 
     const auto resourceDesc = texture.allocation->GetResource()->GetDesc();
 
@@ -1629,7 +1709,7 @@ Device::Device()
 
             hr = D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_device.GetAddressOf()));
 
-            if (SUCCEEDED(hr) && FeatureCaps::ensureMinimumCapability(m_device.Get()))
+            if (SUCCEEDED(hr) && FeatureCaps::ensureMinimumCapability(m_device.Get(), m_gpuUploadHeapSupported))
                 break;
 
             m_device = nullptr;

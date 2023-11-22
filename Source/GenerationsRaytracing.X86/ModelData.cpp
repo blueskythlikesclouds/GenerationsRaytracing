@@ -109,6 +109,7 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* data)
     auto& copyMessage = s_messageSender.makeMessage<MsgWriteIndexBuffer>(byteSize);
     copyMessage.indexBufferId = meshData.m_indices->getId();
     copyMessage.offset = 0;
+    copyMessage.initialWrite = true;
     memcpy(copyMessage.data, indices.data(), byteSize);
     s_messageSender.endMessage();
 }

@@ -215,6 +215,7 @@ struct MsgWriteVertexBuffer
     MSG_DEFINE_MESSAGE(MsgCreateVertexBuffer);
     uint32_t vertexBufferId;
     uint32_t offset;
+    bool initialWrite;
     uint32_t dataSize;
     alignas(0x10) uint8_t data[1u];
 };
@@ -232,6 +233,7 @@ struct MsgWriteIndexBuffer
     MSG_DEFINE_MESSAGE(MsgCreateIndexBuffer);
     uint32_t indexBufferId;
     uint32_t offset;
+    bool initialWrite;
     uint32_t dataSize;
     alignas(0x10) uint8_t data[1u];
 };

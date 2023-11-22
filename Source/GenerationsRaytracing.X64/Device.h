@@ -63,6 +63,8 @@ protected:
     ComPtr<ID3D12Device5> m_device;
     ComPtr<D3D12MA::Allocator> m_allocator;
 
+    bool m_gpuUploadHeapSupported = false;
+
     CommandQueue m_graphicsQueue;
     CommandQueue m_copyQueue;
 
@@ -142,7 +144,8 @@ protected:
         const uint8_t* memory,
         uint32_t offset,
         uint32_t dataSize,
-        ID3D12Resource* dstResource);
+        ID3D12Resource* dstResource,
+        bool mapWrite);
 
     D3D12_GPU_VIRTUAL_ADDRESS createBuffer(
         const void* memory,
