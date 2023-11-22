@@ -14,6 +14,7 @@ public:
     ~DLSS() override;
     void init(const InitArgs& args) override;
     void dispatch(const DispatchArgs& args) override;
+    UpscalerType getType() override;
 
     bool valid() const;
 };

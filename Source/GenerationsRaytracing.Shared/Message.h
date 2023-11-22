@@ -374,6 +374,8 @@ struct MsgTraceRays
     float groundColor[3];
     bool useSkyTexture;
     float backgroundColor[3];
+    uint32_t upscaler;
+    uint32_t qualityMode;
 };
 
 struct MsgCreateMaterial

@@ -680,10 +680,33 @@ void RaytracingDevice::procMsgTraceRays()
 
     PIX_EVENT();
 
-    if (m_width != message.width || m_height != message.height)
+    const bool resolutionMismatch = m_width != message.width || m_height != message.height;
+    const bool upscalerMismatch = message.upscaler != 0 && m_upscaler->getType() != static_cast<UpscalerType>(message.upscaler - 1);
+    const bool qualityModeMismatch = message.qualityMode != 0 && m_qualityMode != static_cast<QualityMode>(message.qualityMode - 1);
+
+    if (resolutionMismatch || upscalerMismatch || qualityModeMismatch)
     {
         m_width = message.width;
         m_height = message.height;
+
+        m_graphicsQueue.wait(m_fenceValues[(m_frame - 1) % NUM_FRAMES]);
+
+        if (upscalerMismatch)
+        {
+            std::unique_ptr<DLSS> upscaler;
+
+            if (message.upscaler == static_cast<uint32_t>(UpscalerType::DLSS) + 1)
+                upscaler = std::make_unique<DLSS>(*this);
+
+            if (upscaler != nullptr && upscaler->valid())
+                m_upscaler = std::move(upscaler);
+            else
+                m_upscaler = std::make_unique<FSR2>(*this);
+        }
+
+        if (qualityModeMismatch)
+            m_qualityMode = static_cast<QualityMode>(message.qualityMode - 1);
+
         createRaytracingTextures();
     }
 

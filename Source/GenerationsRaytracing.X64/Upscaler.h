@@ -50,6 +50,7 @@ public:
     virtual ~Upscaler();
     virtual void init(const InitArgs& args) = 0;
     virtual void dispatch(const DispatchArgs& args) = 0;
+    virtual UpscalerType getType() = 0;
 
     uint32_t getWidth() const;
     uint32_t getHeight() const;

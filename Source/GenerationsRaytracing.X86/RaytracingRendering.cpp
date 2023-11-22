@@ -301,6 +301,9 @@ static void __cdecl implOfSceneRender(void* a1)
             memset(traceRaysMessage.backgroundColor, 0, sizeof(traceRaysMessage.backgroundColor));
         }
 
+        traceRaysMessage.upscaler = RaytracingParams::s_upscaler;
+        traceRaysMessage.qualityMode = RaytracingParams::s_qualityMode;
+
         s_messageSender.endMessage();
 
         ++RaytracingRendering::s_frame;

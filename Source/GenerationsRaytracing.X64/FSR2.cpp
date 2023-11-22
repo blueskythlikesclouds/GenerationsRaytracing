@@ -77,3 +77,8 @@ void FSR2::dispatch(const DispatchArgs& args)
     desc.cameraFovAngleVertical = 1.0f / args.device.getGlobalsVS().floatConstants[0][0];
     THROW_IF_FAILED(ffxFsr2ContextDispatch(&m_context, &desc));
 }
+
+UpscalerType FSR2::getType()
+{
+    return UpscalerType::FSR2;
+}

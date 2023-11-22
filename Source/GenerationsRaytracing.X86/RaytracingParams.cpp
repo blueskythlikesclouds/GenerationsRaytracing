@@ -275,6 +275,24 @@ static void createParameterFile()
         envParam->CreateParamFloat(&RaytracingParams::s_groundColor.z(), "GroundColorB");
         paramGroup->Flush();
     }
+
+    auto upscalerParam = paramGroup->CreateParameterCategory("Upscaler", "");
+    {
+        upscalerParam->CreateParamTypeList(&RaytracingParams::s_upscaler, "Upscaler", "", {
+            {"Unspecified", 0},
+            {"DLSS", 1},
+            {"FSR2", 2} });
+
+        upscalerParam->CreateParamTypeList(&RaytracingParams::s_qualityMode, "QualityMode", "", {
+            {"Unspecified", 0},
+            {"Native", 1},
+            {"Quality", 2},
+            {"Balanced", 3},
+            {"Performance", 4},
+            {"UltraPerformance", 5}});
+
+        paramGroup->Flush();
+    }
 }
 
 static size_t s_prevStageIndex;

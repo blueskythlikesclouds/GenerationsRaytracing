@@ -14,4 +14,5 @@ public:
     ~FSR2() override;
     void init(const InitArgs& args) override;
     void dispatch(const DispatchArgs& args) override;
+    UpscalerType getType() override;
 };

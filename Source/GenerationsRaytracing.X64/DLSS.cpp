@@ -114,6 +114,11 @@ void DLSS::dispatch(const DispatchArgs& args)
         &params));
 }
 
+UpscalerType DLSS::getType()
+{
+    return UpscalerType::DLSS;
+}
+
 bool DLSS::valid() const
 {
     return m_device != nullptr;
