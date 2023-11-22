@@ -335,7 +335,8 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
         if (!modelData->IsMadeOne())
         {
             auto& modelDataEx = *reinterpret_cast<ModelDataEx*>(modelData.get());
-            if (XXH32(data, dataSize, 0) == 0x33CB76CD)
+            const XXH32_hash_t hash = XXH32(data, dataSize, 0);
+            if (hash == 0x33CB76CD || hash == 0xE3838522)
                 modelDataEx.m_noAoModel = wrapper.GetModelData("chr_Sonic_HD_noao");
         }
     }
