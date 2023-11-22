@@ -79,6 +79,8 @@ void Window::procMsgCreateSwapChain(const MsgCreateSwapChain& message)
 
     RegisterClassEx(&wndClassEx);
 
+    SetProcessDPIAware();
+
     m_handle = CreateWindowEx(
         WS_EX_APPWINDOW,
         wndClassEx.lpszClassName,
