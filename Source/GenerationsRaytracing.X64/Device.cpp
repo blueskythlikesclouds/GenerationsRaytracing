@@ -46,7 +46,7 @@ void Device::writeBuffer(
         void* mappedData = nullptr;
 
         const HRESULT hr = dstResource->Map(0, &readRange, &mappedData);
-        assert(SUCCEEDED(hr) && data != nullptr);
+        assert(SUCCEEDED(hr) && mappedData != nullptr);
 
         memcpy(static_cast<uint8_t*>(mappedData) + offset, memory, dataSize);
 
@@ -1912,18 +1912,18 @@ void Device::processMessages()
     getGraphicsCommandList().close();
     m_graphicsQueue.executeCommandList(getGraphicsCommandList());
 
-    if (m_shouldPresent)
-    {
-        m_swapChain.present();
-        m_shouldPresent = false;
-    }
-
     m_fenceValues[m_frame] = m_graphicsQueue.getNextFenceValue();
 
     if (copyQueueShouldWaitForGraphicsQueue)
         m_copyQueue.wait(m_fenceValues[m_frame], m_graphicsQueue);
 
     m_graphicsQueue.signal(m_fenceValues[m_frame]);
+
+    if (m_shouldPresent)
+    {
+        m_swapChain.present();
+        m_shouldPresent = false;
+    }
 
     m_uploadBufferIndex = 0;
     m_uploadBufferOffset = 0;
