@@ -104,14 +104,14 @@ void Window::procMsgCreateSwapChain(const MsgCreateSwapChain& message)
         GetWindowRect(m_handle, &windowRect);
         GetClientRect(m_handle, &clientRect);
 
-        const uint32_t windowWidth = windowRect.right - windowRect.left;
-        const uint32_t windowHeight = windowRect.bottom - windowRect.top;
+        const LONG windowWidth = windowRect.right - windowRect.left;
+        const LONG windowHeight = windowRect.bottom - windowRect.top;
 
-        const uint32_t clientWidth = clientRect.right - clientRect.left;
-        const uint32_t clientHeight = clientRect.bottom - clientRect.top;
+        const LONG clientWidth = clientRect.right - clientRect.left;
+        const LONG clientHeight = clientRect.bottom - clientRect.top;
 
-        const uint32_t deltaX = windowWidth - clientWidth;
-        const uint32_t deltaY = windowHeight - clientHeight;
+        const LONG deltaX = windowWidth - clientWidth;
+        const LONG deltaY = windowHeight - clientHeight;
 
         SetWindowPos(
             m_handle,

@@ -21,10 +21,10 @@ struct MsgCreateSwapChain
     MSG_DEFINE_MESSAGE(MsgPadding);
     uint32_t postHandle;
     uint32_t style;
-    uint16_t x;
-    uint16_t y;
-    uint16_t width;
-    uint16_t height;
+    int32_t x;
+    int32_t y;
+    int32_t width;
+    int32_t height;
     uint16_t renderWidth;
     uint16_t renderHeight;
     uint8_t bufferCount;

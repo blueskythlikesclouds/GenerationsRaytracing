@@ -92,7 +92,10 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
     GetMonitorInfo(d3d9->GetAdapterMonitor(Adapter), &monitorInfo);
     d3d9 = nullptr;
 
-    uint32_t x, y, width, height;
+    LONG x, y, width, height;
+
+    const LONG backBufferWidth = static_cast<LONG>(pPresentationParameters->BackBufferWidth);
+    const LONG backBufferHeight = static_cast<LONG>(pPresentationParameters->BackBufferHeight);
 
     if (displayMode == DisplayMode::Borderless || displayMode == DisplayMode::Windowed)
     {
@@ -102,23 +105,23 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
         x = monitorInfo.rcWork.left;
         y = monitorInfo.rcWork.top;
 
-        if (pPresentationParameters->BackBufferWidth > width)
+        if (backBufferWidth > width)
         {
             width = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left;
             x = monitorInfo.rcMonitor.left;
         }
 
-        if (pPresentationParameters->BackBufferHeight > height)
+        if (backBufferHeight > height)
         {
             height = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
             y = monitorInfo.rcMonitor.top;
         }
 
-        x += (width - pPresentationParameters->BackBufferWidth) / 2;
-        y += (height - pPresentationParameters->BackBufferHeight) / 2;
+        x += (width - backBufferWidth) / 2;
+        y += (height - backBufferHeight) / 2;
 
-        width = pPresentationParameters->BackBufferWidth;
-        height = pPresentationParameters->BackBufferHeight;
+        width = backBufferWidth;
+        height = backBufferHeight;
 
         if (displayMode == DisplayMode::Windowed)
         {
@@ -141,10 +144,10 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
 
     message.postHandle = reinterpret_cast<uint32_t>(pPresentationParameters->hDeviceWindow);
     message.style = style;
-    message.x = x;
-    message.y = y;
-    message.width = width;
-    message.height = height;
+    message.x = static_cast<int32_t>(x);
+    message.y = static_cast<int32_t>(y);
+    message.width = static_cast<int32_t>(width);
+    message.height = static_cast<int32_t>(height);
     message.renderWidth = pPresentationParameters->BackBufferWidth;
     message.renderHeight = pPresentationParameters->BackBufferHeight;
     message.bufferCount = pPresentationParameters->BackBufferCount;
