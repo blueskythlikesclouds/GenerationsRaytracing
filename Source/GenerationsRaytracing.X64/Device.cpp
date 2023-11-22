@@ -1894,6 +1894,8 @@ void Device::processMessages()
     if (m_swapChain.getWindow().m_shouldExit)
         return;
 
+    bool copyQueueShouldWaitForGraphicsQueue = false;
+
     if (getCopyCommandList().isOpen())
     {
         getCopyCommandList().close();
@@ -1903,6 +1905,8 @@ void Device::processMessages()
         const uint64_t fenceValue = m_copyQueue.getNextFenceValue();
         m_copyQueue.signal(fenceValue);
         m_graphicsQueue.wait(fenceValue, m_copyQueue);
+
+        copyQueueShouldWaitForGraphicsQueue = true;
     }
 
     getGraphicsCommandList().close();
@@ -1915,7 +1919,10 @@ void Device::processMessages()
     }
 
     m_fenceValues[m_frame] = m_graphicsQueue.getNextFenceValue();
-    m_copyQueue.wait(m_fenceValues[m_frame], m_graphicsQueue);
+
+    if (copyQueueShouldWaitForGraphicsQueue)
+        m_copyQueue.wait(m_fenceValues[m_frame], m_graphicsQueue);
+
     m_graphicsQueue.signal(m_fenceValues[m_frame]);
 
     m_uploadBufferIndex = 0;
