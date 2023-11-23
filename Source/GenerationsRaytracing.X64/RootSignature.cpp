@@ -6,7 +6,8 @@ void RootSignature::create(ID3D12Device* device,
     D3D12_STATIC_SAMPLER_DESC* staticSamplers,
     uint32_t staticSamplerCount,
     D3D12_ROOT_SIGNATURE_FLAGS flags,
-    ComPtr<ID3D12RootSignature>& rootSignature)
+    ComPtr<ID3D12RootSignature>& rootSignature,
+    const char* rootSignatureName)
 {
     assert(rootSignature == nullptr);
 
@@ -40,6 +41,14 @@ void RootSignature::create(ID3D12Device* device,
 #endif
 
     assert(SUCCEEDED(hr) && blob != nullptr);
+
+#if 0
+    char fileName[0x100];
+    sprintf(fileName, "root_signature_%s.bin", rootSignatureName);
+    FILE* file = fopen(fileName, "wb");
+    fwrite(blob->GetBufferPointer(), 1, blob->GetBufferSize(), file);
+    fclose(file);
+#endif
 
     hr = device->CreateRootSignature(
         0,

@@ -74,10 +74,11 @@
     <FxCompile>
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
-      <ObjectFileOutput />
-      <AdditionalOptions>-HV 2021 -all-resources-bound -Qembed_debug %(AdditionalOptions)</AdditionalOptions>
+      <ObjectFileOutput>$(IntDir)%(Filename).obj</ObjectFileOutput>
+      <AdditionalOptions>-Qembed_debug -HV 2021 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
+      <AllResourcesBound>true</AllResourcesBound>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -111,10 +112,11 @@
     <FxCompile>
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
-      <ObjectFileOutput />
+      <ObjectFileOutput>$(IntDir)%(Filename).obj</ObjectFileOutput>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
-      <AdditionalOptions>-HV 2021 -all-resources-bound %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-HV 2021 %(AdditionalOptions)</AdditionalOptions>
+      <AllResourcesBound>true</AllResourcesBound>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -221,11 +223,7 @@
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ObjectFileOutput>
       <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)%(Filename).h</HeaderFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ObjectFileOutput>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
       </EntryPointName>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -234,18 +232,10 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">-enable-payload-qualifiers %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
     <FxCompile Include="FVFPixelShader.hlsl">
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ObjectFileOutput>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="FVFVertexShader.hlsl">
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </ObjectFileOutput>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>

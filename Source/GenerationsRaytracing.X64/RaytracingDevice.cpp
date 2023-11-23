@@ -1209,7 +1209,7 @@ RaytracingDevice::RaytracingDevice()
         D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
         D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED,
-        m_raytracingRootSignature);
+        m_raytracingRootSignature, "raytracing");
 
     CD3DX12_STATE_OBJECT_DESC stateObject(D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE);
 
@@ -1326,7 +1326,7 @@ RaytracingDevice::RaytracingDevice()
         copyStaticSamplers,
         _countof(copyStaticSamplers),
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS,
-        m_copyTextureRootSignature);
+        m_copyTextureRootSignature, "copy");
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC copyPipelineDesc{};
     copyPipelineDesc.pRootSignature = m_copyTextureRootSignature.Get();
@@ -1362,7 +1362,7 @@ RaytracingDevice::RaytracingDevice()
         0,
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS,
-        m_poseRootSignature);
+        m_poseRootSignature, "pose");
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC posePipelineDesc{};
     posePipelineDesc.pRootSignature = m_poseRootSignature.Get();
@@ -1418,7 +1418,7 @@ RaytracingDevice::RaytracingDevice()
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
         D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED,
-        m_skyRootSignature);
+        m_skyRootSignature, "sky");
 
     const CD3DX12_HEAP_PROPERTIES skyHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
 

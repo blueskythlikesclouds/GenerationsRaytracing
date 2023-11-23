@@ -1785,7 +1785,7 @@ Device::Device()
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
         D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED,
-        m_rootSignature);
+        m_rootSignature, "main");
 
     m_pipelineDesc.pRootSignature = m_rootSignature.Get();
     m_pipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
