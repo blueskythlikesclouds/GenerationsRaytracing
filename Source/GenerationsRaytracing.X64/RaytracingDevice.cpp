@@ -377,13 +377,6 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
 
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
 
-    getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_reservoirTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_giTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
-    getGraphicsCommandList().commitBarriers();
-
     getUnderlyingGraphicsCommandList()->Dispatch(
         (m_upscaler->getWidth() + 7) / 8,
         (m_upscaler->getHeight() + 7) / 8,
@@ -814,6 +807,13 @@ void RaytracingDevice::procMsgTraceRays()
     m_properties->SetPipelineStackSize(m_refractionStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
+
+    getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_reservoirTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_giTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
+    getGraphicsCommandList().commitBarriers();
 
     resolveAndDispatchUpscaler(message);
     copyToRenderTargetAndDepthStencil();
