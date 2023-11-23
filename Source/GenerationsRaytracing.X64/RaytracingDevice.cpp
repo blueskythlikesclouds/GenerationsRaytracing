@@ -764,10 +764,10 @@ void RaytracingDevice::procMsgTraceRays()
 
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress = shaderTable;
     dispatchRaysDesc.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.MissShaderTable.StartAddress = shaderTable + 12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.MissShaderTable.StartAddress = shaderTable + 10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.MissShaderTable.SizeInBytes = 4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.MissShaderTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.HitGroupTable.StartAddress = shaderTable + 16 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.HitGroupTable.StartAddress = shaderTable + 14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.HitGroupTable.SizeInBytes = 3 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.HitGroupTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.Width = m_upscaler->getWidth();
@@ -796,15 +796,6 @@ void RaytracingDevice::procMsgTraceRays()
     m_properties->SetPipelineStackSize(m_shadowStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
-
-    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    if (message.localLightCount > 0)
-    {
-        PIX_BEGIN_EVENT("ReservoirRayGeneration");
-        m_properties->SetPipelineStackSize(m_reservoirStackSize);
-        getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
-        PIX_END_EVENT();
-    }
 
     PIX_BEGIN_EVENT("GIRayGeneration");
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
@@ -1268,8 +1259,6 @@ RaytracingDevice::RaytracingDevice()
     m_shadowStackSize = m_properties->GetShaderStackSize(L"ShadowRayGeneration") +
         std::max(m_properties->GetShaderStackSize(L"ShadowHitGroup::anyhit"), m_properties->GetShaderStackSize(L"ShadowMiss"));
 
-    m_reservoirStackSize = m_properties->GetShaderStackSize(L"ReservoirRayGeneration");
-
     m_giStackSize = m_properties->GetShaderStackSize(L"GIRayGeneration") + std::max({ m_properties->GetShaderStackSize(L"SecondaryHitGroup::anyhit"),
         m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"GIMiss"),
         m_properties->GetShaderStackSize(L"ShadowHitGroup::anyhit"), m_properties->GetShaderStackSize(L"ShadowMiss") });
@@ -1282,23 +1271,22 @@ RaytracingDevice::RaytracingDevice()
         m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"SecondaryMiss"),
         m_properties->GetShaderStackSize(L"ShadowHitGroup::anyhit"), m_properties->GetShaderStackSize(L"ShadowMiss") });
          
-    m_shaderTable.resize(19 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    m_shaderTable.resize(17 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
     memcpy(&m_shaderTable[0 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     memcpy(&m_shaderTable[2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ReservoirRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[6 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"GIRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[8 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ReflectionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"RefractionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"GIRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[6 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ReflectionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[8 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"RefractionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-    memcpy(&m_shaderTable[12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[13 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"GIMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[15 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"SecondaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[11 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"GIMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[13 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"SecondaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-    memcpy(&m_shaderTable[16 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[17 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[18 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"SecondaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[15 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    memcpy(&m_shaderTable[16 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"SecondaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
     for (auto& scratchBuffer : m_scratchBuffers)
     {

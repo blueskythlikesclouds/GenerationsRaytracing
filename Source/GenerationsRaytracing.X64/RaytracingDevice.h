@@ -64,7 +64,6 @@ protected:
     std::vector<uint8_t> m_shaderTable;
     size_t m_primaryStackSize = 0;
     size_t m_shadowStackSize = 0;
-    size_t m_reservoirStackSize = 0;
     size_t m_giStackSize = 0;
     size_t m_reflectionStackSize = 0;
     size_t m_refractionStackSize = 0;

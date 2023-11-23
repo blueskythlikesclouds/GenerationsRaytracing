@@ -144,6 +144,28 @@ void ShadowRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
+    if (g_LocalLightCount > 0 && !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
+    {
+        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+
+        uint random = InitRand(g_CurrentFrame,
+            DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
+
+        // Generate initial candidates
+        Reservoir reservoir = (Reservoir) 0;
+        uint localLightCount = min(32, g_LocalLightCount);
+
+        for (uint i = 0; i < localLightCount; i++)
+        {
+            uint sample = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
+            float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
+            UpdateReservoir(reservoir, sample, weight, NextRand(random));
+        }
+
+        ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
+        g_Reservoir[DispatchRaysIndex().xy] = StoreReservoir(reservoir);
+    }
+
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
         g_Shadow[DispatchRaysIndex().xy] = TraceShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz, GetBlueNoise().xy);
 }
@@ -178,34 +200,6 @@ void AnyHit(in BuiltInTriangleIntersectionAttributes attributes)
 void ShadowAnyHit(inout ShadowRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
     AnyHit(attributes);
-}
-
-[shader("raygeneration")]
-void ReservoirRayGeneration()
-{
-    GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
-
-    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
-    {
-        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
-
-        uint random = InitRand(g_CurrentFrame,
-            DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
-
-        // Generate initial candidates
-        Reservoir reservoir = (Reservoir) 0;
-        uint localLightCount = min(32, g_LocalLightCount);
-
-        for (uint i = 0; i < localLightCount; i++)
-        {
-            uint sample = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
-            float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
-            UpdateReservoir(reservoir, sample, weight, NextRand(random));
-        }
-
-        ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
-        g_Reservoir[DispatchRaysIndex().xy] = StoreReservoir(reservoir);
-    }
 }
 
 struct [raypayload] SecondaryRayPayload
