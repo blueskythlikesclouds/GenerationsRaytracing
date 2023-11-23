@@ -484,7 +484,6 @@ struct MsgRenderSky
         float ambient[4];
     };
 
-    float backgroundScale;
     uint32_t dataSize;
     uint8_t data[1u];
 };

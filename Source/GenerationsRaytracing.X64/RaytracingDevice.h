@@ -45,12 +45,11 @@ struct DelayedTexture
 
 struct GlobalsSB
 {
-    float backgroundScale;
     uint32_t diffuseTextureId;
     uint32_t alphaTextureId;
     uint32_t emissionTextureId;
-    float ambient[3];
     uint32_t enableAlphaTest;
+    float ambient[3];
 };
 
 class RaytracingDevice final : public Device

@@ -174,6 +174,8 @@ static void __cdecl implOfSceneRender(void* a1)
             renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(37, RaytracingParams::s_light->m_Color.data(), 1);
         }
 
+        renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(67, reinterpret_cast<float*>(0x1A489F0), 1);
+
         const auto prevSky = s_curSky;
 
         if (RaytracingParams::s_sky != nullptr && RaytracingParams::s_sky->IsMadeAll())

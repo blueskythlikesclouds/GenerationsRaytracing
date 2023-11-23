@@ -71,6 +71,5 @@ void main(in VertexShaderInput i, out PixelShaderInput o)
     o.AlphaTexCoord = GetTexCoord(i, g_AlphaTextureId >> 30);
     o.EmissionTexCoord = GetTexCoord(i, g_EmissionTextureId >> 30);
     o.Color = i.Color;
-    o.Color.rgb *= g_BackGroundScale;
     o.RenderTargetArrayIndex = i.InstanceID;
 }

@@ -1026,7 +1026,6 @@ void RaytracingDevice::procMsgRenderSky()
     getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
     GlobalsSB globalsSB;
-    globalsSB.backgroundScale = message.backgroundScale;
 
     auto geometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data);
     auto lastGeometryDesc = reinterpret_cast<const MsgRenderSky::GeometryDesc*>(message.data + message.dataSize);
@@ -1424,11 +1423,11 @@ RaytracingDevice::RaytracingDevice()
     const CD3DX12_HEAP_PROPERTIES skyHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
 
     const auto skyResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-        DXGI_FORMAT_R16G16B16A16_FLOAT,
+        DXGI_FORMAT_R8G8B8A8_UNORM,
         CUBE_MAP_RESOLUTION, CUBE_MAP_RESOLUTION, 6, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
     float color[4]{};
-    const CD3DX12_CLEAR_VALUE clearValue(DXGI_FORMAT_R16G16B16A16_FLOAT, color);
+    const CD3DX12_CLEAR_VALUE clearValue(DXGI_FORMAT_R8G8B8A8_UNORM, color);
 
     hr = m_device->CreateCommittedResource(
         &skyHeapProperties,
@@ -1441,7 +1440,7 @@ RaytracingDevice::RaytracingDevice()
     assert(SUCCEEDED(hr) && m_skyTexture != nullptr);
 
     D3D12_SHADER_RESOURCE_VIEW_DESC skySrvDesc{};
-    skySrvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    skySrvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     skySrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
     skySrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     skySrvDesc.TextureCube.MipLevels = 1;
@@ -1453,7 +1452,7 @@ RaytracingDevice::RaytracingDevice()
     m_skyRtvId = m_rtvDescriptorHeap.allocate();
 
     D3D12_RENDER_TARGET_VIEW_DESC skyRtvDesc{};
-    skyRtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    skyRtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     skyRtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
     skyRtvDesc.Texture2DArray.FirstArraySlice = 0;
     skyRtvDesc.Texture2DArray.ArraySize = 6;
