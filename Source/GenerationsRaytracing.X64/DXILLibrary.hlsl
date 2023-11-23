@@ -5,8 +5,15 @@
 struct [raypayload] PrimaryRayPayload
 {
     float3 dDdx : read(closesthit) : write(caller);
+    float Random : read(anyhit) : write(caller);
     float3 dDdy : read(closesthit) : write(caller);
 };
+
+float4 GetBlueNoise()
+{
+    Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
+    return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
+}
 
 [shader("raygeneration")]
 void PrimaryRayGeneration()
@@ -20,15 +27,22 @@ void PrimaryRayGeneration()
     ray.TMin = 0.0;
     ray.TMax = INF;
 
-    PrimaryRayPayload payload = (PrimaryRayPayload) 0;
+    float3 dDdx;
+    float3 dDdy;
 
     ComputeRayDifferentials(
         rayDirection,
         mul(float4(1.0, 0.0, 0.0, 0.0), g_MtxView).xyz / g_MtxProjection[0][0],
         mul(float4(0.0, 1.0, 0.0, 0.0), g_MtxView).xyz / g_MtxProjection[1][1],
         1.0 / g_ViewportSize.zw,
-        payload.dDdx,
-        payload.dDdy);
+        dDdx,
+        dDdy);
+
+    PrimaryRayPayload payload;
+
+    payload.dDdx = dDdx;
+    payload.dDdy = dDdy;
+    payload.Random = GetBlueNoise().x;
 
     TraceRay(
         g_BVH,
@@ -82,12 +96,6 @@ void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in Built
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 }
 
-float4 GetBlueNoise()
-{
-    Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
-    return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
-}
-
 [shader("anyhit")]
 void PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
@@ -96,7 +104,9 @@ void PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTr
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
     GBufferData gBufferData = CreateGBufferData(vertex, material);
-    float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : GetBlueNoise().x;
+
+    float random = payload.Random;
+    float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : random;
 
     if (gBufferData.Alpha < alphaThreshold)
         IgnoreHit();
@@ -323,7 +333,7 @@ void ReflectionRayGeneration()
         }
         else
         {
-            float4 sampleDirection = GetPowerCosWeightedSample(GetBlueNoise().yz, gBufferData.SpecularGloss);
+            float4 sampleDirection = GetPowerCosWeightedSample(GetBlueNoise().xy, gBufferData.SpecularGloss);
             float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
 
             rayDirection = reflect(-eyeDirection, halfwayDirection);
