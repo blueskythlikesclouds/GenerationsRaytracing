@@ -373,6 +373,8 @@ void RaytracingDevice::createRaytracingTextures()
 
 void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
 {
+    PIX_BEGIN_EVENT("Resolve");
+
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
 
     getGraphicsCommandList().uavBarrier(m_shadowTexture->GetResource());
@@ -386,6 +388,9 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         (m_upscaler->getWidth() + 7) / 8,
         (m_upscaler->getHeight() + 7) / 8,
         1);
+
+    PIX_END_EVENT();
+    PIX_BEGIN_EVENT("Upscale");
 
     ID3D12Resource* colorTexture = m_colorTexture->GetResource();
 
@@ -438,12 +443,16 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
             message.resetAccumulation
         });
 
+    PIX_END_EVENT();
+
     setDescriptorHeaps();
     m_curRootSignature = nullptr;
 }
 
 void RaytracingDevice::copyToRenderTargetAndDepthStencil()
 {
+    PIX_EVENT();
+
     const D3D12_VIEWPORT viewport = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 
@@ -678,8 +687,6 @@ void RaytracingDevice::procMsgTraceRays()
     if (!createTopLevelAccelStruct())
         return;
 
-    PIX_EVENT();
-
     const bool resolutionMismatch = m_width != message.width || m_height != message.height;
     const bool upscalerMismatch = message.upscaler != 0 && m_upscaler->getType() != static_cast<UpscalerType>(message.upscaler - 1);
     const bool qualityModeMismatch = message.qualityMode != 0 && m_qualityMode != static_cast<QualityMode>(message.qualityMode - 1);
@@ -767,7 +774,7 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.Height = m_upscaler->getHeight();
     dispatchRaysDesc.Depth = 1;
 
-    // PrimaryRayGeneration
+    PIX_BEGIN_EVENT("PrimaryRayGeneration");
     getGraphicsCommandList().commitBarriers();
     m_properties->SetPipelineStackSize(m_primaryStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
@@ -782,34 +789,40 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().uavBarrier(m_gBufferTexture5->GetResource());
     getGraphicsCommandList().uavBarrier(m_gBufferTexture6->GetResource());
     getGraphicsCommandList().commitBarriers();
+    PIX_END_EVENT();
 
-    // ShadowRayGeneration
+    PIX_BEGIN_EVENT("ShadowRayGeneration");
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     m_properties->SetPipelineStackSize(m_shadowStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+    PIX_END_EVENT();
 
-    // ReservoirRayGeneration
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     if (message.localLightCount > 0)
     {
+        PIX_BEGIN_EVENT("ReservoirRayGeneration");
         m_properties->SetPipelineStackSize(m_reservoirStackSize);
         getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+        PIX_END_EVENT();
     }
 
-    // GIRayGeneration
+    PIX_BEGIN_EVENT("GIRayGeneration");
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     m_properties->SetPipelineStackSize(m_giStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+    PIX_END_EVENT();
 
-    // ReflectionRayGeneration
+    PIX_BEGIN_EVENT("ReflectionRayGeneration");
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     m_properties->SetPipelineStackSize(m_reflectionStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+    PIX_END_EVENT();
 
-    // RefractionRayGeneration
+    PIX_BEGIN_EVENT("RefractionRayGeneration");
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += 2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     m_properties->SetPipelineStackSize(m_refractionStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+    PIX_END_EVENT();
 
     resolveAndDispatchUpscaler(message);
     copyToRenderTargetAndDepthStencil();
