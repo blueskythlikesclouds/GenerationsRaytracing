@@ -920,6 +920,7 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
     auto& message = s_messageSender.makeMessage<MsgRenderSky>(
         geometryCount * sizeof(MsgRenderSky::GeometryDesc));
 
+    message.backgroundScale = *reinterpret_cast<const float*>(0x1A489EC);
     memset(message.data, 0, geometryCount * sizeof(MsgRenderSky::GeometryDesc));
 
     auto geometryDesc = reinterpret_cast<MsgRenderSky::GeometryDesc*>(message.data);

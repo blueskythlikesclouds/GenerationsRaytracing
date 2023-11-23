@@ -67,7 +67,7 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     gBufferData.Normal = -WorldRayDirection();
 
     if (g_UseSkyTexture)
-        gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_BackGroundScale.x;
+        gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     else
         gBufferData.Emission = g_BackgroundColor;
 
@@ -305,7 +305,7 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     else if (g_UseSkyTexture && WaveActiveAnyTrue(RayTCurrent() != 0))
     {
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
-        color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_BackGroundScale.x * g_SkyPower;
+        color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_SkyPower;
     }
 
     payload.Color = color;
@@ -376,7 +376,7 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     if (g_UseSkyTexture && WaveActiveAnyTrue(RayTCurrent() != 0))
     {
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
-        color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_BackGroundScale.x;
+        color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     }
 
     payload.Color = color;

@@ -3,11 +3,12 @@
 
 cbuffer GlobalsSB : register(b0)
 {
+    float g_BackGroundScale;
     uint g_DiffuseTextureId;
     uint g_AlphaTextureId;
     uint g_EmissionTextureId;
-    bool g_EnableAlphaTest;
     float3 g_Ambient;
+    bool g_EnableAlphaTest;
 }
 
 struct VertexShaderInput
