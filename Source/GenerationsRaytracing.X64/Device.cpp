@@ -1610,11 +1610,13 @@ void Device::procMsgReleaseResource()
 
     case MsgReleaseResource::ResourceType::IndexBuffer:
         m_tempBuffers[m_frame].emplace_back(std::move(m_indexBuffers[message.resourceId].allocation));
+        m_tempBuffers[m_frame].emplace_back(std::move(m_indexBuffers[message.resourceId].nextAllocation));
         m_tempDescriptorIds[m_frame].push_back(m_indexBuffers[message.resourceId].srvIndex);
         break;
 
     case MsgReleaseResource::ResourceType::VertexBuffer:
         m_tempBuffers[m_frame].emplace_back(std::move(m_vertexBuffers[message.resourceId].allocation));
+        m_tempBuffers[m_frame].emplace_back(std::move(m_vertexBuffers[message.resourceId].nextAllocation));
         m_tempDescriptorIds[m_frame].push_back(m_vertexBuffers[message.resourceId].srvIndex);
         break;
 
