@@ -37,7 +37,7 @@ struct InstanceDesc
 
 #define VERTEX_FLAG_NONE     (0 << 0)
 #define VERTEX_FLAG_MIPMAP   (1 << 0)
-#define VERTEX_FLAG_MULTI_UV (1 << 0)
+#define VERTEX_FLAG_MULTI_UV (1 << 1)
 
 struct Vertex
 {
