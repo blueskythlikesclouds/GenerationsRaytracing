@@ -137,15 +137,19 @@ Vertex LoadVertex(
 
     vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
 
+    uint4 tangentAndBinormal0 = vertexBuffer.Load4(tangentOffsets.x);
+    uint4 tangentAndBinormal1 = vertexBuffer.Load4(tangentOffsets.y);
+    uint4 tangentAndBinormal2 = vertexBuffer.Load4(tangentOffsets.z);
+
     vertex.Tangent =
-        DecodeNormal(vertexBuffer.Load2(tangentOffsets.x)) * uv.x +
-        DecodeNormal(vertexBuffer.Load2(tangentOffsets.y)) * uv.y +
-        DecodeNormal(vertexBuffer.Load2(tangentOffsets.z)) * uv.z;
+        DecodeNormal(tangentAndBinormal0.xy) * uv.x +
+        DecodeNormal(tangentAndBinormal1.xy) * uv.y +
+        DecodeNormal(tangentAndBinormal2.xy) * uv.z;
 
     vertex.Binormal =
-        DecodeNormal(vertexBuffer.Load2(binormalOffsets.x)) * uv.x +
-        DecodeNormal(vertexBuffer.Load2(binormalOffsets.y)) * uv.y +
-        DecodeNormal(vertexBuffer.Load2(binormalOffsets.z)) * uv.z;
+        DecodeNormal(tangentAndBinormal0.zw) * uv.x +
+        DecodeNormal(tangentAndBinormal1.zw) * uv.y +
+        DecodeNormal(tangentAndBinormal2.zw) * uv.z;
 
     uint texCoordOffsets[4] = { geometryDesc.TexCoordOffset0, geometryDesc.TexCoordOffset1,
         geometryDesc.TexCoordOffset2, geometryDesc.TexCoordOffset3 };

@@ -216,6 +216,9 @@
     <None Include="DXILLibrary.hlsli">
       <Filter>Shader</Filter>
     </None>
+    <None Include="PackedPrimitives.hlsli">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
