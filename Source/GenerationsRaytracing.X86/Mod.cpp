@@ -10,6 +10,7 @@
 #include "RaytracingRendering.h"
 #include "InstanceData.h"
 #include "MemoryAllocator.h"
+#include "MeshData.h"
 #include "MotionData.h"
 #include "ShaderCache.h"
 #include "Sofdec.h"
@@ -54,6 +55,7 @@ extern "C" void __declspec(dllexport) Init()
     ShaderCache::init();
     MotionData::init();
     MemoryAllocator::init();
+    MeshData::init();
 
 #ifdef _DEBUG
 #if 0

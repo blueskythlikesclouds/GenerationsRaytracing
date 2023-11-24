@@ -93,6 +93,12 @@
     <ClCompile Include="RaytracingUtil.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
+    <ClCompile Include="MeshData.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="MotionData.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -182,6 +188,12 @@
     </ClInclude>
     <ClInclude Include="RaytracingUtil.h">
       <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshData.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="MotionData.h">
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

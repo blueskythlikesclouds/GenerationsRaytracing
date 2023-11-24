@@ -2,139 +2,16 @@
 
 #include "GeometryFlags.h"
 #include "IndexBuffer.h"
+#include "InstanceData.h"
 #include "MaterialData.h"
+#include "MeshData.h"
 #include "Message.h"
 #include "MessageSender.h"
-#include "InstanceData.h"
 #include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
 #include "Texture.h"
 #include "VertexBuffer.h"
 #include "VertexDeclaration.h"
-
-class MeshDataEx : public Hedgehog::Mirage::CMeshData
-{
-public:
-    ComPtr<IndexBuffer> m_indices;
-    uint32_t m_indexCount;
-};
-
-HOOK(MeshDataEx*, __fastcall, MeshDataConstructor, 0x722860, MeshDataEx* This)
-{
-    const auto result = originalMeshDataConstructor(This);
-
-    new (std::addressof(This->m_indices)) ComPtr<IndexBuffer>();
-    This->m_indexCount = 0;
-
-    return result;
-}
-
-HOOK(void, __fastcall, MeshDataDestructor, 0x7227A0, MeshDataEx* This)
-{
-    This->m_indices.~ComPtr();
-    originalMeshDataDestructor(This);
-}
-
-struct MeshResource
-{
-    const char* materialName;
-    uint32_t indexCount;
-    uint16_t* indices;
-    // ...don't need the rest
-};
-
-static void convertToTriangles(MeshDataEx& meshData, const MeshResource* data)
-{
-    assert(meshData.m_indices == nullptr);
-
-    const uint32_t indexNum = _byteswap_ulong(data->indexCount);
-    if (indexNum <= 2)
-        return;
-
-    std::vector<uint16_t> indices;
-    indices.reserve((indexNum - 2) * 3);
-
-    uint16_t a = _byteswap_ushort(data->indices[0]);
-    uint16_t b = _byteswap_ushort(data->indices[1]);
-    bool direction = false;
-
-    for (uint32_t i = 2; i < indexNum; i++)
-    {
-        uint16_t c = _byteswap_ushort(data->indices[i]);
-
-        if (c == 0xFFFF)
-        {
-            a = _byteswap_ushort(data->indices[++i]);
-            b = _byteswap_ushort(data->indices[++i]);
-            direction = false;
-        }
-        else
-        {
-            direction = !direction;
-            if (a != b && b != c && c != a)
-            {
-                if (direction)
-                {
-                    indices.push_back(c);
-                    indices.push_back(b);
-                    indices.push_back(a);
-                }
-                else
-                {
-                    indices.push_back(a);
-                    indices.push_back(b);
-                    indices.push_back(c);
-                }
-            }
-
-            a = b;
-            b = c;
-        }
-    }
-
-    if (indices.empty())
-        return;
-
-    const size_t byteSize = indices.size() * sizeof(uint16_t);
-
-    meshData.m_indices.Attach(new IndexBuffer(byteSize));
-    meshData.m_indexCount = indices.size();
-
-    auto& createMessage = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
-    createMessage.length = byteSize;
-    createMessage.format = D3DFMT_INDEX16;
-    createMessage.indexBufferId = meshData.m_indices->getId();
-    s_messageSender.endMessage();
-
-    auto& copyMessage = s_messageSender.makeMessage<MsgWriteIndexBuffer>(byteSize);
-    copyMessage.indexBufferId = meshData.m_indices->getId();
-    copyMessage.offset = 0;
-    copyMessage.initialWrite = true;
-    memcpy(copyMessage.data, indices.data(), byteSize);
-    s_messageSender.endMessage();
-}
-
-HOOK(void, __cdecl, MakeMeshData, 0x744A00,
-    MeshDataEx& meshData,
-    const MeshResource* data,
-    const Hedgehog::Mirage::CMirageDatabaseWrapper& databaseWrapper,
-    Hedgehog::Mirage::CRenderingInfrastructure& renderingInfrastructure)
-{
-    if (!meshData.IsMadeOne())
-        convertToTriangles(meshData, data);
-    originalMakeMeshData(meshData, data, databaseWrapper, renderingInfrastructure);
-}
-
-HOOK(void, __cdecl, MakeMeshData2, 0x744CC0,
-    MeshDataEx& meshData,
-    const MeshResource* data,
-    const Hedgehog::Mirage::CMirageDatabaseWrapper& databaseWrapper,
-    Hedgehog::Mirage::CRenderingInfrastructure& renderingInfrastructure)
-{
-    if (!meshData.IsMadeOne())
-        convertToTriangles(meshData, data);
-    originalMakeMeshData2(meshData, data, databaseWrapper, renderingInfrastructure);
-}
 
 template<typename T>
 static void traverseMeshGroup(const hh::vector<boost::shared_ptr<Hedgehog::Mirage::CMeshData>>& meshGroup, uint32_t flags, const T& function)
@@ -1001,37 +878,6 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
 
 void ModelData::init()
 {
-    WRITE_MEMORY(0x72294D, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x739511, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x739641, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x7397D1, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73C763, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73C873, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73C9EA, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73D063, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73D173, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73D2EA, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73D971, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73DA86, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73DBFE, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73E383, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73E493, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73E606, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73EF23, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73F033, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73F1A6, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x745661, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x745771, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x7458E4, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x745D01, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0xCD9A99, uint32_t, sizeof(MeshDataEx));
-
-    INSTALL_HOOK(MeshDataConstructor);
-    INSTALL_HOOK(MeshDataDestructor);
-
-    INSTALL_HOOK(MakeMeshData);
-    INSTALL_HOOK(MakeMeshData2);
-
     WRITE_MEMORY(0x72FCDC, uint8_t, sizeof(TerrainModelDataEx));
 
     INSTALL_HOOK(TerrainModelDataConstructor);

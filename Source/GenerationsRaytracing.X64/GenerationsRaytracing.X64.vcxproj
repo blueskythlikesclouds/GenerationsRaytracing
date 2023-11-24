@@ -136,6 +136,7 @@
     <None Include="MaterialData.hlsli" />
     <None Include="MessageReceiver.inl" />
     <None Include="packages.config" />
+    <None Include="PackedPrimitives.hlsli" />
     <None Include="RayDifferentials.hlsli" />
     <None Include="Reservoir.hlsli" />
     <None Include="RootSignature.hlsli" />

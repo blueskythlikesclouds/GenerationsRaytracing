@@ -111,6 +111,7 @@
     </ClCompile>
     <ClCompile Include="BaseTexture.cpp" />
     <ClCompile Include="MemoryAllocator.cpp" />
+    <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="MotionData.cpp" />
     <ClCompile Include="RaytracingUtil.cpp" />
     <ClCompile Include="ModelData.cpp" />
@@ -148,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="BaseTexture.h" />
     <ClInclude Include="MemoryAllocator.h" />
+    <ClInclude Include="MeshData.h" />
     <ClInclude Include="MotionData.h" />
     <ClInclude Include="RaytracingUtil.h" />
     <ClInclude Include="ModelData.h" />

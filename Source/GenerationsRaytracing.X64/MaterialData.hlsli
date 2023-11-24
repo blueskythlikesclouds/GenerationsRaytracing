@@ -67,7 +67,7 @@ float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex)
     }
     else
     {
-        return texture.SampleLevel(samplerState, vertex.TexCoords[texCoordIndex], 0);
+        return texture.SampleLevel(samplerState, vertex.TexCoords[texCoordIndex], 2);
     }
 }
 

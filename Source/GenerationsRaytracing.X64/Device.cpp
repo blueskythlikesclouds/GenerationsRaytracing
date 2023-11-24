@@ -458,6 +458,7 @@ static void addMissingInputElement(
     std::vector<D3D12_INPUT_ELEMENT_DESC>& inputElements,
     const char* semanticName, 
     uint32_t semanticIndex,
+    uint32_t offset,
     DXGI_FORMAT format)
 {
     bool foundAny = false;
@@ -479,7 +480,7 @@ static void addMissingInputElement(
             semanticIndex,
             format,
             0,
-            0,
+            offset,
             D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             0 });
     }
@@ -490,6 +491,12 @@ void Device::procMsgCreateVertexDeclaration()
     const auto& message = m_messageReceiver.getMessage<MsgCreateVertexDeclaration>();
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> inputElements;
+
+    uint32_t normalOffset = 0;
+    auto normalFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+
+    uint32_t texCoordOffset = 0;
+    auto texCoordFormat = DXGI_FORMAT_R32G32_FLOAT;
 
     const D3DVERTEXELEMENT9* vertexElement = reinterpret_cast<const D3DVERTEXELEMENT9*>(message.data);
 
@@ -505,20 +512,41 @@ void Device::procMsgCreateVertexDeclaration()
         inputElement.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
         inputElement.InstanceDataStepRate = 0;
 
+        switch (vertexElement->Type)
+        {
+        case D3DDECLUSAGE_NORMAL:
+        case D3DDECLUSAGE_TANGENT:
+        case D3DDECLUSAGE_BINORMAL:
+            if (normalOffset == 0)
+            {
+                normalOffset = vertexElement->Offset;
+                normalFormat = inputElement.Format;
+            }
+            break;
+
+        case D3DDECLUSAGE_TEXCOORD:
+            if (texCoordOffset == 0)
+            {
+                texCoordOffset = vertexElement->Offset;
+                texCoordFormat = inputElement.Format;
+            }
+            break;
+        }
+
         ++vertexElement;
     }
 
-    addMissingInputElement(inputElements, "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT);
-    addMissingInputElement(inputElements, "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT);
-    addMissingInputElement(inputElements, "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
-    addMissingInputElement(inputElements, "BINORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT);
-    addMissingInputElement(inputElements, "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT);
-    addMissingInputElement(inputElements, "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT);
-    addMissingInputElement(inputElements, "TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT);
-    addMissingInputElement(inputElements, "TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT);
-    addMissingInputElement(inputElements, "COLOR", 0, DXGI_FORMAT_B8G8R8A8_UNORM);
-    addMissingInputElement(inputElements, "BLENDWEIGHT", 0, DXGI_FORMAT_R8G8B8A8_UNORM);
-    addMissingInputElement(inputElements, "BLENDINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT);
+    addMissingInputElement(inputElements, "POSITION", 0, 0, DXGI_FORMAT_R32G32B32_FLOAT);
+    addMissingInputElement(inputElements, "NORMAL", 0, normalOffset, normalFormat);
+    addMissingInputElement(inputElements, "TANGENT", 0, normalOffset, normalFormat);
+    addMissingInputElement(inputElements, "BINORMAL", 0, normalOffset, normalFormat);
+    addMissingInputElement(inputElements, "TEXCOORD", 0, texCoordOffset, texCoordFormat);
+    addMissingInputElement(inputElements, "TEXCOORD", 1, texCoordOffset, texCoordFormat);
+    addMissingInputElement(inputElements, "TEXCOORD", 2, texCoordOffset, texCoordFormat);
+    addMissingInputElement(inputElements, "TEXCOORD", 3, texCoordOffset, texCoordFormat);
+    addMissingInputElement(inputElements, "COLOR", 0, 0, DXGI_FORMAT_B8G8R8A8_UNORM);
+    addMissingInputElement(inputElements, "BLENDWEIGHT", 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM);
+    addMissingInputElement(inputElements, "BLENDINDICES", 0, 0, DXGI_FORMAT_R8G8B8A8_UINT);
 
     assert(inputElements.size() <= 32);
 

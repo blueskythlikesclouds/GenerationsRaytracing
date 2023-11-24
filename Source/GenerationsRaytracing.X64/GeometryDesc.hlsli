@@ -2,6 +2,7 @@
 #define GEOMETRY_DESC_HLSLI_INCLUDED
 
 #include "GeometryFlags.h"
+#include "PackedPrimitives.hlsli"
 #include "RayDifferentials.hlsli"
 #include "SelfIntersectionAvoidance.hlsl"
 
@@ -59,15 +60,6 @@ float3 NormalizeSafe(float3 value)
     return select(lengthSquared > 0.0, value * rsqrt(lengthSquared), 0.0);
 }
 
-float4 DecodeColor(uint color)
-{
-    return float4(
-        ((color >> 0) & 0xFF) / 255.0,
-        ((color >> 8) & 0xFF) / 255.0,
-        ((color >> 16) & 0xFF) / 255.0,
-        ((color >> 24) & 0xFF) / 255.0);
-}
-
 Vertex LoadVertex(
     GeometryDesc geometryDesc, 
     float4 texCoordOffset[2],
@@ -120,9 +112,9 @@ Vertex LoadVertex(
     }
 
     vertex.Normal =
-        asfloat(vertexBuffer.Load3(normalOffsets.x)) * uv.x +
-        asfloat(vertexBuffer.Load3(normalOffsets.y)) * uv.y +
-        asfloat(vertexBuffer.Load3(normalOffsets.z)) * uv.z;
+        DecodeNormal(vertexBuffer.Load2(normalOffsets.x)) * uv.x +
+        DecodeNormal(vertexBuffer.Load2(normalOffsets.y)) * uv.y +
+        DecodeNormal(vertexBuffer.Load2(normalOffsets.z)) * uv.z;
 
     // Some models have correct normals but flipped triangle order
     // Could check for view direction but that makes plants look bad
@@ -146,14 +138,14 @@ Vertex LoadVertex(
     vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
 
     vertex.Tangent =
-        asfloat(vertexBuffer.Load3(tangentOffsets.x)) * uv.x +
-        asfloat(vertexBuffer.Load3(tangentOffsets.y)) * uv.y +
-        asfloat(vertexBuffer.Load3(tangentOffsets.z)) * uv.z;
+        DecodeNormal(vertexBuffer.Load2(tangentOffsets.x)) * uv.x +
+        DecodeNormal(vertexBuffer.Load2(tangentOffsets.y)) * uv.y +
+        DecodeNormal(vertexBuffer.Load2(tangentOffsets.z)) * uv.z;
 
     vertex.Binormal =
-        asfloat(vertexBuffer.Load3(binormalOffsets.x)) * uv.x +
-        asfloat(vertexBuffer.Load3(binormalOffsets.y)) * uv.y +
-        asfloat(vertexBuffer.Load3(binormalOffsets.z)) * uv.z;
+        DecodeNormal(vertexBuffer.Load2(binormalOffsets.x)) * uv.x +
+        DecodeNormal(vertexBuffer.Load2(binormalOffsets.y)) * uv.y +
+        DecodeNormal(vertexBuffer.Load2(binormalOffsets.z)) * uv.z;
 
     uint texCoordOffsets[4] = { geometryDesc.TexCoordOffset0, geometryDesc.TexCoordOffset1,
         geometryDesc.TexCoordOffset2, geometryDesc.TexCoordOffset3 };
@@ -165,7 +157,7 @@ Vertex LoadVertex(
     {
         [unroll]
         for (uint j = 0; j < 3; j++)
-            texCoords[i][j] = asfloat(vertexBuffer.Load2(offsets[j] + texCoordOffsets[i]));
+            texCoords[i][j] = DecodeTexCoord(vertexBuffer.Load(offsets[j] + texCoordOffsets[i]));
 
         vertex.TexCoords[i] = texCoords[i][0] * uv.x + texCoords[i][1] * uv.y + texCoords[i][2] * uv.z;
     }
@@ -175,20 +167,10 @@ Vertex LoadVertex(
     vertex.TexCoords[2] += texCoordOffset[1].xy;
     vertex.TexCoords[3] += texCoordOffset[1].zw;
 
-    if (geometryDesc.Flags & GEOMETRY_FLAG_D3DCOLOR)
-    {
-        vertex.Color =
-            DecodeColor(vertexBuffer.Load(colorOffsets.x)) * uv.x +
-            DecodeColor(vertexBuffer.Load(colorOffsets.y)) * uv.y +
-            DecodeColor(vertexBuffer.Load(colorOffsets.z)) * uv.z;
-    }
-    else
-    {
-        vertex.Color =
-            asfloat(vertexBuffer.Load4(colorOffsets.x)) * uv.x +
-            asfloat(vertexBuffer.Load4(colorOffsets.y)) * uv.y +
-            asfloat(vertexBuffer.Load4(colorOffsets.z)) * uv.z;
-    }
+    vertex.Color =
+        DecodeColor(vertexBuffer.Load(colorOffsets.x)) * uv.x +
+        DecodeColor(vertexBuffer.Load(colorOffsets.y)) * uv.y +
+        DecodeColor(vertexBuffer.Load(colorOffsets.z)) * uv.z;
 
     vertex.Flags = flags;
 
