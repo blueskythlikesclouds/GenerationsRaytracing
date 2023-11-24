@@ -35,9 +35,10 @@ struct InstanceDesc
     row_major float3x4 PrevTransform;
 };
 
-#define VERTEX_FLAG_NONE     (0 << 0)
-#define VERTEX_FLAG_MIPMAP   (1 << 0)
-#define VERTEX_FLAG_MULTI_UV (1 << 1)
+#define VERTEX_FLAG_NONE                  (0 << 0)
+#define VERTEX_FLAG_MIPMAP                (1 << 0)
+#define VERTEX_FLAG_MULTI_UV              (1 << 1)
+#define VERTEX_FLAG_SAFE_POSITION         (1 << 2)
 
 struct Vertex
 {
@@ -116,26 +117,30 @@ Vertex LoadVertex(
         DecodeNormal(vertexBuffer.Load2(normalOffsets.y)) * uv.y +
         DecodeNormal(vertexBuffer.Load2(normalOffsets.z)) * uv.z;
 
-    // Some models have correct normals but flipped triangle order
-    // Could check for view direction but that makes plants look bad
-    // as they have spherical normals
-    bool isBackFace = dot(cross(p0 - p2, p0 - p1), vertex.Normal) > 0.0;
-
-    float3 outObjPosition;
-    float3 outWldPosition;
-    float3 outObjNormal;
     float3 outWldNormal;
-    float outWldOffset;
-    safeSpawnPoint(
-        outObjPosition, outWldPosition,
-        outObjNormal, outWldNormal,
-        outWldOffset,
-        p0, isBackFace ? p2 : p1, isBackFace ? p1 : p2,
-        isBackFace ? attributes.barycentrics.yx : attributes.barycentrics.xy,
-        ObjectToWorld3x4(),
-        WorldToObject3x4());
 
-    vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
+    if (flags & VERTEX_FLAG_SAFE_POSITION)
+    {
+        // Some models have correct normals but flipped triangle order
+        // Could check for view direction but that makes plants look bad
+        // as they have spherical normals
+        bool isBackFace = dot(cross(p0 - p2, p0 - p1), vertex.Normal) > 0.0;
+
+        float3 outObjPosition;
+        float3 outWldPosition;
+        float3 outObjNormal;
+        float outWldOffset;
+        safeSpawnPoint(
+            outObjPosition, outWldPosition,
+            outObjNormal, outWldNormal,
+            outWldOffset,
+            p0, isBackFace ? p2 : p1, isBackFace ? p1 : p2,
+            isBackFace ? attributes.barycentrics.yx : attributes.barycentrics.xy,
+            ObjectToWorld3x4(),
+            WorldToObject3x4());
+
+        vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
+    }
 
     uint4 tangentAndBinormal0 = vertexBuffer.Load4(tangentOffsets.x);
     uint4 tangentAndBinormal1 = vertexBuffer.Load4(tangentOffsets.y);
@@ -214,6 +219,9 @@ Vertex LoadVertex(
     vertex.Normal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
     vertex.Tangent = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
     vertex.Binormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
+
+    if (!(flags & VERTEX_FLAG_SAFE_POSITION))
+        vertex.SafeSpawnPoint = vertex.Position + vertex.Normal * 0.001;
 
     return vertex;
 }
