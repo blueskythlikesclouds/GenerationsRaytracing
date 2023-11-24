@@ -1,5 +1,6 @@
 #include "RaytracingRendering.h"
 
+#include "Configuration.h"
 #include "ModelData.h"
 #include "Device.h"
 #include "MaterialData.h"
@@ -301,8 +302,8 @@ static void __cdecl implOfSceneRender(void* a1)
             memset(traceRaysMessage.backgroundColor, 0, sizeof(traceRaysMessage.backgroundColor));
         }
 
-        traceRaysMessage.upscaler = RaytracingParams::s_upscaler;
-        traceRaysMessage.qualityMode = RaytracingParams::s_qualityMode;
+        traceRaysMessage.upscaler = RaytracingParams::s_upscaler == 0 ? Configuration::s_upscaler + 1 : RaytracingParams::s_upscaler;
+        traceRaysMessage.qualityMode = RaytracingParams::s_qualityMode == 0 ? Configuration::s_qualityMode + 1 : RaytracingParams::s_qualityMode;
 
         s_messageSender.endMessage();
 

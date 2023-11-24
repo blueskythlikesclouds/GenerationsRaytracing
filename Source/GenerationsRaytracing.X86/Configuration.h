@@ -13,5 +13,8 @@ public:
     static inline DisplayMode s_displayMode = DisplayMode::BorderlessFullscreen;
     static inline bool s_allowResizeInWindowed = false;
 
+    static inline uint32_t s_upscaler;
+    static inline uint32_t s_qualityMode;
+
     static void init();
 };
