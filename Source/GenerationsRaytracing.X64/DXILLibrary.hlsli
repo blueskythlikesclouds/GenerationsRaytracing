@@ -90,9 +90,6 @@ struct [raypayload] SecondaryRayPayload
 
 float3 TracePath(float3 position, float3 direction, float3 throughput, uint missShaderIndex)
 {
-    uint random = InitRand(g_CurrentFrame,
-        DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
-
     float3 radiance = 0.0;
 
     [unroll]
@@ -122,7 +119,7 @@ float3 TracePath(float3 position, float3 direction, float3 throughput, uint miss
         if (WaveActiveAnyTrue(any(payload.Diffuse != 0)))
         {
             color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRand(random), NextRand(random)), any(payload.Diffuse != 0) ? INF : 0.0);
+               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? GetBlueNoise().xy : GetBlueNoise().zw, any(payload.Diffuse != 0) ? INF : 0.0);
         }
 
         radiance += throughput * color;
@@ -131,17 +128,11 @@ float3 TracePath(float3 position, float3 direction, float3 throughput, uint miss
             break;
 
         position = payload.Position;
-        direction = TangentToWorld(normal, GetCosWeightedSample(float2(NextRand(random), NextRand(random))));
+        direction = TangentToWorld(normal, GetCosWeightedSample(i == 0 ? GetBlueNoise().xz : GetBlueNoise().yw));
         throughput *= payload.Diffuse;
     }
 
     return radiance;
-}
-
-float4 GetBlueNoise()
-{
-    Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
-    return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
 }
 
 void SecondaryClosestHit(uint shaderType,
