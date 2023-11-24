@@ -38,7 +38,7 @@ struct Material
     float2 WaterParam;
 };
 
-float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)
+float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord, uint level)
 {
     uint textureId = materialTexture & 0xFFFFF;
     uint samplerId = (materialTexture >> 20) & 0x3FF;
@@ -46,10 +46,10 @@ float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord)
     Texture2D texture = ResourceDescriptorHeap[NonUniformResourceIndex(textureId)];
     SamplerState samplerState = SamplerDescriptorHeap[NonUniformResourceIndex(samplerId)];
 
-    return texture.SampleLevel(samplerState, texCoord, 0);
+    return texture.SampleLevel(samplerState, texCoord, level);
 }
 
-float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex)
+float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex, float2 offset)
 {
     uint textureId = materialTexture & 0xFFFFF;
     uint samplerId = (materialTexture >> 20) & 0x3FF;
@@ -61,13 +61,13 @@ float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex)
     if (vertex.Flags & VERTEX_FLAG_MIPMAP)
     {
         return texture.SampleGrad(samplerState, 
-            vertex.TexCoords[texCoordIndex], 
+            vertex.TexCoords[texCoordIndex] + offset, 
             vertex.TexCoordsDdx[texCoordIndex], 
             vertex.TexCoordsDdy[texCoordIndex]);
     }
     else
     {
-        return texture.SampleLevel(samplerState, vertex.TexCoords[texCoordIndex], 2);
+        return texture.SampleLevel(samplerState, vertex.TexCoords[texCoordIndex] + offset, 2);
     }
 }
 

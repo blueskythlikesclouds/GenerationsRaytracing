@@ -105,7 +105,7 @@ void ShadowMiss(inout ShadowRayPayload payload : SV_RayPayload)
     payload.Miss = true;
 }
 
-void AnyHit(in BuiltInTriangleIntersectionAttributes attributes)
+void AnyHit(uint level, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
 
@@ -120,7 +120,7 @@ void AnyHit(in BuiltInTriangleIntersectionAttributes attributes)
         InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
         Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
 
-        if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0]).a < 0.5)
+        if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0], level).a < 0.5)
             IgnoreHit();
     }
 }
@@ -128,7 +128,7 @@ void AnyHit(in BuiltInTriangleIntersectionAttributes attributes)
 [shader("anyhit")]
 void ShadowAnyHit(inout ShadowRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
-    AnyHit(attributes);
+    AnyHit(0, attributes);
 }
 
 [shader("raygeneration")]
@@ -242,5 +242,5 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 [shader("anyhit")]
 void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
-    AnyHit(attributes);
+    AnyHit(2, attributes);
 }

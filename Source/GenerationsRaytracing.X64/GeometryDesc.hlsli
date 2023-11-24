@@ -113,9 +113,9 @@ Vertex LoadVertex(
     }
 
     vertex.Normal =
-        DecodeNormal(vertexBuffer.Load2(normalOffsets.x)) * uv.x +
-        DecodeNormal(vertexBuffer.Load2(normalOffsets.y)) * uv.y +
-        DecodeNormal(vertexBuffer.Load2(normalOffsets.z)) * uv.z;
+        DecodeFloat3(vertexBuffer.Load2(normalOffsets.x)) * uv.x +
+        DecodeFloat3(vertexBuffer.Load2(normalOffsets.y)) * uv.y +
+        DecodeFloat3(vertexBuffer.Load2(normalOffsets.z)) * uv.z;
 
     float3 outWldNormal;
 
@@ -147,14 +147,14 @@ Vertex LoadVertex(
     uint4 tangentAndBinormal2 = vertexBuffer.Load4(tangentOffsets.z);
 
     vertex.Tangent =
-        DecodeNormal(tangentAndBinormal0.xy) * uv.x +
-        DecodeNormal(tangentAndBinormal1.xy) * uv.y +
-        DecodeNormal(tangentAndBinormal2.xy) * uv.z;
+        DecodeFloat3(tangentAndBinormal0.xy) * uv.x +
+        DecodeFloat3(tangentAndBinormal1.xy) * uv.y +
+        DecodeFloat3(tangentAndBinormal2.xy) * uv.z;
 
     vertex.Binormal =
-        DecodeNormal(tangentAndBinormal0.zw) * uv.x +
-        DecodeNormal(tangentAndBinormal1.zw) * uv.y +
-        DecodeNormal(tangentAndBinormal2.zw) * uv.z;
+        DecodeFloat3(tangentAndBinormal0.zw) * uv.x +
+        DecodeFloat3(tangentAndBinormal1.zw) * uv.y +
+        DecodeFloat3(tangentAndBinormal2.zw) * uv.z;
 
     uint texCoordOffsets[4] = { geometryDesc.TexCoordOffset0, geometryDesc.TexCoordOffset1,
         geometryDesc.TexCoordOffset2, geometryDesc.TexCoordOffset3 };
@@ -166,7 +166,7 @@ Vertex LoadVertex(
     {
         [unroll]
         for (uint j = 0; j < 3; j++)
-            texCoords[i][j] = DecodeTexCoord(vertexBuffer.Load(offsets[j] + texCoordOffsets[i]));
+            texCoords[i][j] = DecodeFloat2(vertexBuffer.Load(offsets[j] + texCoordOffsets[i]));
 
         vertex.TexCoords[i] = texCoords[i][0] * uv.x + texCoords[i][1] * uv.y + texCoords[i][2] * uv.z;
     }
@@ -221,7 +221,7 @@ Vertex LoadVertex(
     vertex.Binormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
 
     if (!(flags & VERTEX_FLAG_SAFE_POSITION))
-        vertex.SafeSpawnPoint = vertex.Position + vertex.Position * sign(vertex.Normal) * 0.000001;
+        vertex.SafeSpawnPoint = vertex.Position + vertex.Normal * 0.001;
 
     return vertex;
 }

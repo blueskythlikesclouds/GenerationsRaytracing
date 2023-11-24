@@ -61,9 +61,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         g_NodeMatrixArray[blendIndices.w] * blendWeight.w;
 
     float3 position = asfloat(g_Source.Load3(vertexOffset));
-    float3 normal = DecodeNormal(g_Source.Load2(vertexOffset + g_NormalOffset));
-    float3 tangent = DecodeNormal(g_Source.Load2(vertexOffset + g_TangentOffset));
-    float3 binormal = DecodeNormal(g_Source.Load2(vertexOffset + g_BinormalOffset));
+    float3 normal = DecodeFloat3(g_Source.Load2(vertexOffset + g_NormalOffset));
+    float3 tangent = DecodeFloat3(g_Source.Load2(vertexOffset + g_TangentOffset));
+    float3 binormal = DecodeFloat3(g_Source.Load2(vertexOffset + g_BinormalOffset));
 
     position = mul(nodeMatrix, float4(position, 1.0)).xyz;
     normal = mul(nodeMatrix, float4(normal, 0.0)).xyz;
@@ -71,7 +71,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     binormal = mul(nodeMatrix, float4(binormal, 0.0)).xyz;
 
     g_Destination.Store3(vertexOffset, asuint(position));
-    g_Destination.Store2(vertexOffset + g_NormalOffset, EncodeNormal(normal));
-    g_Destination.Store2(vertexOffset + g_TangentOffset, EncodeNormal(tangent));
-    g_Destination.Store2(vertexOffset + g_BinormalOffset, EncodeNormal(binormal));
+    g_Destination.Store2(vertexOffset + g_NormalOffset, EncodeFloat3(normal));
+    g_Destination.Store2(vertexOffset + g_TangentOffset, EncodeFloat3(tangent));
+    g_Destination.Store2(vertexOffset + g_BinormalOffset, EncodeFloat3(binormal));
 }
