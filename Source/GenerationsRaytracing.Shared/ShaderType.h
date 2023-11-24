@@ -1,140 +1,246 @@
 #ifndef SHADER_TYPE_H_INCLUDED
 #define SHADER_TYPE_H_INCLUDED
-
-#define SHADER_TYPE_BILLBOARD_PARTICLE            0
-#define SHADER_TYPE_BILLBOARD_Y                   1
-#define SHADER_TYPE_BLB_BLEND                     2
-#define SHADER_TYPE_BLB_COMMON                    3
-#define SHADER_TYPE_BLB_INDIRECT                  4
-#define SHADER_TYPE_BLB_LUMINESCENCE              5
-#define SHADER_TYPE_BLEND                         6
-#define SHADER_TYPE_CHAOS                         7
-#define SHADER_TYPE_CHAOS_V                       8
-#define SHADER_TYPE_CHR_EYE                       9
-#define SHADER_TYPE_CHR_SKIN                      10
-#define SHADER_TYPE_CHR_SKIN_HALF                 11
-#define SHADER_TYPE_CHR_SKIN_IGNORE               12
-#define SHADER_TYPE_CLOAK                         13
-#define SHADER_TYPE_CLOTH                         14
-#define SHADER_TYPE_CLOUD                         15
-#define SHADER_TYPE_COMMON                        16
-#define SHADER_TYPE_DEFORMATION                   17
-#define SHADER_TYPE_DEFORMATION_PARTICLE          18
-#define SHADER_TYPE_DIM                           19
-#define SHADER_TYPE_DIM_IGNORE                    20
-#define SHADER_TYPE_DISTORTION                    21
-#define SHADER_TYPE_DISTORTION_OVERLAY            22
-#define SHADER_TYPE_DISTORTION_OVERLAY_CHAOS      23
-#define SHADER_TYPE_ENM_CLOUD                     24
-#define SHADER_TYPE_ENM_EMISSION                  25
-#define SHADER_TYPE_ENM_GLASS                     26
-#define SHADER_TYPE_ENM_IGNORE                    27
-#define SHADER_TYPE_ENM_METAL                     28
-#define SHADER_TYPE_FADE_OUT_NORMAL               29
-#define SHADER_TYPE_FAKE_GLASS                    30
-#define SHADER_TYPE_FALLOFF                       31
-#define SHADER_TYPE_FALLOFF_V                     32
-#define SHADER_TYPE_GLASS                         33
-#define SHADER_TYPE_GLASS_REFRACTION              34
-#define SHADER_TYPE_ICE                           35
-#define SHADER_TYPE_IGNORE_LIGHT                  36
-#define SHADER_TYPE_IGNORE_LIGHT_TWICE            37
-#define SHADER_TYPE_IGNORE_LIGHT_V                38
-#define SHADER_TYPE_INDIRECT                      39
-#define SHADER_TYPE_INDIRECT_V                    40
-#define SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW       41
-#define SHADER_TYPE_LAVA                          42
-#define SHADER_TYPE_LUMINESCENCE                  43
-#define SHADER_TYPE_LUMINESCENCE_V                44
-#define SHADER_TYPE_MESH_PARTICLE                 45
-#define SHADER_TYPE_MESH_PARTICLE_LIGHTING_SHADOW 46
-#define SHADER_TYPE_MESH_PARTICLE_REF             47
-#define SHADER_TYPE_MIRROR                        48
-#define SHADER_TYPE_MYST                          49
-#define SHADER_TYPE_PARALLAX                      50
-#define SHADER_TYPE_RING                          51
-#define SHADER_TYPE_TIME_EATER                    52
-#define SHADER_TYPE_TIME_EATER_DISTORTION         53
-#define SHADER_TYPE_TIME_EATER_EMISSION           54
-#define SHADER_TYPE_TIME_EATER_GLASS              55
-#define SHADER_TYPE_TIME_EATER_INDIRECT           56
-#define SHADER_TYPE_TIME_EATER_METAL              57
-#define SHADER_TYPE_TRANS_THIN                    58
-#define SHADER_TYPE_WATER_ADD                     59
-#define SHADER_TYPE_WATER_MUL                     60
-#define SHADER_TYPE_WATER_OPACITY                 61
-
-
+#define SHADER_TYPE_SYS_ERROR 0
+#define SHADER_TYPE_BLEND 1
+#define SHADER_TYPE_CHR_EYE 2
+#define SHADER_TYPE_CHR_SKIN 3
+#define SHADER_TYPE_CHR_SKIN_HALF 4
+#define SHADER_TYPE_CHR_SKIN_IGNORE 5
+#define SHADER_TYPE_CLOTH 6
+#define SHADER_TYPE_CLOUD 7
+#define SHADER_TYPE_COMMON 8
+#define SHADER_TYPE_DIM 9
+#define SHADER_TYPE_DISTORTION 10
+#define SHADER_TYPE_DISTORTION_OVERLAY 11
+#define SHADER_TYPE_ENM_EMISSION 12
+#define SHADER_TYPE_ENM_GLASS 13
+#define SHADER_TYPE_ENM_IGNORE 14
+#define SHADER_TYPE_FADE_OUT_NORMAL 15
+#define SHADER_TYPE_FALLOFF 16
+#define SHADER_TYPE_FALLOFF_V 17
+#define SHADER_TYPE_GLASS 18
+#define SHADER_TYPE_ICE 19
+#define SHADER_TYPE_IGNORE_LIGHT 20
+#define SHADER_TYPE_IGNORE_LIGHT_TWICE 21
+#define SHADER_TYPE_IGNORE_LIGHT_V 22
+#define SHADER_TYPE_INDIRECT 23
+#define SHADER_TYPE_INDIRECT_V 24
+#define SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW 25
+#define SHADER_TYPE_LUMINESCENCE 26
+#define SHADER_TYPE_LUMINESCENCE_V 27
+#define SHADER_TYPE_MIRROR 28
+#define SHADER_TYPE_RING 29
+#define SHADER_TYPE_TRANS_THIN 30
+#define SHADER_TYPE_WATER_ADD 31
+#define SHADER_TYPE_WATER_MUL 32
+#define SHADER_TYPE_WATER_OPACITY 33
+#define SHADER_TYPE_MAX 34
 #ifdef __cplusplus
 #include <string_view>
-
 inline std::pair<std::string_view, size_t> s_shaderTypes[] =
 {
-    {"BillboardParticle_", SHADER_TYPE_BILLBOARD_PARTICLE},
-    {"BillboardParticleY_", SHADER_TYPE_BILLBOARD_Y},
-    {"BlbBlend_", SHADER_TYPE_BLB_BLEND},
-    {"BlbCommon_", SHADER_TYPE_BLB_COMMON},
-    {"BlbIndirect_", SHADER_TYPE_BLB_INDIRECT},
-    {"BlbLuminescence_", SHADER_TYPE_BLB_LUMINESCENCE},
-    {"Blend_", SHADER_TYPE_BLEND},
-    {"Chaos_", SHADER_TYPE_CHAOS},
-    {"ChaosV_", SHADER_TYPE_CHAOS_V},
-    {"ChrEye_", SHADER_TYPE_CHR_EYE},
-    {"ChrSkin_", SHADER_TYPE_CHR_SKIN},
-    {"ChrSkinHalf_", SHADER_TYPE_CHR_SKIN_HALF},
-    {"ChrSkinIgnore_", SHADER_TYPE_CHR_SKIN_IGNORE},
-    {"Cloak_", SHADER_TYPE_CLOAK},
-    {"Cloth_", SHADER_TYPE_CLOTH},
-    {"Cloud_", SHADER_TYPE_CLOUD},
-    {"Common_", SHADER_TYPE_COMMON},
-    {"Deformation_", SHADER_TYPE_DEFORMATION},
-    {"DeformationParticle_", SHADER_TYPE_DEFORMATION_PARTICLE},
-    {"Dim_", SHADER_TYPE_DIM},
-    {"DimIgnore_", SHADER_TYPE_DIM_IGNORE},
-    {"Distortion_", SHADER_TYPE_DISTORTION},
-    {"DistortionOverlay_", SHADER_TYPE_DISTORTION_OVERLAY},
-    {"DistortionOverlayChaos_", SHADER_TYPE_DISTORTION_OVERLAY_CHAOS},
-    {"EnmCloud_", SHADER_TYPE_ENM_CLOUD},
-    {"EnmEmission_", SHADER_TYPE_ENM_EMISSION},
-    {"EnmGlass_", SHADER_TYPE_ENM_GLASS},
-    {"EnmIgnore_", SHADER_TYPE_ENM_IGNORE},
-    {"EnmMetal_", SHADER_TYPE_ENM_METAL},
-    {"FadeOutNormal_", SHADER_TYPE_FADE_OUT_NORMAL},
-    {"FakeGlass_", SHADER_TYPE_FAKE_GLASS},
-    {"FallOff_", SHADER_TYPE_FALLOFF},
-    {"FallOffV_", SHADER_TYPE_FALLOFF_V},
-    {"Glass_", SHADER_TYPE_GLASS},
-    {"GlassRefraction_", SHADER_TYPE_GLASS_REFRACTION},
-    {"Ice_", SHADER_TYPE_ICE},
-    {"IgnoreLight_", SHADER_TYPE_IGNORE_LIGHT},
-    {"IgnoreLightTwice_", SHADER_TYPE_IGNORE_LIGHT_TWICE},
-    {"IgnoreLightV_", SHADER_TYPE_IGNORE_LIGHT_V},
-    {"Indirect_", SHADER_TYPE_INDIRECT},
-    {"IndirectV_", SHADER_TYPE_INDIRECT_V},
-    {"IndirectVnoGIs_", SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW},
-    {"Lava_", SHADER_TYPE_LAVA},
-    {"Luminescence_", SHADER_TYPE_LUMINESCENCE},
-    {"LuminescenceV_", SHADER_TYPE_LUMINESCENCE_V},
-    {"MeshParticle_", SHADER_TYPE_MESH_PARTICLE},
-    {"MeshParticleLightingShadow_", SHADER_TYPE_MESH_PARTICLE_LIGHTING_SHADOW},
-    {"MeshParticleRef_", SHADER_TYPE_MESH_PARTICLE_REF},
-    {"Mirror_", SHADER_TYPE_MIRROR},
-    {"Mirror2_", SHADER_TYPE_MIRROR},
-    {"Myst_", SHADER_TYPE_MYST},
-    {"Parallax_", SHADER_TYPE_PARALLAX},
-    {"Ring_", SHADER_TYPE_RING},
-    {"TimeEater_", SHADER_TYPE_TIME_EATER},
-    {"TimeEaterDistortion_", SHADER_TYPE_TIME_EATER_DISTORTION},
-    {"TimeEaterEmission_", SHADER_TYPE_TIME_EATER_EMISSION},
-    {"TimeEaterGlass_", SHADER_TYPE_TIME_EATER_GLASS},
-    {"TimeEaterIndirect_", SHADER_TYPE_TIME_EATER_INDIRECT},
-    {"TimeEaterMetal_", SHADER_TYPE_TIME_EATER_METAL},
-    {"TransThin_", SHADER_TYPE_TRANS_THIN},
-    {"Water_Add", SHADER_TYPE_WATER_ADD},
-    {"Water_Mul", SHADER_TYPE_WATER_MUL},
-    {"Water_Opacity", SHADER_TYPE_WATER_OPACITY}
+	{"BillboardParticle_", SHADER_TYPE_SYS_ERROR},
+	{"BillboardParticleY_", SHADER_TYPE_SYS_ERROR},
+	{"BlbBlend_", SHADER_TYPE_SYS_ERROR},
+	{"BlbCommon_", SHADER_TYPE_SYS_ERROR},
+	{"BlbIndirect_", SHADER_TYPE_SYS_ERROR},
+	{"BlbLuminescence_", SHADER_TYPE_SYS_ERROR},
+	{"Blend_", SHADER_TYPE_BLEND},
+	{"Chaos_", SHADER_TYPE_SYS_ERROR},
+	{"ChaosV_", SHADER_TYPE_SYS_ERROR},
+	{"ChrEye_", SHADER_TYPE_CHR_EYE},
+	{"ChrSkin_", SHADER_TYPE_CHR_SKIN},
+	{"ChrSkinHalf_", SHADER_TYPE_CHR_SKIN_HALF},
+	{"ChrSkinIgnore_", SHADER_TYPE_CHR_SKIN_IGNORE},
+	{"Cloak_", SHADER_TYPE_SYS_ERROR},
+	{"Cloth_", SHADER_TYPE_CLOTH},
+	{"Cloud_", SHADER_TYPE_CLOUD},
+	{"Common_", SHADER_TYPE_COMMON},
+	{"Deformation_", SHADER_TYPE_SYS_ERROR},
+	{"DeformationParticle_", SHADER_TYPE_SYS_ERROR},
+	{"Dim_", SHADER_TYPE_DIM},
+	{"DimIgnore_", SHADER_TYPE_SYS_ERROR},
+	{"Distortion_", SHADER_TYPE_DISTORTION},
+	{"DistortionOverlay_", SHADER_TYPE_DISTORTION_OVERLAY},
+	{"DistortionOverlayChaos_", SHADER_TYPE_SYS_ERROR},
+	{"EnmCloud_", SHADER_TYPE_CLOUD},
+	{"EnmEmission_", SHADER_TYPE_ENM_EMISSION},
+	{"EnmGlass_", SHADER_TYPE_ENM_GLASS},
+	{"EnmIgnore_", SHADER_TYPE_ENM_IGNORE},
+	{"EnmMetal_", SHADER_TYPE_CHR_SKIN},
+	{"FadeOutNormal_", SHADER_TYPE_FADE_OUT_NORMAL},
+	{"FakeGlass_", SHADER_TYPE_ENM_GLASS},
+	{"FallOff_", SHADER_TYPE_FALLOFF},
+	{"FallOffV_", SHADER_TYPE_FALLOFF_V},
+	{"Glass_", SHADER_TYPE_GLASS},
+	{"GlassRefraction_", SHADER_TYPE_SYS_ERROR},
+	{"Ice_", SHADER_TYPE_ICE},
+	{"IgnoreLight_", SHADER_TYPE_IGNORE_LIGHT},
+	{"IgnoreLightTwice_", SHADER_TYPE_IGNORE_LIGHT_TWICE},
+	{"IgnoreLightV_", SHADER_TYPE_IGNORE_LIGHT_V},
+	{"Indirect_", SHADER_TYPE_INDIRECT},
+	{"IndirectV_", SHADER_TYPE_INDIRECT_V},
+	{"IndirectVnoGIs_", SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW},
+	{"Lava_", SHADER_TYPE_SYS_ERROR},
+	{"Luminescence_", SHADER_TYPE_LUMINESCENCE},
+	{"LuminescenceV_", SHADER_TYPE_LUMINESCENCE_V},
+	{"MeshParticle_", SHADER_TYPE_SYS_ERROR},
+	{"MeshParticleLightingShadow_", SHADER_TYPE_SYS_ERROR},
+	{"MeshParticleRef_", SHADER_TYPE_SYS_ERROR},
+	{"Mirror_", SHADER_TYPE_MIRROR},
+	{"Mirror2_", SHADER_TYPE_MIRROR},
+	{"Myst_", SHADER_TYPE_SYS_ERROR},
+	{"Parallax_", SHADER_TYPE_SYS_ERROR},
+	{"Ring_", SHADER_TYPE_RING},
+	{"TimeEater_", SHADER_TYPE_SYS_ERROR},
+	{"TimeEaterDistortion_", SHADER_TYPE_SYS_ERROR},
+	{"TimeEaterEmission_", SHADER_TYPE_SYS_ERROR},
+	{"TimeEaterGlass_", SHADER_TYPE_SYS_ERROR},
+	{"TimeEaterIndirect_", SHADER_TYPE_SYS_ERROR},
+	{"TimeEaterMetal_", SHADER_TYPE_SYS_ERROR},
+	{"TransThin_", SHADER_TYPE_TRANS_THIN},
+	{"Water_Add", SHADER_TYPE_WATER_ADD},
+	{"Water_Mul", SHADER_TYPE_WATER_MUL},
+	{"Water_Opacity", SHADER_TYPE_WATER_OPACITY},
 };
-
+inline const wchar_t* s_shaderHitGroups[] =
+{
+	L"SYS_ERROR_PrimaryHitGroup",
+	L"SYS_ERROR_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"SYS_ERROR_SecondaryHitGroup",
+	L"BLEND_PrimaryHitGroup",
+	L"BLEND_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"BLEND_SecondaryHitGroup",
+	L"CHR_EYE_PrimaryHitGroup",
+	L"CHR_EYE_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"CHR_EYE_SecondaryHitGroup",
+	L"CHR_SKIN_PrimaryHitGroup",
+	L"CHR_SKIN_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"CHR_SKIN_SecondaryHitGroup",
+	L"CHR_SKIN_HALF_PrimaryHitGroup",
+	L"CHR_SKIN_HALF_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"CHR_SKIN_HALF_SecondaryHitGroup",
+	L"CHR_SKIN_IGNORE_PrimaryHitGroup",
+	L"CHR_SKIN_IGNORE_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"CHR_SKIN_IGNORE_SecondaryHitGroup",
+	L"CLOTH_PrimaryHitGroup",
+	L"CLOTH_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"CLOTH_SecondaryHitGroup",
+	L"CLOUD_PrimaryHitGroup",
+	L"CLOUD_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"CLOUD_SecondaryHitGroup",
+	L"COMMON_PrimaryHitGroup",
+	L"COMMON_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"COMMON_SecondaryHitGroup",
+	L"DIM_PrimaryHitGroup",
+	L"DIM_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"DIM_SecondaryHitGroup",
+	L"DISTORTION_PrimaryHitGroup",
+	L"DISTORTION_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"DISTORTION_SecondaryHitGroup",
+	L"DISTORTION_OVERLAY_PrimaryHitGroup",
+	L"DISTORTION_OVERLAY_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"DISTORTION_OVERLAY_SecondaryHitGroup",
+	L"ENM_EMISSION_PrimaryHitGroup",
+	L"ENM_EMISSION_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"ENM_EMISSION_SecondaryHitGroup",
+	L"ENM_GLASS_PrimaryHitGroup",
+	L"ENM_GLASS_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"ENM_GLASS_SecondaryHitGroup",
+	L"ENM_IGNORE_PrimaryHitGroup",
+	L"ENM_IGNORE_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"ENM_IGNORE_SecondaryHitGroup",
+	L"FADE_OUT_NORMAL_PrimaryHitGroup",
+	L"FADE_OUT_NORMAL_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"FADE_OUT_NORMAL_SecondaryHitGroup",
+	L"FALLOFF_PrimaryHitGroup",
+	L"FALLOFF_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"FALLOFF_SecondaryHitGroup",
+	L"FALLOFF_V_PrimaryHitGroup",
+	L"FALLOFF_V_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"FALLOFF_V_SecondaryHitGroup",
+	L"GLASS_PrimaryHitGroup",
+	L"GLASS_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"GLASS_SecondaryHitGroup",
+	L"ICE_PrimaryHitGroup",
+	L"ICE_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"ICE_SecondaryHitGroup",
+	L"IGNORE_LIGHT_PrimaryHitGroup",
+	L"IGNORE_LIGHT_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"IGNORE_LIGHT_SecondaryHitGroup",
+	L"IGNORE_LIGHT_TWICE_PrimaryHitGroup",
+	L"IGNORE_LIGHT_TWICE_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"IGNORE_LIGHT_TWICE_SecondaryHitGroup",
+	L"IGNORE_LIGHT_V_PrimaryHitGroup",
+	L"IGNORE_LIGHT_V_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"IGNORE_LIGHT_V_SecondaryHitGroup",
+	L"INDIRECT_PrimaryHitGroup",
+	L"INDIRECT_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"INDIRECT_SecondaryHitGroup",
+	L"INDIRECT_V_PrimaryHitGroup",
+	L"INDIRECT_V_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"INDIRECT_V_SecondaryHitGroup",
+	L"INDIRECT_V_NO_GI_SHADOW_PrimaryHitGroup",
+	L"INDIRECT_V_NO_GI_SHADOW_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"INDIRECT_V_NO_GI_SHADOW_SecondaryHitGroup",
+	L"LUMINESCENCE_PrimaryHitGroup",
+	L"LUMINESCENCE_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"LUMINESCENCE_SecondaryHitGroup",
+	L"LUMINESCENCE_V_PrimaryHitGroup",
+	L"LUMINESCENCE_V_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"LUMINESCENCE_V_SecondaryHitGroup",
+	L"MIRROR_PrimaryHitGroup",
+	L"MIRROR_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"MIRROR_SecondaryHitGroup",
+	L"RING_PrimaryHitGroup",
+	L"RING_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"RING_SecondaryHitGroup",
+	L"TRANS_THIN_PrimaryHitGroup",
+	L"TRANS_THIN_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"TRANS_THIN_SecondaryHitGroup",
+	L"WATER_ADD_PrimaryHitGroup",
+	L"WATER_ADD_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"WATER_ADD_SecondaryHitGroup",
+	L"WATER_MUL_PrimaryHitGroup",
+	L"WATER_MUL_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"WATER_MUL_SecondaryHitGroup",
+	L"WATER_OPACITY_PrimaryHitGroup",
+	L"WATER_OPACITY_PrimaryHitGroup_ConstTexCoord",
+	L"ShadowHitGroup",
+	L"WATER_OPACITY_SecondaryHitGroup",
+};
 #endif
-
 #endif

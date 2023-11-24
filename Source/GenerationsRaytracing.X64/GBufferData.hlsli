@@ -124,7 +124,7 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
     gBufferData.Normal = NormalizeSafe(DecodeNormalMap(vertex, normal1) + DecodeNormalMap(vertex, normal2));
 }
 
-GBufferData CreateGBufferData(Vertex vertex, Material material)
+GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 {
     GBufferData gBufferData = (GBufferData) 0;
 
@@ -136,7 +136,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
     gBufferData.SpecularLevel = material.PowerGlossLevel.z * 5.0;
     gBufferData.Normal = vertex.Normal;
 
-    switch (material.ShaderType)
+    switch (shaderType)
     {
         case SHADER_TYPE_BLEND:
             {
@@ -214,7 +214,6 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
             }
 
         case SHADER_TYPE_CHR_SKIN:
-        case SHADER_TYPE_ENM_METAL:
             {
                 gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
 
@@ -297,7 +296,6 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
             }
 
         case SHADER_TYPE_CLOUD:
-        case SHADER_TYPE_ENM_CLOUD:
             {
                 gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
 
@@ -448,7 +446,6 @@ GBufferData CreateGBufferData(Vertex vertex, Material material)
             }
 
         case SHADER_TYPE_ENM_GLASS:
-        case SHADER_TYPE_FAKE_GLASS:
             {
                 gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
 

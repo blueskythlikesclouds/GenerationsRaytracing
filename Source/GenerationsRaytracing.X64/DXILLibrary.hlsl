@@ -1,19 +1,4 @@
-#include "GBufferData.hlsli"
-#include "GeometryShading.hlsli"
-#include "Reservoir.hlsli"
-
-struct [raypayload] PrimaryRayPayload
-{
-    float3 dDdx : read(closesthit) : write(caller);
-    float Random : read(anyhit) : write(caller);
-    float3 dDdy : read(closesthit) : write(caller);
-};
-
-float4 GetBlueNoise()
-{
-    Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
-    return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
-}
+#include "DXILLibrary.hlsli"
 
 [shader("raygeneration")]
 void PrimaryRayGeneration()
@@ -49,7 +34,7 @@ void PrimaryRayGeneration()
         0,
         1,
         0,
-        0,
+        3,
         0,
         ray,
         payload);
@@ -78,75 +63,6 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     g_MotionVectors[DispatchRaysIndex().xy] = 
         ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
-}
-
-[shader("closesthit")]
-void PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
-{
-    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
-    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV);
-    StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material));
-
-    g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
-
-    g_MotionVectors[DispatchRaysIndex().xy] =
-        ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
-        ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
-}
-
-[shader("anyhit")]
-void PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
-{
-    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
-    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-    GBufferData gBufferData = CreateGBufferData(vertex, material);
-
-    float random = payload.Random;
-    float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : random;
-
-    if (gBufferData.Alpha < alphaThreshold)
-        IgnoreHit();
-}
-
-struct [raypayload] ShadowRayPayload
-{
-    bool Miss : read(caller) : write(caller, miss);
-};
-
-float TraceShadow(float3 position, float3 direction, float2 random, float tMax = INF)
-{
-    float radius = sqrt(random.x) * 0.01;
-    float angle = random.y * 2.0 * PI;
-
-    float3 sample;
-    sample.x = cos(angle) * radius;
-    sample.y = sin(angle) * radius;
-    sample.z = sqrt(1.0 - saturate(dot(sample.xy, sample.xy)));
-
-    RayDesc ray;
-
-    ray.Origin = position;
-    ray.Direction = TangentToWorld(direction, sample);
-    ray.TMin = 0.0;
-    ray.TMax = tMax;
-
-    ShadowRayPayload payload = (ShadowRayPayload) 0;
-
-    TraceRay(
-        g_BVH,
-        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-        1,
-        1,
-        0,
-        1,
-        ray,
-        payload);
-
-    return payload.Miss ? 1.0 : 0.0;
 }
 
 [shader("raygeneration")]
@@ -213,66 +129,6 @@ void AnyHit(in BuiltInTriangleIntersectionAttributes attributes)
 void ShadowAnyHit(inout ShadowRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
     AnyHit(attributes);
-}
-
-struct [raypayload] SecondaryRayPayload
-{
-    float3 Color         : read(caller) : write(closesthit, miss);
-    float NormalX        : read(caller) : write(closesthit);
-    float3 Diffuse       : read(caller) : write(closesthit, miss);
-    float NormalY        : read(caller) : write(closesthit);
-    float3 Position      : read(caller) : write(closesthit);
-    float NormalZ        : read(caller) : write(closesthit);
-};
-
-float3 TracePath(float3 position, float3 direction, float3 throughput, uint missShaderIndex)
-{
-    uint random = InitRand(g_CurrentFrame, 
-        DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
-
-    float3 radiance = 0.0;
-
-    [unroll]
-    for (uint i = 0; i < 2; i++)
-    {
-        RayDesc ray;
-        ray.Origin = position;
-        ray.Direction = direction;
-        ray.TMin = 0.0;
-        ray.TMax = any(throughput != 0.0) ? INF : 0.0;
-
-        SecondaryRayPayload payload;
-
-        TraceRay(
-            g_BVH,
-            i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
-            1,
-            2,
-            0,
-            i == 0 ? missShaderIndex : 2,
-            ray,
-            payload);
-
-        float3 color = payload.Color;
-        float3 normal = float3(payload.NormalX, payload.NormalY, payload.NormalZ);
-
-        if (WaveActiveAnyTrue(any(payload.Diffuse != 0)))
-        {
-            color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRand(random), NextRand(random)), any(payload.Diffuse != 0) ? INF : 0.0);
-        }
-
-        radiance += throughput * color;
-
-        if (WaveActiveAllTrue(all(payload.Diffuse == 0)))
-            break;
-
-        position = payload.Position;
-        direction = TangentToWorld(normal, GetCosWeightedSample(float2(NextRand(random), NextRand(random))));
-        throughput *= payload.Diffuse;
-    }
-
-    return radiance;
 }
 
 [shader("raygeneration")]
@@ -383,38 +239,8 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     payload.Diffuse = 0.0;
 }
 
-[shader("closesthit")]
-void SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
-{
-    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
-    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-
-    GBufferData gBufferData = CreateGBufferData(vertex, material);
-    gBufferData.Diffuse *= g_DiffusePower;
-    gBufferData.Emission *= g_EmissivePower;
-
-    float3 color = gBufferData.Emission;
-
-    [flatten]
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
-    {
-        uint sample = min(floor(GetBlueNoise().x * g_LocalLightCount), g_LocalLightCount - 1);
-        color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount * g_LightPower;
-    }
-
-    payload.Color = color;
-    payload.Diffuse = gBufferData.Diffuse;
-    payload.Position = gBufferData.Position;
-    payload.NormalX = gBufferData.Normal.x;
-    payload.NormalY = gBufferData.Normal.y;
-    payload.NormalZ = gBufferData.Normal.z;
-}
-
 [shader("anyhit")]
 void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
     AnyHit(attributes);
 }
-

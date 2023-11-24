@@ -197,8 +197,8 @@ static void __cdecl implOfSceneRender(void* a1)
             resetAccumulation = true;
         }
 
-        InstanceData::createPendingInstances();
         MaterialData::createPendingMaterials();
+        InstanceData::createPendingInstances();
 
         const Hedgehog::Base::CStringSymbol symbols[] = { "Object", "Object_Overlay", "Player" };
 

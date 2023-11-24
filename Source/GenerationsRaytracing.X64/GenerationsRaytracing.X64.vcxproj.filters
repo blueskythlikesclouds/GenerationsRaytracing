@@ -213,6 +213,9 @@
       <Filter>Shader</Filter>
     </None>
     <None Include="packages.config" />
+    <None Include="DXILLibrary.hlsli">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

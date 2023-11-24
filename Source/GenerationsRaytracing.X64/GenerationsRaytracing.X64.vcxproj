@@ -129,6 +129,7 @@
     <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\SubAllocator.inl">
       <FileType>Document</FileType>
     </None>
+    <None Include="DXILLibrary.hlsli" />
     <None Include="GBufferData.hlsli" />
     <None Include="GeometryShading.hlsli" />
     <None Include="GeometryDesc.hlsli" />

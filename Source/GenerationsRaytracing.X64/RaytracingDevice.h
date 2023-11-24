@@ -6,6 +6,7 @@
 #include "InstanceDesc.h"
 #include "LocalLight.h"
 #include "Material.h"
+#include "ShaderType.h"
 #include "Upscaler.h"
 
 struct MsgTraceRays;
@@ -53,6 +54,8 @@ struct GlobalsSB
     uint32_t enableAlphaTest;
 };
 
+inline constexpr size_t HIT_GROUP_NUM = 3;
+
 class RaytracingDevice final : public Device
 {
 protected:
@@ -61,12 +64,15 @@ protected:
     ComPtr<ID3D12RootSignature> m_raytracingRootSignature;
     ComPtr<ID3D12StateObject> m_stateObject;
     ComPtr<ID3D12StateObjectProperties> m_properties;
-    std::vector<uint8_t> m_shaderTable;
     size_t m_primaryStackSize = 0;
     size_t m_shadowStackSize = 0;
     size_t m_giStackSize = 0;
     size_t m_reflectionStackSize = 0;
     size_t m_refractionStackSize = 0;
+    void* m_hitGroups[_countof(s_shaderHitGroups)]{};
+    std::vector<uint8_t> m_rayGenShaderTable;
+    std::vector<uint8_t> m_missShaderTable;
+    std::vector<uint8_t> m_hitGroupShaderTable;
     GlobalsRT m_globalsRT;
 
     // Accel Struct
@@ -152,6 +158,8 @@ protected:
     void buildBottomLevelAccelStruct(BottomLevelAccelStruct& bottomLevelAccelStruct);
 
     void handlePendingBottomLevelAccelStructBuilds();
+
+    void writeHitGroupShaderTable(size_t geometryIndex, size_t shaderType, bool constTexCoord);
 
     D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT(const MsgTraceRays& message);
     bool createTopLevelAccelStruct();

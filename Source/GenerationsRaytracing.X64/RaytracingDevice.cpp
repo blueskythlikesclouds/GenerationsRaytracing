@@ -9,6 +9,7 @@
 #include "EnvironmentMode.h"
 #include "FSR2.h"
 #include "GeometryFlags.h"
+#include "MaterialFlags.h"
 #include "Message.h"
 #include "RootSignature.h"
 #include "PoseComputeShader.h"
@@ -49,6 +50,7 @@ uint32_t RaytracingDevice::allocateGeometryDescs(uint32_t count)
     {
         const uint32_t index = static_cast<uint32_t>(m_geometryDescs.size());
         m_geometryDescs.resize(m_geometryDescs.size() + count);
+        m_hitGroupShaderTable.resize(m_geometryDescs.size() * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * HIT_GROUP_NUM);
         return index;
     }
 }
@@ -183,6 +185,18 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
 
     m_pendingPoses.clear();
     m_pendingBuilds.clear();
+}
+
+void RaytracingDevice::writeHitGroupShaderTable(size_t geometryIndex, size_t shaderType, bool constTexCoord)
+{
+    uint8_t* hitGroupTable = &m_hitGroupShaderTable[geometryIndex * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * HIT_GROUP_NUM];
+    void* const* hitGroups = &m_hitGroups[shaderType * (_countof(m_hitGroups) / SHADER_TYPE_MAX)];
+
+    for (size_t i = 0; i < HIT_GROUP_NUM; i++)
+    {
+        const size_t index = i == 0 ? (constTexCoord ? 1 : 0) : i + 1;
+        memcpy(&hitGroupTable[i * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], hitGroups[index], D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    }
 }
 
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& message)
@@ -544,6 +558,9 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
             dstGeometryDesc.texCoordOffset3 = geometryDesc.texCoordOffsets[3];
             dstGeometryDesc.materialId = geometryDesc.materialId;
         }
+
+        const auto& material = m_materials[geometryDesc.materialId];
+        writeHitGroupShaderTable(bottomLevelAccelStruct.geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
     }
 
     bottomLevelAccelStruct.desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
@@ -634,8 +651,16 @@ void RaytracingDevice::procMsgCreateInstance()
             geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
             geometryCount = bottomLevelAccelStruct.geometryCount;
 
-            memcpy(&m_geometryDescs[geometryId], &m_geometryDescs[bottomLevelAccelStruct.geometryId],
+            auto& geometryDesc = m_geometryDescs[geometryId];
+
+            memcpy(&geometryDesc, &m_geometryDescs[bottomLevelAccelStruct.geometryId],
                 bottomLevelAccelStruct.geometryCount * sizeof(GeometryDesc));
+
+            for (size_t i = 0; i < geometryCount; i++)
+            {
+                const auto& material = m_materials[geometryDesc.materialId];
+                writeHitGroupShaderTable(geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
+            }
         }
 
         instanceDesc.InstanceID = geometryId;
@@ -655,6 +680,10 @@ void RaytracingDevice::procMsgCreateInstance()
                 if ((*curId) == srcGeometry.materialId)
                 {
                     dstGeometry.materialId = *(curId + 1);
+
+                    const auto& material = m_materials[dstGeometry.materialId];
+                    writeHitGroupShaderTable(geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
+
                     break;
                 }
                 else
@@ -670,6 +699,7 @@ void RaytracingDevice::procMsgCreateInstance()
     }
 
     instanceDesc.InstanceMask = 1;
+    instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
     instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
 }
 
@@ -750,18 +780,24 @@ void RaytracingDevice::procMsgTraceRays()
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(7, instanceDescs);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(8, localLights);
 
-    const auto shaderTable = createBuffer(
-        m_shaderTable.data(), static_cast<uint32_t>(m_shaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    const auto rayGenShaderTable = createBuffer(
+        m_rayGenShaderTable.data(), static_cast<uint32_t>(m_rayGenShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+    const auto missShaderTable = createBuffer(
+        m_missShaderTable.data(), static_cast<uint32_t>(m_missShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+    const auto hitGroupShaderTable = createBuffer(
+        m_hitGroupShaderTable.data(), static_cast<uint32_t>(m_hitGroupShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
     D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc{};
 
-    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress = shaderTable;
+    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress = rayGenShaderTable;
     dispatchRaysDesc.RayGenerationShaderRecord.SizeInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.MissShaderTable.StartAddress = shaderTable + 10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.MissShaderTable.SizeInBytes = 4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.MissShaderTable.StartAddress = missShaderTable;
+    dispatchRaysDesc.MissShaderTable.SizeInBytes = m_missShaderTable.size();
     dispatchRaysDesc.MissShaderTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.HitGroupTable.StartAddress = shaderTable + 14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.HitGroupTable.SizeInBytes = 3 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    dispatchRaysDesc.HitGroupTable.StartAddress = hitGroupShaderTable;
+    dispatchRaysDesc.HitGroupTable.SizeInBytes = m_hitGroupShaderTable.size();
     dispatchRaysDesc.HitGroupTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     dispatchRaysDesc.Width = m_upscaler->getWidth();
     dispatchRaysDesc.Height = m_upscaler->getHeight();
@@ -1217,26 +1253,41 @@ RaytracingDevice::RaytracingDevice()
 
     CD3DX12_STATE_OBJECT_DESC stateObject(D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE);
 
+    std::unique_ptr<uint8_t[]> dxilLibraryHolder;
+
+    FILE* file = fopen("DXILLibrary.cso", "rb");
+    if (file)
+    {
+        fseek(file, 0, SEEK_END);
+        const long fileSize = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        dxilLibraryHolder = std::make_unique<uint8_t[]>(fileSize);
+        fread(dxilLibraryHolder.get(), 1, fileSize, file);
+        fclose(file);
+
+        const uint8_t* dxilLibraryPtr = dxilLibraryHolder.get();
+
+        while (dxilLibraryPtr < dxilLibraryHolder.get() + fileSize)
+        {
+            const CD3DX12_SHADER_BYTECODE dxilLibrary(dxilLibraryPtr + sizeof(uint32_t),
+                *reinterpret_cast<const uint32_t*>(dxilLibraryPtr));
+
+            const auto dxilLibrarySubobject = stateObject.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
+            dxilLibrarySubobject->SetDXILLibrary(&dxilLibrary);
+
+            dxilLibraryPtr += sizeof(uint32_t) + dxilLibrary.BytecodeLength;
+        }
+    }
+
     CD3DX12_DXIL_LIBRARY_SUBOBJECT dxilLibrarySubobject(stateObject);
     const CD3DX12_SHADER_BYTECODE dxilLibrary(DXILLibrary, sizeof(DXILLibrary));
     dxilLibrarySubobject.SetDXILLibrary(&dxilLibrary);
-
-    CD3DX12_HIT_GROUP_SUBOBJECT primaryHitGroupSubobject(stateObject);
-    primaryHitGroupSubobject.SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
-    primaryHitGroupSubobject.SetHitGroupExport(L"PrimaryHitGroup");
-    primaryHitGroupSubobject.SetAnyHitShaderImport(L"PrimaryAnyHit");
-    primaryHitGroupSubobject.SetClosestHitShaderImport(L"PrimaryClosestHit");
 
     CD3DX12_HIT_GROUP_SUBOBJECT shadowHitGroupSubobject(stateObject);
     shadowHitGroupSubobject.SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
     shadowHitGroupSubobject.SetHitGroupExport(L"ShadowHitGroup");
     shadowHitGroupSubobject.SetAnyHitShaderImport(L"ShadowAnyHit");
-
-    CD3DX12_HIT_GROUP_SUBOBJECT secondaryHitGroupSubobject(stateObject);
-    secondaryHitGroupSubobject.SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
-    secondaryHitGroupSubobject.SetHitGroupExport(L"SecondaryHitGroup");
-    secondaryHitGroupSubobject.SetAnyHitShaderImport(L"SecondaryAnyHit");
-    secondaryHitGroupSubobject.SetClosestHitShaderImport(L"SecondaryClosestHit");
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
     shaderConfigSubobject.Config(sizeof(float) * 12, sizeof(float) * 2);
@@ -1253,40 +1304,39 @@ RaytracingDevice::RaytracingDevice()
     hr = m_stateObject.As(std::addressof(m_properties));
     assert(SUCCEEDED(hr) && m_properties != nullptr);
 
-    m_primaryStackSize = m_properties->GetShaderStackSize(L"PrimaryRayGeneration") + std::max({ m_properties->GetShaderStackSize(L"PrimaryHitGroup::anyhit"),
-        m_properties->GetShaderStackSize(L"PrimaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"PrimaryMiss") });
+    m_primaryStackSize = m_properties->GetShaderStackSize(L"PrimaryRayGeneration");
+    m_shadowStackSize = m_properties->GetShaderStackSize(L"ShadowRayGeneration");
+    m_giStackSize = m_properties->GetShaderStackSize(L"GIRayGeneration");
+    m_reflectionStackSize = m_properties->GetShaderStackSize(L"ReflectionRayGeneration");
+    m_refractionStackSize = m_properties->GetShaderStackSize(L"RefractionRayGeneration");
 
-    m_shadowStackSize = m_properties->GetShaderStackSize(L"ShadowRayGeneration") +
-        std::max(m_properties->GetShaderStackSize(L"ShadowHitGroup::anyhit"), m_properties->GetShaderStackSize(L"ShadowMiss"));
+    const wchar_t* rayGenShaderTable[] =
+    {
+        L"PrimaryRayGeneration",
+        L"ShadowRayGeneration",
+        L"GIRayGeneration",
+        L"ReflectionRayGeneration",
+        L"RefractionRayGeneration"
+    };
 
-    m_giStackSize = m_properties->GetShaderStackSize(L"GIRayGeneration") + std::max({ m_properties->GetShaderStackSize(L"SecondaryHitGroup::anyhit"),
-        m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"GIMiss"),
-        m_properties->GetShaderStackSize(L"ShadowHitGroup::anyhit"), m_properties->GetShaderStackSize(L"ShadowMiss") });
+    m_rayGenShaderTable.resize(_countof(rayGenShaderTable) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+    for (size_t i = 0; i < _countof(rayGenShaderTable); i++)
+        memcpy(&m_rayGenShaderTable[i * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT], m_properties->GetShaderIdentifier(rayGenShaderTable[i]), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-    m_reflectionStackSize = m_properties->GetShaderStackSize(L"ReflectionRayGeneration") + std::max({ m_properties->GetShaderStackSize(L"SecondaryHitGroup::anyhit"),
-        m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"SecondaryMiss"),
-        m_properties->GetShaderStackSize(L"ShadowHitGroup::anyhit"), m_properties->GetShaderStackSize(L"ShadowMiss") });
+    const wchar_t* missShaderTable[] =
+    {
+        L"PrimaryMiss",
+        L"ShadowMiss",
+        L"GIMiss",
+        L"SecondaryMiss"
+    };
 
-    m_refractionStackSize = m_properties->GetShaderStackSize(L"RefractionRayGeneration") + std::max({ m_properties->GetShaderStackSize(L"SecondaryHitGroup::anyhit"),
-        m_properties->GetShaderStackSize(L"SecondaryHitGroup::closesthit"), m_properties->GetShaderStackSize(L"SecondaryMiss"),
-        m_properties->GetShaderStackSize(L"ShadowHitGroup::anyhit"), m_properties->GetShaderStackSize(L"ShadowMiss") });
-         
-    m_shaderTable.resize(17 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    m_missShaderTable.resize(_countof(missShaderTable) * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    for (size_t i = 0; i < _countof(missShaderTable); i++)
+        memcpy(&m_missShaderTable[i * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(missShaderTable[i]), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-    memcpy(&m_shaderTable[0 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[2 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[4 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"GIRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[6 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ReflectionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[8 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"RefractionRayGeneration"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-    memcpy(&m_shaderTable[10 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[11 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[12 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"GIMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[13 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"SecondaryMiss"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-    memcpy(&m_shaderTable[14 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"PrimaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[15 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"ShadowHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-    memcpy(&m_shaderTable[16 * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES], m_properties->GetShaderIdentifier(L"SecondaryHitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+    for (size_t i = 0; i < _countof(m_hitGroups); i++)
+        m_hitGroups[i] = m_properties->GetShaderIdentifier(s_shaderHitGroups[i]);
 
     for (auto& scratchBuffer : m_scratchBuffers)
     {

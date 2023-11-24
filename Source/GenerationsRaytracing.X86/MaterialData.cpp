@@ -43,7 +43,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     auto& message = s_messageSender.makeMessage<MsgCreateMaterial>();
 
     message.materialId = materialDataEx.m_materialId;
-    message.shaderType = SHADER_TYPE_COMMON;
+    message.shaderType = SHADER_TYPE_SYS_ERROR;
     message.flags = materialDataEx.m_Additive ? MATERIAL_FLAG_ADDITIVE : NULL;
 
     bool hasOpacityTexture = false;
@@ -96,6 +96,8 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { s_displacementSymbol, 0, message.displacementTexture },
     };
 
+    bool constTexCoord = true;
+
     for (auto& textureDesc : textureDescs)
     {
         textureDesc.dstTexture.id = 0;
@@ -140,12 +142,18 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                         textureDesc.dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
                         textureDesc.dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
 
+                        if (textureDescs->dstTexture.texCoordIndex != 0)
+                            constTexCoord = false;
+
                         break;
                     }
                 }
             }
         }
     }
+
+    if (constTexCoord)
+        message.flags |= MATERIAL_FLAG_CONST_TEX_COORD;
 
     static Hedgehog::Base::CStringSymbol s_texcoordOffsetSymbol("mrgTexcoordOffset");
     static Hedgehog::Base::CStringSymbol s_ambientSymbol("ambient");
