@@ -221,7 +221,7 @@ Vertex LoadVertex(
     vertex.Binormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
 
     if (!(flags & VERTEX_FLAG_SAFE_POSITION))
-        vertex.SafeSpawnPoint = vertex.Position + vertex.Normal * 0.001;
+        vertex.SafeSpawnPoint = vertex.Position + vertex.Position * sign(vertex.Normal) * 0.000001;
 
     return vertex;
 }

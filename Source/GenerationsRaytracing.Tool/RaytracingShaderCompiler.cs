@@ -139,7 +139,7 @@ public static class RaytracingShaderCompiler
 				"void {0}_PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)\n",
 				shaderType);
 			stringBuilder.AppendLine("{");
-			stringBuilder.AppendFormat("\tPrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV, SHADER_TYPE_{0}, payload, attributes);\n",
+			stringBuilder.AppendFormat("\tPrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);\n",
 				shaderType);
 			stringBuilder.AppendLine("}");
 
@@ -148,7 +148,7 @@ public static class RaytracingShaderCompiler
 				"void {0}_PrimaryClosestHit_ConstTexCoord(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)\n",
 				shaderType);
 			stringBuilder.AppendLine("{");
-			stringBuilder.AppendFormat("\tPrimaryClosestHit(VERTEX_FLAG_MIPMAP, SHADER_TYPE_{0}, payload, attributes);\n",
+			stringBuilder.AppendFormat("\tPrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);\n",
 				shaderType);
 			stringBuilder.AppendLine("}");
 
