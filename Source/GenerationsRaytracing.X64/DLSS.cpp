@@ -106,6 +106,9 @@ void DLSS::dispatch(const DispatchArgs& args)
     params.InRenderSubrectDimensions.Width = m_width;
     params.InRenderSubrectDimensions.Height = m_height;
     params.InReset = args.resetAccumulation;
+    params.pInWorldToViewMatrix = const_cast<float*>(&args.device.getGlobalsVS().floatConstants[4][0]);
+    params.pInViewToClipMatrix = const_cast<float*>(&args.device.getGlobalsVS().floatConstants[0][0]);
+    params.InFrameTimeDeltaInMsec = args.device.getGlobalsPS().floatConstants[68][0] * 1000.0f;
 
     THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSSD_EXT(
         args.device.getUnderlyingGraphicsCommandList(),
