@@ -918,6 +918,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_REFLECTION;
     }
 
+    if (material.Flags & MATERIAL_FLAG_REFLECTION)
+        gBufferData.Flags |= GBUFFER_FLAG_IS_MIRROR_REFLECTION;
+
     return gBufferData;
 }
 

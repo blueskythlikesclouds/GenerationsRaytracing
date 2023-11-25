@@ -3,5 +3,6 @@
 
 #define MATERIAL_FLAG_ADDITIVE        (1 << 0)
 #define MATERIAL_FLAG_CONST_TEX_COORD (1 << 1)
+#define MATERIAL_FLAG_REFLECTION      (1 << 2)
 
 #endif

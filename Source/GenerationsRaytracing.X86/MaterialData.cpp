@@ -137,6 +137,12 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                                 srcTexture->m_spPictureData->m_pD3DTexture)->getId();
 
                             textureDesc.dxpTexture = srcTexture->m_spPictureData->m_pD3DTexture;
+
+                            if (srcTexture->m_Type == s_reflectionSymbol &&
+                                srcTexture->m_spPictureData->m_TypeAndName == "Mirage.picture sph_st1_envmap_cube")
+                            {
+                                message.flags |= MATERIAL_FLAG_REFLECTION;
+                            }
                         }
                         textureDesc.dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
                         textureDesc.dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
