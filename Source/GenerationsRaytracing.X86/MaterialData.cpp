@@ -148,7 +148,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                         textureDesc.dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
                         textureDesc.dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
 
-                        if (textureDescs->dstTexture.texCoordIndex != 0)
+                        if (textureDesc.dstTexture.texCoordIndex != 0)
                             constTexCoord = false;
 
                         break;

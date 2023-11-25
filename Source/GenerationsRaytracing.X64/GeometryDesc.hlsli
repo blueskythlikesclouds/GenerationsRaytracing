@@ -92,7 +92,7 @@ Vertex LoadVertex(
     uint3 binormalOffsets = offsets + geometryDesc.BinormalOffset;
     uint3 colorOffsets = offsets + geometryDesc.ColorOffset;
 
-    Vertex vertex;
+    Vertex vertex = (Vertex) 0;
 
     float3 p0 = asfloat(vertexBuffer.Load3(offsets.x));
     float3 p1 = asfloat(vertexBuffer.Load3(offsets.y));
