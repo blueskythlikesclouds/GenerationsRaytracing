@@ -908,6 +908,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
     gBufferData.SpecularGloss = clamp(gBufferData.SpecularGloss, 1.0, 1024.0);
 
+    if (material.Flags & MATERIAL_FLAG_REFLECTION)
+        gBufferData.Flags |= GBUFFER_FLAG_IS_MIRROR_REFLECTION;
+
     if (dot(gBufferData.Diffuse, gBufferData.Diffuse) == 0.0)
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION;
 
@@ -917,9 +920,6 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
     {
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_REFLECTION;
     }
-
-    if (material.Flags & MATERIAL_FLAG_REFLECTION)
-        gBufferData.Flags |= GBUFFER_FLAG_IS_MIRROR_REFLECTION;
 
     return gBufferData;
 }
