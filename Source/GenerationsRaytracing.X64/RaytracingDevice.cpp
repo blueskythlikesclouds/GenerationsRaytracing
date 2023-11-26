@@ -683,10 +683,6 @@ void RaytracingDevice::procMsgCreateInstance()
                 if ((*curId) == srcGeometry.materialId)
                 {
                     dstGeometry.materialId = *(curId + 1);
-
-                    const auto& material = m_materials[dstGeometry.materialId];
-                    writeHitGroupShaderTable(geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
-
                     break;
                 }
                 else
@@ -694,6 +690,9 @@ void RaytracingDevice::procMsgCreateInstance()
                     curId += 2;
                 }
             }
+
+            const auto& material = m_materials[dstGeometry.materialId];
+            writeHitGroupShaderTable(geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
         }
     }
     else
