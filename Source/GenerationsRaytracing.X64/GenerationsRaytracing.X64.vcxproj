@@ -75,7 +75,7 @@
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput>$(IntDir)%(Filename).obj</ObjectFileOutput>
-      <AdditionalOptions>-Qembed_debug -HV 2021 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-enable-16bit-types -Qembed_debug -HV 2021 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
       <AllResourcesBound>true</AllResourcesBound>
@@ -87,7 +87,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;NDEBUG;_CONSOLE;HAS_PIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.3_DLSS_3.5.10_Plugin_2023.10.17\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-FSR2\src\ffx-fsr2-api;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\lz4\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -115,7 +115,7 @@
       <ObjectFileOutput>$(IntDir)%(Filename).obj</ObjectFileOutput>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
-      <AdditionalOptions>-HV 2021 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-enable-16bit-types -HV 2021 %(AdditionalOptions)</AdditionalOptions>
       <AllResourcesBound>true</AllResourcesBound>
     </FxCompile>
   </ItemDefinitionGroup>

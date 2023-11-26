@@ -16,7 +16,7 @@ void PrimaryAnyHit(uint shaderType,
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType == ~0 ? material.ShaderType : shaderType);
+    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
 
     float random = payload.Random;
     float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : random;
@@ -32,7 +32,7 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
-    StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material, shaderType == ~0 ? material.ShaderType : shaderType));
+    StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material, shaderType));
 
     g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
 
@@ -143,7 +143,7 @@ void SecondaryClosestHit(uint shaderType,
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType == ~0 ? material.ShaderType : shaderType);
+    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
     gBufferData.Diffuse *= g_DiffusePower;
     gBufferData.Emission *= g_EmissivePower;
 

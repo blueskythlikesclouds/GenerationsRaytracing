@@ -37,22 +37,21 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     g_Destination.Store3(prevVertexOffset, g_Destination.Load3(vertexOffset));
 
-    uint encodedBlendWeight = g_Source.Load(vertexOffset + g_BlendWeightOffset);
-    uint encodedBlendIndices = g_Source.Load(vertexOffset + g_BlendIndicesOffset);
-
-    float4 blendWeight = float4(
-        ((encodedBlendWeight >> 0) & 0xFF) / 255.0,
-        ((encodedBlendWeight >> 8) & 0xFF) / 255.0,
-        ((encodedBlendWeight >> 16) & 0xFF) / 255.0,
-        ((encodedBlendWeight >> 24) & 0xFF) / 255.0);
-
-    blendWeight /= blendWeight.x + blendWeight.y + blendWeight.z + blendWeight.w;
+    uint2 blendIndicesAndWeight = g_Source.Load2(vertexOffset + g_BlendIndicesOffset);
 
     uint4 blendIndices = uint4(
-        LoadPalette((encodedBlendIndices >> 0) & 0xFF),
-        LoadPalette((encodedBlendIndices >> 8) & 0xFF),
-        LoadPalette((encodedBlendIndices >> 16) & 0xFF),
-        LoadPalette((encodedBlendIndices >> 24) & 0xFF));
+        LoadPalette((blendIndicesAndWeight.x >> 0) & 0xFF),
+        LoadPalette((blendIndicesAndWeight.x >> 8) & 0xFF),
+        LoadPalette((blendIndicesAndWeight.x >> 16) & 0xFF),
+        LoadPalette((blendIndicesAndWeight.x >> 24) & 0xFF));
+
+    float4 blendWeight = float4(
+        ((blendIndicesAndWeight.y >> 0) & 0xFF) / 255.0,
+        ((blendIndicesAndWeight.y >> 8) & 0xFF) / 255.0,
+        ((blendIndicesAndWeight.y >> 16) & 0xFF) / 255.0,
+        ((blendIndicesAndWeight.y >> 24) & 0xFF) / 255.0);
+
+    blendWeight /= blendWeight.x + blendWeight.y + blendWeight.z + blendWeight.w;
 
     float4x4 nodeMatrix =
         g_NodeMatrixArray[blendIndices.x] * blendWeight.x +
@@ -60,18 +59,19 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         g_NodeMatrixArray[blendIndices.z] * blendWeight.z +
         g_NodeMatrixArray[blendIndices.w] * blendWeight.w;
 
-    float3 position = asfloat(g_Source.Load3(vertexOffset));
+    float3 position = g_Source.Load<float3>(vertexOffset);
     float3 normal = DecodeFloat3(g_Source.Load2(vertexOffset + g_NormalOffset));
-    float3 tangent = DecodeFloat3(g_Source.Load2(vertexOffset + g_TangentOffset));
-    float3 binormal = DecodeFloat3(g_Source.Load2(vertexOffset + g_BinormalOffset));
+
+    uint4 tangentAndBinormal = g_Source.Load4(vertexOffset + g_TangentOffset);
+    float3 tangent = DecodeFloat3(tangentAndBinormal.xy);
+    float3 binormal = DecodeFloat3(tangentAndBinormal.zw);
 
     position = mul(nodeMatrix, float4(position, 1.0)).xyz;
     normal = mul(nodeMatrix, float4(normal, 0.0)).xyz;
     tangent = mul(nodeMatrix, float4(tangent, 0.0)).xyz;
     binormal = mul(nodeMatrix, float4(binormal, 0.0)).xyz;
 
-    g_Destination.Store3(vertexOffset, asuint(position));
+    g_Destination.Store<float3>(vertexOffset, position);
     g_Destination.Store2(vertexOffset + g_NormalOffset, EncodeFloat3(normal));
-    g_Destination.Store2(vertexOffset + g_TangentOffset, EncodeFloat3(tangent));
-    g_Destination.Store2(vertexOffset + g_BinormalOffset, EncodeFloat3(binormal));
+    g_Destination.Store4(vertexOffset + g_TangentOffset, uint4(EncodeFloat3(tangent), EncodeFloat3(binormal)));
 }

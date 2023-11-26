@@ -148,7 +148,7 @@ RWTexture2D<float4> g_GBuffer4 : register(u7);
 RWTexture2D<float4> g_GBuffer5 : register(u8);
 RWTexture2D<float4> g_GBuffer6 : register(u9);
 
-RWTexture2D<float> g_Shadow : register(u10);
+RWTexture2D<unorm float> g_Shadow : register(u10);
 RWTexture2D<uint4> g_Reservoir : register(u11);
 RWTexture2D<float3> g_GlobalIllumination : register(u12);
 RWTexture2D<float3> g_Reflection : register(u13);

@@ -189,9 +189,14 @@ public static class RaytracingShaderCompiler
 			"-HV 2021",
 			"-enable-payload-qualifiers",
 			"-all-resources-bound",
+			"-enable-16bit-types",
 			$"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64")}",
 			$"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.Shared")}",
-			$"-I {Path.Combine(solutionDirectoryPath, "..", "Dependencies", "self-intersection-avoidance")}"
+			$"-I {Path.Combine(solutionDirectoryPath, "..", "Dependencies", "self-intersection-avoidance")}",
+#if DEBUG 
+			"-Zi",
+			"-Qembed_debug"
+#endif
 		};
 
 		var includeHandler = DxcCompiler.Utils.CreateDefaultIncludeHandler();
@@ -213,6 +218,12 @@ public static class RaytracingShaderCompiler
 				Console.WriteLine(dxcResult.GetErrors());
 
 			shaderBlobs[i] = byteCode.ToArray();
+
+#if DEBUG
+			File.WriteAllBytes(
+				Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "obj", "Debug",
+					$"{ShaderTypes[i]}.cso"), shaderBlobs[i]);
+#endif
 
 			Console.WriteLine("({0}/{1}): {2}", Interlocked.Increment(ref progress), ShaderTypes.Count, ShaderTypes[i]);
 		});

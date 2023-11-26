@@ -94,18 +94,18 @@ Vertex LoadVertex(
 
     Vertex vertex = (Vertex) 0;
 
-    float3 p0 = asfloat(vertexBuffer.Load3(offsets.x));
-    float3 p1 = asfloat(vertexBuffer.Load3(offsets.y));
-    float3 p2 = asfloat(vertexBuffer.Load3(offsets.z));
+    float3 p0 = vertexBuffer.Load<float3>(offsets.x);
+    float3 p1 = vertexBuffer.Load<float3>(offsets.y);
+    float3 p2 = vertexBuffer.Load<float3>(offsets.z);
 
     vertex.Position = p0 * uv.x + p1 * uv.y + p2 * uv.z;
 
     if (geometryDesc.Flags & GEOMETRY_FLAG_POSE)
     {
         vertex.PrevPosition =
-            asfloat(vertexBuffer.Load3(prevPositionOffsets.x)) * uv.x +
-            asfloat(vertexBuffer.Load3(prevPositionOffsets.y)) * uv.y +
-            asfloat(vertexBuffer.Load3(prevPositionOffsets.z)) * uv.z;
+            vertexBuffer.Load<float3>(prevPositionOffsets.x) * uv.x +
+            vertexBuffer.Load<float3>(prevPositionOffsets.y) * uv.y +
+            vertexBuffer.Load<float3>(prevPositionOffsets.z) * uv.z;
     }
     else
     {
@@ -117,7 +117,7 @@ Vertex LoadVertex(
         DecodeFloat3(vertexBuffer.Load2(normalOffsets.y)) * uv.y +
         DecodeFloat3(vertexBuffer.Load2(normalOffsets.z)) * uv.z;
 
-    float3 outWldNormal;
+    float3 outWldNormal = 0.0;
 
     if (flags & VERTEX_FLAG_SAFE_POSITION)
     {
@@ -203,15 +203,6 @@ Vertex LoadVertex(
         [unroll]
         for (uint i = 0; i < 4; i++)
             InterpolateDifferentials(dBarydx, dBarydy, texCoords[i][0], texCoords[i][1], texCoords[i][2], vertex.TexCoordsDdx[i], vertex.TexCoordsDdy[i]);
-    }
-    else
-    {
-        [unroll]
-        for (uint i = 0; i < 4; i++)
-        {
-            vertex.TexCoordsDdx[i] = 0.0;
-            vertex.TexCoordsDdy[i] = 0.0;
-        }
     }
 
     vertex.Position = mul(ObjectToWorld3x4(), float4(vertex.Position, 1.0)).xyz;
