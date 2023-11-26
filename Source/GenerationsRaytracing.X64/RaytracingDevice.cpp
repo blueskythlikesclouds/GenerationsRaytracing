@@ -777,11 +777,11 @@ void RaytracingDevice::procMsgTraceRays()
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1, globalsPS);
     getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(2, globalsRT);
     getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(3, topLevelAccelStruct);
-    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(4, m_descriptorHeap.getGpuHandle(m_uavId));
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, geometryDescs);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(6, materials);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(7, instanceDescs);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(8, localLights);
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(4, geometryDescs);
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, materials);
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(6, instanceDescs);
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(7, localLights);
+    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(8, m_descriptorHeap.getGpuHandle(m_uavId));
 
     const auto rayGenShaderTable = createBuffer(
         m_rayGenShaderTable.data(), static_cast<uint32_t>(m_rayGenShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -1229,11 +1229,11 @@ RaytracingDevice::RaytracingDevice()
     raytracingRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[2].InitAsConstantBufferView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[3].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    raytracingRootParams[4].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges);
-    raytracingRootParams[5].InitAsShaderResourceView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    raytracingRootParams[6].InitAsShaderResourceView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    raytracingRootParams[7].InitAsShaderResourceView(3, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    raytracingRootParams[8].InitAsShaderResourceView(4, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[4].InitAsShaderResourceView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[5].InitAsShaderResourceView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[6].InitAsShaderResourceView(3, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[7].InitAsShaderResourceView(4, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[8].InitAsDescriptorTable(_countof(descriptorRanges), descriptorRanges);
 
     D3D12_STATIC_SAMPLER_DESC raytracingStaticSamplers[1]{};
     raytracingStaticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
