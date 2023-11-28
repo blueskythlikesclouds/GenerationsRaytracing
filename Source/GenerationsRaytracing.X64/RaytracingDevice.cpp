@@ -564,6 +564,9 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
 
         const auto& material = m_materials[geometryDesc.materialId];
         writeHitGroupShaderTable(bottomLevelAccelStruct.geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
+
+        if (material.flags & MATERIAL_FLAG_DOUBLE_SIDED)
+            bottomLevelAccelStruct.instanceFlags = D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
     }
 
     bottomLevelAccelStruct.desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
@@ -589,10 +592,7 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
         m_tempBuffers[m_frame].emplace_back(std::move(bottomLevelAccelStruct.allocation));
         freeGeometryDescs(m_bottomLevelAccelStructs[message.resourceId].geometryId, m_bottomLevelAccelStructs[message.resourceId].geometryCount);
 
-        bottomLevelAccelStruct.desc = {};
-        bottomLevelAccelStruct.geometryDescs.clear();
-        bottomLevelAccelStruct.scratchBufferSize = 0;
-
+        bottomLevelAccelStruct = {};
         break;
     }
 
@@ -702,6 +702,7 @@ void RaytracingDevice::procMsgCreateInstance()
 
     instanceDesc.InstanceMask = 1;
     instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
+    instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
     instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
 }
 

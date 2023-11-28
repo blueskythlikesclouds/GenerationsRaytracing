@@ -8,4 +8,5 @@ struct BottomLevelAccelStruct
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc{};
     std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescs{};
     uint32_t scratchBufferSize = 0;
+    D3D12_RAYTRACING_INSTANCE_FLAGS instanceFlags{};
 };

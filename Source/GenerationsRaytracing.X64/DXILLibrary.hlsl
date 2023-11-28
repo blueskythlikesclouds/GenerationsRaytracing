@@ -31,7 +31,7 @@ void PrimaryRayGeneration()
 
     TraceRay(
         g_BVH,
-        0,
+        RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
         1,
         0,
         3,

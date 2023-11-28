@@ -46,6 +46,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     message.shaderType = SHADER_TYPE_SYS_ERROR;
     message.flags = materialDataEx.m_Additive ? MATERIAL_FLAG_ADDITIVE : NULL;
 
+    if (materialDataEx.m_DoubleSided)
+        message.flags |= MATERIAL_FLAG_DOUBLE_SIDED;
+
     bool hasOpacityTexture = false;
 
     if (materialDataEx.m_spShaderListData != nullptr)
