@@ -81,7 +81,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, float tMax =
 struct [raypayload] SecondaryRayPayload
 {
     float3 Color : read(caller) : write(closesthit, miss);
-    float NormalX : read(caller) : write(closesthit);
+    float NormalX : read(closesthit, caller) : write(closesthit, caller);
     float3 Diffuse : read(caller) : write(closesthit, miss);
     float NormalY : read(caller) : write(closesthit);
     float3 Position : read(caller) : write(closesthit);
@@ -91,6 +91,7 @@ struct [raypayload] SecondaryRayPayload
 float3 TracePath(float3 position, float3 direction, float3 throughput, uint missShaderIndex)
 {
     float3 radiance = 0.0;
+    float4 random = GetBlueNoise();
 
     [unroll]
     for (uint i = 0; i < 2; i++)
@@ -102,6 +103,7 @@ float3 TracePath(float3 position, float3 direction, float3 throughput, uint miss
         ray.TMax = any(throughput != 0.0) ? INF : 0.0;
 
         SecondaryRayPayload payload;
+        payload.NormalX = random.x;
 
         TraceRay(
             g_BVH,
@@ -119,7 +121,7 @@ float3 TracePath(float3 position, float3 direction, float3 throughput, uint miss
         if (WaveActiveAnyTrue(any(payload.Diffuse != 0)))
         {
             color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? GetBlueNoise().xy : GetBlueNoise().zw, any(payload.Diffuse != 0) ? INF : 0.0);
+               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? random.xy : random.zw, any(payload.Diffuse != 0) ? INF : 0.0);
         }
 
         radiance += throughput * color;
@@ -128,7 +130,7 @@ float3 TracePath(float3 position, float3 direction, float3 throughput, uint miss
             break;
 
         position = payload.Position;
-        direction = TangentToWorld(normal, GetCosWeightedSample(i == 0 ? GetBlueNoise().xz : GetBlueNoise().yw));
+        direction = TangentToWorld(normal, GetCosWeightedSample(i == 0 ? random.xz : random.yw));
         throughput *= payload.Diffuse;
     }
 
@@ -152,7 +154,7 @@ void SecondaryClosestHit(uint shaderType,
     [flatten]
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
     {
-        uint sample = min(floor(GetBlueNoise().x * g_LocalLightCount), g_LocalLightCount - 1);
+        uint sample = min(floor(payload.NormalX * g_LocalLightCount), g_LocalLightCount - 1);
         color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount * g_LightPower;
     }
 
