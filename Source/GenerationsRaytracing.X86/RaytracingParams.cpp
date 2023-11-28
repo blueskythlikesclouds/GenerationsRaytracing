@@ -340,7 +340,7 @@ bool RaytracingParams::update()
 
     if (Configuration::s_gachaLighting && s_stageIndex == NULL)
     {
-        static std::default_random_engine engine;
+        static std::default_random_engine engine(std::random_device{}());
         static std::uniform_int_distribution<size_t> distribution(0, _countof(s_stages));
 
         s_stageIndex = distribution(engine);
