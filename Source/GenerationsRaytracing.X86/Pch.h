@@ -14,6 +14,7 @@ using Microsoft::WRL::ComPtr;
 #include <mutex>
 #include <vector>
 #include <unordered_set>
+#include <random>
 
 #include <BlueBlur.h>
 #include <detours.h>

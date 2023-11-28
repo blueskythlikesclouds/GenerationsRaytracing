@@ -16,5 +16,7 @@ public:
     static inline uint32_t s_upscaler;
     static inline uint32_t s_qualityMode;
 
+    static inline bool s_gachaLighting;
+
     static void init();
 };

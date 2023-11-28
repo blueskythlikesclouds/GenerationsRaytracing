@@ -1,5 +1,6 @@
 ﻿#include "RaytracingParams.h"
 
+#include "Configuration.h"
 #include "EnvironmentMode.h"
 
 struct Stage
@@ -336,6 +337,15 @@ bool RaytracingParams::update()
     createParameterFile();
 
     bool resetAccumulation = false;
+
+    if (Configuration::s_gachaLighting && s_stageIndex == NULL)
+    {
+        static std::default_random_engine engine;
+        static std::uniform_int_distribution<size_t> distribution(0, _countof(s_stages));
+
+        s_stageIndex = distribution(engine);
+    }
+
     const size_t curStageIndex = s_enable ? s_stageIndex : NULL;
 
     if (s_prevStageIndex != curStageIndex)
