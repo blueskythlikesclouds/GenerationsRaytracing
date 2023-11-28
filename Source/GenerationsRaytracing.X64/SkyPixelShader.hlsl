@@ -18,6 +18,8 @@ float4 main(in PixelShaderInput i) : SV_Target
     if (g_DiffuseTextureId != 0)
         color = SampleTexture2D(g_DiffuseTextureId, i.DiffuseTexCoord);
 
+    color.rgb *= g_BackGroundScale;
+
     if (g_AlphaTextureId != 0)
         color.a *= SampleTexture2D(g_AlphaTextureId, i.AlphaTexCoord).x;
 
