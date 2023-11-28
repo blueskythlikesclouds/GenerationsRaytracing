@@ -53,7 +53,6 @@ static const Stage s_stages[] =
     { "ActN_PetraEvil", "Direct01", "ptr_sky_night" },
     { "ActN_SnowEvil", "light", "snw_sky_night" },
     { "ActN_SubAfrica_01", "FDirect01", "afr_sky_night_000" },
-    { "ActN_SubAfrica_02", "light", "afr_sky_night_000" },
     { "ActN_SubAfrica_03", "FDirect01", "afr_sky_night_000" },
     { "ActN_SubBeach_01", "euc_night_Direct01", "sea_sky_night" },
     { "ActN_SubChina_01", "FDirect01", "chn_sky_night" },
@@ -74,6 +73,43 @@ static const Stage s_stages[] =
     { "BossEggRayBird", "FDirect01", "eucboss_sky_day" },
     { "BossPetra", "Direct01", "ptrboss_sky_night" },
     { "BossPhoenix", "Direct01", "chn_sky_night" },
+    { "Town_Africa", "twn_afr_day_light", "afr_sky_day" },
+    { "Town_AfricaETF", "etf_afr_day_light", "afr_sky_day" },
+    { "Town_AfricaETF_Night", "etf_afr_night_light", "afr_sky_night" },
+    { "Town_Africa_Night", "twn_afr_night_light", "afr_sky_night" },
+    { "Town_China", "twn_chn_day_light", "chn_sky_day" },
+    { "Town_ChinaETF", "etf_chn_day_light", "chn_sky_day" },
+    { "Town_ChinaETF_Night", "etf_chn_night_light", "chn_sky_night" },
+    { "Town_China_Night", "twn_chn_night_light", "chn_sky_night" },
+    { "Town_EULabo", "euc_professorroom_day_light", "euc_sky_day" },
+    { "Town_EULabo_Night", "euc_professorroom_night_light", "euc_sky_night" },
+    { "Town_EggManBase", "twn_egb_day_light", "egb_sky_day" },
+    { "Town_EuropeanCity", "twn_euc_day_light", "euc_sky_village_day" },
+    { "Town_EuropeanCityETF", "etf_euc_day_light.light", "euc_sky_01" },
+    { "Town_EuropeanCityETF_Night", "etf_euc_night_light", "euc_sky_night" },
+    { "Town_EuropeanCity_Night", "twn_euc_night_light", "euc_sky_night" },
+    { "Town_Mykonos", "twn_myk_day_light", "myk_sky_day" },
+    { "Town_MykonosETF", "light", "sky_day" },
+    { "Town_MykonosETF_Night", "etf_myk_night_light", "evl_myk_sky_01" },
+    { "Town_Mykonos_Night", "twn_myk_night_light", "myk_sky_night" },
+    { "Town_NYCity", "twn_nyc_day_light", "nyc_sky_day" },
+    { "Town_NYCityETF", "etf_nyc_day_light", "nyc_sky_day" },
+    { "Town_NYCityETF_Night", "twn_nyc_night_light", "nyc_sky_night" },
+    { "Town_NYCity_Night", "twn_nyc_night_light", "nyc_sky_night" },
+    { "Town_PetraCapital", "twn_ptr_day_light", "ptr_sky_day" },
+    { "Town_PetraCapitalETF", "etf_ptr_day_light", "ptr_sky_day" },
+    { "Town_PetraCapitalETF_Night", "etf_ptr_night_light", "ptr_village_sky_night" },
+    { "Town_PetraCapital_Night", "twn_ptr_night_light", "ptr_village_sky_night" },
+    { "Town_PetraLabo", "labo_ptr_day_light", "ptr_sky_day" },
+    { "Town_PetraLabo_Night", "labo_ptr_night_light", "ptr_sky_night" },
+    { "Town_Snow", "twn_snw_day_light", "snw_sky_day" },
+    { "Town_SnowETF", "etf_snw_day_light", "snw_sky_day" },
+    { "Town_SnowETF_Night", "etf_snw_night_light", "snw_sky_night" },
+    { "Town_Snow_Night", "twn_snw_night_light", "snw_sky_night" },
+    { "Town_SouthEastAsia", "twn_sea_day_light", "sea_sky_day" },
+    { "Town_SouthEastAsiaETF", "etf_sea_day_light", "sea_sky_day" },
+    { "Town_SouthEastAsiaETF_Night", "etf_sea_night_light", "sea_sky_night" },
+    { "Town_SouthEastAsia_Night", "twn_sea_night_light", "sea_sky_night" },
     { "bde", "Direct01", "bde_sky_0" },
     { "blb", "blb_sky", "blb_sky_000" },
     { "bms", "bms_Direct01", "bms_sky" },
@@ -105,13 +141,13 @@ static const Stage s_stages[] =
     { "sph101", "sph100_Direct01", "sph_sky_sph101" },
     { "sph200", "sph03_Direct01", "sph200_sky01" },
     { "ssh100", "ssh100_Direct01", "ssh_sky" },
-    { "ssh103", "ssh100_Direct01", "ssh_sky" },
+    { "ssh101", "ssh101_Direct01", "ssh_sky" },
     { "ssh200", "ssh200_Direct01", "ssh_sky" },
     { "ssh201", "ssh200_Direct01", "ssh_sky" },
     { "ssh205", "ssh200_Direct01", "ssh_sky" },
     { "ssz100", "ssz100_Direct01", "ssz_sky_000" },
     { "ssz103", "ssz103_Direct01", "ssz103_sky" },
-    { "ssz200", "ssz200_Direct01", "ssz_sky_000" },
+    { "ssz200", "ssz200_Direct01", "ssz_sky_000" }
 };
 
 static size_t s_stageIndex = 0;
@@ -124,13 +160,13 @@ static void loadArchiveDatabase(const Stage& stage)
     s_database = Hedgehog::Database::CDatabase::CreateDatabase();
     auto& loader = Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spDatabaseLoader;
 
-    const std::string base = "Stage/" + std::string(stage.name);
-    const std::string ar = base + ".ar";
-    const std::string arl = base + ".arl";
+    const Hedgehog::Base::CSharedString base = "Stage/" + Hedgehog::Base::CSharedString(stage.name);
+    const Hedgehog::Base::CSharedString ar = base + ".ar";
+    const Hedgehog::Base::CSharedString arl = base + ".arl";
 
-    loader->CreateArchiveList(ar.c_str(), arl.c_str(), { 200, 5 });
-    loader->LoadArchiveList(s_database, arl.c_str());
-    loader->LoadArchive(s_database, ar.c_str(), { -10, 5 }, false, false);
+    loader->CreateArchiveList(ar, arl, { 200, 5 });
+    loader->LoadArchiveList(s_database, arl);
+    loader->LoadArchive(s_database, ar, { -10, 5 }, false, false);
 
     Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(s_database.get());
 
@@ -144,9 +180,9 @@ static void loadArchiveDatabase(const Stage& stage)
 }
 
 static inline FUNCTION_PTR(void, __stdcall, createXmlDocument, 0x1101570,
-    const Hedgehog::base::CSharedString& name, boost::anonymous_shared_ptr& xmlDocument, boost::shared_ptr<Hedgehog::Database::CDatabase> database);
+    const Hedgehog::Base::CSharedString& name, boost::anonymous_shared_ptr& xmlDocument, boost::shared_ptr<Hedgehog::Database::CDatabase> database);
 
-static void parseXmlDocument(const Hedgehog::base::CSharedString* name, size_t parameterEditor, void* xmlElement, size_t priority)
+static void parseXmlDocument(const Hedgehog::Base::CSharedString* name, void* parameterEditor, void* xmlElement, size_t priority)
 {
     static uint32_t parseXmlDocumentAddr = 0x11021F0;
 
@@ -168,38 +204,36 @@ static bool loadSceneEffect()
         return false;
 
     typedef void* __fastcall Function(size_t);
+    const auto& parameterEditor = Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spParameterEditor;
 
-    size_t parameterEditor = *(size_t*)((size_t)Sonic::CApplicationDocument::GetInstance()->m_pMember + 0x204);
-    auto& parameterList = **(Hedgehog::list<Sonic::CAbstractParameter*>**)(parameterEditor + 0xAC);
-
-    for (auto& parameter : parameterList)
+    for (const auto& parameter : parameterEditor->m_spGlobalParameterManager->m_GlobalParameterFileList)
     {
         if (parameter->m_Name == "SceneEffect.prm.xml")
         {
-            const size_t virtualFunctionTable = *(size_t*)parameter;
-            const size_t function = *(size_t*)(virtualFunctionTable + 0x14);
+            const size_t virtualFunctionTable = *reinterpret_cast<size_t*>(parameter.get());
+            const size_t function = *reinterpret_cast<size_t*>(virtualFunctionTable + 0x14);
 
-            ((Function*)function)((size_t)parameter); // resets parameter overrides
+            reinterpret_cast<Function*>(function)(reinterpret_cast<size_t>(parameter.get())); // resets parameter overrides
 
             break;
         }
     }
 
-    Hedgehog::base::CSharedString str("SceneEffect.prm.xml");
+    Hedgehog::Base::CSharedString str("SceneEffect.prm.xml");
     boost::anonymous_shared_ptr xmlDocument;
 
     createXmlDocument(str, xmlDocument, s_database);
 
     if (xmlDocument)
     {
-        const size_t virtualFunctionTable = **(size_t**)xmlDocument.get();
-        const size_t function = *(size_t*)(virtualFunctionTable + 0x30);
+        const size_t virtualFunctionTable = **static_cast<size_t**>(xmlDocument.get());
+        const size_t function = *reinterpret_cast<size_t*>(virtualFunctionTable + 0x30);
 
-        void* xmlElement = ((Function*)function)(*(size_t*)xmlDocument.get()); // gets the xml element
+        void* xmlElement = reinterpret_cast<Function*>(function)(*static_cast<size_t*>(xmlDocument.get())); // gets the xml element
 
         parseXmlDocument(
             &str,
-            parameterEditor,
+            parameterEditor.get(),
             &xmlElement,
             0);
     }

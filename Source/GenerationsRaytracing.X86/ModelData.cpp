@@ -38,18 +38,18 @@ static void traverseModelData(const TModelData& modelData, const TFunction& func
             traverseMeshGroup(nodeGroupModelData->m_OpaqueMeshes, NULL, function);
     }
 
-    traverseMeshGroup(modelData.m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
-    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
-    {
-        if (nodeGroupModelData->m_Visible)
-            traverseMeshGroup(nodeGroupModelData->m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
-    }
-
     traverseMeshGroup(modelData.m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
     for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
     {
         if (nodeGroupModelData->m_Visible)
             traverseMeshGroup(nodeGroupModelData->m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
+    }
+
+    traverseMeshGroup(modelData.m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
+    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+    {
+        if (nodeGroupModelData->m_Visible)
+            traverseMeshGroup(nodeGroupModelData->m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
     }
 
     for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
@@ -823,44 +823,56 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
         {
             geometryDesc->isAdditive = meshDataEx.m_spMaterial->m_Additive;
 
-            for (const auto& texture : meshDataEx.m_spMaterial->m_spTexsetData->m_TextureList)
+            if (meshDataEx.m_spMaterial->m_spShaderListData != nullptr)
             {
-                if (!texture->IsMadeOne() || texture->m_spPictureData == nullptr ||
-                    texture->m_spPictureData->m_pD3DTexture == nullptr)
-                {
-                    continue;
-                }
-    
-                MsgCreateMaterial::Texture* textureDesc = nullptr;
-    
-                if (texture->m_Type == s_diffuseSymbol)
-                {
-                    textureDesc = &geometryDesc->diffuseTexture;
-                    diffuseTexture = texture->m_spPictureData->m_pD3DTexture;
-                }
-                else if (texture->m_Type == s_opacitySymbol)
-                {
-                    if (diffuseTexture == texture->m_spPictureData->m_pD3DTexture)
-                        continue;
+                const char* bracket = strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "[");
+                geometryDesc->enableVertexColor = bracket != nullptr && strstr(bracket, "v") != nullptr;
+            }
 
-                    textureDesc = &geometryDesc->alphaTexture;
-                }
-                else if (texture->m_Type == s_displacementSymbol)
+            if (meshDataEx.m_spMaterial->m_spTexsetData != nullptr)
+            {
+                for (const auto& texture : meshDataEx.m_spMaterial->m_spTexsetData->m_TextureList)
                 {
-                    textureDesc = &geometryDesc->emissionTexture;
-                }
-    
-                if (textureDesc != nullptr)
-                {
-                    textureDesc->id = reinterpret_cast<const Texture*>(texture->m_spPictureData->m_pD3DTexture)->getId();
-                    textureDesc->addressModeU = std::max(D3DTADDRESS_WRAP, texture->m_SamplerState.AddressU);
-                    textureDesc->addressModeV = std::max(D3DTADDRESS_WRAP, texture->m_SamplerState.AddressV);
-                    textureDesc->texCoordIndex = texture->m_TexcoordIndex;
+                    if (!texture->IsMadeOne() || texture->m_spPictureData == nullptr ||
+                        texture->m_spPictureData->m_pD3DTexture == nullptr)
+                    {
+                        continue;
+                    }
+        
+                    MsgCreateMaterial::Texture* textureDesc = nullptr;
+        
+                    if (texture->m_Type == s_diffuseSymbol)
+                    {
+                        textureDesc = &geometryDesc->diffuseTexture;
+                        diffuseTexture = texture->m_spPictureData->m_pD3DTexture;
+                    }
+                    else if (texture->m_Type == s_opacitySymbol)
+                    {
+                        if (diffuseTexture == texture->m_spPictureData->m_pD3DTexture)
+                            continue;
+
+                        textureDesc = &geometryDesc->alphaTexture;
+                    }
+                    else if (texture->m_Type == s_displacementSymbol)
+                    {
+                        textureDesc = &geometryDesc->emissionTexture;
+                    }
+        
+                    if (textureDesc != nullptr)
+                    {
+                        textureDesc->id = reinterpret_cast<const Texture*>(texture->m_spPictureData->m_pD3DTexture)->getId();
+                        textureDesc->addressModeU = std::max(D3DTADDRESS_WRAP, texture->m_SamplerState.AddressU);
+                        textureDesc->addressModeV = std::max(D3DTADDRESS_WRAP, texture->m_SamplerState.AddressV);
+                        textureDesc->texCoordIndex = texture->m_TexcoordIndex;
+                    }
                 }
             }
 
             for (const auto& float4Param : meshDataEx.m_spMaterial->m_Float4Params)
             {
+                if (float4Param->m_Name == s_diffuseSymbol)
+                    memcpy(geometryDesc->diffuse, float4Param->m_spValue.get(), sizeof(geometryDesc->diffuse));
+
                 if (float4Param->m_Name == s_ambientSymbol)
                     memcpy(geometryDesc->ambient, float4Param->m_spValue.get(), sizeof(geometryDesc->ambient));
             }

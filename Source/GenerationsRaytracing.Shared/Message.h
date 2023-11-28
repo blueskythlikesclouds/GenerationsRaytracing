@@ -478,9 +478,11 @@ struct MsgRenderSky
         uint32_t indexCount;
         uint32_t vertexDeclarationId;
         bool isAdditive;
+        bool enableVertexColor;
         MsgCreateMaterial::Texture diffuseTexture;
         MsgCreateMaterial::Texture alphaTexture;
         MsgCreateMaterial::Texture emissionTexture;
+        float diffuse[4];
         float ambient[4];
     };
 

@@ -50,6 +50,8 @@ struct GlobalsSB
     uint32_t diffuseTextureId;
     uint32_t alphaTextureId;
     uint32_t emissionTextureId;
+    float diffuse[3];
+    uint32_t enableVertexColor;
     float ambient[3];
     uint32_t enableAlphaTest;
 };

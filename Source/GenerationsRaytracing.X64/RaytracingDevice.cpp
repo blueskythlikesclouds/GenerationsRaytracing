@@ -1028,6 +1028,7 @@ void RaytracingDevice::procMsgRenderSky()
     pipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     pipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     pipelineDesc.RasterizerState.DepthClipEnable = FALSE;
+    pipelineDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF;
     pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     pipelineDesc.NumRenderTargets = 1;
     pipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -1072,6 +1073,7 @@ void RaytracingDevice::procMsgRenderSky()
     while (geometryDesc < lastGeometryDesc)
     {
         globalsSB.enableAlphaTest = (geometryDesc->flags & GEOMETRY_FLAG_PUNCH_THROUGH) != 0;
+        globalsSB.enableVertexColor = geometryDesc->enableVertexColor;
 
         std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
         {
@@ -1111,11 +1113,12 @@ void RaytracingDevice::procMsgRenderSky()
             }
         }
 
+        memcpy(globalsSB.diffuse, geometryDesc->diffuse, sizeof(globalsSB.diffuse));
         memcpy(globalsSB.ambient, geometryDesc->ambient, sizeof(globalsSB.ambient));
 
         const auto& vertexDeclaration = m_vertexDeclarations[geometryDesc->vertexDeclarationId];
 
-        const BOOL blendEnable = TRUE; // TODO: Toggling this on/off causes buggy graphics in Planet Wisp
+        const BOOL blendEnable = (geometryDesc->flags & GEOMETRY_FLAG_TRANSPARENT) != 0;
         const auto destBlend = geometryDesc->isAdditive ? D3D12_BLEND_ONE : D3D12_BLEND_INV_SRC_ALPHA;
 
         if (pipelineDesc.InputLayout.pInputElementDescs != vertexDeclaration.inputElements.get() ||

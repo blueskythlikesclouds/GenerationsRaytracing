@@ -512,7 +512,7 @@ void Device::procMsgCreateVertexDeclaration()
         inputElement.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
         inputElement.InstanceDataStepRate = 0;
 
-        switch (vertexElement->Type)
+        switch (vertexElement->Usage)
         {
         case D3DDECLUSAGE_NORMAL:
         case D3DDECLUSAGE_TANGENT:
