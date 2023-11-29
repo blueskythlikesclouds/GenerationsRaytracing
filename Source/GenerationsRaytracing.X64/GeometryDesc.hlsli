@@ -39,6 +39,7 @@ struct InstanceDesc
 #define VERTEX_FLAG_MIPMAP                (1 << 0)
 #define VERTEX_FLAG_MULTI_UV              (1 << 1)
 #define VERTEX_FLAG_SAFE_POSITION         (1 << 2)
+#define VERTEX_FLAG_MIPMAP_LOD            (1 << 3)
 
 struct Vertex
 {

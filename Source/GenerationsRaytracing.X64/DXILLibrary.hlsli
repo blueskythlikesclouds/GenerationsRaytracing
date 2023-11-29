@@ -143,7 +143,7 @@ void SecondaryClosestHit(uint shaderType,
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_MIPMAP_LOD);
 
     GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
     gBufferData.Diffuse *= g_DiffusePower;

@@ -67,7 +67,7 @@ float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex, float2 offse
     }
     else
     {
-        return texture.SampleLevel(samplerState, vertex.TexCoords[texCoordIndex] + offset, 2);
+        return texture.SampleLevel(samplerState, vertex.TexCoords[texCoordIndex] + offset, vertex.Flags & VERTEX_FLAG_MIPMAP_LOD ? 2 : 0);
     }
 }
 
