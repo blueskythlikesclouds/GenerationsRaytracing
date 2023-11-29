@@ -23,6 +23,7 @@
 #define GBUFFER_FLAG_REFRACTION_ADD             (1 << 13)
 #define GBUFFER_FLAG_REFRACTION_MUL             (1 << 14)
 #define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 15)
+#define GBUFFER_FLAG_ADDITIVE                   (1 << 16)
 
 struct GBufferData
 {
@@ -907,6 +908,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
     }
 
     gBufferData.SpecularGloss = clamp(gBufferData.SpecularGloss, 1.0, 1024.0);
+
+    if (material.Flags & MATERIAL_FLAG_ADDITIVE)
+        gBufferData.Flags |= GBUFFER_FLAG_ADDITIVE;
 
     if (material.Flags & MATERIAL_FLAG_REFLECTION)
         gBufferData.Flags |= GBUFFER_FLAG_IS_MIRROR_REFLECTION;

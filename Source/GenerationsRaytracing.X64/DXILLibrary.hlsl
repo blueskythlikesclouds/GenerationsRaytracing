@@ -210,15 +210,21 @@ void ReflectionRayGeneration()
 void RefractionRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
-    bool traceRefraction = gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY);
+
+    bool traceRefraction = gBufferData.Flags &
+        (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY | GBUFFER_FLAG_ADDITIVE);
 
     if (WaveActiveAnyTrue(traceRefraction))
     {
         float3 eyeDirection = NormalizeSafe(gBufferData.Position - g_EyePosition.xyz);
         float3 throughput = traceRefraction ? 1.0 : 0.0;
+
+        float3 rayDirection = gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY) ? 
+            refract(eyeDirection, gBufferData.Normal, 0.95) : eyeDirection;
+        
         g_Refraction[DispatchRaysIndex().xy] = TracePath(
             gBufferData.Position, 
-            refract(eyeDirection, gBufferData.Normal, 0.95),
+            rayDirection,
             throughput,
             3);
     }
