@@ -771,6 +771,7 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
     message.instanceId = instanceInfoEx.m_instanceId;
     message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+    message.isMirrored = false;
 
     auto materialIds = reinterpret_cast<uint32_t*>(message.data);
 

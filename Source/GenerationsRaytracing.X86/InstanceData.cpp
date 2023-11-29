@@ -106,6 +106,7 @@ void InstanceData::createPendingInstances()
                     message.instanceId = (*it)->m_instanceId;
                     message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
                     message.storePrevTransform = false;
+                    message.isMirrored = (*it)->m_scpTransform->determinant() < 0.0f;
 
                     s_messageSender.endMessage();
                 }

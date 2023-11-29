@@ -703,6 +703,10 @@ void RaytracingDevice::procMsgCreateInstance()
     instanceDesc.InstanceMask = 1;
     instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
     instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
+
+    if (message.isMirrored && !(instanceDesc.Flags & D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE))
+        instanceDesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+
     instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
 }
 

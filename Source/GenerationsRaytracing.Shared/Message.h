@@ -351,6 +351,7 @@ struct MsgCreateInstance
     uint32_t instanceId;
     uint32_t bottomLevelAccelStructId;
     bool storePrevTransform;
+    bool isMirrored;
     uint32_t dataSize;
     uint8_t data[1u];
 };

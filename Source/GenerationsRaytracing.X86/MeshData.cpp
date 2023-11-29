@@ -287,6 +287,8 @@ static void optimizeVertexFormat(MeshResource* meshResource)
     memcpy(meshResource->vertexElements, elements, elementIndex * sizeof(VertexElement));
 }
 
+static std::vector<uint16_t> s_indices;
+
 static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshResource)
 {
     assert(meshData.m_indices == nullptr);
@@ -295,54 +297,42 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
     if (indexNum <= 2)
         return;
 
-    std::vector<uint16_t> indices;
-    indices.reserve((indexNum - 2) * 3);
+    s_indices.reserve((indexNum - 2) * 3);
+    s_indices.clear();
 
-    uint16_t a = _byteswap_ushort(meshResource->indices[0]);
-    uint16_t b = _byteswap_ushort(meshResource->indices[1]);
-    bool direction = false;
+    size_t start = 0;
 
-    for (uint32_t i = 2; i < indexNum; i++)
+    for (size_t i = 0; i < _byteswap_ulong(meshResource->indexCount); ++i)
     {
-        uint16_t c = _byteswap_ushort(meshResource->indices[i]);
-
-        if (c == 0xFFFF)
+        if (meshResource->indices[i] == 0xFFFF)
         {
-            a = _byteswap_ushort(meshResource->indices[++i]);
-            b = _byteswap_ushort(meshResource->indices[++i]);
-            direction = false;
+            start = i + 1;
         }
-        else
+        else if (i - start >= 2)
         {
-            direction = !direction;
-            if (a != b && b != c && c != a)
-            {
-                if (direction)
-                {
-                    indices.push_back(c);
-                    indices.push_back(b);
-                    indices.push_back(a);
-                }
-                else
-                {
-                    indices.push_back(a);
-                    indices.push_back(b);
-                    indices.push_back(c);
-                }
-            }
+            uint16_t a = _byteswap_ushort(meshResource->indices[i - 2]);
+            uint16_t b = _byteswap_ushort(meshResource->indices[i - 1]);
+            uint16_t c = _byteswap_ushort(meshResource->indices[i]);
 
-            a = b;
-            b = c;
+            if ((i - start) & 1)
+                std::swap(a, b);
+
+            if (a != b && a != c && b != c)
+            {
+                s_indices.push_back(a);
+                s_indices.push_back(b);
+                s_indices.push_back(c);
+            }
         }
     }
 
-    if (indices.empty())
+    if (s_indices.empty())
         return;
 
-    const size_t byteSize = indices.size() * sizeof(uint16_t);
+    const size_t byteSize = s_indices.size() * sizeof(uint16_t);
 
     meshData.m_indices.Attach(new IndexBuffer(byteSize));
-    meshData.m_indexCount = indices.size();
+    meshData.m_indexCount = s_indices.size();
 
     auto& createMessage = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
     createMessage.length = byteSize;
@@ -354,7 +344,7 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
     copyMessage.indexBufferId = meshData.m_indices->getId();
     copyMessage.offset = 0;
     copyMessage.initialWrite = true;
-    memcpy(copyMessage.data, indices.data(), byteSize);
+    memcpy(copyMessage.data, s_indices.data(), byteSize);
     s_messageSender.endMessage();
 }
 
