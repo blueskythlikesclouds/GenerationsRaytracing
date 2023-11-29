@@ -24,6 +24,13 @@ DLSS::DLSS(const Device& device)
         NVSDK_NGX_SUCCEED(NVSDK_NGX_D3D12_GetCapabilityParameters(&m_parameters)))
     {
         m_device = device.getUnderlyingDevice();
+
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
     }
 }
 
@@ -106,6 +113,7 @@ void DLSS::dispatch(const DispatchArgs& args)
     params.InRenderSubrectDimensions.Width = m_width;
     params.InRenderSubrectDimensions.Height = m_height;
     params.InReset = args.resetAccumulation;
+    params.InFrameTimeDeltaInMsec = args.device.getGlobalsPS().floatConstants[68][0] * 1000.0f;
 
     THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSSD_EXT(
         args.device.getUnderlyingGraphicsCommandList(),

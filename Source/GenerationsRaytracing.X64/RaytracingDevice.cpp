@@ -311,7 +311,7 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1 },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2 },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3 },
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture4 },
+        { DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture4 },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5 },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
 
@@ -321,8 +321,8 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
 
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture },
-        { DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture }
+        { DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoTexture },
+        { DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture }
     };
 
     for (const auto& textureDesc : textureDescs)
