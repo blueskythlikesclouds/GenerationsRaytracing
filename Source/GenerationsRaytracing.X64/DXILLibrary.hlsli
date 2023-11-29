@@ -147,11 +147,11 @@ void SecondaryClosestHit(uint shaderType,
 
     GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
     gBufferData.Diffuse *= g_DiffusePower;
+    gBufferData.Specular = 0.0;
     gBufferData.Emission *= g_EmissivePower;
 
     float3 color = gBufferData.Emission;
 
-    [flatten]
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
     {
         uint sample = min(floor(payload.NormalX * g_LocalLightCount), g_LocalLightCount - 1);
