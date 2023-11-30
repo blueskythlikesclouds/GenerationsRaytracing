@@ -75,7 +75,6 @@ void DLSS::init(const InitArgs& args)
 
     params.InDenoiseMode = NVSDK_NGX_DLSS_Denoise_Mode_DLUnified;
     params.InRoughnessMode = NVSDK_NGX_DLSS_Roughness_Mode_Packed;
-    params.InUseHWDepth = NVSDK_NGX_DLSS_Depth_Type_HW;
     params.InWidth = m_width;
     params.InHeight = m_height;
     params.InTargetWidth = args.width;
@@ -106,13 +105,14 @@ void DLSS::dispatch(const DispatchArgs& args)
     params.pInNormals = args.normals;
     params.pInColor = args.color;
     params.pInOutput = args.output;
-    params.pInDepth = args.depth;
+    params.pInDepth = args.linearDepth;
     params.pInMotionVectors = args.motionVectors;
     params.InJitterOffsetX = args.jitterX;
     params.InJitterOffsetY = args.jitterY;
     params.InRenderSubrectDimensions.Width = m_width;
     params.InRenderSubrectDimensions.Height = m_height;
     params.InReset = args.resetAccumulation;
+    params.pInSpecularHitDistance = args.specularHitDistance;
     params.InFrameTimeDeltaInMsec = args.device.getGlobalsPS().floatConstants[68][0] * 1000.0f;
 
     THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSSD_EXT(

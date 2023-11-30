@@ -63,6 +63,8 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     g_MotionVectors[DispatchRaysIndex().xy] = 
         ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
+
+    g_LinearDepth[DispatchRaysIndex().xy] = g_CameraNearFarAspect.y;
 }
 
 [shader("raygeneration")]
@@ -71,7 +73,7 @@ void ShadowRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     bool resolveReservoir = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT));
-    if (g_LocalLightCount > 0 && WaveActiveAnyTrue(resolveReservoir))
+    if (g_LocalLightCount > 0 && resolveReservoir)
     {
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
 
@@ -95,7 +97,7 @@ void ShadowRayGeneration()
     }
 
     bool traceShadow = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW));
-    if (WaveActiveAnyTrue(traceShadow))
+    if (traceShadow)
         g_Shadow[DispatchRaysIndex().xy] = TraceShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz, GetBlueNoise().xy, traceShadow ? INF : 0.0);
 }
 
@@ -136,16 +138,15 @@ void GIRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
     bool traceGlobalIllumination = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION));
+    float hitDistance = 0.0;
 
-    if (WaveActiveAnyTrue(traceGlobalIllumination))
+    if (traceGlobalIllumination)
     {
-        float3 throughput = traceGlobalIllumination ? 1.0 : 0.0;
-
         g_GlobalIllumination[DispatchRaysIndex().xy] = TracePath(
             gBufferData.Position, 
             TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy)),
-            throughput,
-            2);
+            2,
+            hitDistance);
     }
 }
 
@@ -158,7 +159,7 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     {
         color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
     }
-    else if (g_UseSkyTexture && WaveActiveAnyTrue(RayTCurrent() != 0))
+    else if (g_UseSkyTexture && RayTCurrent() != 0)
     {
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
         color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_SkyPower;
@@ -173,8 +174,9 @@ void ReflectionRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
     bool traceReflection = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION));
+    float hitDistance = 0.0;
 
-    if (WaveActiveAnyTrue(traceReflection))
+    if (traceReflection)
     {
         float3 rayDirection;
         float pdf;
@@ -196,14 +198,14 @@ void ReflectionRayGeneration()
             pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
         }
 
-        float3 throughput = traceReflection ? 1.0 : 0.0;
-
         g_Reflection[DispatchRaysIndex().xy] = pdf * TracePath(
             gBufferData.Position,
             rayDirection,
-            throughput,
-            3);
+            3,
+            hitDistance);
     }
+
+    g_SpecularHitDistance[DispatchRaysIndex().xy] = hitDistance;
 }
 
 [shader("raygeneration")]
@@ -214,10 +216,11 @@ void RefractionRayGeneration()
     bool traceRefraction = gBufferData.Flags &
         (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY | GBUFFER_FLAG_ADDITIVE);
 
-    if (WaveActiveAnyTrue(traceRefraction))
+    float hitDistance = 0.0;
+
+    if (traceRefraction)
     {
         float3 eyeDirection = NormalizeSafe(gBufferData.Position - g_EyePosition.xyz);
-        float3 throughput = traceRefraction ? 1.0 : 0.0;
 
         float3 rayDirection = gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY) ? 
             refract(eyeDirection, gBufferData.Normal, 0.95) : eyeDirection;
@@ -225,8 +228,8 @@ void RefractionRayGeneration()
         g_Refraction[DispatchRaysIndex().xy] = TracePath(
             gBufferData.Position, 
             rayDirection,
-            throughput,
-            3);
+            3,
+            hitDistance);
     }
 }
 
@@ -235,7 +238,7 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     float3 color = 0.0;
 
-    if (g_UseSkyTexture && WaveActiveAnyTrue(RayTCurrent() != 0))
+    if (g_UseSkyTexture && RayTCurrent() != 0)
     {
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
         color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;

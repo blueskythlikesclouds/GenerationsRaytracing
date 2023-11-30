@@ -966,7 +966,7 @@ void StoreGBufferData(uint2 index, GBufferData gBufferData)
     g_GBuffer1[index] = float4(gBufferData.Diffuse, gBufferData.Refraction);
     g_GBuffer2[index] = float4(gBufferData.Specular, gBufferData.TransColor.r);
     g_GBuffer3[index] = float4(gBufferData.SpecularGloss, gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.TransColor.g);
-    g_GBuffer4[index] = float4(gBufferData.Normal, 1.0 - (pow(gBufferData.SpecularGloss, 0.2) * 0.25));
+    g_GBuffer4[index] = float4(gBufferData.Normal, sqrt(1.0 - pow(gBufferData.SpecularGloss, 0.2) * 0.25));
     g_GBuffer5[index] = float4(gBufferData.Falloff, gBufferData.TransColor.b);
     g_GBuffer6[index] = float4(gBufferData.Emission, 0.0);
 }

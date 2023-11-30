@@ -322,7 +322,9 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
 
         { DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoTexture },
-        { DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture }
+        { DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture },
+        { DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture },
+        { DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture },
     };
 
     for (const auto& textureDesc : textureDescs)
@@ -436,6 +438,12 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
     getGraphicsCommandList().transitionBarrier(m_motionVectorsTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+    getGraphicsCommandList().transitionBarrier(m_linearDepthTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_specularHitDistanceTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
     getGraphicsCommandList().commitBarriers();
 
     m_upscaler->dispatch(
@@ -447,7 +455,9 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
             colorTexture,
             m_outputTexture->GetResource(),
             m_depthTexture->GetResource(),
+            m_linearDepthTexture->GetResource(),
             m_motionVectorsTexture->GetResource(),
+            m_specularHitDistanceTexture->GetResource(),
             m_globalsRT.pixelJitterX,
             m_globalsRT.pixelJitterY,
             message.resetAccumulation
@@ -824,6 +834,7 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().uavBarrier(m_gBufferTexture4->GetResource());
     getGraphicsCommandList().uavBarrier(m_gBufferTexture5->GetResource());
     getGraphicsCommandList().uavBarrier(m_gBufferTexture6->GetResource());
+    getGraphicsCommandList().uavBarrier(m_linearDepthTexture->GetResource());
     getGraphicsCommandList().commitBarriers();
     PIX_END_EVENT();
 
@@ -856,6 +867,7 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().uavBarrier(m_giTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_reflectionTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_refractionTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularHitDistanceTexture->GetResource());
     getGraphicsCommandList().commitBarriers();
 
     resolveAndDispatchUpscaler(message);
@@ -1229,7 +1241,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 17, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 19, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

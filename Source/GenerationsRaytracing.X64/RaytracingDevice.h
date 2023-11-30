@@ -127,6 +127,9 @@ protected:
 
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_specularAlbedoTexture;
+    ComPtr<D3D12MA::Allocation> m_linearDepthTexture;
+    ComPtr<D3D12MA::Allocation> m_diffuseHitDistanceTexture;
+    ComPtr<D3D12MA::Allocation> m_specularHitDistanceTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     uint32_t m_srvId{};

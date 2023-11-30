@@ -156,6 +156,8 @@ RWTexture2D<float3> g_Refraction : register(u14);
 
 RWTexture2D<float3> g_DiffuseAlbedo : register(u15);
 RWTexture2D<float3> g_SpecularAlbedo : register(u16);
+RWTexture2D<float> g_LinearDepth : register(u17);
+RWTexture2D<float> g_SpecularHitDistance : register(u18);
 
 SamplerState g_SamplerState : register(s0);
 
