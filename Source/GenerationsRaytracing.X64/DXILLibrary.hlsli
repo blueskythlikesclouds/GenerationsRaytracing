@@ -48,7 +48,7 @@ struct [raypayload] ShadowRayPayload
     bool Miss : read(caller) : write(caller, miss);
 };
 
-float TraceShadow(float3 position, float3 direction, float2 random, float tMax = INF)
+float TraceShadow(float3 position, float3 direction, float2 random)
 {
     float radius = sqrt(random.x) * 0.01;
     float angle = random.y * 2.0 * PI;
@@ -63,7 +63,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, float tMax =
     ray.Origin = position;
     ray.Direction = TangentToWorld(direction, sample);
     ray.TMin = 0.0;
-    ray.TMax = tMax;
+    ray.TMax = INF;
 
     ShadowRayPayload payload = (ShadowRayPayload) 0;
 
@@ -103,7 +103,7 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, inout 
         ray.Origin = position;
         ray.Direction = direction;
         ray.TMin = 0.0;
-        ray.TMax = any(throughput != 0.0) ? INF : 0.0;
+        ray.TMax = INF;
 
         SecondaryRayPayload payload;
         payload.NormalX = random.x;
@@ -124,7 +124,7 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, inout 
         if (any(payload.Diffuse != 0))
         {
             color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? random.xy : random.zw, any(payload.Diffuse != 0) ? INF : 0.0);
+               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? random.xy : random.zw);
         }
 
         radiance += throughput * color;
