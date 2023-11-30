@@ -90,7 +90,7 @@ struct [raypayload] SecondaryRayPayload
     float NormalZ : read(caller) : write(closesthit);
 };
 
-float3 TracePath(float3 position, float3 direction, uint missShaderIndex, inout float hitDistance)
+float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool storeHitDistance)
 {
     float3 radiance = 0.0;
     float3 throughput = 1.0;
@@ -121,19 +121,25 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, inout 
         float3 color = payload.Color;
         float3 normal = float3(payload.NormalX, payload.NormalY, payload.NormalZ);
 
+        bool terminatePath = false;
+
         if (any(payload.Diffuse != 0))
         {
             color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
                TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? random.xy : random.zw);
         }
+        else
+        {
+            terminatePath = true;
+        }
+
+        if (storeHitDistance && i == 0)
+            g_SpecularHitDistance[DispatchRaysIndex().xy] = terminatePath ? 0.0 : distance(position, payload.Position);
 
         radiance += throughput * color;
 
-        if (all(payload.Diffuse == 0))
+        if (terminatePath)
             break;
-
-        if (i == 0)
-            hitDistance = distance(position, payload.Position);
 
         position = payload.Position;
         direction = TangentToWorld(normal, GetCosWeightedSample(i == 0 ? random.xz : random.yw));

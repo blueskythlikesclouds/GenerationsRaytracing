@@ -138,7 +138,6 @@ void GIRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
     bool traceGlobalIllumination = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION));
-    float hitDistance = 0.0;
 
     if (traceGlobalIllumination)
     {
@@ -146,7 +145,7 @@ void GIRayGeneration()
             gBufferData.Position, 
             TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy)),
             2,
-            hitDistance);
+            false);
     }
 }
 
@@ -174,7 +173,6 @@ void ReflectionRayGeneration()
 {
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
     bool traceReflection = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION));
-    float hitDistance = 0.0;
 
     if (traceReflection)
     {
@@ -202,10 +200,8 @@ void ReflectionRayGeneration()
             gBufferData.Position,
             rayDirection,
             3,
-            hitDistance);
+            true);
     }
-
-    g_SpecularHitDistance[DispatchRaysIndex().xy] = hitDistance;
 }
 
 [shader("raygeneration")]
@@ -215,8 +211,6 @@ void RefractionRayGeneration()
 
     bool traceRefraction = gBufferData.Flags &
         (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY | GBUFFER_FLAG_ADDITIVE);
-
-    float hitDistance = 0.0;
 
     if (traceRefraction)
     {
@@ -229,7 +223,7 @@ void RefractionRayGeneration()
             gBufferData.Position, 
             rayDirection,
             3,
-            hitDistance);
+            false);
     }
 }
 
