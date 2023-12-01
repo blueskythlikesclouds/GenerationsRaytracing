@@ -143,6 +143,7 @@ static FUNCTION_PTR(void, __cdecl, sceneRender, 0x652110, void*);
 static FUNCTION_PTR(void, __cdecl, setSceneSurface, 0x64E960, void*, void*);
 
 static boost::shared_ptr<Hedgehog::Mirage::CModelData> s_curSky;
+static float s_curBackGroundScale;
 
 static Hedgehog::Mirage::CLightListData* s_curLightList;
 static size_t s_localLightCount;
@@ -176,6 +177,7 @@ static void __cdecl implOfSceneRender(void* a1)
         }
 
         const auto prevSky = s_curSky;
+        const float prevBackGroundScale = s_curBackGroundScale;
 
         if (RaytracingParams::s_sky != nullptr && RaytracingParams::s_sky->IsMadeAll())
         {
@@ -190,7 +192,9 @@ static void __cdecl implOfSceneRender(void* a1)
                 s_curSky = nullptr;
         }
 
-        if (s_curSky != prevSky)
+        s_curBackGroundScale = *reinterpret_cast<const float*>(0x1A489EC);
+
+        if (s_curSky != prevSky || s_curBackGroundScale != prevBackGroundScale)
         {
             if (s_curSky != nullptr)
                 ModelData::renderSky(*s_curSky);
