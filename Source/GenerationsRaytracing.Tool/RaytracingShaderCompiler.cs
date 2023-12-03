@@ -14,6 +14,7 @@ public static class RaytracingShaderCompiler
 		("Chaos_", "SYS_ERROR"),
 		("ChaosV_", "SYS_ERROR"),
 		("ChrEye_", "CHR_EYE"),
+		("ChrEyeFHL", "CHR_EYE_FHL"),
 		("ChrSkin_", "CHR_SKIN"),
 		("ChrSkinHalf_", "CHR_SKIN_HALF"),
 		("ChrSkinIgnore_", "CHR_SKIN_IGNORE"),

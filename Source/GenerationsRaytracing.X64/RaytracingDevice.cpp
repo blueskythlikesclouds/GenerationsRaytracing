@@ -899,6 +899,7 @@ void RaytracingDevice::procMsgCreateMaterial()
         { message.reflectionTexture,    material.reflectionTexture    },
         { message.opacityTexture,       material.opacityTexture       },
         { message.displacementTexture,  material.displacementTexture  },
+        { message.levelTexture,         material.levelTexture         },
     };
 
     D3D12_SAMPLER_DESC samplerDesc{};

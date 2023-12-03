@@ -128,8 +128,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
     gBufferData.Diffuse = material.Diffuse.rgb;
     gBufferData.Alpha = material.Diffuse.a * material.OpacityReflectionRefractionSpectype.x;
     gBufferData.Specular = material.Specular.rgb;
-    gBufferData.SpecularGloss = material.PowerGlossLevel.y * 500.0;
-    gBufferData.SpecularLevel = material.PowerGlossLevel.z * 5.0;
+    gBufferData.SpecularGloss = material.GlossLevel.x * 500.0;
+    gBufferData.SpecularLevel = material.GlossLevel.y * 5.0;
     gBufferData.Normal = vertex.Normal;
 
     switch (shaderType)
@@ -197,7 +197,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 highlightSpecular *= gBufferData.SpecularLevel * gloss.x;
                 highlightSpecular *= ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
 
-                gBufferData.Diffuse.rgb *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a;
 
                 gBufferData.Specular *= vertex.Color.a;
@@ -205,6 +205,33 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 gBufferData.SpecularLevel *= gloss.y;
                 gBufferData.SpecularFresnel = ComputeFresnel(DecodeNormalMap(vertex, normalMap.zw)) * 0.7 + 0.3;
                 gBufferData.Emission = highlightSpecular * material.SonicEyeHighLightColor.rgb;
+
+                break;
+            }
+
+        case SHADER_TYPE_CHR_EYE_FHL:
+            {
+                float3 direction = NormalizeSafe(mul(float4(mul(ObjectToWorld3x4(), float4(0.0, 0.0, 1.0, 0.0)), 0.0), g_MtxView).xyz);
+                float2 offset = direction.xy * float2(-1.0, 1.0);
+
+                const float4 ChrEyeFHL1 = float4(0.03, -0.05, 0.01, 0.01);
+                const float4 ChrEyeFHL2 = float4(0.02, 0.09, 0.12, 0.07);
+                const float4 ChrEyeFHL3 = float4(0.0, 0.0, 0.1, 0.1);
+
+                float2 pupilOffset = -ChrEyeFHL1.zw * offset;
+                float2 highLightOffset = ChrEyeFHL3.xy + ChrEyeFHL3.zw * offset;
+                float2 catchLightOffset = ChrEyeFHL1.xy - float2(offset.x < 0 ? ChrEyeFHL2.x : ChrEyeFHL2.y, offset.y < 0 ? ChrEyeFHL2.z : ChrEyeFHL2.w) * offset;
+
+                float3 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex, 0).rgb;
+                float pupil = SampleMaterialTexture2D(material.DiffuseTexture, vertex, pupilOffset).w;
+                float3 highLight = SampleMaterialTexture2D(material.LevelTexture, vertex, highLightOffset).rgb;
+                float catchLight = SampleMaterialTexture2D(material.LevelTexture, vertex, catchLightOffset).w;
+                float4 mask = SampleMaterialTexture2D(material.DisplacementTexture, vertex, 0);
+
+                gBufferData.Diffuse *= diffuse * pupil;
+                gBufferData.Specular *= pupil * mask.b * vertex.Color.w;
+                gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
+                gBufferData.Emission = highLight * pupil * mask.w + catchLight;
 
                 break;
             }

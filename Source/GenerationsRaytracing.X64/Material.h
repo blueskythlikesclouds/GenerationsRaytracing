@@ -15,13 +15,14 @@ struct Material
     uint32_t reflectionTexture;
     uint32_t opacityTexture;
     uint32_t displacementTexture;
+    uint32_t levelTexture;
 
     float texCoordOffsets[8];
     float diffuse[4];
     float ambient[3];
     float specular[3];
     float emissive[3];
-    float powerGlossLevel[3];
+    float glossLevel[2];
     float opacityReflectionRefractionSpectype[1];
     float luminanceRange[1];
     float fresnelParam[2];

@@ -358,7 +358,7 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
         traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
             if (meshDataEx.m_spMaterial == nullptr || meshDataEx.m_spMaterial->m_spShaderListData == nullptr || 
-                strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "ChrEye") == nullptr)
+                strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "ChrEye_") == nullptr)
             {
                 return;
             }

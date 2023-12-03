@@ -405,13 +405,14 @@ struct MsgCreateMaterial
     Texture reflectionTexture;
     Texture opacityTexture;
     Texture displacementTexture;
+    Texture levelTexture;
 
     float texCoordOffsets[8];
     float diffuse[4];
     float ambient[3];
     float specular[3];
     float emissive[3];
-    float powerGlossLevel[3];
+    float glossLevel[2];
     float opacityReflectionRefractionSpectype[1];
     float luminanceRange[1];
     float fresnelParam[2];

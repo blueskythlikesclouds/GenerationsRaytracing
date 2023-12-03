@@ -77,6 +77,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     static Hedgehog::Base::CStringSymbol s_reflectionSymbol("reflection");
     static Hedgehog::Base::CStringSymbol s_opacitySymbol("opacity");
     static Hedgehog::Base::CStringSymbol s_displacementSymbol("displacement");
+    static Hedgehog::Base::CStringSymbol s_levelSymbol("level");
 
     struct
     {
@@ -97,6 +98,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { s_reflectionSymbol, 0, message.reflectionTexture },
         { s_opacitySymbol, 0, message.opacityTexture },
         { s_displacementSymbol, 0, message.displacementTexture },
+        { s_levelSymbol, 0, message.levelTexture }
     };
 
     bool constTexCoord = true;
@@ -184,26 +186,27 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     {
         Hedgehog::Base::CStringSymbol name;
         float* destParam;
+        uint32_t paramOffset;
         uint32_t paramSize;
     } const parameterDescs[] =
     {
-        { s_texcoordOffsetSymbol, message.texCoordOffsets, 8 },
-        { s_diffuseSymbol, message.diffuse, 4 },
-        { s_ambientSymbol, message.ambient, 3 },
-        { s_specularSymbol, message.specular, 3 },
-        { s_emissiveSymbol, message.emissive, 3 },
-        { s_powerGlossLevelSymbol, message.powerGlossLevel, 3 },
-        { s_opacityReflectionRefractionSpectypeSymbol, message.opacityReflectionRefractionSpectype, 1 },
-        { s_luminanceRangeSymbol, message.luminanceRange, 1 },
-        { s_fresnelParamSymbol, message.fresnelParam, 2 },
-        { s_sonicEyeHighLightPositionRaytracingSymbol, message.sonicEyeHighLightPosition, 3 },
-        { s_sonicEyeHighLightColorSymbol, message.sonicEyeHighLightColor, 3 },
-        { s_sonicSkinFalloffParamSymbol, message.sonicSkinFalloffParam, 3 },
-        { s_chrEmissionParamSymbol, message.chrEmissionParam, 4 },
-        { s_transColorMaskSymbol, message.transColorMask, 3 },
-        { s_emissionParamSymbol, message.emissionParam, 4 },
-        { s_offsetParamSymbol, message.offsetParam, 2 },
-        { s_waterParamSymbol, message.waterParam, 2 }
+        { s_texcoordOffsetSymbol, message.texCoordOffsets, 0, 8 },
+        { s_diffuseSymbol, message.diffuse, 0, 4 },
+        { s_ambientSymbol, message.ambient, 0, 3 },
+        { s_specularSymbol, message.specular, 0, 3 },
+        { s_emissiveSymbol, message.emissive, 0, 3 },
+        { s_powerGlossLevelSymbol, message.glossLevel, 1, 2 },
+        { s_opacityReflectionRefractionSpectypeSymbol, message.opacityReflectionRefractionSpectype, 0, 1 },
+        { s_luminanceRangeSymbol, message.luminanceRange, 0, 1 },
+        { s_fresnelParamSymbol, message.fresnelParam, 0, 2 },
+        { s_sonicEyeHighLightPositionRaytracingSymbol, message.sonicEyeHighLightPosition, 0, 3 },
+        { s_sonicEyeHighLightColorSymbol, message.sonicEyeHighLightColor, 0, 3 },
+        { s_sonicSkinFalloffParamSymbol, message.sonicSkinFalloffParam, 0, 3 },
+        { s_chrEmissionParamSymbol, message.chrEmissionParam, 0, 4 },
+        { s_transColorMaskSymbol, message.transColorMask, 0, 3 },
+        { s_emissionParamSymbol, message.emissionParam, 0, 4 },
+        { s_offsetParamSymbol, message.offsetParam, 0, 2 },
+        { s_waterParamSymbol, message.waterParam, 0, 2 }
     };
 
     for (const auto& parameterDesc : parameterDescs)
@@ -214,7 +217,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         {
             if (float4Param->m_Name == parameterDesc.name)
             {
-                memcpy(parameterDesc.destParam, float4Param->m_spValue.get(), 
+                memcpy(parameterDesc.destParam, &float4Param->m_spValue[parameterDesc.paramOffset], 
                     std::min(parameterDesc.paramSize, float4Param->m_ValueNum * 4) * sizeof(float));
 
                 break;
