@@ -228,10 +228,10 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 float catchLight = SampleMaterialTexture2D(material.LevelTexture, vertex, catchLightOffset).w;
                 float4 mask = SampleMaterialTexture2D(material.DisplacementTexture, vertex, 0);
 
-                gBufferData.Diffuse *= diffuse * pupil;
-                gBufferData.Specular *= pupil * mask.b * vertex.Color.w;
+                gBufferData.Diffuse *= diffuse * pupil * (1.0 - catchLight);
+                gBufferData.Specular *= pupil * mask.b * vertex.Color.w * (1.0 - catchLight);
                 gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
-                gBufferData.Emission = highLight * pupil * mask.w + catchLight;
+                gBufferData.Emission = highLight * pupil * mask.w + catchLight * 2.0;
 
                 break;
             }
