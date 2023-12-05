@@ -201,7 +201,7 @@ void RaytracingDevice::writeHitGroupShaderTable(size_t geometryIndex, size_t sha
 
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& message)
 {
-    if (message.resetAccumulation)
+    if (message.resetAccumulation || message.debugView != DEBUG_VIEW_NONE)
         m_globalsRT.currentFrame = 0;
 
     switch (message.envMode)
@@ -237,8 +237,8 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     static std::default_random_engine engine;
     static std::uniform_int_distribution distribution(0, 1024);
 
-    m_globalsRT.blueNoiseOffsetX = distribution(engine);
-    m_globalsRT.blueNoiseOffsetY = distribution(engine);
+    m_globalsRT.blueNoiseOffsetX = m_globalsRT.currentFrame == 0 ? 0 : distribution(engine);
+    m_globalsRT.blueNoiseOffsetY = m_globalsRT.currentFrame == 0 ? 0 : distribution(engine);
     m_globalsRT.blueNoiseTextureId = m_textures[message.blueNoiseTextureId].srvIndex;
 
     m_globalsRT.localLightCount = message.localLightCount;
@@ -376,15 +376,32 @@ void RaytracingDevice::createRaytracingTextures()
 
     assert(SUCCEEDED(hr) && m_outputTexture != nullptr);
 
-    // Create descriptor heap for copy texture shader
-    if (m_srvId == NULL)
-        m_srvId = m_descriptorHeap.allocateMany(2);
+    m_debugViewTextures[DEBUG_VIEW_NONE] = m_outputTexture->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_DIFFUSE] = m_gBufferTexture1->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_SPECULAR] = m_gBufferTexture2->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_NORMAL] = m_gBufferTexture4->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_FALLOFF] = m_gBufferTexture5->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_EMISSION] = m_gBufferTexture6->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_SHADOW] = m_shadowTexture->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_GI] = m_giTexture->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_REFLECTION] = m_reflectionTexture->GetResource();
+    m_debugViewTextures[DEBUG_VIEW_REFRACTION] = m_refractionTexture->GetResource();
 
-    cpuHandle = m_descriptorHeap.getCpuHandle(m_srvId);
-    m_device->CreateShaderResourceView(m_outputTexture->GetResource(), nullptr, cpuHandle);
+    static_assert(_countof(m_debugViewTextures) == DEBUG_VIEW_MAX);
 
-    cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
-    m_device->CreateShaderResourceView(m_depthTexture->GetResource(), nullptr, cpuHandle);
+    for (size_t i = 0; i < DEBUG_VIEW_MAX; i++)
+    {
+        auto& srvId = m_srvIds[i];
+
+        if (srvId == NULL)
+            srvId = m_descriptorHeap.allocateMany(2);
+
+        cpuHandle = m_descriptorHeap.getCpuHandle(srvId);
+        m_device->CreateShaderResourceView(m_debugViewTextures[i], nullptr, cpuHandle);
+
+        cpuHandle.ptr += m_descriptorHeap.getIncrementSize();
+        m_device->CreateShaderResourceView(m_depthTexture->GetResource(), nullptr, cpuHandle);
+    }
 }
 
 void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
@@ -399,22 +416,11 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         1);
 
     PIX_END_EVENT();
+
+    if (message.debugView != DEBUG_VIEW_NONE)
+        return;
+
     PIX_BEGIN_EVENT("Upscale");
-
-    ID3D12Resource* colorTexture = m_colorTexture->GetResource();
-
-    switch (message.debugView)
-    {
-    case DEBUG_VIEW_DIFFUSE: colorTexture = m_gBufferTexture1->GetResource(); break;
-    case DEBUG_VIEW_SPECULAR: colorTexture = m_gBufferTexture2->GetResource(); break;
-    case DEBUG_VIEW_NORMAL: colorTexture = m_gBufferTexture4->GetResource(); break;
-    case DEBUG_VIEW_FALLOFF: colorTexture = m_gBufferTexture5->GetResource(); break;
-    case DEBUG_VIEW_EMISSION: colorTexture = m_gBufferTexture6->GetResource(); break;
-    case DEBUG_VIEW_SHADOW: colorTexture = m_shadowTexture->GetResource(); break;
-    case DEBUG_VIEW_GI: colorTexture = m_giTexture->GetResource(); break;
-    case DEBUG_VIEW_REFLECTION: colorTexture = m_reflectionTexture->GetResource(); break;
-    case DEBUG_VIEW_REFRACTION: colorTexture = m_refractionTexture->GetResource(); break;
-    }
 
     getGraphicsCommandList().uavBarrier(m_colorTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
@@ -429,7 +435,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
     getGraphicsCommandList().transitionBarrier(m_gBufferTexture4->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().transitionBarrier(colorTexture,
+    getGraphicsCommandList().transitionBarrier(m_colorTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
@@ -452,7 +458,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
             m_diffuseAlbedoTexture->GetResource(),
             m_specularAlbedoTexture->GetResource(),
             m_gBufferTexture4->GetResource(),
-            colorTexture,
+            m_colorTexture->GetResource(),
             m_outputTexture->GetResource(),
             m_depthTexture->GetResource(),
             m_linearDepthTexture->GetResource(),
@@ -469,7 +475,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
     m_curRootSignature = nullptr;
 }
 
-void RaytracingDevice::copyToRenderTargetAndDepthStencil()
+void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgTraceRays& message)
 {
     PIX_EVENT();
 
@@ -478,14 +484,14 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil()
 
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvId));
+    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvIds[message.debugView]));
     getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipeline.Get());
     getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
     getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &scissorRect);
     getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    getGraphicsCommandList().transitionBarrier(m_outputTexture->GetResource(),
+    getGraphicsCommandList().transitionBarrier(m_debugViewTextures[message.debugView],
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
@@ -871,7 +877,7 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().commitBarriers();
 
     resolveAndDispatchUpscaler(message);
-    copyToRenderTargetAndDepthStencil();
+    copyToRenderTargetAndDepthStencil(message);
 }
 
 void RaytracingDevice::procMsgCreateMaterial()

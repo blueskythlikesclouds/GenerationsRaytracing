@@ -204,7 +204,7 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
     const boost::shared_ptr<Hedgehog::Database::CDatabase>& database,
     Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)
 {
-    if (name == "chr_Sonic_HD" && data != nullptr)
+    if (data != nullptr && (name == "chr_Sonic_HD" || name == "chr_classic_sonic_HD" || name == "chr_classic_SuperSonic_HD"))
     {
         Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
 
@@ -215,6 +215,10 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
             const XXH32_hash_t hash = XXH32(data, dataSize, 0);
             if (hash == 0x33CB76CD || hash == 0xE3838522)
                 modelDataEx.m_noAoModel = wrapper.GetModelData("chr_Sonic_HD_noao");
+            else if (hash == 0x8DA6A277)
+                modelDataEx.m_noAoModel = wrapper.GetModelData("chr_classic_sonic_HD_noao");
+            else if (hash == 0xCA42A635)
+                modelDataEx.m_noAoModel = wrapper.GetModelData("chr_classic_SuperSonic_HD_noao");
         }
     }
 

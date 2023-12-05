@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BottomLevelAccelStruct.h"
+#include "DebugView.h"
 #include "Device.h"
 #include "GeometryDesc.h"
 #include "InstanceDesc.h"
@@ -132,7 +133,8 @@ protected:
     ComPtr<D3D12MA::Allocation> m_specularHitDistanceTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
-    uint32_t m_srvId{};
+    uint32_t m_srvIds[DEBUG_VIEW_MAX]{};
+    ID3D12Resource* m_debugViewTextures[DEBUG_VIEW_MAX]{};
 
     // Resolve
     ComPtr<ID3D12PipelineState> m_resolvePipeline;
@@ -171,7 +173,7 @@ protected:
 
     void createRaytracingTextures();
     void resolveAndDispatchUpscaler(const MsgTraceRays& message);
-    void copyToRenderTargetAndDepthStencil();
+    void copyToRenderTargetAndDepthStencil(const MsgTraceRays& message);
 
     void procMsgCreateBottomLevelAccelStruct();
     void procMsgReleaseRaytracingResource();
