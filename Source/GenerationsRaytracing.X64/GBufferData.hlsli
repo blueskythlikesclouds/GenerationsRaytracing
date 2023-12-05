@@ -211,7 +211,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
         case SHADER_TYPE_CHR_EYE_FHL:
             {
-                float3 direction = NormalizeSafe(mul(float4(mul(ObjectToWorld3x4(), float4(0.0, 0.0, 1.0, 0.0)), 0.0), g_MtxView).xyz);
+                float3 direction = NormalizeSafe(mul(float4(material.SonicEyeHighLightPosition.xyz, 0.0), g_MtxView).xyz);
                 float2 offset = direction.xy * float2(-1.0, 1.0);
 
                 const float4 ChrEyeFHL1 = float4(0.03, -0.05, 0.01, 0.01);

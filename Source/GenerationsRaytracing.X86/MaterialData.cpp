@@ -17,10 +17,10 @@ HOOK(MaterialDataEx*, __fastcall, MaterialDataConstructor, 0x704CA0, MaterialDat
     const auto result = originalMaterialDataConstructor(This);
 
     This->m_materialId = NULL;
-    new (&This->m_originalHighLightParamValue) boost::shared_ptr<float[]>();
-    new (&This->m_raytracingHighLightParamValue) boost::shared_ptr<float[]>();
+    new (&This->m_eyeParamHolder) std::unique_ptr<EyeParamHolder>();
     This->m_materialHash = 0;
     This->m_hashFrame = 0;
+    new (&This->m_fhlMaterial) boost::shared_ptr<Hedgehog::Mirage::CMaterialData>();
 
     return result;
 }
@@ -31,11 +31,32 @@ HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
     s_materialsToCreate.erase(This);
     s_matCreateMutex.unlock();
 
+    This->m_fhlMaterial.~shared_ptr();
+    This->m_eyeParamHolder.~unique_ptr();
     RaytracingUtil::releaseResource(RaytracingResourceType::Material, This->m_materialId);
-    This->m_originalHighLightParamValue.~shared_ptr();
-    This->m_raytracingHighLightParamValue.~shared_ptr();
 
     originalMaterialDataDestructor(This);
+}
+
+HOOK(void, __cdecl, MaterialDataMake, 0x733E60,
+    const Hedgehog::Base::CSharedString& name,
+    const void* data,
+    uint32_t dataSize,
+    const boost::shared_ptr<Hedgehog::Database::CDatabase>& database,
+    Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)
+{
+    const char* fhlSuffix = strstr(name.c_str(), "_fhl");
+
+    if (fhlSuffix == (name.data() + name.size() - 4) && data != nullptr)
+    {
+        Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
+
+        const auto modelData = wrapper.GetMaterialData(name.substr(0, name.size() - 4));
+        auto& modelDataEx = *reinterpret_cast<MaterialDataEx*>(modelData.get());
+        modelDataEx.m_fhlMaterial = wrapper.GetMaterialData(name);
+    }
+
+    originalMaterialDataMake(name, data, dataSize, database, renderingInfrastructure);
 }
 
 static void createMaterial(MaterialDataEx& materialDataEx)
@@ -173,7 +194,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     static Hedgehog::Base::CStringSymbol s_opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
     static Hedgehog::Base::CStringSymbol s_luminanceRangeSymbol("mrgLuminanceRange");
     static Hedgehog::Base::CStringSymbol s_fresnelParamSymbol("mrgFresnelParam");
-    static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPosition_Raytracing");
+    static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPositionRaytracing");
     static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightColorSymbol("g_SonicEyeHighLightColor");
     static Hedgehog::Base::CStringSymbol s_sonicSkinFalloffParamSymbol("g_SonicSkinFalloffParam");
     static Hedgehog::Base::CStringSymbol s_chrEmissionParamSymbol("mrgChrEmissionParam");
@@ -230,6 +251,50 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
 static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
 {
+    if (This->m_fhlMaterial != nullptr)
+    {
+        static Hedgehog::Base::CStringSymbol s_texcoordOffsetSymbol("mrgTexcoordOffset");
+
+        boost::shared_ptr<float[]> value;
+        for (const auto& float4Param : This->m_Float4Params)
+        {
+            if (float4Param->m_Name == s_texcoordOffsetSymbol && float4Param->m_ValueNum == 2)
+            {
+                value = float4Param->m_spValue;
+                break;
+            }
+        }
+        if (value == nullptr)
+        {
+            value = boost::make_shared<float[]>(8, 0.0f);
+
+            const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
+            float4Param->m_Name = s_texcoordOffsetSymbol;
+            float4Param->m_ValueNum = 2;
+            float4Param->m_spValue = value;
+
+            This->m_Float4Params.push_back(float4Param);
+        }
+
+        for (const auto& float4Param : This->m_fhlMaterial->m_Float4Params)
+        {
+            if (float4Param->m_Name == s_texcoordOffsetSymbol && float4Param->m_ValueNum == 2)
+            {
+                float4Param->m_spValue = std::move(value);
+                break;
+            }
+        }
+        if (value != nullptr)
+        {
+            const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
+            float4Param->m_Name = s_texcoordOffsetSymbol;
+            float4Param->m_ValueNum = 2;
+            float4Param->m_spValue = value;
+
+            This->m_fhlMaterial->m_Float4Params.push_back(float4Param);
+        }
+    }
+
     LockGuard lock(s_matCreateMutex);
     s_materialsToCreate.emplace(This);
 
@@ -338,6 +403,8 @@ void MaterialData::init()
 
     INSTALL_HOOK(MaterialDataConstructor);
     INSTALL_HOOK(MaterialDataDestructor);
+
+    INSTALL_HOOK(MaterialDataMake);
 
     INSTALL_HOOK(MaterialAnimationEnv);
     INSTALL_HOOK(TexcoordAnimationEnv);

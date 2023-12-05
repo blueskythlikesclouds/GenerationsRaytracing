@@ -51,6 +51,8 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                         else
                             ++it;
                     }
+
+                    instanceInfoEx->m_handledEyeMaterials = false;
                 }
 
                 ModelData::createBottomLevelAccelStruct(

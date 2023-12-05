@@ -17,7 +17,7 @@ public:
     XXH32_hash_t m_modelHash;
     uint32_t m_visibilityBits;
     uint32_t m_hashFrame;
-    boost::shared_ptr<Hedgehog::Mirage::CModelData> m_noAoModel;
+    boost::shared_ptr<CModelData> m_noAoModel;
 };
 
 using MaterialMap = hh::map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>>;

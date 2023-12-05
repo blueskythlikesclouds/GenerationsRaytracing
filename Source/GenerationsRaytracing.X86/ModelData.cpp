@@ -293,7 +293,7 @@ static boost::shared_ptr<Hedgehog::Mirage::CMaterialData> cloneMaterial(const He
         "specular",
         "emissive",
         "power_gloss_level",
-        "opacity_reflection_refraction_spectype"
+        "opacity_reflection_refraction_spectype",
     };
 
     materialClone->m_Float4Params.reserve(material.m_Float4Params.size());
@@ -336,6 +336,32 @@ static boost::shared_ptr<Hedgehog::Mirage::CMaterialData> cloneMaterial(const He
     return boost::shared_ptr<Hedgehog::Mirage::CMaterialData>(materialClone);
 }
 
+static boost::shared_ptr<Hedgehog::Mirage::CParameterFloat4Element> createFloat4Param(
+    Hedgehog::Mirage::CMaterialData& material, Hedgehog::Base::CStringSymbol name, uint32_t valueNum, float* value)
+{
+    for (const auto& float4Param : material.m_Float4Params)
+    {
+        if (float4Param->m_Name == name && float4Param->m_ValueNum == valueNum)
+        {
+            if (value != nullptr)
+                memcpy(float4Param->m_spValue.get(), value, valueNum * sizeof(float[4]));
+
+            return float4Param;
+        }
+    }
+
+    const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
+    float4Param->m_Name = name;
+    float4Param->m_ValueNum = valueNum;
+    float4Param->m_spValue = boost::make_shared<float[]>(valueNum * 4, 0.0f);
+
+    if (value != nullptr)
+        memcpy(float4Param->m_spValue.get(), value, valueNum * sizeof(float[4]));
+    
+    material.m_Float4Params.push_back(float4Param);
+    return float4Param;
+}
+
 void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, MaterialMap& materialMap)
 {
     if (!instanceInfoEx.m_handledEyeMaterials)
@@ -353,43 +379,43 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
         }
 
         static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionSymbol("g_SonicEyeHighLightPosition");
-        static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPosition_Raytracing");
+        static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPositionRaytracing");
 
         traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
             if (meshDataEx.m_spMaterial == nullptr || meshDataEx.m_spMaterial->m_spShaderListData == nullptr || 
-                strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "ChrEye_") == nullptr)
+                strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "ChrEye") == nullptr)
             {
                 return;
             }
 
             auto& materialOverride = materialMap[meshDataEx.m_spMaterial.get()];
             if (materialOverride == nullptr)
-            {
                 materialOverride = cloneMaterial(*meshDataEx.m_spMaterial);
-                materialOverride->m_TypeAndName = meshDataEx.m_MaterialName;
-            }
 
             auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialOverride.get());
 
-            if (materialDataEx.m_raytracingHighLightParamValue == nullptr)
+            if (materialDataEx.m_eyeParamHolder == nullptr)
             {
-                for (const auto& float4Param : materialDataEx.m_Float4Params)
+                materialDataEx.m_eyeParamHolder = std::make_unique<EyeParamHolder>();
+
+                materialDataEx.m_eyeParamHolder->originalValue = 
+                    createFloat4Param(materialDataEx, s_sonicEyeHighLightPositionSymbol, 1, nullptr)->m_spValue;
+
+                if (materialDataEx.m_spShaderListData->m_TypeAndName == "Mirage.shader-list ChrEyeFHL")
                 {
-                    if (float4Param->m_Name == s_sonicEyeHighLightPositionSymbol)
-                    {
-                        materialDataEx.m_originalHighLightParamValue = float4Param->m_spValue;
-                        break;
-                    }
+                    materialDataEx.m_eyeParamHolder->originalValue[0] = 0.0f;
+                    materialDataEx.m_eyeParamHolder->originalValue[1] = 0.0f;
+                    materialDataEx.m_eyeParamHolder->originalValue[2] = 1.0f;
+                    materialDataEx.m_eyeParamHolder->originalValue[3] = 0.0f;
+                }
+                else
+                {
+                    materialDataEx.m_eyeParamHolder->originalValue[3] = 1.0f;
                 }
 
-                const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
-                float4Param->m_Name = s_sonicEyeHighLightPositionRaytracingSymbol;
-                float4Param->m_spValue = boost::make_shared<float[]>(4, 0.0f);
-                float4Param->m_ValueNum = 1;
-
-                materialDataEx.m_Float4Params.push_back(float4Param);
-                materialDataEx.m_raytracingHighLightParamValue = float4Param->m_spValue;
+                materialDataEx.m_eyeParamHolder->raytracingValue = 
+                    createFloat4Param(materialDataEx, s_sonicEyeHighLightPositionRaytracingSymbol, 1, nullptr)->m_spValue;
             }
         });
 
@@ -405,34 +431,18 @@ static void processTexcoordMotion(MaterialMap& materialMap, const Hedgehog::Moti
     {
         static Hedgehog::Base::CStringSymbol s_texCoordOffsetSymbol("mrgTexcoordOffset");
 
-        auto& material = materialMap[texcoordMotion.m_pMaterialData];
-        if (material == nullptr)
-            material = cloneMaterial(*texcoordMotion.m_pMaterialData);
+        const auto materialDataEx = reinterpret_cast<MaterialDataEx*>(texcoordMotion.m_pMaterialData);
+        const auto materialData = materialDataEx->m_fhlMaterial != nullptr ? materialDataEx->m_fhlMaterial.get() : materialDataEx;
 
-        auto& offsets = s_tmpMaterialCnt[texcoordMotion.m_pMaterialData];
+        auto& materialClone = materialMap[materialData];
+        if (materialClone == nullptr)
+            materialClone = cloneMaterial(*materialData);
+
+        auto& offsets = s_tmpMaterialCnt[materialData];
         if (offsets == nullptr)
         {
-            for (const auto& float4Param : material->m_Float4Params)
-            {
-                if (float4Param->m_Name == s_texCoordOffsetSymbol && float4Param->m_ValueNum == 2)
-                {
-                    offsets = float4Param->m_spValue.get();
-                    std::fill_n(offsets, 8, 0.0f);
-
-                    break;
-                }
-            }
-
-            if (offsets == nullptr)
-            {
-                const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
-                float4Param->m_Name = s_texCoordOffsetSymbol;
-                float4Param->m_ValueNum = 2;
-                float4Param->m_spValue = boost::make_shared<float[]>(8, 0.0f);
-
-                material->m_Float4Params.push_back(float4Param);
-                offsets = float4Param->m_spValue.get();
-            }
+            offsets = createFloat4Param(*materialClone, s_texCoordOffsetSymbol, 2, nullptr)->m_spValue.get();
+            std::fill_n(offsets, 8, 0.0f);
         }
 
         if ((texcoordMotion.m_Field4 & 0x2) == 0)
@@ -547,22 +557,41 @@ void ModelData::processSingleElementEffect(MaterialMap& materialMap, Hedgehog::M
 
 void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap)
 {
+    static Hedgehog::Base::CStringSymbol s_texCoordOffsetSymbol("mrgTexcoordOffset");
+
     for (auto& [key, value] : materialMap)
     {
-        auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(value.get());
-        if (materialDataEx.m_raytracingHighLightParamValue != nullptr)
+        auto& keyEx = *reinterpret_cast<MaterialDataEx*>(key);
+        if (keyEx.m_fhlMaterial != nullptr)
         {
-            auto& originalHighLightPosition = *reinterpret_cast<Eigen::Vector3f*>(materialDataEx.m_originalHighLightParamValue.get());
-            auto& raytracingHighLightPosition = *reinterpret_cast<Eigen::Vector3f*>(materialDataEx.m_raytracingHighLightParamValue.get());
-
-            if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > instanceInfoEx.m_headNodeIndex)
-                raytracingHighLightPosition = instanceInfoEx.m_Transform * (instanceInfoEx.m_spPose->GetMatrixList()[instanceInfoEx.m_headNodeIndex] * originalHighLightPosition);
-            else
-                raytracingHighLightPosition = instanceInfoEx.m_Transform * originalHighLightPosition;
+            const auto findResult = materialMap.find(keyEx.m_fhlMaterial.get());
+            if (findResult != materialMap.end())
+            {
+                for (const auto& float4Param : value->m_Float4Params)
+                {
+                    if (float4Param->m_Name == s_texCoordOffsetSymbol && float4Param->m_ValueNum == 2)
+                    {
+                        createFloat4Param(*findResult->second, s_texCoordOffsetSymbol, 2, float4Param->m_spValue.get());
+                        break;
+                    }
+                }
+            }
         }
 
-        MaterialData::create(*value, true);
+        const auto& valueEx = *reinterpret_cast<MaterialDataEx*>(value.get());
+        if (valueEx.m_eyeParamHolder != nullptr)
+        {
+            auto transform = instanceInfoEx.m_Transform;
+            if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > instanceInfoEx.m_headNodeIndex)
+                transform = transform * instanceInfoEx.m_spPose->GetMatrixList()[instanceInfoEx.m_headNodeIndex];
+
+            *reinterpret_cast<Eigen::Vector4f*>(valueEx.m_eyeParamHolder->raytracingValue.get()) = 
+                transform * *reinterpret_cast<Eigen::Vector4f*>(valueEx.m_eyeParamHolder->originalValue.get());
+        }
     }
+
+    for (auto& [key, value] : materialMap)
+        MaterialData::create(*value, true);
 
     const bool shouldCheckForHash = modelDataEx.m_hashFrame != RaytracingRendering::s_frame;
 
