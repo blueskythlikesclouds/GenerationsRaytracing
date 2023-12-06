@@ -125,7 +125,7 @@ static const xxHashMap<std::array<uint8_t, 6>> s_environmentColors =
     { 0x590df41aad9bc6b7, { 218, 229, 250 } },               // euc200
     { 0xa630b72f3269025b, { 189, 165, 218 } },               // euc204
     { 0x57517a95b60d0b8d, { 23, 27, 34 } },                  // evt041
-    { 0x94231efaa6d6521b, { 137, 246, 255 } },               // evt121, pam000, pam001
+    { 0x94231efaa6d6521b, { 140, 228, 243 } },               // evt121, pam000, pam001
     { 0x63eac110710bbd42, { 255, 255, 166 } },               // fig000
     { 0xab24577085d0036a, { 200, 191, 231 } },               // ghz100
     { 0x308f8335b0308380, { 59, 73, 179 } },                 // ghz103
