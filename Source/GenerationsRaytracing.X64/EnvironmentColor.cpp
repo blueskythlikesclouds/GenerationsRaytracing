@@ -13,58 +13,58 @@ static const xxHashMap<std::array<uint8_t, 6>> s_environmentColors =
     { 0xf4db322c7ea87c9a, { 213, 250, 255 } },               // ActD_NY
     { 0x1eb7f67273cecaa,  { 106, 138, 149 } },               // ActD_Petra
     { 0xf1bc7a919097a961, { 128, 167, 255 } },               // ActD_Snow
-    { 0x15cac74bd472f4b1, { 0, 0, 0 } },                     // ActD_SubAfrica_01
-    { 0x645c135b015f5c51, { 0, 0, 0 } },                     // ActD_SubAfrica_02
-    { 0x4bc8c6b374ef7dc,  { 0, 0, 0 } },                     // ActD_SubAfrica_03
-    { 0xc41c004f7d1be395, { 0, 0, 0 } },                     // ActD_SubBeach_01
-    { 0x23bcb56a132034d,  { 0, 0, 0 } },                     // ActD_SubBeach_02
-    { 0x9242344c3fc33633, { 0, 0, 0 } },                     // ActD_SubBeach_03, ActD_SubBeach_04
-    { 0x90b9c2aeafc410d5, { 0, 0, 0 } },                     // ActD_SubChina_01
-    { 0x2659ddb41ff9093e, { 0, 0, 0 } },                     // ActD_SubChina_02
-    { 0xbfe9a6ad43d2585e, { 0, 0, 0 } },                     // ActD_SubChina_03
-    { 0xae20dce270738af3, { 0, 0, 0 } },                     // ActD_SubChina_04
-    { 0x5d60949144ba996b, { 0, 0, 0 } },                     // ActD_SubEU_01
-    { 0xeb5ebf08dff02c84, { 0, 0, 0 } },                     // ActD_SubEU_02
-    { 0x3100bff8a77d24ea, { 0, 0, 0 } },                     // ActD_SubEU_03
-    { 0xab90b70e315778b9, { 0, 0, 0 } },                     // ActD_SubMykonos_01
-    { 0xb716bf4ce541719e, { 0, 0, 0 } },                     // ActD_SubMykonos_02
-    { 0x305282b50ee18452, { 0, 0, 0 } },                     // ActD_SubNY_01
-    { 0xa5a5a505eeb492d,  { 0, 0, 0 } },                     // ActD_SubNY_02
-    { 0xd1c5ec1d1a4d1840, { 0, 0, 0 } },                     // ActD_SubPetra_02
-    { 0xa21577b8df3b33b9, { 0, 0, 0 } },                     // ActD_SubPetra_03
-    { 0xee3d8260fdd7ae2a, { 0, 0, 0 } },                     // ActD_SubSnow_01
-    { 0xa079eb43b350b845, { 0, 0, 0 } },                     // ActD_SubSnow_02
-    { 0x1f2e36dd741ee6de, { 0, 0, 0 } },                     // ActD_SubSnow_03
-    { 0xfd638a08c4fa6069, { 0, 0, 0 } },                     // ActN_AfricaEvil
-    { 0x2f8d2049ca5ae027, { 0, 0, 0 } },                     // ActN_BeachEvil
-    { 0x6e9ce45e4d59ac01, { 0, 0, 0 } },                     // ActN_ChinaEvil
-    { 0x1c76c4c61c6ecdc1, { 0, 0, 0 } },                     // ActN_EUEvil
-    { 0x7ad18ba0ee8d2eff, { 0, 0, 0 } },                     // ActN_MykonosEvil
-    { 0x2302996784b753,   { 0, 0, 0 } },                     // ActN_NYEvil, ActN_SubNY_01
-    { 0x6e34fcae86a64530, { 0, 0, 0 } },                     // ActN_PetraEvil
-    { 0xfac157022da22bd,  { 0, 0, 0 } },                     // ActN_SnowEvil
-    { 0x68605862784bc5c5, { 0, 0, 0 } },                     // ActN_SubAfrica_01
-    { 0x49b8c45da08b33f0, { 0, 0, 0 } },                     // ActN_SubAfrica_02
-    { 0x68a708dcd81f8658, { 0, 0, 0 } },                     // ActN_SubAfrica_03
-    { 0xf0baa13c344d5b7c, { 0, 0, 0 } },                     // ActN_SubBeach_01, ActN_SubEU_01
-    { 0xb837ced9b6c8d205, { 0, 0, 0 } },                     // ActN_SubChina_01
-    { 0x8be72a684ae495e1, { 0, 0, 0 } },                     // ActN_SubChina_02
-    { 0x1fa2f762e59e8fdc, { 0, 0, 0 } },                     // ActN_SubMykonos_01, Town_Mykonos_Night
-    { 0x75818bc493e2a5bd, { 0, 0, 0 } },                     // ActN_SubPetra_02
-    { 0x3b3a0de6eb98dce2, { 0, 0, 0 } },                     // ActN_SubSnow_01
-    { 0x64d0e9981311c067, { 0, 0, 0 } },                     // ActN_SubSnow_02
-    { 0xa46a4242dd733faf, { 0, 0, 0 } },                     // Act_EggmanLand
-    { 0x2fc1f50800c472e4, { 0, 0, 0 } },                     // BossDarkGaia1_1Air, BossFinalDarkGaia
-    { 0x9877b9309c1d1f31, { 0, 0, 0 } },                     // BossDarkGaia1_1Run
-    { 0x35d6d5696feebe6a, { 0, 0, 0 } },                     // BossDarkGaia1_2Run
-    { 0x1330c7b8c3bf1c49, { 0, 0, 0 } },                     // BossDarkGaia1_3Run
-    { 0xfbc04b53e8f43304, { 0, 0, 0 } },                     // BossDarkGaiaMoray
-    { 0x5d7089d8ec4e03c5, { 0, 0, 0 } },                     // BossEggBeetle
-    { 0x465d0b2de5eb7715, { 0, 0, 0 } },                     // BossEggDragoon, Event_M8_03
-    { 0xc0cf061f57d9ae1f, { 0, 0, 0 } },                     // BossEggLancer
-    { 0x7044d7e066764b10, { 0, 0, 0 } },                     // BossEggRayBird
-    { 0xf1b405db5fc8be20, { 0, 0, 0 } },                     // BossPetra
-    { 0xdf19e846d0229d5f, { 0, 0, 0 } },                     // BossPhoenix
+    { 0x15cac74bd472f4b1, { 209, 233, 249 } },               // ActD_SubAfrica_01
+    { 0x645c135b015f5c51, { 209, 251, 243 } },               // ActD_SubAfrica_02
+    { 0x4bc8c6b374ef7dc,  { 86, 91, 166 } },                 // ActD_SubAfrica_03
+    { 0xc41c004f7d1be395, { 144, 145, 193 } },               // ActD_SubBeach_01
+    { 0x23bcb56a132034d,  { 112, 164, 249 } },               // ActD_SubBeach_02
+    { 0x9242344c3fc33633, { 139, 142, 188 } },               // ActD_SubBeach_03, ActD_SubBeach_04
+    { 0x90b9c2aeafc410d5, { 127, 181, 209 } },               // ActD_SubChina_01
+    { 0x2659ddb41ff9093e, { 166, 183, 179 } },               // ActD_SubChina_02
+    { 0xbfe9a6ad43d2585e, { 116, 161, 193 } },               // ActD_SubChina_03
+    { 0xae20dce270738af3, { 105, 142, 166 } },               // ActD_SubChina_04
+    { 0x5d60949144ba996b, { 97, 106, 139 } },                // ActD_SubEU_01
+    { 0xeb5ebf08dff02c84, { 224, 235, 255 } },               // ActD_SubEU_02
+    { 0x3100bff8a77d24ea, { 188, 163, 218 } },               // ActD_SubEU_03
+    { 0xab90b70e315778b9, { 123, 73, 198 } },                // ActD_SubMykonos_01
+    { 0xb716bf4ce541719e, { 59, 71, 173 } },                 // ActD_SubMykonos_02
+    { 0x305282b50ee18452, { 193, 232, 239 } },               // ActD_SubNY_01
+    { 0xa5a5a505eeb492d,  { 209, 247, 255 } },               // ActD_SubNY_02
+    { 0xd1c5ec1d1a4d1840, { 97, 138, 156 } },                // ActD_SubPetra_02
+    { 0xa21577b8df3b33b9, { 105, 135, 148 } },               // ActD_SubPetra_03
+    { 0xee3d8260fdd7ae2a, { 97, 152, 249 } },                // ActD_SubSnow_01
+    { 0xa079eb43b350b845, { 116, 109, 193 } },               // ActD_SubSnow_02
+    { 0x1f2e36dd741ee6de, { 135, 171, 249 } },               // ActD_SubSnow_03
+    { 0xfd638a08c4fa6069, { 2, 64, 156 } },                  // ActN_AfricaEvil
+    { 0x2f8d2049ca5ae027, { 0, 48, 135 } },                  // ActN_BeachEvil
+    { 0x6e9ce45e4d59ac01, { 0, 129, 255 } },                 // ActN_ChinaEvil
+    { 0x1c76c4c61c6ecdc1, { 16, 39, 65 } },                  // ActN_EUEvil
+    { 0x7ad18ba0ee8d2eff, { 48, 36, 78 } },                  // ActN_MykonosEvil
+    { 0x2302996784b753,   { 2, 9, 12 } },                    // ActN_NYEvil, ActN_SubNY_01
+    { 0x6e34fcae86a64530, { 38, 82, 209 } },                 // ActN_PetraEvil
+    { 0xfac157022da22bd,  { 101, 119, 144 } },               // ActN_SnowEvil
+    { 0x68605862784bc5c5, { 8, 51, 90 } },                   // ActN_SubAfrica_01
+    { 0x49b8c45da08b33f0, { 45, 79, 153 } },                 // ActN_SubAfrica_02
+    { 0x68a708dcd81f8658, { 33, 101, 198 } },                // ActN_SubAfrica_03
+    { 0xf0baa13c344d5b7c, { 45, 52, 74 } },                  // ActN_SubBeach_01, ActN_SubEU_01
+    { 0xb837ced9b6c8d205, { 0, 126, 255 } },                 // ActN_SubChina_01
+    { 0x8be72a684ae495e1, { 0, 145, 255 } },                 // ActN_SubChina_02
+    { 0x1fa2f762e59e8fdc, { 31, 18, 65 } },                  // ActN_SubMykonos_01, Town_Mykonos_Night
+    { 0x75818bc493e2a5bd, { 80, 74, 116 } },                 // ActN_SubPetra_02
+    { 0x3b3a0de6eb98dce2, { 48, 63, 97 } },                  // ActN_SubSnow_01
+    { 0x64d0e9981311c067, { 38, 59, 108 } },                 // ActN_SubSnow_02
+    { 0xa46a4242dd733faf, { 59, 22, 22 } },                  // Act_EggmanLand
+    { 0x2fc1f50800c472e4, { 153, 58, 56 } },                 // BossDarkGaia1_1Air, BossFinalDarkGaia
+    { 0x9877b9309c1d1f31, { 40, 37, 93 } },                  // BossDarkGaia1_1Run
+    { 0x35d6d5696feebe6a, { 45, 43, 108 } },                 // BossDarkGaia1_2Run
+    { 0x1330c7b8c3bf1c49, { 56, 52, 139 } },                 // BossDarkGaia1_3Run
+    { 0xfbc04b53e8f43304, { 18, 40, 59 } },                  // BossDarkGaiaMoray
+    { 0x5d7089d8ec4e03c5, { 193, 232, 224 } },               // BossEggBeetle
+    { 0x465d0b2de5eb7715, { 93, 82, 79 } },                  // BossEggDragoon, Event_M8_03
+    { 0xc0cf061f57d9ae1f, { 153, 152, 153 } },               // BossEggLancer
+    { 0x7044d7e066764b10, { 213, 218, 239 } },               // BossEggRayBird
+    { 0xf1b405db5fc8be20, { 6, 1, 31 } },                    // BossPetra
+    { 0xdf19e846d0229d5f, { 0, 25, 56 } },                   // BossPhoenix
     { 0x3e8825ecb8a4bb0a, { 0, 0, 0 } },                     // Event_M2_01_professor_room_new
     { 0x664180b711d2b5c3, { 0, 0, 0 } },                     // Event_M4_01_egb_hideout
     { 0xd79de450061ca6f9, { 0, 0, 0 } },                     // Event_M6_01_temple
