@@ -124,6 +124,7 @@ static const Stage s_stages[] =
     { "csc100", "csc_Direct00", "csc100_sky" },
     { "csc200", "csc_Direct00", "csc200_sky" },
     { "cte100", "CTE_Direct01", "cte_sky_000" },
+    { "cte102", "CTE_Direct01", "cte_sky_000" },
     { "cte200", "CTE_Direct01", "cte_sky_000" },
     { "euc100", "euc100_Direct01", "euc_sky_000" },
     { "euc200", "euc200_Direct01", "euc_sky_000" },
