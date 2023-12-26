@@ -195,6 +195,9 @@
     <ClInclude Include="MotionData.h">
       <Filter>Patch</Filter>
     </ClInclude>
+    <ClInclude Include="RaytracingStages.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">

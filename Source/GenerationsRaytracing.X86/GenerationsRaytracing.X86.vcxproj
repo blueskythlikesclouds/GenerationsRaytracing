@@ -151,6 +151,7 @@
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="MotionData.h" />
+    <ClInclude Include="RaytracingStages.h" />
     <ClInclude Include="RaytracingUtil.h" />
     <ClInclude Include="ModelData.h" />
     <ClInclude Include="Configuration.h" />

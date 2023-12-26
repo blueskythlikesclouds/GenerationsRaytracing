@@ -8,148 +8,12 @@ struct Stage
     const char* name;
     const char* light;
     const char* sky;
+    std::initializer_list<const char*> archiveNames;
 };
 
 static const Stage s_stages[] =
 {
-    { "ActD_Africa", "Direct01", "afr_sky_day" },
-    { "ActD_Beach", "light", "sea_sky_day" },
-    { "ActD_China", "Direct01", "chn_sky_day" },
-    { "ActD_EU", "Direct01", "euc_sky_day" },
-    { "ActD_MykonosAct1", "light", "myk_sky_morning" },
-    { "ActD_MykonosAct2", "light", "myk_sky_day" },
-    { "ActD_NY", "FDirect01", "nyc_sky_day" },
-    { "ActD_Petra", "light", "ptr_sky_day" },
-    { "ActD_Snow", "light", "snw_sky_day" },
-    { "ActD_SubAfrica_01", "Direct01", "sky" },
-    { "ActD_SubAfrica_02", "Direct01", "afr_sky_day" },
-    { "ActD_SubAfrica_03", "Light01", "afr_sky_02" },
-    { "ActD_SubBeach_01", "light", "sea_sky_day_sub01" },
-    { "ActD_SubBeach_02", "light", "sea_sky_day" },
-    { "ActD_SubBeach_03", "light", "sea_sky_day_sub04" },
-    { "ActD_SubBeach_04", "light", "sea_sky_day_sub04" },
-    { "ActD_SubChina_01", "Direct01", "chn_sky_day" },
-    { "ActD_SubChina_02", "Direct01", "chn_sky_day" },
-    { "ActD_SubChina_03", "Direct01", "chn_sky_day" },
-    { "ActD_SubChina_04", "Direct01", "chn_sky_day" },
-    { "ActD_SubEU_01", "Direct01", "euc_sky_eveningCloud" },
-    { "ActD_SubEU_02", "Direct01", "euc_sky_day" },
-    { "ActD_SubEU_03", "Direct01", "euc_sky_evening" },
-    { "ActD_SubEU_04", "Direct01", "euc_sky_day" },
-    { "ActD_SubMykonos_01", "light", "myk_sky_morning" },
-    { "ActD_SubMykonos_02", "light", "myk_sky_morning" },
-    { "ActD_SubNY_01", "FDirect01", "nyc_sky_day" },
-    { "ActD_SubNY_02", "FDirect01", "nyc_sky_day" },
-    { "ActD_SubPetra_02", "light", "ptr_sky_day" },
-    { "ActD_SubPetra_03", "light", "ptr_sky_day" },
-    { "ActD_SubSnow_01", "light", "snw_sky_day" },
-    { "ActD_SubSnow_02", "light", "snw_sky_morning" },
-    { "ActD_SubSnow_03", "light", "snw_sky_day" },
-    { "ActN_AfricaEvil", "FDirect01", "afr_sky_night_000" },
-    { "ActN_BeachEvil", "FDirect01", "sea_sky_night" },
-    { "ActN_ChinaEvil", "FDirect01", "chn_sky_night" },
-    { "ActN_EUEvil", "euc_night_Direct01", "euc_sky_night" },
-    { "ActN_MykonosEvil", "Direct01", "evl_myk_sky_01" },
-    { "ActN_NYEvil", "FDirect01", "nyc_sky_night2" },
-    { "ActN_PetraEvil", "Direct01", "ptr_sky_night" },
-    { "ActN_SnowEvil", "light", "snw_sky_night" },
-    { "ActN_SubAfrica_01", "FDirect01", "afr_sky_night_000" },
-    { "ActN_SubAfrica_03", "FDirect01", "afr_sky_night_000" },
-    { "ActN_SubBeach_01", "euc_night_Direct01", "sea_sky_night" },
-    { "ActN_SubChina_01", "FDirect01", "chn_sky_night" },
-    { "ActN_SubChina_02", "FDirect01", "chn_sky_night" },
-    { "ActN_SubEU_01", "euc_night_Direct01", "euc_evl_sky_000" },
-    { "ActN_SubMykonos_01", "Direct01", "evl_myk_sky_01" },
-    { "ActN_SubNY_01", "FDirect01", "nyc_sky_night2" },
-    { "ActN_SubPetra_02", "Direct01", "ptr_sky_night" },
-    { "ActN_SubSnow_01", "light", "snw_sky_sub01_night" },
-    { "ActN_SubSnow_02", "light", "snw_sky_night" },
-    { "Act_EggmanLand", "Direct02_001", "egb_sky_day" },
-    { "BossDarkGaia1_1Run", "Direct01", "fnl_sky_day" },
-    { "BossDarkGaia1_2Run", "light", "fnl_sky_day" },
-    { "BossDarkGaia1_3Run", "Direct01", "fnl_sky_day" },
-    { "BossDarkGaiaMoray", "Direct01", "snw_sky_night" },
-    { "BossEggBeetle", "Direct01", "afrboss_sky_day" },
-    { "BossEggLancer", "FDirect01", "sea_sky_day" },
-    { "BossEggRayBird", "FDirect01", "eucboss_sky_day" },
-    { "BossPetra", "Direct01", "ptrboss_sky_night" },
-    { "BossPhoenix", "Direct01", "chn_sky_night" },
-    { "Town_Africa", "twn_afr_day_light", "afr_sky_day" },
-    { "Town_AfricaETF", "etf_afr_day_light", "afr_sky_day" },
-    { "Town_AfricaETF_Night", "etf_afr_night_light", "afr_sky_night" },
-    { "Town_Africa_Night", "twn_afr_night_light", "afr_sky_night" },
-    { "Town_China", "twn_chn_day_light", "chn_sky_day" },
-    { "Town_ChinaETF", "etf_chn_day_light", "chn_sky_day" },
-    { "Town_ChinaETF_Night", "etf_chn_night_light", "chn_sky_night" },
-    { "Town_China_Night", "twn_chn_night_light", "chn_sky_night" },
-    { "Town_EULabo", "euc_professorroom_day_light", "euc_sky_day" },
-    { "Town_EULabo_Night", "euc_professorroom_night_light", "euc_sky_night" },
-    { "Town_EggManBase", "twn_egb_day_light", "egb_sky_day" },
-    { "Town_EuropeanCity", "twn_euc_day_light", "euc_sky_village_day" },
-    { "Town_EuropeanCityETF", "etf_euc_day_light.light", "euc_sky_01" },
-    { "Town_EuropeanCityETF_Night", "etf_euc_night_light", "euc_sky_night" },
-    { "Town_EuropeanCity_Night", "twn_euc_night_light", "euc_sky_night" },
-    { "Town_Mykonos", "twn_myk_day_light", "myk_sky_day" },
-    { "Town_MykonosETF", "light", "sky_day" },
-    { "Town_MykonosETF_Night", "etf_myk_night_light", "evl_myk_sky_01" },
-    { "Town_Mykonos_Night", "twn_myk_night_light", "myk_sky_night" },
-    { "Town_NYCity", "twn_nyc_day_light", "nyc_sky_day" },
-    { "Town_NYCityETF", "etf_nyc_day_light", "nyc_sky_day" },
-    { "Town_NYCityETF_Night", "twn_nyc_night_light", "nyc_sky_night" },
-    { "Town_NYCity_Night", "twn_nyc_night_light", "nyc_sky_night" },
-    { "Town_PetraCapital", "twn_ptr_day_light", "ptr_sky_day" },
-    { "Town_PetraCapitalETF", "etf_ptr_day_light", "ptr_sky_day" },
-    { "Town_PetraCapitalETF_Night", "etf_ptr_night_light", "ptr_village_sky_night" },
-    { "Town_PetraCapital_Night", "twn_ptr_night_light", "ptr_village_sky_night" },
-    { "Town_PetraLabo", "labo_ptr_day_light", "ptr_sky_day" },
-    { "Town_PetraLabo_Night", "labo_ptr_night_light", "ptr_sky_night" },
-    { "Town_Snow", "twn_snw_day_light", "snw_sky_day" },
-    { "Town_SnowETF", "etf_snw_day_light", "snw_sky_day" },
-    { "Town_SnowETF_Night", "etf_snw_night_light", "snw_sky_night" },
-    { "Town_Snow_Night", "twn_snw_night_light", "snw_sky_night" },
-    { "Town_SouthEastAsia", "twn_sea_day_light", "sea_sky_day" },
-    { "Town_SouthEastAsiaETF", "etf_sea_day_light", "sea_sky_day" },
-    { "Town_SouthEastAsiaETF_Night", "etf_sea_night_light", "sea_sky_night" },
-    { "Town_SouthEastAsia_Night", "twn_sea_night_light", "sea_sky_night" },
-    { "bde", "Direct01", "bde_sky_0" },
-    { "blb", "blb_sky", "blb_sky_000" },
-    { "bms", "bms_Direct01", "bms_sky" },
-    { "bne", "bne_Direct01", "bne_sky01" },
-    { "bpc", "bpc_Direct00", "bpc300_sky" },
-    { "bsd", "Direct01", "bsd_sky0" },
-    { "bsl", "bsl_Direct00", "bsl_sky" },
-    { "cnz100", "cnz_Direct00", "cnz100_sky" },
-    { "cpz100", "cpz_Direct01", "cpz_sky0" },
-    { "cpz200", "cpz_Direct01", "cpz_sky1" },
-    { "csc100", "csc_Direct00", "csc100_sky" },
-    { "csc200", "csc_Direct00", "csc200_sky" },
-    { "cte100", "CTE_Direct01", "cte_sky_000" },
-    { "cte102", "CTE_Direct01", "cte_sky_000" },
-    { "cte200", "CTE_Direct01", "cte_sky_000" },
-    { "euc100", "euc100_Direct01", "euc_sky_000" },
-    { "euc200", "euc200_Direct01", "euc_sky_000" },
-    { "euc204", "euc204_Direct01", "euc_sky_evening" },
-    { "fig000", "fig000_Direct01", "fig_sky_000" },
-    { "ghz100", "Direct01", "ghz_sky_000" },
-    { "ghz103", "ghz103_Direct01", "ghz103_sky_000" },
-    { "ghz104", "ghz104_Direct01", "ghz_sea_sky_night" },
-    { "ghz200", "ghz200_Direct01", "ghz_sky_000" },
-    { "pam000", "pam000_Direct01", "pam_sky_000" },
-    { "pla100", "pla100_Direct01", "pla_sky" },
-    { "pla200", "pla200_Direct01", "pla_sky" },
-    { "pla204", "pla200_Direct01", "pla204_sky" },
-    { "pla205", "pla200_Direct01", "pla_sky" },
-    { "sph100", "sph100_Direct01", "sph100_sky00" },
-    { "sph101", "sph100_Direct01", "sph_sky_sph101" },
-    { "sph200", "sph03_Direct01", "sph200_sky01" },
-    { "ssh100", "ssh100_Direct01", "ssh_sky" },
-    { "ssh101", "ssh101_Direct01", "ssh_sky" },
-    { "ssh200", "ssh200_Direct01", "ssh_sky" },
-    { "ssh201", "ssh200_Direct01", "ssh_sky" },
-    { "ssh205", "ssh200_Direct01", "ssh_sky" },
-    { "ssz100", "ssz100_Direct01", "ssz_sky_000" },
-    { "ssz103", "ssz103_Direct01", "ssz103_sky" },
-    { "ssz200", "ssz200_Direct01", "ssz_sky_000" }
+#include "RaytracingStages.h"
 };
 
 static size_t s_stageIndex = 0;
@@ -162,13 +26,22 @@ static void loadArchiveDatabase(const Stage& stage)
     s_database = Hedgehog::Database::CDatabase::CreateDatabase();
     auto& loader = Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spDatabaseLoader;
 
-    const Hedgehog::Base::CSharedString base = "Stage/" + Hedgehog::Base::CSharedString(stage.name);
-    const Hedgehog::Base::CSharedString ar = base + ".ar";
-    const Hedgehog::Base::CSharedString arl = base + ".arl";
+    static Hedgehog::Base::CSharedString s_ar(".ar");
+    static Hedgehog::Base::CSharedString s_arl(".arl");
 
-    loader->CreateArchiveList(ar, arl, { 200, 5 });
-    loader->LoadArchiveList(s_database, arl);
-    loader->LoadArchive(s_database, ar, { -10, 5 }, false, false);
+    for (const auto archiveName : stage.archiveNames)
+    {
+        loader->CreateArchiveList(
+            archiveName + s_ar, 
+            archiveName + s_arl, 
+            { 200, 5 });
+    }
+
+    for (const auto archiveName : stage.archiveNames)
+        loader->LoadArchiveList(s_database, archiveName + s_arl);
+
+    for (const auto archiveName : stage.archiveNames)
+        loader->LoadArchive(s_database, archiveName + s_ar, { -10, 5 }, false, false);
 
     Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(s_database.get());
 
