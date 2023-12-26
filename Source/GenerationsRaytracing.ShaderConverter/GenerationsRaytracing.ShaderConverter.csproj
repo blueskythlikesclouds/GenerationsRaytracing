@@ -9,8 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Vortice.D3DCompiler" Version="3.3.4" />
-    <PackageReference Include="Vortice.Dxc" Version="3.3.4" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.4.1-beta" />
+    <PackageReference Include="Vortice.Dxc" Version="3.4.1-beta" />
   </ItemGroup>
 
 </Project>
