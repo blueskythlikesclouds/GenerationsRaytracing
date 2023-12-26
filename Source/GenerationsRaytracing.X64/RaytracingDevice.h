@@ -28,6 +28,7 @@ struct alignas(0x10) GlobalsRT
     uint32_t internalResolutionHeight;
     uint32_t blueNoiseOffsetX;
     uint32_t blueNoiseOffsetY;
+    uint32_t blueNoiseOffsetZ;
     uint32_t blueNoiseTextureId;
     uint32_t localLightCount;
     uint32_t currentFrame = 0;

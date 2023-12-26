@@ -142,7 +142,7 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool s
             break;
 
         position = payload.Position;
-        direction = TangentToWorld(normal, GetCosWeightedSample(i == 0 ? random.xz : random.yw));
+        direction = TangentToWorld(normal, GetCosWeightedSample(random.zw));
         throughput *= payload.Diffuse;
     }
 

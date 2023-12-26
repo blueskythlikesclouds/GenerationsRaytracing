@@ -112,7 +112,7 @@ cbuffer GlobalsRT : register(b2)
     bool g_UseEnvironmentColor;
     float2 g_PixelJitter;
     uint2 g_InternalResolution;
-    uint2 g_BlueNoiseOffset;
+    uint3 g_BlueNoiseOffset;
     uint g_BlueNoiseTextureId;
     uint g_LocalLightCount;
     uint g_CurrentFrame;

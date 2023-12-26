@@ -5,10 +5,15 @@
 #define FLT_MAX asfloat(0x7f7fffff)
 #define INF asfloat(0x7f800000)
 
+float4 GetBlueNoise(uint2 index)
+{
+    Texture2DArray texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
+    return texture.Load(int4((index + g_BlueNoiseOffset.xy) % 64, g_BlueNoiseOffset.z, 0));
+}
+
 float4 GetBlueNoise()
 {
-    Texture2D texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
-    return texture.Load(int3((DispatchRaysIndex().xy + g_BlueNoiseOffset) % 1024, 0));
+    return GetBlueNoise(DispatchRaysIndex().xy);
 }
 
 uint InitRand(uint val0, uint val1, uint backoff = 16)

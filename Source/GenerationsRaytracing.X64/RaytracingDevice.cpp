@@ -235,10 +235,11 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     m_globalsRT.internalResolutionHeight = m_upscaler->getHeight();
 
     static std::default_random_engine engine;
-    static std::uniform_int_distribution distribution(0, 1024);
+    static std::uniform_int_distribution distribution(0, 63);
 
-    m_globalsRT.blueNoiseOffsetX = m_globalsRT.currentFrame == 0 ? 0 : distribution(engine);
-    m_globalsRT.blueNoiseOffsetY = m_globalsRT.currentFrame == 0 ? 0 : distribution(engine);
+    m_globalsRT.blueNoiseOffsetX = message.debugView != DEBUG_VIEW_NONE ? 0 : distribution(engine);
+    m_globalsRT.blueNoiseOffsetY = message.debugView != DEBUG_VIEW_NONE ? 0 : distribution(engine);
+    m_globalsRT.blueNoiseOffsetZ = message.debugView != DEBUG_VIEW_NONE ? 0 : distribution(engine);
     m_globalsRT.blueNoiseTextureId = m_textures[message.blueNoiseTextureId].srvIndex;
 
     m_globalsRT.localLightCount = message.localLightCount;
