@@ -22,6 +22,7 @@ using Microsoft::WRL::ComPtr;
 #include <INIReader.h>
 #define XXH_STATIC_LINKING_ONLY
 #include <xxhash.h>
+#include <HE1ML/ModLoader.h>
 
 #define FUNCTION_STUB(RETURN_TYPE, RETURN_VALUE, FUNCTION_NAME, ...) \
     RETURN_TYPE FUNCTION_NAME(__VA_ARGS__) { assert(!#FUNCTION_NAME); return RETURN_VALUE; }
