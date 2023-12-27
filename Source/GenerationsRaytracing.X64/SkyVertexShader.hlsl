@@ -66,7 +66,7 @@ static row_major float4x4 s_proj =
 
 void main(in VertexShaderInput i, out PixelShaderInput o)
 {
-    o.Position = mul(float4(mul(float4(i.Position, 0.0), s_view[i.InstanceID]).xyz, 1.0), s_proj);
+    o.Position = mul(float4(mul(float4(i.Position + float3(0, -0.05, 0), 0.0), s_view[i.InstanceID]).xyz, 1.0), s_proj);
     o.DiffuseTexCoord = GetTexCoord(i, g_DiffuseTextureId >> 30);
     o.AlphaTexCoord = GetTexCoord(i, g_AlphaTextureId >> 30);
     o.EmissionTexCoord = GetTexCoord(i, g_EmissionTextureId >> 30);
