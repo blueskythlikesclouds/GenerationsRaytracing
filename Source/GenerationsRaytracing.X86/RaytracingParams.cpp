@@ -190,7 +190,8 @@ static void createParameterFile()
         upscalerParam->CreateParamTypeList(&RaytracingParams::s_upscaler, "Upscaler", "", {
             {"Unspecified", 0},
             {"DLSS", 1},
-            {"FSR2", 2} });
+            {"DLSS Ray Reconstruction", 2},
+            {"FSR2", 3} });
 
         upscalerParam->CreateParamTypeList(&RaytracingParams::s_qualityMode, "QualityMode", "", {
             {"Unspecified", 0},

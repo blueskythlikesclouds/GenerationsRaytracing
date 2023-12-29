@@ -5,6 +5,7 @@
 #include "CopyTexturePixelShader.h"
 #include "DebugView.h"
 #include "DLSS.h"
+#include "DLSSD.h"
 #include "EnvironmentColor.h"
 #include "EnvironmentMode.h"
 #include "FSR2.h"
@@ -249,6 +250,11 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     m_globalsRT.skyPower = message.skyPower;
     memcpy(m_globalsRT.backgroundColor, message.backgroundColor, sizeof(m_globalsRT.backgroundColor));
     m_globalsRT.useSkyTexture = message.useSkyTexture;
+    m_globalsRT.adaptionLuminanceTextureId = m_textures[message.adaptionLuminanceTextureId].srvIndex;
+    m_globalsRT.middleGray = message.middleGray;
+
+    getGraphicsCommandList().transitionBarrier(m_textures[message.adaptionLuminanceTextureId].allocation->GetResource(),
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     const auto globalsRT = createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
@@ -294,19 +300,22 @@ void RaytracingDevice::createRaytracingTextures()
 
     auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_UNKNOWN,
-        m_upscaler->getWidth(), m_upscaler->getHeight(), 1, 1, 1, 0,
+        0, 0, 1, 1, 1, 0,
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
     struct
     {
         DXGI_FORMAT format;
         ComPtr<D3D12MA::Allocation>& allocation;
+        uint32_t width;
+        uint32_t height;
     }
     const textureDescs[] =
     {
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture },
         { DXGI_FORMAT_R32_FLOAT, m_depthTexture },
         { DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
+        { DXGI_FORMAT_R32_FLOAT, m_exposureTexture, 1, 1 },
 
         { DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0 },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1 },
@@ -330,6 +339,8 @@ void RaytracingDevice::createRaytracingTextures()
 
     for (const auto& textureDesc : textureDescs)
     {
+        resourceDesc.Width = textureDesc.width > 0 ? textureDesc.width : m_upscaler->getWidth();
+        resourceDesc.Height = textureDesc.height > 0 ? textureDesc.height : m_upscaler->getHeight();
         resourceDesc.Format = textureDesc.format;
 
         const HRESULT hr = m_allocator->CreateResource(
@@ -424,6 +435,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
     PIX_BEGIN_EVENT("Upscale");
 
     getGraphicsCommandList().uavBarrier(m_colorTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_exposureTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
     getGraphicsCommandList().uavBarrier(m_specularAlbedoTexture->GetResource());
 
@@ -448,6 +460,9 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
     getGraphicsCommandList().transitionBarrier(m_linearDepthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+    getGraphicsCommandList().transitionBarrier(m_exposureTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
     getGraphicsCommandList().transitionBarrier(m_specularHitDistanceTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -464,6 +479,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
             m_depthTexture->GetResource(),
             m_linearDepthTexture->GetResource(),
             m_motionVectorsTexture->GetResource(),
+            m_exposureTexture->GetResource(),
             m_specularHitDistanceTexture->GetResource(),
             m_globalsRT.pixelJitterX,
             m_globalsRT.pixelJitterY,
@@ -751,6 +767,9 @@ void RaytracingDevice::procMsgTraceRays()
 
             if (message.upscaler == static_cast<uint32_t>(UpscalerType::DLSS) + 1)
                 upscaler = std::make_unique<DLSS>(*this);
+
+            else if (message.upscaler == static_cast<uint32_t>(UpscalerType::DLSSD) + 1)
+                upscaler = std::make_unique<DLSSD>(*this);
 
             if (upscaler != nullptr && upscaler->valid())
                 m_upscaler = std::move(upscaler);
@@ -1249,7 +1268,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 19, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 20, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1458,9 +1477,17 @@ RaytracingDevice::RaytracingDevice()
         m_qualityMode = static_cast<QualityMode>(
             reader.GetInteger("Mod", "QualityMode", static_cast<long>(QualityMode::Balanced)));
 
-        if (static_cast<UpscalerType>(reader.GetInteger("Mod", "Upscaler", static_cast<long>(UpscalerType::FSR2))) == UpscalerType::DLSS)
+        const auto upscalerType = static_cast<UpscalerType>(reader.GetInteger("Mod", "Upscaler", static_cast<long>(UpscalerType::FSR2)));
+
+        if (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD)
         {
-            auto upscaler = std::make_unique<DLSS>(*this);
+            std::unique_ptr<DLSS> upscaler;
+
+            if (upscalerType == UpscalerType::DLSSD)
+                upscaler = std::make_unique<DLSSD>(*this);
+            else
+                upscaler = std::make_unique<DLSS>(*this);
+
             if (!upscaler->valid())
             {
                 MessageBox(nullptr,

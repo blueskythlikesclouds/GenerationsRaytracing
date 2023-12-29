@@ -36,6 +36,8 @@ struct alignas(0x10) GlobalsRT
     float lightPower;
     float emissivePower;
     float skyPower;
+    uint32_t adaptionLuminanceTextureId;
+    float middleGray;
 };
 
 struct DelayedTexture
@@ -111,6 +113,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
     ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
+    ComPtr<D3D12MA::Allocation> m_exposureTexture;
 
     ComPtr<D3D12MA::Allocation> m_gBufferTexture0;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture1;

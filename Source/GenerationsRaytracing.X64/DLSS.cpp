@@ -1,22 +1,18 @@
 #include "DLSS.h"
 #include "Device.h"
 
-#ifdef _DEBUG
+NVSDK_NGX_PerfQuality_Value DLSS::getPerfQualityValue(QualityMode qualityMode)
+{
+    switch (qualityMode)
+    {
+    case QualityMode::Quality: return NVSDK_NGX_PerfQuality_Value_MaxQuality;
+    case QualityMode::Balanced: return NVSDK_NGX_PerfQuality_Value_Balanced;
+    case QualityMode::Performance: return NVSDK_NGX_PerfQuality_Value_MaxPerf;
+    case QualityMode::UltraPerformance: return NVSDK_NGX_PerfQuality_Value_UltraPerformance;
+    }
 
-#define THROW_IF_FAILED(x) \
-    do \
-    { \
-        const NVSDK_NGX_Result result = x; \
-        if (NVSDK_NGX_FAILED(result)) \
-        { \
-            OutputDebugStringW(GetNGXResultAsString(result)); \
-            assert(!#x); \
-        } \
-    } while (0)
-
-#else
-#define THROW_IF_FAILED(x) x
-#endif
+    return NVSDK_NGX_PerfQuality_Value_DLAA;
+}
 
 DLSS::DLSS(const Device& device)
 {
@@ -48,46 +44,38 @@ DLSS::~DLSS()
 
 void DLSS::init(const InitArgs& args)
 {
-    NVSDK_NGX_DLSSD_Create_Params params{};
-
-    params.InPerfQualityValue =
-        args.qualityMode == QualityMode::Quality ? NVSDK_NGX_PerfQuality_Value_MaxQuality :
-        args.qualityMode == QualityMode::Balanced ? NVSDK_NGX_PerfQuality_Value_Balanced :
-        args.qualityMode == QualityMode::Performance ? NVSDK_NGX_PerfQuality_Value_MaxPerf :
-        args.qualityMode == QualityMode::UltraPerformance ? NVSDK_NGX_PerfQuality_Value_UltraPerformance : NVSDK_NGX_PerfQuality_Value_DLAA;
+    NVSDK_NGX_DLSS_Create_Params params{};
+    params.Feature.InPerfQualityValue = getPerfQualityValue(args.qualityMode);
     
     uint32_t _;
     
-    THROW_IF_FAILED(NGX_DLSSD_GET_OPTIMAL_SETTINGS(
+    THROW_IF_FAILED(NGX_DLSS_GET_OPTIMAL_SETTINGS(
         m_parameters,
         args.width,
         args.height,
-        params.InPerfQualityValue,
+        params.Feature.InPerfQualityValue,
         &m_width,
         &m_height,
         &_,
         &_,
         &_,
         &_,
-        &m_sharpness));
+        reinterpret_cast<float*>(&_)));
     
     assert(m_width > 0 && m_height > 0);
 
-    params.InDenoiseMode = NVSDK_NGX_DLSS_Denoise_Mode_DLUnified;
-    params.InRoughnessMode = NVSDK_NGX_DLSS_Roughness_Mode_Packed;
-    params.InWidth = m_width;
-    params.InHeight = m_height;
-    params.InTargetWidth = args.width;
-    params.InTargetHeight = args.height;
+    params.Feature.InWidth = m_width;
+    params.Feature.InHeight = m_height;
+    params.Feature.InTargetWidth = args.width;
+    params.Feature.InTargetHeight = args.height;
     params.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
-        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes |
-        NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+        NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
 
     if (m_feature != nullptr)
         THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(m_feature));
 
-    THROW_IF_FAILED(NGX_D3D12_CREATE_DLSSD_EXT(
+    THROW_IF_FAILED(NGX_D3D12_CREATE_DLSS_EXT(
         args.device.getUnderlyingGraphicsCommandList(),
         1,
         1,
@@ -98,24 +86,21 @@ void DLSS::init(const InitArgs& args)
 
 void DLSS::dispatch(const DispatchArgs& args)
 {
-    NVSDK_NGX_D3D12_DLSSD_Eval_Params params{};
+    NVSDK_NGX_D3D12_DLSS_Eval_Params params{};
 
-    params.pInDiffuseAlbedo = args.diffuseAlbedo;
-    params.pInSpecularAlbedo = args.specularAlbedo;
-    params.pInNormals = args.normals;
-    params.pInColor = args.color;
-    params.pInOutput = args.output;
-    params.pInDepth = args.linearDepth;
+    params.Feature.pInColor = args.color;
+    params.Feature.pInOutput = args.output;
+    params.pInDepth = args.depth;
     params.pInMotionVectors = args.motionVectors;
     params.InJitterOffsetX = args.jitterX;
     params.InJitterOffsetY = args.jitterY;
     params.InRenderSubrectDimensions.Width = m_width;
     params.InRenderSubrectDimensions.Height = m_height;
     params.InReset = args.resetAccumulation;
-    params.pInSpecularHitDistance = args.specularHitDistance;
+    params.pInExposureTexture = args.exposure;
     params.InFrameTimeDeltaInMsec = args.device.getGlobalsPS().floatConstants[68][0] * 1000.0f;
 
-    THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSSD_EXT(
+    THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSS_EXT(
         args.device.getUnderlyingGraphicsCommandList(),
         m_feature, 
         m_parameters, 

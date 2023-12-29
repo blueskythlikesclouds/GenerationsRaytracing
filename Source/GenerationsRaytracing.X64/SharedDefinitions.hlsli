@@ -16,6 +16,12 @@ float4 GetBlueNoise()
     return GetBlueNoise(DispatchRaysIndex().xy);
 }
 
+float GetExposure()
+{
+    Texture2D texture = ResourceDescriptorHeap[g_AdaptionLuminanceTextureId];
+    return g_MiddleGray / (texture.Load(0).x + 0.001);
+}
+
 uint InitRand(uint val0, uint val1, uint backoff = 16)
 {
     uint v0 = val0, v1 = val1, s0 = 0;

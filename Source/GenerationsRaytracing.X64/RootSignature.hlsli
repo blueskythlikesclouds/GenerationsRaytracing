@@ -120,6 +120,8 @@ cbuffer GlobalsRT : register(b2)
     float g_LightPower;
     float g_EmissivePower;
     float g_SkyPower;
+    uint g_AdaptionLuminanceTextureId;
+    float g_MiddleGray;
 }
 
 struct LocalLight
@@ -139,25 +141,26 @@ StructuredBuffer<LocalLight> g_LocalLights : register(t4);
 RWTexture2D<float4> g_Color : register(u0);
 RWTexture2D<float> g_Depth : register(u1);
 RWTexture2D<float2> g_MotionVectors : register(u2);
+RWTexture2D<float> g_Exposure : register(u3);
 
-RWTexture2D<float4> g_GBuffer0 : register(u3);
-RWTexture2D<float4> g_GBuffer1 : register(u4);
-RWTexture2D<float4> g_GBuffer2 : register(u5);
-RWTexture2D<float4> g_GBuffer3 : register(u6);
-RWTexture2D<float4> g_GBuffer4 : register(u7);
-RWTexture2D<float4> g_GBuffer5 : register(u8);
-RWTexture2D<float4> g_GBuffer6 : register(u9);
+RWTexture2D<float4> g_GBuffer0 : register(u4);
+RWTexture2D<float4> g_GBuffer1 : register(u5);
+RWTexture2D<float4> g_GBuffer2 : register(u6);
+RWTexture2D<float4> g_GBuffer3 : register(u7);
+RWTexture2D<float4> g_GBuffer4 : register(u8);
+RWTexture2D<float4> g_GBuffer5 : register(u9);
+RWTexture2D<float4> g_GBuffer6 : register(u10);
 
-RWTexture2D<unorm float> g_Shadow : register(u10);
-RWTexture2D<uint4> g_Reservoir : register(u11);
-RWTexture2D<float3> g_GlobalIllumination : register(u12);
-RWTexture2D<float3> g_Reflection : register(u13);
-RWTexture2D<float3> g_Refraction : register(u14);
+RWTexture2D<unorm float> g_Shadow : register(u11);
+RWTexture2D<uint4> g_Reservoir : register(u12);
+RWTexture2D<float3> g_GlobalIllumination : register(u13);
+RWTexture2D<float3> g_Reflection : register(u14);
+RWTexture2D<float3> g_Refraction : register(u15);
 
-RWTexture2D<float3> g_DiffuseAlbedo : register(u15);
-RWTexture2D<float3> g_SpecularAlbedo : register(u16);
-RWTexture2D<float> g_LinearDepth : register(u17);
-RWTexture2D<float> g_SpecularHitDistance : register(u18);
+RWTexture2D<float3> g_DiffuseAlbedo : register(u16);
+RWTexture2D<float3> g_SpecularAlbedo : register(u17);
+RWTexture2D<float> g_LinearDepth : register(u18);
+RWTexture2D<float> g_SpecularHitDistance : register(u19);
 
 SamplerState g_SamplerState : register(s0);
 

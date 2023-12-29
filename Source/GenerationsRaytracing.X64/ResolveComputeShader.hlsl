@@ -90,4 +90,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     g_Color[dispatchThreadId.xy] = float4(color, 1.0);
     g_DiffuseAlbedo[dispatchThreadId.xy] = diffuseAlbedo;
     g_SpecularAlbedo[dispatchThreadId.xy] = specularAlbedo;
+
+    if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0)
+        g_Exposure[dispatchThreadId.xy] = GetExposure() * 2.0;
 }

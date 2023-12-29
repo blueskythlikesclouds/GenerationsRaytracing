@@ -377,6 +377,8 @@ struct MsgTraceRays
     float backgroundColor[3];
     uint32_t upscaler;
     uint32_t qualityMode;
+    uint32_t adaptionLuminanceTextureId;
+    float middleGray;
 };
 
 struct MsgCreateMaterial

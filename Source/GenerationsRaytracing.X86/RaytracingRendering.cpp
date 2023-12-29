@@ -311,6 +311,11 @@ static void __cdecl implOfSceneRender(void* a1)
         traceRaysMessage.upscaler = RaytracingParams::s_upscaler == 0 ? Configuration::s_upscaler + 1 : RaytracingParams::s_upscaler;
         traceRaysMessage.qualityMode = RaytracingParams::s_qualityMode == 0 ? Configuration::s_qualityMode + 1 : RaytracingParams::s_qualityMode;
 
+        traceRaysMessage.adaptionLuminanceTextureId = (*reinterpret_cast<Texture**>(
+            *reinterpret_cast<uint8_t**>(static_cast<uint8_t*>(a1) + 20) + 0x620))->getId();
+
+        traceRaysMessage.middleGray = *reinterpret_cast<float*>(0x1A572D0);
+
         s_messageSender.endMessage();
 
         ++RaytracingRendering::s_frame;

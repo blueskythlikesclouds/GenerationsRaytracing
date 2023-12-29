@@ -47,7 +47,7 @@ void FSR2::init(const InitArgs& args)
             args.qualityMode == QualityMode::Performance ? FFX_FSR2_QUALITY_MODE_PERFORMANCE : FFX_FSR2_QUALITY_MODE_ULTRA_PERFORMANCE));
     }
 
-    m_contextDesc.flags = FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE | FFX_FSR2_ENABLE_AUTO_EXPOSURE;
+    m_contextDesc.flags = FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
     m_contextDesc.maxRenderSize.width = m_width;
     m_contextDesc.maxRenderSize.height = m_height;
     m_contextDesc.displaySize.width = args.width;
@@ -64,6 +64,7 @@ void FSR2::dispatch(const DispatchArgs& args)
     desc.color = ffxGetResourceDX12(&m_context, args.color);
     desc.depth = ffxGetResourceDX12(&m_context, args.depth);
     desc.motionVectors = ffxGetResourceDX12(&m_context, args.motionVectors);
+    desc.exposure = ffxGetResourceDX12(&m_context, args.exposure);
     desc.output = ffxGetResourceDX12(&m_context, args.output, nullptr, FFX_RESOURCE_STATE_UNORDERED_ACCESS);
     desc.jitterOffset.x = args.jitterX;
     desc.jitterOffset.y = args.jitterY;

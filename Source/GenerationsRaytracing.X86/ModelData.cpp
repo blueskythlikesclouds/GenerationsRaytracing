@@ -589,8 +589,8 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
             if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > instanceInfoEx.m_headNodeIndex)
                 transform = transform * instanceInfoEx.m_spPose->GetMatrixList()[instanceInfoEx.m_headNodeIndex];
 
-            *reinterpret_cast<Eigen::Vector4f*>(valueEx.m_eyeParamHolder->raytracingValue.get()) = 
-                transform * *reinterpret_cast<Eigen::Vector4f*>(valueEx.m_eyeParamHolder->originalValue.get());
+            *reinterpret_cast<Eigen::Array4f*>(valueEx.m_eyeParamHolder->raytracingValue.get()) = 
+                transform * Eigen::Vector4f(*reinterpret_cast<Eigen::Array4f*>(valueEx.m_eyeParamHolder->originalValue.get()));
         }
     }
 
