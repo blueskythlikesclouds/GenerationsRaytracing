@@ -105,7 +105,6 @@ public static class RaytracingShaderCompiler
 		{
 			writer.WriteLine("\tL\"{0}_PrimaryHitGroup\",", shaderType);
 			writer.WriteLine("\tL\"{0}_PrimaryHitGroup_ConstTexCoord\",", shaderType);
-			writer.WriteLine("\tL\"ShadowHitGroup\",");
 			writer.WriteLine("\tL\"{0}_SecondaryHitGroup\",", shaderType);
 		}
 

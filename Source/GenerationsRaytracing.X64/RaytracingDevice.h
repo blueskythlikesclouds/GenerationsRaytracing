@@ -60,7 +60,7 @@ struct GlobalsSB
     uint32_t enableAlphaTest;
 };
 
-inline constexpr size_t HIT_GROUP_NUM = 3;
+inline constexpr size_t HIT_GROUP_NUM = 2;
 
 class RaytracingDevice final : public Device
 {

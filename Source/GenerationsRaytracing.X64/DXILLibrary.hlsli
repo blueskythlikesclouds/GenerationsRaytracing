@@ -43,12 +43,7 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
     g_LinearDepth[DispatchRaysIndex().xy] = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
 }
 
-struct [raypayload] ShadowRayPayload
-{
-    bool Miss : read(caller) : write(caller, miss);
-};
-
-float TraceShadow(float3 position, float3 direction, float2 random)
+float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG rayFlag, uint level)
 {
     float radius = sqrt(random.x) * 0.01;
     float angle = random.y * 2.0 * PI;
@@ -65,19 +60,63 @@ float TraceShadow(float3 position, float3 direction, float2 random)
     ray.TMin = 0.0;
     ray.TMax = INF;
 
-    ShadowRayPayload payload = (ShadowRayPayload) 0;
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
 
-    TraceRay(
+    query.TraceRayInline(
         g_BVH,
-        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
+        rayFlag,
         1,
-        1,
-        3,
-        1,
-        ray,
-        payload);
+        ray);
 
-    return payload.Miss ? 1.0 : 0.0;
+    if (rayFlag & RAY_FLAG_CULL_NON_OPAQUE)
+    {
+        query.Proceed();
+    }
+    else
+    {
+        while (query.Proceed())
+        {
+            if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+            {
+                GeometryDesc geometryDesc = g_GeometryDescs[query.CandidateInstanceID() + query.CandidateGeometryIndex()];
+        
+                if (geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH)
+                {
+                    Material material = g_Materials[geometryDesc.MaterialId];
+                    if (material.DiffuseTexture != 0)
+                    {
+                        ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
+                        Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
+        
+                        uint3 indices;
+                        indices.x = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 0];
+                        indices.y = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 1];
+                        indices.z = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 2];
+        
+                        uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
+        
+                        float2 texCoord0 = DecodeFloat2(vertexBuffer.Load(offsets.x));
+                        float2 texCoord1 = DecodeFloat2(vertexBuffer.Load(offsets.y));
+                        float2 texCoord2 = DecodeFloat2(vertexBuffer.Load(offsets.z));
+        
+                        float3 uv = float3(
+                            1.0 - query.CandidateTriangleBarycentrics().x - query.CandidateTriangleBarycentrics().y,
+                            query.CandidateTriangleBarycentrics().x,
+                            query.CandidateTriangleBarycentrics().y);
+        
+                        float2 texCoord = texCoord0 * uv.x + texCoord1 * uv.y + texCoord2 * uv.z;
+                        texCoord += material.TexCoordOffsets[0].xy;
+        
+                        if (SampleMaterialTexture2D(material.DiffuseTexture, texCoord, level).a > 0.5)
+                            query.CommitNonOpaqueTriangleHit();
+                    }
+        
+                }
+            }
+        }
+    }
+
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
 }
 
 struct [raypayload] SecondaryRayPayload
@@ -112,9 +151,9 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool s
             g_BVH,
             i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
             1,
+            1,
             2,
-            3,
-            i == 0 ? missShaderIndex : 2,
+            i == 0 ? missShaderIndex : 1,
             ray,
             payload);
 
@@ -126,7 +165,7 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool s
         if (any(payload.Diffuse != 0))
         {
             color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? random.xy : random.zw);
+               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? random.xy : random.zw, i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
         }
         else
         {

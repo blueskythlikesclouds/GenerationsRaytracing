@@ -34,7 +34,7 @@ void PrimaryRayGeneration()
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
         1,
         0,
-        3,
+        2,
         0,
         ray,
         payload);
@@ -98,39 +98,7 @@ void ShadowRayGeneration()
 
     bool traceShadow = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW));
     if (traceShadow)
-        g_Shadow[DispatchRaysIndex().xy] = TraceShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz, GetBlueNoise().xy);
-}
-
-[shader("miss")]
-void ShadowMiss(inout ShadowRayPayload payload : SV_RayPayload)
-{
-    payload.Miss = true;
-}
-
-void AnyHit(uint level, in BuiltInTriangleIntersectionAttributes attributes)
-{
-    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-
-    [branch]
-    if (geometryDesc.Flags & GEOMETRY_FLAG_TRANSPARENT)
-    {
-        IgnoreHit();
-    }
-    else
-    {
-        Material material = g_Materials[geometryDesc.MaterialId];
-        InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-
-        if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0], level).a < 0.5)
-            IgnoreHit();
-    }
-}
-
-[shader("anyhit")]
-void ShadowAnyHit(inout ShadowRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
-{
-    AnyHit(0, attributes);
+        g_Shadow[DispatchRaysIndex().xy] = TraceShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz, GetBlueNoise().xy, RAY_FLAG_NONE, 0);
 }
 
 [shader("raygeneration")]
@@ -144,7 +112,7 @@ void GIRayGeneration()
         g_GlobalIllumination[DispatchRaysIndex().xy] = TracePath(
             gBufferData.Position, 
             TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy)),
-            2,
+            1,
             false);
     }
 }
@@ -199,7 +167,7 @@ void ReflectionRayGeneration()
         g_Reflection[DispatchRaysIndex().xy] = pdf * TracePath(
             gBufferData.Position,
             rayDirection,
-            3,
+            2,
             true);
     }
 }
@@ -222,7 +190,7 @@ void RefractionRayGeneration()
         g_Refraction[DispatchRaysIndex().xy] = TracePath(
             gBufferData.Position, 
             rayDirection,
-            3,
+            2,
             false);
     }
 }
@@ -245,5 +213,20 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 [shader("anyhit")]
 void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
-    AnyHit(2, attributes);
+    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
+
+    [branch]
+    if (geometryDesc.Flags & GEOMETRY_FLAG_TRANSPARENT)
+    {
+        IgnoreHit();
+    }
+    else
+    {
+        Material material = g_Materials[geometryDesc.MaterialId];
+        InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
+
+        if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0], 2).a < 0.5)
+            IgnoreHit();
+    }
 }

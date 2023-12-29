@@ -1333,11 +1333,6 @@ RaytracingDevice::RaytracingDevice()
     const CD3DX12_SHADER_BYTECODE dxilLibrary(DXILLibrary, sizeof(DXILLibrary));
     dxilLibrarySubobject.SetDXILLibrary(&dxilLibrary);
 
-    CD3DX12_HIT_GROUP_SUBOBJECT shadowHitGroupSubobject(stateObject);
-    shadowHitGroupSubobject.SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
-    shadowHitGroupSubobject.SetHitGroupExport(L"ShadowHitGroup");
-    shadowHitGroupSubobject.SetAnyHitShaderImport(L"ShadowAnyHit");
-
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
     shaderConfigSubobject.Config(sizeof(float) * 12, sizeof(float) * 2);
 
@@ -1375,7 +1370,6 @@ RaytracingDevice::RaytracingDevice()
     const wchar_t* missShaderTable[] =
     {
         L"PrimaryMiss",
-        L"ShadowMiss",
         L"GIMiss",
         L"SecondaryMiss"
     };
