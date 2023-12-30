@@ -149,6 +149,7 @@
     <ClCompile Include="DescriptorHeap.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DLSS.cpp" />
+    <ClCompile Include="DLSSD.cpp" />
     <ClCompile Include="EnvironmentColor.cpp" />
     <ClCompile Include="FeatureCaps.cpp" />
     <ClCompile Include="FSR2.cpp" />
@@ -177,6 +178,7 @@
     <ClInclude Include="DescriptorHeap.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="DLSS.h" />
+    <ClInclude Include="DLSSD.h" />
     <ClInclude Include="EnvironmentColor.h" />
     <ClInclude Include="FeatureCaps.h" />
     <ClInclude Include="FSR2.h" />
