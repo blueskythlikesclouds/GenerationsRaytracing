@@ -6,6 +6,7 @@
 #include "MaterialFlags.h"
 #include "RootSignature.hlsli"
 #include "ShaderType.h"
+#include "SharedDefinitions.hlsli"
 
 #define GBUFFER_FLAG_IS_SKY                     (1 << 0)
 #define GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT       (1 << 1)
@@ -231,7 +232,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 gBufferData.Diffuse *= diffuse * pupil * (1.0 - catchLight);
                 gBufferData.Specular *= pupil * mask.b * vertex.Color.w * (1.0 - catchLight);
                 gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
-                gBufferData.Emission = highLight * pupil * mask.w + catchLight * 2.0;
+                gBufferData.Emission = (highLight * pupil * mask.w + catchLight) / GetExposure();
 
                 break;
             }
