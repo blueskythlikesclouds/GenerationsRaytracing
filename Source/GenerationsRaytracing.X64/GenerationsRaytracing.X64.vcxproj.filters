@@ -60,6 +60,9 @@
     <ClCompile Include="PipelineLibrary.cpp">
       <Filter>Device</Filter>
     </ClCompile>
+    <ClCompile Include="DLSSD.cpp">
+      <Filter>Upscaler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -179,6 +182,9 @@
     </ClInclude>
     <ClInclude Include="PipelineLibrary.h">
       <Filter>Device</Filter>
+    </ClInclude>
+    <ClInclude Include="DLSSD.h">
+      <Filter>Upscaler</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
