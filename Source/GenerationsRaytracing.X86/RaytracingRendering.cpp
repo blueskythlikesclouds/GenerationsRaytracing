@@ -312,7 +312,7 @@ static void __cdecl implOfSceneRender(void* a1)
         traceRaysMessage.qualityMode = RaytracingParams::s_qualityMode == 0 ? Configuration::s_qualityMode + 1 : RaytracingParams::s_qualityMode;
 
         traceRaysMessage.adaptionLuminanceTextureId = (*reinterpret_cast<Texture**>(
-            *reinterpret_cast<uint8_t**>(static_cast<uint8_t*>(a1) + 20) + 0x620))->getId();
+            *reinterpret_cast<uint8_t**>(static_cast<uint8_t*>(a1) + 20) + 0x658))->getId();
 
         traceRaysMessage.middleGray = *reinterpret_cast<float*>(0x1A572D0);
 
