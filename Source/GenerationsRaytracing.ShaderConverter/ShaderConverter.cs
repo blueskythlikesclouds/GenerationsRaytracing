@@ -449,7 +449,7 @@ public class ShaderConverter
     public static byte[] Compile(string convertedShader, bool isPixelShader)
     {
 		var result = DxcCompiler.Compile(convertedShader, 
-			new[] { isPixelShader ? "-T ps_6_6" : "-T vs_6_6", "-HV 2021", "-all-resources-bound", "-Qstrip_reflect" });
+			new[] { isPixelShader ? "-T ps_6_6" : "-T vs_6_6", "-HV 2021", "-all-resources-bound" });
 
         return result.GetObjectBytecode().IsEmpty
             ? throw new Exception(result.GetErrors())
