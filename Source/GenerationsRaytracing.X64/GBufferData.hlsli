@@ -723,7 +723,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
         case SHADER_TYPE_INDIRECT:
             {
                 float4 offset = SampleMaterialTexture2D(material.DisplacementTexture, vertex, 0);
-                offset.xy = (offset.wx * 2.0 - 1.0) * material.OffsetParam.xy * 3.0;;
+                offset.xy = (offset.wx * 2.0 - 1.0) * material.OffsetParam.xy * 3.0;
 
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex, offset.xy);
                 float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex, offset.xy).x;
