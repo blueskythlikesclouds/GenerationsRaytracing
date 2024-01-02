@@ -52,8 +52,32 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                 }
             }
 
-            ComputeReservoirWeight(shadingParams.Reservoir, ComputeReservoirWeight(gBufferData, 
-                shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]));
+            LocalLight localLight = g_LocalLights[shadingParams.Reservoir.Y];
+
+            ComputeReservoirWeight(shadingParams.Reservoir,
+                ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection, localLight));
+
+            if (shadingParams.Reservoir.W > 0.0f)
+            {
+                RayDesc ray;
+
+                ray.Origin = gBufferData.Position;
+                ray.Direction = NormalizeSafe(localLight.Position - gBufferData.Position);
+                ray.TMin = 0.0;
+                ray.TMax = distance(localLight.Position, gBufferData.Position);
+
+                RayQuery<RAY_FLAG_CULL_BACK_FACING_TRIANGLES | RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
+
+                query.TraceRayInline(
+                    g_BVH,
+                    RAY_FLAG_NONE,
+                    1,
+                    ray);
+
+                query.Proceed();
+
+                shadingParams.Reservoir.W *= (query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0);
+            }
         }
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
