@@ -5,5 +5,7 @@ Generations Raytracing is a work-in-progress mod that replaces Sonic Generations
 ## Preview
 
 <div align="center">
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/iTtB9Don4KI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      <a href="https://www.youtube.com/watch?v=iTtB9Don4KI">
+         <img src="https://img.youtube.com/vi/iTtB9Don4KI/maxresdefault.jpg" style="width:300;"></br>Generations Raytracing - Unleashed Project with Alternative Lighting
+      </a>
 </div>
