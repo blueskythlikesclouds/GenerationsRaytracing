@@ -5,6 +5,7 @@ class Device;
 enum class QualityMode
 {
     Native,
+    UltraQuality,
     Quality,
     Balanced,
     Performance,
