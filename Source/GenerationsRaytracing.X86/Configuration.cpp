@@ -12,9 +12,9 @@ void Configuration::init()
     {
         s_displayMode = static_cast<DisplayMode>(reader.GetInteger("Mod", "DisplayMode", static_cast<uint32_t>(DisplayMode::BorderlessFullscreen)));
         s_allowResizeInWindowed = reader.GetBoolean("Mod", "AllowResizeInWindowed", false);
-        s_upscaler = static_cast<uint32_t>(reader.GetInteger("Mod", "Upscaler", 1));
+        s_upscaler = static_cast<uint32_t>(reader.GetInteger("Mod", "Upscaler", 2));
         s_qualityMode = static_cast<uint32_t>(reader.GetInteger("Mod", "QualityMode", 2));
         s_gachaLighting = reader.GetBoolean("Mod", "GachaLighting", false);
-        s_toneMap = reader.GetBoolean("Mod", "ToneMap", false);
+        s_toneMap = reader.GetBoolean("Mod", "ToneMap", true);
     }
 }
