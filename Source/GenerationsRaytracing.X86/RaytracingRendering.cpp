@@ -113,6 +113,19 @@ static boost::shared_ptr<Hedgehog::Mirage::CModelData> findSky(Hedgehog::Mirage:
     return nullptr;
 }
 
+static void createLocalLight(Hedgehog::Mirage::CLightData& lightData, size_t localLightId)
+{
+    auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+    
+    message.localLightId = localLightId;
+    memcpy(message.position, lightData.m_Position.data(), sizeof(message.position));
+    message.inRange = lightData.m_Range.z();
+    memcpy(message.color, lightData.m_Color.data(), sizeof(message.color));
+    message.outRange = lightData.m_Range.w();
+    
+    s_messageSender.endMessage();
+}
+
 // 2 elements for post processing on particles
 static Hedgehog::FxRenderFramework::SDrawInstanceParam s_drawInstanceParams[2u];
 static uint32_t s_drawInstanceParamCount;
@@ -238,37 +251,46 @@ static void __cdecl implOfSceneRender(void* a1)
 
         InstanceData::releaseUnusedInstances();
 
+        size_t localLightCount = 0;
+
         if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
         {
-            const auto lightManager = gameDocument->m_pMember->m_spLightManager;
+            const auto& lightManager = gameDocument->m_pMember->m_spLightManager;
 
-            if (lightManager && lightManager->m_pStaticLightContext && lightManager->m_pStaticLightContext->m_spLightListData &&
-                lightManager->m_pStaticLightContext->m_spLightListData->IsMadeAll())
+            if (lightManager != nullptr)
             {
-                if (s_curLightList != gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData.get())
+                if (lightManager->m_pStaticLightContext && lightManager->m_pStaticLightContext->m_spLightListData && 
+                    lightManager->m_pStaticLightContext->m_spLightListData->IsMadeAll())
                 {
-                    s_curLightList = gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData.get();
-                    s_localLightCount = 0;
+                    const auto& lightListData = lightManager->m_pStaticLightContext->m_spLightListData;
 
-                    for (const auto& lightData : gameDocument->m_pMember->m_spLightManager->m_pStaticLightContext->m_spLightListData->m_Lights)
+                    if (s_curLightList != lightListData.get())
                     {
-                        if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
+                        s_curLightList = lightListData.get();
+                        s_localLightCount = 0;
+
+                        for (const auto& lightData : lightListData->m_Lights)
                         {
-                            auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
-
-                            message.localLightId = s_localLightCount;
-                            memcpy(message.position, lightData->m_Position.data(), sizeof(message.position));
-                            message.inRange = lightData->m_Range.z();
-                            memcpy(message.color, lightData->m_Color.data(), sizeof(message.color));
-                            message.outRange = lightData->m_Range.w();
-
-                            s_messageSender.endMessage();
-
-                            ++s_localLightCount;
+                            if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
+                            {
+                                createLocalLight(*lightData, s_localLightCount);
+                                ++s_localLightCount;
+                            }
                         }
-                    }
 
-                    resetAccumulation = true;
+                        resetAccumulation = true;
+                    }
+                }
+
+                localLightCount = s_localLightCount;
+
+                if (lightManager->m_pLocalLightContext != nullptr)
+                {
+                    for (auto& localLight : lightManager->m_pLocalLightContext->m_LocalLights)
+                    {
+                        createLocalLight(*localLight->m_spLight, localLightCount);
+                        ++localLightCount;
+                    }
                 }
             }
         }
@@ -296,7 +318,7 @@ static void __cdecl implOfSceneRender(void* a1)
             .GetPictureData("blue_noise")->m_pD3DTexture)->getId();
 
         traceRaysMessage.resetAccumulation = resetAccumulation;
-        traceRaysMessage.localLightCount = s_localLightCount;
+        traceRaysMessage.localLightCount = localLightCount;
 
         traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
         traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
