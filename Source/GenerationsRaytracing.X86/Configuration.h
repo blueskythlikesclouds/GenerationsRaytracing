@@ -18,5 +18,7 @@ public:
 
     static inline bool s_gachaLighting;
 
+    static inline bool s_toneMap;
+
     static void init();
 };

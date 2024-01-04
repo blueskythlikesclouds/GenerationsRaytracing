@@ -1,5 +1,13 @@
 ﻿#pragma once
+
 #include "DebugView.h"
+
+enum ToneMapMode
+{
+    TONE_MAP_MODE_UNSPECIFIED,
+    TONE_MAP_MODE_ENABLE,
+    TONE_MAP_MODE_DISABLE
+};
 
 struct RaytracingParams
 {
@@ -20,6 +28,8 @@ struct RaytracingParams
 
     static inline uint32_t s_upscaler;
     static inline uint32_t s_qualityMode;
+
+    static inline uint32_t s_toneMapMode;
 
     static bool update();
 };

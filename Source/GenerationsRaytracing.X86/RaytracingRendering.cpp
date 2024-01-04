@@ -9,6 +9,7 @@
 #include "Texture.h"
 #include "InstanceData.h"
 #include "RaytracingParams.h"
+#include "ToneMap.h"
 
 static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable)
 {
@@ -112,7 +113,15 @@ static boost::shared_ptr<Hedgehog::Mirage::CModelData> findSky(Hedgehog::Mirage:
     return nullptr;
 }
 
+// 2 elements for post processing on particles
+static Hedgehog::FxRenderFramework::SDrawInstanceParam s_drawInstanceParams[2u];
+static uint32_t s_drawInstanceParamCount;
+
 static bool s_prevRaytracingEnable = false;
+
+// Store for Better FxPipeline compatibility
+static uint32_t s_gameSceneChildren = 0;
+static uint32_t s_gameSceneChildCount = 0;
 
 static void initRaytracingPatches(bool enable)
 {
@@ -121,19 +130,30 @@ static void initRaytracingPatches(bool enable)
 
     if (enable)
     {
+        s_gameSceneChildren = *reinterpret_cast<uint32_t*>(0x13DDC9C);
+        s_gameSceneChildCount = *reinterpret_cast<uint32_t*>(0x13DDCA0);
+
         WRITE_MEMORY(0x13DDFD8, uint32_t, 0); // Disable shadow map
+
         WRITE_MEMORY(0x13DDBA0, uint32_t, 0); // Disable reflection map 1
         WRITE_MEMORY(0x13DDC20, uint32_t, 0); // Disable reflection map 2
-        WRITE_MEMORY(0x13DDCA0, uint32_t, 1); // Override game scene child count
+
+        WRITE_MEMORY(0x13DDC9C, void*, s_drawInstanceParams); // Override game scene children
+        WRITE_MEMORY(0x13DDCA0, uint32_t, s_drawInstanceParamCount); // Override game scene child count
+
         WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0xC2, 0x08, 0x00); // Disable culling
     }
     else
     {
-        WRITE_MEMORY(0x13DDFD8, size_t, 4); // Enable shadow map
-        WRITE_MEMORY(0x13DDBA0, size_t, 22); // Enable reflection map 1
-        WRITE_MEMORY(0x13DDC20, size_t, 22); // Enable reflection map 2
-        WRITE_MEMORY(0x13DDCA0, size_t, 22); // Restore game scene child count
+        WRITE_MEMORY(0x13DDFD8, uint32_t, 4); // Enable shadow map
+
+        WRITE_MEMORY(0x13DDBA0, uint32_t, 22); // Enable reflection map 1
+        WRITE_MEMORY(0x13DDC20, uint32_t, 22); // Enable reflection map 2
+
+        WRITE_MEMORY(0x13DDC9C, uint32_t, s_gameSceneChildren); // Restore game scene children
+        WRITE_MEMORY(0x13DDCA0, uint32_t, s_gameSceneChildCount); // Restore game scene child count
+
         WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0x56, 0x8B, 0xF1); // Enable culling
     }
@@ -326,8 +346,31 @@ static void __cdecl implOfSceneRender(void* a1)
     }
 }
 
+void RaytracingRendering::preInit()
+{
+    WRITE_MEMORY(0x13DC2D8, void*, &implOfSceneRender); // Override scene render function
+}
+
 void RaytracingRendering::init()
 {
     WRITE_MEMORY(0x13DDB20, uint32_t, 0); // Disable sky render
-    WRITE_MEMORY(0x13DC2D8, void*, &implOfSceneRender); // Override scene render function
+}
+
+void RaytracingRendering::postInit()
+{
+    // Init draw instance params
+    memcpy(s_drawInstanceParams, reinterpret_cast<void*>(0x13DC2C8), 
+        sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
+
+    if (*reinterpret_cast<uint32_t*>(0x13DD790) == 2)
+    {
+        memcpy(s_drawInstanceParams + 1, reinterpret_cast<void*>(0x13DC8C8), 
+            sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
+
+        s_drawInstanceParamCount = 2;
+    }
+    else
+    {
+        s_drawInstanceParamCount = 1;
+    }
 }

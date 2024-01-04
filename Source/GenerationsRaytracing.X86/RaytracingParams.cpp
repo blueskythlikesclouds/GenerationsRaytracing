@@ -199,7 +199,18 @@ static void createParameterFile()
             {"Quality", 2},
             {"Balanced", 3},
             {"Performance", 4},
-            {"UltraPerformance", 5}});
+            {"Ultra Performance", 5}});
+
+        paramGroup->Flush();
+    }
+
+    auto toneMapParam = paramGroup->CreateParameterCategory("ToneMap", "");
+    {
+        toneMapParam->CreateParamTypeList(&RaytracingParams::s_toneMapMode, "Mode", "", {
+            {"Unspecified", TONE_MAP_MODE_UNSPECIFIED},
+            {"Enable", TONE_MAP_MODE_ENABLE},
+            {"Disable", TONE_MAP_MODE_DISABLE}
+        });
 
         paramGroup->Flush();
     }

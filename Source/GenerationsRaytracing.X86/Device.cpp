@@ -113,6 +113,9 @@ HRESULT Device::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage,
     }
     else
     {
+        if ((Usage & D3DUSAGE_RENDERTARGET) && (Format == D3DFMT_A8R8G8B8 || Format == D3DFMT_A8B8G8R8))
+            Format = D3DFMT_A16B16G16R16F;
+
         *ppTexture = new Texture(Width, Height, Levels);
 
         auto& message = s_messageSender.makeMessage<MsgCreateTexture>();

@@ -15,5 +15,6 @@ void Configuration::init()
         s_upscaler = static_cast<uint32_t>(reader.GetInteger("Mod", "Upscaler", 1));
         s_qualityMode = static_cast<uint32_t>(reader.GetInteger("Mod", "QualityMode", 2));
         s_gachaLighting = reader.GetBoolean("Mod", "GachaLighting", false);
+        s_toneMap = reader.GetBoolean("Mod", "ToneMap", false);
     }
 }

@@ -14,6 +14,7 @@
 #include "MotionData.h"
 #include "ShaderCache.h"
 #include "Sofdec.h"
+#include "ToneMap.h"
 #include "TriangleFan.h"
 #include "TriangleStrip.h"
 #include "Window.h"
@@ -42,6 +43,11 @@ extern "C" void __declspec(dllexport) FilterMod(FilterModArguments_t& args)
     args.handled = strcmp(args.mod->Name, "Direct3D 9 Ex") == 0 || strcmp(args.mod->ID, "bsthlc.generationsd3d11") == 0;
 }
 
+extern "C" void __declspec(dllexport) PreInit()
+{
+    RaytracingRendering::preInit();
+}
+
 extern "C" void __declspec(dllexport) Init()
 {
     Configuration::init();
@@ -61,6 +67,7 @@ extern "C" void __declspec(dllexport) Init()
     MotionData::init();
     MemoryAllocator::init();
     MeshData::init();
+    ToneMap::init();
 
 #ifdef _DEBUG
 #if 0
@@ -122,5 +129,6 @@ extern "C" void __declspec(dllexport) Init()
 
 extern "C" void __declspec(dllexport) PostInit()
 {
+    RaytracingRendering::postInit();
     MaterialData::postInit();
 }
