@@ -5,7 +5,6 @@ NVSDK_NGX_PerfQuality_Value DLSS::getPerfQualityValue(QualityMode qualityMode)
 {
     switch (qualityMode)
     {
-    case QualityMode::UltraQuality: return NVSDK_NGX_PerfQuality_Value_UltraQuality;
     case QualityMode::Quality: return NVSDK_NGX_PerfQuality_Value_MaxQuality;
     case QualityMode::Balanced: return NVSDK_NGX_PerfQuality_Value_Balanced;
     case QualityMode::Performance: return NVSDK_NGX_PerfQuality_Value_MaxPerf;
@@ -23,11 +22,11 @@ DLSS::DLSS(const Device& device)
         m_device = device.getUnderlyingDevice();
 
         NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
-        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
         NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
         NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
         NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
         NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
+        NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
     }
 }
 

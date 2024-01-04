@@ -196,11 +196,10 @@ static void createParameterFile()
         upscalerParam->CreateParamTypeList(&RaytracingParams::s_qualityMode, "QualityMode", "", {
             {"Unspecified", 0},
             {"Native", 1},
-            {"Ultra Quality", 2},
-            {"Quality", 3},
-            {"Balanced", 4},
-            {"Performance", 5},
-            {"Ultra Performance", 6}});
+            {"Quality", 2},
+            {"Balanced", 3},
+            {"Performance", 4},
+            {"Ultra Performance", 5}});
 
         paramGroup->Flush();
     }

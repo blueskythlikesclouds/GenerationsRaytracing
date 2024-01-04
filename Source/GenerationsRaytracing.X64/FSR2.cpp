@@ -35,11 +35,6 @@ void FSR2::init(const InitArgs& args)
         m_width = args.width;
         m_height = args.height;
     }
-    else if (args.qualityMode == QualityMode::UltraQuality)
-    {
-        m_width = (args.width * 77) / 100;
-        m_height = (args.height * 77) / 100;
-    }
     else
     {
         THROW_IF_FAILED(ffxFsr2GetRenderResolutionFromQualityMode(
