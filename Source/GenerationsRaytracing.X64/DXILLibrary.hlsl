@@ -77,7 +77,7 @@ void ShadowRayGeneration()
     {
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
 
-        uint random = InitRand(g_CurrentFrame,
+        uint randSeed = InitRand(g_CurrentFrame,
             DispatchRaysIndex().y * DispatchRaysDimensions().x + DispatchRaysIndex().x);
 
         // Generate initial candidates
@@ -87,9 +87,9 @@ void ShadowRayGeneration()
         [loop]
         for (uint i = 0; i < localLightCount; i++)
         {
-            uint sample = min(floor(NextRand(random) * g_LocalLightCount), g_LocalLightCount - 1);
+            uint sample = min(floor(NextRand(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
             float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
-            UpdateReservoir(reservoir, sample, weight, NextRand(random));
+            UpdateReservoir(reservoir, sample, weight, NextRand(randSeed));
         }
 
         ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));

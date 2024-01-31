@@ -8,6 +8,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     GBufferData gBufferData = LoadGBufferData(dispatchThreadId.xy);
     float depth = g_Depth[dispatchThreadId.xy];
+    float2 random = GetBlueNoise(dispatchThreadId.xy).xy;
 
     float3 diffuseAlbedo = 0.0;
     float3 specularAlbedo = 0.0;
@@ -27,12 +28,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         if (g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
         {
             shadingParams.Reservoir = LoadReservoir(g_Reservoir[dispatchThreadId.xy]);
-            uint random = InitRand(g_CurrentFrame, dispatchThreadId.y * g_InternalResolution.x + dispatchThreadId.x);
+            uint randSeed = InitRand(g_CurrentFrame, dispatchThreadId.y * g_InternalResolution.x + dispatchThreadId.x);
 
             for (uint i = 0; i < 5; i++)
             {
-                float radius = 16.0 * NextRand(random);
-                float angle = 2.0 * PI * NextRand(random);
+                float radius = 16.0 * NextRand(randSeed);
+                float angle = 2.0 * PI * NextRand(randSeed);
 
                 int2 neighborIndex = round((float2) dispatchThreadId.xy + float2(cos(angle), sin(angle)) * radius);
 
@@ -45,7 +46,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                         uint newSampleCount = shadingParams.Reservoir.M + spatialReservoir.M;
 
                         UpdateReservoir(shadingParams.Reservoir, spatialReservoir.Y, ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection,
-                            g_LocalLights[spatialReservoir.Y]) * spatialReservoir.W * spatialReservoir.M, NextRand(random));
+                            g_LocalLights[spatialReservoir.Y]) * spatialReservoir.W * spatialReservoir.M, NextRand(randSeed));
 
                         shadingParams.Reservoir.M = newSampleCount;
                     }
@@ -59,12 +60,25 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
             if (shadingParams.Reservoir.W > 0.0f)
             {
+                float3 direction = localLight.Position - gBufferData.Position;
+                float distance = length(direction);
+                if (distance > 0.0)
+                    direction /= distance;
+
+                float radius = sqrt(random.x) / localLight.OutRange;
+                float angle = random.y * 2.0 * PI;
+
+                float3 sample;
+                sample.x = cos(angle) * radius;
+                sample.y = sin(angle) * radius;
+                sample.z = 1.0;
+
                 RayDesc ray;
 
                 ray.Origin = gBufferData.Position;
-                ray.Direction = NormalizeSafe(localLight.Position - gBufferData.Position);
+                ray.Direction = TangentToWorld(direction, sample);
                 ray.TMin = 0.0;
-                ray.TMax = distance(localLight.Position, gBufferData.Position);
+                ray.TMax = distance;
 
                 RayQuery<RAY_FLAG_CULL_BACK_FACING_TRIANGLES | RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
 
