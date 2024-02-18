@@ -80,3 +80,23 @@ UpscalerType DLSSD::getType()
 {
     return UpscalerType::DLSSD;
 }
+
+bool DLSSD::valid() const
+{
+    if (m_parameters == nullptr)
+        return false;
+
+    int32_t needsUpdatedDriver;
+    NVSDK_NGX_Result result = m_parameters->Get(NVSDK_NGX_Parameter_SuperSamplingDenoising_NeedsUpdatedDriver, &needsUpdatedDriver);
+
+    if (NVSDK_NGX_SUCCEED(result) && needsUpdatedDriver != 0)
+        return false;
+
+    int32_t available;
+    result = m_parameters->Get(NVSDK_NGX_Parameter_SuperSamplingDenoising_Available, &available);
+
+    if (NVSDK_NGX_FAILED(result) || available == 0)
+        return false;
+
+    return true;
+}

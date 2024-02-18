@@ -1752,7 +1752,7 @@ Device::Device()
             TEXT("A Direct3D 12 compatible GPU with raytracing support is required.\n"
                 "Ensure your graphics drivers and OS are up to date.\n"
                 "If you are on a laptop, configure GenerationsRaytracing.X64.exe located inside mod folder to use the discrete GPU in graphics settings."),
-            TEXT("GenerationsRaytracing"),
+            TEXT("Generations Raytracing"),
             MB_ICONERROR);
 
         return;

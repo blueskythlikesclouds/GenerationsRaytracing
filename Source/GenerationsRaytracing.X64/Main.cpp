@@ -20,6 +20,17 @@ static struct ThreadHolder
     }
 } s_threadHolder;
 
+static void onProcessNotFound()
+{
+#ifndef _DEBUG
+    MessageBox(nullptr,
+        TEXT("This executable file cannot run independently. "
+             "Please install and play Generations Raytracing using HedgeModManager, just like any other Sonic Generations mod."),
+        TEXT("Generations Raytracing"),
+        MB_ICONERROR);
+#endif
+}
+
 int main()
 {
 #ifdef _DEBUG 
@@ -67,11 +78,17 @@ int main()
 
     const auto process = findProcess(s_gensProcessName);
     if (!process)
+    {
+        onProcessNotFound();
         return -1;
+    }
 
     const HANDLE processHandle = OpenProcess(SYNCHRONIZE, FALSE, *process);
     if (!processHandle)
+    {
+        onProcessNotFound();
         return -1;
+    }
 
     s_device = std::make_unique<RaytracingDevice>();
 

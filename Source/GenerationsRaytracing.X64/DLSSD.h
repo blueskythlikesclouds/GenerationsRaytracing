@@ -11,4 +11,5 @@ public:
     void dispatch(const DispatchArgs& args) override;
 
     UpscalerType getType() override;
+    bool valid() const override;
 };

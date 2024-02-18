@@ -37,7 +37,7 @@ void RootSignature::create(ID3D12Device* device,
         OutputDebugStringA(static_cast<LPCSTR>(errorBlob->GetBufferPointer()));
 #else
     if (errorBlob != nullptr)
-        MessageBoxA(nullptr, static_cast<LPCSTR>(errorBlob->GetBufferPointer()), "GenerationsRaytracing", MB_ICONERROR);
+        MessageBoxA(nullptr, static_cast<LPCSTR>(errorBlob->GetBufferPointer()), "Generations Raytracing", MB_ICONERROR);
 #endif
 
     assert(SUCCEEDED(hr) && blob != nullptr);

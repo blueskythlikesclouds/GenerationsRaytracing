@@ -14,7 +14,7 @@ SwapChain::SwapChain()
         IID_PPV_ARGS(m_factory.GetAddressOf()));
 
     if (FAILED(hr))
-        MessageBoxW(nullptr, L"Failed to create DXGI factory.", L"GenerationsRaytracing", MB_ICONERROR);
+        MessageBox(nullptr, TEXT("Failed to create DXGI factory."), TEXT("Generations Raytracing"), MB_ICONERROR);
 }
 
 IDXGIFactory4* SwapChain::getUnderlyingFactory() const

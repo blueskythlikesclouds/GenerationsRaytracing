@@ -751,7 +751,7 @@ void RaytracingDevice::procMsgTraceRays()
         return;
 
     const bool resolutionMismatch = m_width != message.width || m_height != message.height;
-    const bool upscalerMismatch = message.upscaler != 0 && m_upscaler->getType() != static_cast<UpscalerType>(message.upscaler - 1);
+    const bool upscalerMismatch = message.upscaler != 0 && m_upscaler->getType() != m_upscalerOverride[message.upscaler - 1];
     const bool qualityModeMismatch = message.qualityMode != 0 && m_qualityMode != static_cast<QualityMode>(message.qualityMode - 1);
 
     if (resolutionMismatch || upscalerMismatch || qualityModeMismatch)
@@ -771,9 +771,17 @@ void RaytracingDevice::procMsgTraceRays()
             else if (message.upscaler == static_cast<uint32_t>(UpscalerType::DLSSD) + 1)
                 upscaler = std::make_unique<DLSSD>(*this);
 
-            if (upscaler != nullptr && upscaler->valid())
-                m_upscaler = std::move(upscaler);
-            else
+            m_upscaler = nullptr;
+
+            if (upscaler != nullptr)
+            {
+                if (upscaler->valid())
+                    m_upscaler = std::move(upscaler);
+                else
+                    m_upscalerOverride[message.upscaler - 1] = UpscalerType::FSR2;
+            }
+
+            if (m_upscaler == nullptr)
                 m_upscaler = std::make_unique<FSR2>(*this);
         }
 
@@ -1465,6 +1473,9 @@ RaytracingDevice::RaytracingDevice()
 
     m_pipelineLibrary.createComputePipelineState(&posePipelineDesc, IID_PPV_ARGS(m_posePipeline.GetAddressOf()));
 
+    for (size_t i = 0; i < _countof(m_upscalerOverride); i++)
+        m_upscalerOverride[i] = static_cast<UpscalerType>(i);
+
     const INIReader reader("GenerationsRaytracing.ini");
     if (reader.ParseError() == 0)
     {
@@ -1485,9 +1496,11 @@ RaytracingDevice::RaytracingDevice()
             if (!upscaler->valid())
             {
                 MessageBox(nullptr,
-                    TEXT("An NVIDIA GPU is required for DLSS. FSR2 will be used instead as a fallback."),
-                    TEXT("GenerationsRaytracing"),
+                    TEXT("An NVIDIA GPU with up to date drivers is required for DLSS. FSR2 will be used instead as a fallback."),
+                    TEXT("Generations Raytracing"),
                     MB_ICONERROR);
+
+                m_upscalerOverride[static_cast<size_t>(upscalerType)] = UpscalerType::FSR2;
             }
             else
             {

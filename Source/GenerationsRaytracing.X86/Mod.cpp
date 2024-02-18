@@ -71,7 +71,7 @@ extern "C" void __declspec(dllexport) Init()
 
 #ifdef _DEBUG
 #if 0
-    MessageBox(NULL, TEXT("Attach to Process"), TEXT("GenerationsRaytracing"), MB_ICONINFORMATION | MB_OK);
+    MessageBox(NULL, TEXT("Attach to Process"), TEXT("Generations Raytracing"), MB_ICONINFORMATION | MB_OK);
 
     if (!GetConsoleWindow())
         AllocConsole();

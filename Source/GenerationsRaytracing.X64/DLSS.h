@@ -36,5 +36,5 @@ public:
 
     UpscalerType getType() override;
 
-    bool valid() const;
+    virtual bool valid() const;
 };

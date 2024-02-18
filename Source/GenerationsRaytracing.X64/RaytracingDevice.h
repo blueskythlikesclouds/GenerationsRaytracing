@@ -104,6 +104,7 @@ protected:
     // Upscaler
     std::unique_ptr<Upscaler> m_upscaler;
     QualityMode m_qualityMode = QualityMode::Balanced;
+    UpscalerType m_upscalerOverride[static_cast<size_t>(UpscalerType::Max)];
 
     // Textures
     uint32_t m_width = 0;

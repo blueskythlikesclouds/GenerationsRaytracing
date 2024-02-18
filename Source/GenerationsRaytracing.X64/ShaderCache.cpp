@@ -85,7 +85,7 @@ ShaderCache::ShaderCache()
     {
         MessageBox(nullptr,
             TEXT("Unable to open \"pregenerated_shader_cache.bin\" in mod directory."),
-            TEXT("GenerationsRaytracing"),
+            TEXT("Generations Raytracing"),
             MB_ICONERROR);
     }
     loadShaderCache("runtime_generated_shader_cache.bin");
@@ -164,7 +164,7 @@ void ShaderCache::saveShaderCache() const
         {
             MessageBox(nullptr,
                 TEXT("Unable to open \"runtime_generated_shader_cache.bin\" in mod directory."),
-                TEXT("GenerationsRaytracing"),
+                TEXT("Generations Raytracing"),
                 MB_ICONERROR);
         }
     }
