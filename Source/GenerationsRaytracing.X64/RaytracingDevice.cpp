@@ -941,7 +941,10 @@ void RaytracingDevice::procMsgCreateMaterial()
     samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
     samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
 
-    if (m_anisotropicFiltering > 0)
+    if (m_anisotropicFiltering > 0 &&
+        message.shaderType != SHADER_TYPE_WATER_ADD &&
+        message.shaderType != SHADER_TYPE_WATER_MUL &&
+        message.shaderType != SHADER_TYPE_WATER_OPACITY)
     {
         samplerDesc.Filter = D3D12_FILTER_ANISOTROPIC;
         samplerDesc.MaxAnisotropy = m_anisotropicFiltering;
