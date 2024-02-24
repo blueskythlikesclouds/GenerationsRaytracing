@@ -124,8 +124,9 @@ float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 
     else if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
     {
-        float luminance = dot(reflection, float3(0.299, 0.587, 0.114));
-        reflection = lerp(gBufferData.Specular * luminance, reflection, gBufferData.SpecularFresnel);
+        float3 fresnel = gBufferData.Specular;
+        fresnel += (1.0 - fresnel) * gBufferData.SpecularFresnel;
+        reflection *= fresnel;
     }
 
     else
