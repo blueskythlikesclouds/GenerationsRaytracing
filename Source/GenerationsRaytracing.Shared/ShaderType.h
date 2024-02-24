@@ -19,23 +19,25 @@
 #define SHADER_TYPE_FADE_OUT_NORMAL 16
 #define SHADER_TYPE_FALLOFF 17
 #define SHADER_TYPE_FALLOFF_V 18
-#define SHADER_TYPE_GLASS 19
-#define SHADER_TYPE_ICE 20
-#define SHADER_TYPE_IGNORE_LIGHT 21
-#define SHADER_TYPE_IGNORE_LIGHT_TWICE 22
-#define SHADER_TYPE_IGNORE_LIGHT_V 23
-#define SHADER_TYPE_INDIRECT 24
-#define SHADER_TYPE_INDIRECT_V 25
-#define SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW 26
-#define SHADER_TYPE_LUMINESCENCE 27
-#define SHADER_TYPE_LUMINESCENCE_V 28
-#define SHADER_TYPE_MIRROR 29
-#define SHADER_TYPE_RING 30
-#define SHADER_TYPE_TRANS_THIN 31
-#define SHADER_TYPE_WATER_ADD 32
-#define SHADER_TYPE_WATER_MUL 33
-#define SHADER_TYPE_WATER_OPACITY 34
-#define SHADER_TYPE_MAX 35
+#define SHADER_TYPE_FUR 19
+#define SHADER_TYPE_GLASS 20
+#define SHADER_TYPE_ICE 21
+#define SHADER_TYPE_IGNORE_LIGHT 22
+#define SHADER_TYPE_IGNORE_LIGHT_TWICE 23
+#define SHADER_TYPE_IGNORE_LIGHT_V 24
+#define SHADER_TYPE_INDIRECT 25
+#define SHADER_TYPE_INDIRECT_V 26
+#define SHADER_TYPE_INDIRECT_V_NO_GI_SHADOW 27
+#define SHADER_TYPE_LUMINESCENCE 28
+#define SHADER_TYPE_LUMINESCENCE_V 29
+#define SHADER_TYPE_METAL 30
+#define SHADER_TYPE_MIRROR 31
+#define SHADER_TYPE_RING 32
+#define SHADER_TYPE_TRANS_THIN 33
+#define SHADER_TYPE_WATER_ADD 34
+#define SHADER_TYPE_WATER_MUL 35
+#define SHADER_TYPE_WATER_OPACITY 36
+#define SHADER_TYPE_MAX 37
 #ifdef __cplusplus
 #include <string_view>
 inline std::pair<std::string_view, size_t> s_shaderTypes[] =
@@ -74,6 +76,7 @@ inline std::pair<std::string_view, size_t> s_shaderTypes[] =
 	{"FakeGlass_", SHADER_TYPE_ENM_GLASS},
 	{"FallOff_", SHADER_TYPE_FALLOFF},
 	{"FallOffV_", SHADER_TYPE_FALLOFF_V},
+	{"Fur", SHADER_TYPE_FUR},
 	{"Glass_", SHADER_TYPE_GLASS},
 	{"GlassRefraction_", SHADER_TYPE_SYS_ERROR},
 	{"Ice_", SHADER_TYPE_ICE},
@@ -89,6 +92,7 @@ inline std::pair<std::string_view, size_t> s_shaderTypes[] =
 	{"MeshParticle_", SHADER_TYPE_SYS_ERROR},
 	{"MeshParticleLightingShadow_", SHADER_TYPE_SYS_ERROR},
 	{"MeshParticleRef_", SHADER_TYPE_SYS_ERROR},
+	{"Metal", SHADER_TYPE_METAL},
 	{"Mirror_", SHADER_TYPE_MIRROR},
 	{"Mirror2_", SHADER_TYPE_MIRROR},
 	{"Myst_", SHADER_TYPE_SYS_ERROR},
@@ -164,6 +168,9 @@ inline const wchar_t* s_shaderHitGroups[] =
 	L"FALLOFF_V_PrimaryHitGroup",
 	L"FALLOFF_V_PrimaryHitGroup_ConstTexCoord",
 	L"FALLOFF_V_SecondaryHitGroup",
+	L"FUR_PrimaryHitGroup",
+	L"FUR_PrimaryHitGroup_ConstTexCoord",
+	L"FUR_SecondaryHitGroup",
 	L"GLASS_PrimaryHitGroup",
 	L"GLASS_PrimaryHitGroup_ConstTexCoord",
 	L"GLASS_SecondaryHitGroup",
@@ -194,6 +201,9 @@ inline const wchar_t* s_shaderHitGroups[] =
 	L"LUMINESCENCE_V_PrimaryHitGroup",
 	L"LUMINESCENCE_V_PrimaryHitGroup_ConstTexCoord",
 	L"LUMINESCENCE_V_SecondaryHitGroup",
+	L"METAL_PrimaryHitGroup",
+	L"METAL_PrimaryHitGroup_ConstTexCoord",
+	L"METAL_SecondaryHitGroup",
 	L"MIRROR_PrimaryHitGroup",
 	L"MIRROR_PrimaryHitGroup_ConstTexCoord",
 	L"MIRROR_SecondaryHitGroup",
