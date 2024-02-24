@@ -18,13 +18,15 @@
 #define GBUFFER_FLAG_IGNORE_REFLECTION          (1 << 7)
 #define GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT     (1 << 8)
 #define GBUFFER_FLAG_HALF_LAMBERT               (1 << 9)
-#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 10)
-#define GBUFFER_FLAG_IS_GLASS_REFLECTION        (1 << 11)
-#define GBUFFER_FLAG_IS_WATER                   (1 << 12)
-#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 13)
-#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 14)
-#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 15)
-#define GBUFFER_FLAG_ADDITIVE                   (1 << 16)
+#define GBUFFER_FLAG_MUL_BY_SPEC_GLOSS          (1 << 10)
+#define GBUFFER_FLAG_IS_MIRROR_REFLECTION       (1 << 11)
+#define GBUFFER_FLAG_IS_GLASS_REFLECTION        (1 << 12)
+#define GBUFFER_FLAG_IS_METALLIC                (1 << 13)
+#define GBUFFER_FLAG_IS_WATER                   (1 << 14)
+#define GBUFFER_FLAG_REFRACTION_ADD             (1 << 15)
+#define GBUFFER_FLAG_REFRACTION_MUL             (1 << 16)
+#define GBUFFER_FLAG_REFRACTION_OPACITY         (1 << 17)
+#define GBUFFER_FLAG_IS_ADDITIVE                (1 << 18)
 
 struct GBufferData
 {
@@ -217,9 +219,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
                 gBufferData.Alpha *= diffuse.a;
 
-                gBufferData.Specular *= vertex.Color.a;
                 gBufferData.SpecularGloss *= gloss.y;    
-                gBufferData.SpecularLevel *= gloss.y;
+                gBufferData.SpecularLevel *= gloss.y * vertex.Color.a;
                 gBufferData.SpecularFresnel = ComputeFresnel(DecodeNormalMap(vertex, normalMap.zw)) * 0.7 + 0.3;
                 gBufferData.Emission = highlightSpecular * material.SonicEyeHighLightColor.rgb;
 
@@ -679,7 +680,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
                 gBufferData.Diffuse *= 2.0 * furColor;
                 gBufferData.Falloff *= 2.0 * furColor;
-                gBufferData.SpecularLevel *= 2.0 * furAlpha;
+                gBufferData.Specular *= 2.0 * furAlpha;
                 gBufferData.SpecularGloss *= furAlpha;
 
                 break;
@@ -914,10 +915,10 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
         case SHADER_TYPE_METAL:
             {
-                gBufferData.Flags = GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION;
+                gBufferData.Flags = GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IS_METALLIC;
 
-                gBufferData.Diffuse = 0.0;
                 gBufferData.Specular *= SampleMaterialTexture2D(material.SpecularTexture, vertex).rgb * vertex.Color.rgb;
+                gBufferData.Diffuse = gBufferData.Specular; // To use in secondary bounces, ignored on primary bounce.
 
                 if (material.GlossTexture != 0)
                 {
@@ -926,12 +927,10 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     gBufferData.SpecularLevel *= gloss;
                 }
 
-                gBufferData.SpecularFresnel = 1.0;
-
                 if (material.NormalTexture != 0)
                     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
 
-                gBufferData.Specular += (1.0 - gBufferData.Specular) * ComputeFresnel(gBufferData.Normal);
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal);
 
                 break;
             }
@@ -952,12 +951,14 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
         case SHADER_TYPE_RING:
             {
+                gBufferData.Flags = GBUFFER_FLAG_MUL_BY_SPEC_GLOSS;
+
                 float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex);
                 gBufferData.Diffuse *= diffuse.rgb;
                 gBufferData.Alpha *= diffuse.a;
 
                 float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex);
-                gBufferData.Specular *= specular.rgb * gBufferData.SpecularGloss;
+                gBufferData.Specular *= specular.rgb;
                 gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
 
                 float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture,
@@ -1030,7 +1031,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
     gBufferData.SpecularGloss = clamp(gBufferData.SpecularGloss, 1.0, 1024.0);
 
     if (material.Flags & MATERIAL_FLAG_ADDITIVE)
-        gBufferData.Flags |= GBUFFER_FLAG_ADDITIVE;
+        gBufferData.Flags |= GBUFFER_FLAG_IS_ADDITIVE;
 
     if (material.Flags & MATERIAL_FLAG_REFLECTION)
         gBufferData.Flags |= GBUFFER_FLAG_IS_MIRROR_REFLECTION;

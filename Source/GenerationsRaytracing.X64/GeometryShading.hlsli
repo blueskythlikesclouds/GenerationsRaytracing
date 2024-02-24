@@ -52,7 +52,23 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT))
     {
-        specularColor *= gBufferData.Specular * gBufferData.SpecularLevel * gBufferData.SpecularFresnel;
+        if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
+        {
+            float3 fresnel = gBufferData.Specular;
+            fresnel += (1.0 - fresnel) * gBufferData.SpecularFresnel;
+
+            specularColor *= fresnel;
+        }
+        else
+        {
+            specularColor *= gBufferData.Specular;
+
+            if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_SPEC_GLOSS)
+                specularColor *= gBufferData.SpecularGloss;
+
+            specularColor *= gBufferData.SpecularLevel;
+            specularColor *= gBufferData.SpecularFresnel;
+        }
 
         float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
 
@@ -96,16 +112,29 @@ float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
 
 float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 {
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
+    if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
     {
-        float3 specular = gBufferData.Specular;
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IS_GLASS_REFLECTION))
-            specular = min(1.0, specular * gBufferData.SpecularLevel * 0.5);
-
-        reflection *= specular;
+        reflection *= gBufferData.SpecularFresnel;
     }
 
-    return reflection * gBufferData.SpecularFresnel;
+    else if (gBufferData.Flags & GBUFFER_FLAG_IS_GLASS_REFLECTION)
+    {
+        reflection *= gBufferData.Specular * gBufferData.SpecularFresnel;
+    }
+
+    else if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
+    {
+        float luminance = dot(reflection, float3(0.299, 0.587, 0.114));
+        reflection = lerp(gBufferData.Specular * luminance, reflection, gBufferData.SpecularFresnel);
+    }
+
+    else
+    {
+        float specularIntensity = 1.0 - exp2(-gBufferData.SpecularLevel * gBufferData.SpecularFresnel);
+        reflection *= gBufferData.Specular * specularIntensity;
+    }
+
+    return reflection;
 }
 
 float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)

@@ -178,7 +178,7 @@ void RefractionRayGeneration()
     GBufferData gBufferData = LoadGBufferData(DispatchRaysIndex().xy);
 
     bool traceRefraction = gBufferData.Flags &
-        (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY | GBUFFER_FLAG_ADDITIVE);
+        (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY | GBUFFER_FLAG_IS_ADDITIVE);
 
     if (traceRefraction)
     {

@@ -106,7 +106,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             specularAlbedo = ComputeReflection(gBufferData, 1.0);
         }
 
-        if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_OPACITY | GBUFFER_FLAG_ADDITIVE))
+        if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_OPACITY | GBUFFER_FLAG_IS_ADDITIVE))
             shadingParams.Refraction = g_Refraction[dispatchThreadId.xy];
 
         if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
