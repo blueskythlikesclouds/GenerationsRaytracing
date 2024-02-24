@@ -648,40 +648,44 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 if (material.DisplacementTexture != 0)
                     gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb; 
 
-                const float4 FurParam = float4(0.08, 10.0, 8.0, 1.0);
-                const float4 FurParam2 = float4(0.0, 0.6, 0.5, 1.0);
-
-                float2 flow = SampleMaterialTexture2D(material.NormalTexture, vertex).xy;
-                flow += 1.0 / 510.0;
-                flow = flow * 2.0 - 1.0;
-                flow *= 0.01 * FurParam.x;
-
-                float2 offset = 0.0;
-                float3 furColor = 1.0;
-                float furAlpha = 0.0;
-
-                for (uint i = 0; i < (uint) FurParam.z; i++)
+                // Apply fur only for primary bounce.
+                if (vertex.Flags & VERTEX_FLAG_MIPMAP)
                 {
-                    float4 fur = SampleMaterialTexture2D(material.DiffuseTexture2, vertex, offset, FurParam.y);
+                    const float4 FurParam = float4(0.08, 10.0, 8.0, 1.0);
+                    const float4 FurParam2 = float4(0.0, 0.6, 0.5, 1.0);
 
-                    float factor = (float) i / FurParam.z;
-                    fur.rgb *= (1.0 - FurParam2.z) * factor + FurParam2.z;
-                    fur.rgb *= fur.w * FurParam2.y;
+                    float2 flow = SampleMaterialTexture2D(material.NormalTexture, vertex).xy;
+                    flow += 1.0 / 510.0;
+                    flow = flow * 2.0 - 1.0;
+                    flow *= 0.01 * FurParam.x;
 
-                    furColor *= 1.0 - fur.w * FurParam2.y;
-                    furColor += fur.rgb;
-                    furAlpha += fur.w;
+                    float2 offset = 0.0;
+                    float3 furColor = 1.0;
+                    float furAlpha = 0.0;
 
-                    offset += flow;
+                    for (uint i = 0; i < (uint) FurParam.z; i++)
+                    {
+                        float4 fur = SampleMaterialTexture2D(material.DiffuseTexture2, vertex, offset, FurParam.y);
+
+                        float factor = (float) i / FurParam.z;
+                        fur.rgb *= (1.0 - FurParam2.z) * factor + FurParam2.z;
+                        fur.rgb *= fur.w * FurParam2.y;
+
+                        furColor *= 1.0 - fur.w * FurParam2.y;
+                        furColor += fur.rgb;
+                        furAlpha += fur.w;
+
+                        offset += flow;
+                    }
+
+                    furColor = ApplyFurParamTransform(float4(furColor, 0.0), FurParam.w).rgb;
+                    furAlpha = ApplyFurParamTransform(float4(furAlpha / FurParam.z, 0.0, 0.0, 0.0), FurParam2.w).x;
+
+                    gBufferData.Diffuse *= 2.0 * furColor;
+                    gBufferData.Falloff *= 2.0 * furColor;
+                    gBufferData.Specular *= 2.0 * furAlpha;
+                    gBufferData.SpecularGloss *= furAlpha;
                 }
-
-                furColor = ApplyFurParamTransform(float4(furColor, 0.0), FurParam.w).rgb;
-                furAlpha = ApplyFurParamTransform(float4(furAlpha / FurParam.z, 0.0, 0.0, 0.0), FurParam2.w).x;
-
-                gBufferData.Diffuse *= 2.0 * furColor;
-                gBufferData.Falloff *= 2.0 * furColor;
-                gBufferData.Specular *= 2.0 * furAlpha;
-                gBufferData.SpecularGloss *= furAlpha;
 
                 break;
             }
