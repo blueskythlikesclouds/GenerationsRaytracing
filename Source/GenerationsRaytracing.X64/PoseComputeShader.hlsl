@@ -51,7 +51,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         ((blendIndicesAndWeight.y >> 16) & 0xFF) / 255.0,
         ((blendIndicesAndWeight.y >> 24) & 0xFF) / 255.0);
 
-    blendWeight /= blendWeight.x + blendWeight.y + blendWeight.z + blendWeight.w;
+    float weightSum = blendWeight.x + blendWeight.y + blendWeight.z + blendWeight.w;
+    if (weightSum > 0.0)
+        blendWeight /= weightSum;
 
     float4x4 nodeMatrix =
         g_NodeMatrixArray[blendIndices.x] * blendWeight.x +
