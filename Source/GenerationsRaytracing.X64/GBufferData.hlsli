@@ -639,14 +639,11 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex);
                 gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
 
-                if (material.NormalTexture2 != 0)
-                    gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex));
-
+                gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex));
                 gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
 
                 gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
-                if (material.DisplacementTexture != 0)
-                    gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb; 
+                gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb; 
 
                 // Apply fur only for primary bounce.
                 if (vertex.Flags & VERTEX_FLAG_MIPMAP)
@@ -919,10 +916,15 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
         case SHADER_TYPE_METAL:
             {
-                gBufferData.Flags = GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IS_METALLIC;
+                gBufferData.Flags = GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_IS_METALLIC;
 
-                gBufferData.Specular *= SampleMaterialTexture2D(material.SpecularTexture, vertex).rgb * vertex.Color.rgb;
-                gBufferData.Diffuse = gBufferData.Specular; // To use in secondary bounces, ignored on primary bounce.
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex);
+                float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex);
+
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+
+                gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
 
                 if (material.GlossTexture != 0)
                 {
@@ -970,6 +972,33 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
                 gBufferData.Emission = reflection.rgb * material.LuminanceRange.x * reflection.a + reflection.rgb;
                 gBufferData.Emission *= specular.rgb * gBufferData.SpecularFresnel;
+
+                break;
+            }
+
+        case SHADER_TYPE_SHOE:
+            {
+                gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
+
+                float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex);
+                float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex);
+
+                gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
+                gBufferData.Alpha *= diffuse.a * vertex.Color.a;
+                gBufferData.Specular *= specular.rgb * vertex.Color.rgb;
+
+                if (material.GlossTexture != 0)
+                {
+                    float gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).x;
+                    gBufferData.SpecularGloss *= gloss;
+                    gBufferData.SpecularLevel *= gloss;
+                }
+
+                gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
+                gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
+
+                float fresnel = saturate(dot(gBufferData.Normal, -WorldRayDirection()));
+                gBufferData.Diffuse *= fresnel * 0.8 + 0.2;
 
                 break;
             }

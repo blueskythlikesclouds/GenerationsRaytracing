@@ -107,7 +107,11 @@ float ComputeReservoirWeight(GBufferData gBufferData, float3 eyeDirection, Local
 
 float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
 {
-    return globalIllumination * (gBufferData.Diffuse + gBufferData.Falloff);
+    globalIllumination *= gBufferData.Diffuse + gBufferData.Falloff;
+    if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
+        globalIllumination *= 1.0 - gBufferData.SpecularFresnel;
+
+    return globalIllumination;
 }
 
 float3 ComputeReflection(GBufferData gBufferData, float3 reflection)

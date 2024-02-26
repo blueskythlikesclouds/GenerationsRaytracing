@@ -33,11 +33,12 @@
 #define SHADER_TYPE_METAL 30
 #define SHADER_TYPE_MIRROR 31
 #define SHADER_TYPE_RING 32
-#define SHADER_TYPE_TRANS_THIN 33
-#define SHADER_TYPE_WATER_ADD 34
-#define SHADER_TYPE_WATER_MUL 35
-#define SHADER_TYPE_WATER_OPACITY 36
-#define SHADER_TYPE_MAX 37
+#define SHADER_TYPE_SHOE 33
+#define SHADER_TYPE_TRANS_THIN 34
+#define SHADER_TYPE_WATER_ADD 35
+#define SHADER_TYPE_WATER_MUL 36
+#define SHADER_TYPE_WATER_OPACITY 37
+#define SHADER_TYPE_MAX 38
 #ifdef __cplusplus
 #include <string_view>
 inline std::pair<std::string_view, size_t> s_shaderTypes[] =
@@ -98,6 +99,7 @@ inline std::pair<std::string_view, size_t> s_shaderTypes[] =
 	{"Myst_", SHADER_TYPE_SYS_ERROR},
 	{"Parallax_", SHADER_TYPE_SYS_ERROR},
 	{"Ring_", SHADER_TYPE_RING},
+	{"Shoe", SHADER_TYPE_SHOE},
 	{"TimeEater_", SHADER_TYPE_SYS_ERROR},
 	{"TimeEaterDistortion_", SHADER_TYPE_SYS_ERROR},
 	{"TimeEaterEmission_", SHADER_TYPE_SYS_ERROR},
@@ -210,6 +212,9 @@ inline const wchar_t* s_shaderHitGroups[] =
 	L"RING_PrimaryHitGroup",
 	L"RING_PrimaryHitGroup_ConstTexCoord",
 	L"RING_SecondaryHitGroup",
+	L"SHOE_PrimaryHitGroup",
+	L"SHOE_PrimaryHitGroup_ConstTexCoord",
+	L"SHOE_SecondaryHitGroup",
 	L"TRANS_THIN_PrimaryHitGroup",
 	L"TRANS_THIN_PrimaryHitGroup_ConstTexCoord",
 	L"TRANS_THIN_SecondaryHitGroup",
