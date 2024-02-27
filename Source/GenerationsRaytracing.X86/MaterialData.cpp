@@ -51,9 +51,12 @@ HOOK(void, __cdecl, MaterialDataMake, 0x733E60,
     {
         Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
 
-        const auto modelData = wrapper.GetMaterialData(name.substr(0, name.size() - 4));
-        auto& modelDataEx = *reinterpret_cast<MaterialDataEx*>(modelData.get());
-        modelDataEx.m_fhlMaterial = wrapper.GetMaterialData(name);
+        const auto materialData = wrapper.GetMaterialData(name.substr(0, name.size() - 4));
+        if (materialData != nullptr)
+        {
+            auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData.get());
+            materialDataEx.m_fhlMaterial = wrapper.GetMaterialData(name);
+        }
     }
 
     originalMaterialDataMake(name, data, dataSize, database, renderingInfrastructure);
