@@ -84,6 +84,11 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     return diffuseColor + specularColor + transColor;
 }
 
+float ComputeLocalLightFalloff(float distance, float inRange, float outRange)
+{
+    return 1.0 - saturate((distance - inRange) / (outRange - inRange));
+}
+
 float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
     float3 direction = localLight.Position - gBufferData.Position;
@@ -95,8 +100,38 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
     float3 localLighting = ComputeDirectLighting(gBufferData, eyeDirection,
         direction, localLight.Color, localLight.Color);
 
-    localLighting *= 1.0 - saturate((distance - localLight.InRange) / (localLight.OutRange - localLight.InRange));
+    localLighting *= ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
     return localLighting;
+}
+
+float TraceLocalLightShadow(float3 position, float3 direction, float2 random, float radius, float distance)
+{
+    radius *= sqrt(random.x);
+    float angle = random.y * 2.0 * PI;
+
+    float3 sample;
+    sample.x = cos(angle) * radius;
+    sample.y = sin(angle) * radius;
+    sample.z = 1.0;
+
+    RayDesc ray;
+
+    ray.Origin = position;
+    ray.Direction = TangentToWorld(direction, sample);
+    ray.TMin = 0.0;
+    ray.TMax = distance;
+
+    RayQuery<RAY_FLAG_CULL_BACK_FACING_TRIANGLES | RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
+
+    query.TraceRayInline(
+        g_BVH,
+        RAY_FLAG_NONE,
+        1,
+        ray);
+
+    query.Proceed();
+
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
 }
 
 float ComputeReservoirWeight(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)

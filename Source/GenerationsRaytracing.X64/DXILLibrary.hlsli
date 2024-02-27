@@ -122,7 +122,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
 struct [raypayload] SecondaryRayPayload
 {
     float3 Color : read(caller) : write(closesthit, miss);
-    float NormalX : read(closesthit, caller) : write(closesthit, caller);
+    float NormalX : read(caller) : write(closesthit);
     float3 Diffuse : read(caller) : write(closesthit, miss);
     float NormalY : read(caller) : write(closesthit);
     float3 Position : read(caller) : write(closesthit);
@@ -145,7 +145,6 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool s
         ray.TMax = INF;
 
         SecondaryRayPayload payload;
-        payload.NormalX = random.x;
 
         TraceRay(
             g_BVH,
@@ -166,6 +165,26 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool s
         {
             color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
                TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? random.xy : random.zw, i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
+
+            if (g_LocalLightCount > 0)
+            {
+                uint sample = min(floor(random.x * g_LocalLightCount), g_LocalLightCount - 1);
+                LocalLight localLight = g_LocalLights[sample];
+
+                float3 lightDirection = localLight.Position - payload.Position;
+                float distance = length(lightDirection);
+
+                if (distance > 0.0)
+                    lightDirection /= distance;
+
+                float3 localLighting = payload.Diffuse * localLight.Color * g_LightPower * g_LocalLightCount * saturate(dot(normal, lightDirection)) *
+                    ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
+
+                if (any(localLighting != 0))
+                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, i == 0 ? random.xy : random.zw, 1.0 / localLight.OutRange, distance);
+
+                color += localLighting;
+            }
         }
         else
         {
@@ -197,20 +216,9 @@ void SecondaryClosestHit(uint shaderType,
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_MIPMAP_LOD);
 
     GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
-    gBufferData.Diffuse *= g_DiffusePower;
-    gBufferData.Specular = 0.0;
-    gBufferData.Emission *= g_EmissivePower;
 
-    float3 color = gBufferData.Emission;
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && g_LocalLightCount > 0)
-    {
-        uint sample = min(floor(payload.NormalX * g_LocalLightCount), g_LocalLightCount - 1);
-        color += ComputeLocalLighting(gBufferData, -WorldRayDirection(), g_LocalLights[sample]) * g_LocalLightCount * g_LightPower;
-    }
-
-    payload.Color = color;
-    payload.Diffuse = gBufferData.Diffuse;
+    payload.Color = gBufferData.Emission * g_EmissivePower;
+    payload.Diffuse = gBufferData.Diffuse * g_DiffusePower;
     payload.Position = gBufferData.Position;
     payload.NormalX = gBufferData.Normal.x;
     payload.NormalY = gBufferData.Normal.y;

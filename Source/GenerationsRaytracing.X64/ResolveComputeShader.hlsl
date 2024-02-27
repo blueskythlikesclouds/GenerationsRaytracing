@@ -65,32 +65,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                 if (distance > 0.0)
                     direction /= distance;
 
-                float radius = sqrt(random.x) / localLight.OutRange;
-                float angle = random.y * 2.0 * PI;
-
-                float3 sample;
-                sample.x = cos(angle) * radius;
-                sample.y = sin(angle) * radius;
-                sample.z = 1.0;
-
-                RayDesc ray;
-
-                ray.Origin = gBufferData.Position;
-                ray.Direction = TangentToWorld(direction, sample);
-                ray.TMin = 0.0;
-                ray.TMax = distance;
-
-                RayQuery<RAY_FLAG_CULL_BACK_FACING_TRIANGLES | RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
-
-                query.TraceRayInline(
-                    g_BVH,
-                    RAY_FLAG_NONE,
-                    1,
-                    ray);
-
-                query.Proceed();
-
-                shadingParams.Reservoir.W *= (query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0);
+                shadingParams.Reservoir.W *= TraceLocalLightShadow(
+                    gBufferData.Position,
+                    direction,
+                    random,
+                    1.0 / localLight.OutRange,
+                    distance);
             }
         }
 
