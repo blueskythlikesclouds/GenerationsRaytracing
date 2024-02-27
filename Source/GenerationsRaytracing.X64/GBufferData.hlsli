@@ -776,6 +776,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     gBufferData.Emission *= material.Ambient.rgb * material.EmissionParam.w;
                 }
                 gBufferData.Emission += gBufferData.Diffuse;
+                gBufferData.Diffuse = 0.0;
 
                 break;
             }
@@ -792,6 +793,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 gBufferData.Alpha *= diffuse.a * vertex.Color.a;
 
                 gBufferData.Emission = gBufferData.Diffuse;
+                gBufferData.Diffuse = 0.0;
 
                 break;
             }
@@ -1055,6 +1057,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
                     GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IGNORE_REFLECTION;
 
+                gBufferData.Diffuse = 0.0;
                 gBufferData.Emission = float3(1.0, 0.0, 0.0);
                 break;
             }
