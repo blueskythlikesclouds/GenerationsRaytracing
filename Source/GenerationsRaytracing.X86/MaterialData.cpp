@@ -205,6 +205,8 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     static Hedgehog::Base::CStringSymbol s_emissionParamSymbol("g_EmissionParam");
     static Hedgehog::Base::CStringSymbol s_offsetParamSymbol("g_OffsetParam");
     static Hedgehog::Base::CStringSymbol s_waterParamSymbol("g_WaterParam");
+    static Hedgehog::Base::CStringSymbol s_furParamSymbol("FurParam");
+    static Hedgehog::Base::CStringSymbol s_furParam2Symbol("FurParam2");
 
     struct
     {
@@ -230,7 +232,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { s_transColorMaskSymbol, message.transColorMask, 0, 3 },
         { s_emissionParamSymbol, message.emissionParam, 0, 4 },
         { s_offsetParamSymbol, message.offsetParam, 0, 2 },
-        { s_waterParamSymbol, message.waterParam, 0, 2 }
+        { s_waterParamSymbol, message.waterParam, 0, 2 },
+        { s_furParamSymbol, message.furParam, 0, 4 },
+        { s_furParam2Symbol, message.furParam2, 0, 4 },
     };
 
     for (const auto& parameterDesc : parameterDescs)

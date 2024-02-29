@@ -426,6 +426,8 @@ struct MsgCreateMaterial
     float emissionParam[4];
     float offsetParam[2];
     float waterParam[2];
+    float furParam[4];
+    float furParam2[4];
 };
 
 struct MsgComputePose

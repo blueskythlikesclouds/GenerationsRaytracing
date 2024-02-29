@@ -37,6 +37,8 @@ struct Material
     float4 EmissionParam;
     float2 OffsetParam;
     float2 WaterParam;
+    float4 FurParam;
+    float4 FurParam2;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord, uint level)
