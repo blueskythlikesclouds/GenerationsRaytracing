@@ -1318,18 +1318,25 @@ void Device::procMsgCreateIndexBuffer()
     indexBuffer.allocation->GetResource()->SetName(name);
 #endif
 
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-    srvDesc.Format = indexBuffer.format;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Buffer.NumElements = indexBuffer.byteSize / (message.format == D3DFMT_INDEX32 ? sizeof(uint32_t) : sizeof(uint16_t));
+    if (message.format == D3DFMT_INDEX16 || message.format == D3DFMT_INDEX32)
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = indexBuffer.format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Buffer.NumElements = indexBuffer.byteSize / (message.format == D3DFMT_INDEX32 ? sizeof(uint32_t) : sizeof(uint16_t));
 
-    indexBuffer.srvIndex = m_descriptorHeap.allocate();
+        indexBuffer.srvIndex = m_descriptorHeap.allocate();
 
-    m_device->CreateShaderResourceView(
-        indexBuffer.allocation->GetResource(),
-        &srvDesc,
-        m_descriptorHeap.getCpuHandle(indexBuffer.srvIndex));
+        m_device->CreateShaderResourceView(
+            indexBuffer.allocation->GetResource(),
+            &srvDesc,
+            m_descriptorHeap.getCpuHandle(indexBuffer.srvIndex));
+    }
+    else
+    {
+        assert(message.format == D3DFMT_UNKNOWN);
+    }
 }
 
 void Device::procMsgWriteIndexBuffer()

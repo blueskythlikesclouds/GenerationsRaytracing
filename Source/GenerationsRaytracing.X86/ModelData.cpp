@@ -692,6 +692,7 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
         memset(geometryDesc, 0, geometryCount * sizeof(MsgComputePose::GeometryDesc));
 
+        uint32_t vertexOffset = 0;
         traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
             assert(meshDataEx.m_VertexOffset == 0);
@@ -740,6 +741,22 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
             if (shouldCheckForHash)
                 MaterialData::create(*meshDataEx.m_spMaterial, true);
+
+            if (meshDataEx.m_adjacency != nullptr)
+            {
+                auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
+
+                smoothNormalMsg.indexBufferId = meshDataEx.m_indices->getId();
+                smoothNormalMsg.vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
+                smoothNormalMsg.vertexCount = meshDataEx.m_VertexNum;
+                smoothNormalMsg.vertexOffset = vertexOffset;
+                smoothNormalMsg.normalOffset = geometryDesc->normalOffset;
+                smoothNormalMsg.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
+                smoothNormalMsg.adjacencyBufferId = meshDataEx.m_adjacency->getId();
+
+                s_messageSender.endMessage();
+            }
+            vertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
 
             ++geometryDesc;
         });

@@ -7,3 +7,4 @@ PoseComputeShader.h
 ResolveComputeShader.h
 SkyVertexShader.h
 SkyPixelShader.h
+SmoothNormalComputeShader.h

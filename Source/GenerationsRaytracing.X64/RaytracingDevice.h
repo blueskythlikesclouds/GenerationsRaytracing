@@ -40,14 +40,6 @@ struct alignas(0x10) GlobalsRT
     float middleGray;
 };
 
-struct DelayedTexture
-{
-    uint32_t materialId;
-    uint32_t materialVersion;
-    uint32_t textureId;
-    uint32_t textureIdOffset;
-};
-
 struct GlobalsSB
 {
     float backgroundScale;
@@ -58,6 +50,17 @@ struct GlobalsSB
     uint32_t enableVertexColor;
     float ambient[3];
     uint32_t enableAlphaTest;
+};
+
+struct SmoothNormalCmd
+{
+    uint32_t indexBufferId;
+    uint32_t vertexStride;
+    uint32_t vertexCount;
+    uint32_t vertexOffset;
+    uint32_t normalOffset;
+    uint32_t vertexBufferId;
+    uint32_t adjacencyBufferId;
 };
 
 inline constexpr size_t HIT_GROUP_NUM = 2;
@@ -162,6 +165,11 @@ protected:
     // Local Light
     std::vector<LocalLight> m_localLights;
 
+    // Smooth Normal
+    ComPtr<ID3D12RootSignature> m_smoothNormalRootSignature;
+    ComPtr<ID3D12PipelineState> m_smoothNormalPipeline;
+    std::vector<SmoothNormalCmd> m_smoothNormalCommands;
+
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
@@ -171,6 +179,8 @@ protected:
     void buildBottomLevelAccelStruct(BottomLevelAccelStruct& bottomLevelAccelStruct);
 
     void handlePendingBottomLevelAccelStructBuilds();
+
+    void handlePendingSmoothNormalCommands();
 
     void writeHitGroupShaderTable(size_t geometryIndex, size_t shaderType, bool constTexCoord);
 
@@ -190,6 +200,7 @@ protected:
     void procMsgComputePose();
     void procMsgRenderSky();
     void procMsgCreateLocalLight();
+    void procMsgComputeSmoothNormal();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

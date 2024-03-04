@@ -18,6 +18,7 @@
 #include "SkyVertexShader.h"
 #include "SkyPixelShader.h"
 #include "PIXEvent.h"
+#include "SmoothNormalComputeShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
@@ -188,6 +189,60 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
     m_pendingBuilds.clear();
 }
 
+void RaytracingDevice::handlePendingSmoothNormalCommands()
+{
+    if (m_smoothNormalCommands.empty())
+        return;
+
+    PIX_EVENT();
+
+    if (m_curRootSignature != m_smoothNormalRootSignature.Get())
+    {
+        getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_smoothNormalRootSignature.Get());
+        m_curRootSignature = m_smoothNormalRootSignature.Get();
+    }
+    if (m_curPipeline != m_smoothNormalPipeline.Get())
+    {
+        getUnderlyingGraphicsCommandList()->SetPipelineState(m_smoothNormalPipeline.Get());
+        m_curPipeline = m_smoothNormalPipeline.Get();
+        m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+    }
+
+    for (const auto& cmd : m_smoothNormalCommands)
+    {
+        struct
+        {
+            uint32_t indexBufferId;
+            uint32_t vertexStride;
+            uint32_t vertexCount;
+            uint32_t normalOffset;
+        } geometryDesc = 
+        {
+            m_indexBuffers[cmd.indexBufferId].srvIndex,
+            cmd.vertexStride,
+            cmd.vertexCount,
+            cmd.normalOffset
+        };
+
+        getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0,
+            createBuffer(&geometryDesc, sizeof(geometryDesc), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+
+        const auto& vertexBuffer = m_vertexBuffers[cmd.vertexBufferId];
+
+        getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(1,
+            vertexBuffer.allocation->GetResource()->GetGPUVirtualAddress() + cmd.vertexOffset);
+
+        getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2,
+            m_indexBuffers[cmd.adjacencyBufferId].allocation->GetResource()->GetGPUVirtualAddress());
+
+        getUnderlyingGraphicsCommandList()->Dispatch((cmd.vertexCount + 63) / 64, 1, 1);
+
+        getGraphicsCommandList().uavBarrier(vertexBuffer.allocation->GetResource());
+    }
+
+    m_smoothNormalCommands.clear();
+}
+
 void RaytracingDevice::writeHitGroupShaderTable(size_t geometryIndex, size_t shaderType, bool constTexCoord)
 {
     uint8_t* hitGroupTable = &m_hitGroupShaderTable[geometryIndex * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * HIT_GROUP_NUM];
@@ -267,6 +322,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
 bool RaytracingDevice::createTopLevelAccelStruct()
 {
     handlePendingBottomLevelAccelStructBuilds();
+    handlePendingSmoothNormalCommands();
 
     if (m_instanceDescs.empty())
         return false;
@@ -1252,6 +1308,22 @@ void RaytracingDevice::procMsgCreateLocalLight()
     localLight.outRange = message.outRange;
 }
 
+void RaytracingDevice::procMsgComputeSmoothNormal()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgComputeSmoothNormal>();
+
+    m_smoothNormalCommands.push_back(
+    {
+        message.indexBufferId,
+        message.vertexStride,
+        message.vertexCount,
+        message.vertexOffset,
+        message.normalOffset,
+        message.vertexBufferId,
+        message.adjacencyBufferId
+    });
+}
+
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -1265,6 +1337,7 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgComputePose::s_id: procMsgComputePose(); break;
     case MsgRenderSky::s_id: procMsgRenderSky(); break;
     case MsgCreateLocalLight::s_id: procMsgCreateLocalLight(); break;
+    case MsgComputeSmoothNormal::s_id: procMsgComputeSmoothNormal(); break;
     default: return false;
     }
 
@@ -1582,6 +1655,31 @@ RaytracingDevice::RaytracingDevice()
 
     m_device->CreateRenderTargetView(m_skyTexture.Get(),
         &skyRtvDesc, m_rtvDescriptorHeap.getCpuHandle(m_skyRtvId));
+
+    CD3DX12_ROOT_PARAMETER1 smoothNormalRootParams[3];
+    smoothNormalRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    smoothNormalRootParams[1].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
+    smoothNormalRootParams[2].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+
+    RootSignature::create(
+        m_device.Get(),
+        smoothNormalRootParams,
+        _countof(smoothNormalRootParams),
+        nullptr,
+        0,
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED,
+        m_smoothNormalRootSignature,
+        "smooth_normal");
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC smoothNormalPipelineDesc{};
+    smoothNormalPipelineDesc.pRootSignature = m_smoothNormalRootSignature.Get();
+    smoothNormalPipelineDesc.CS.pShaderBytecode = SmoothNormalComputeShader;
+    smoothNormalPipelineDesc.CS.BytecodeLength = sizeof(SmoothNormalComputeShader);
+
+    m_pipelineLibrary.createComputePipelineState(&smoothNormalPipelineDesc, 
+        IID_PPV_ARGS(m_smoothNormalPipeline.GetAddressOf()));
 }
 
 RaytracingDevice::~RaytracingDevice()

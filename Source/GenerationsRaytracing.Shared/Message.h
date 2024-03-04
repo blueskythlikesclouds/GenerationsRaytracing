@@ -521,4 +521,16 @@ struct MsgSaveShaderCache
     MSG_DEFINE_MESSAGE(MsgSetPixelShaderConstantB);
 };
 
+struct MsgComputeSmoothNormal
+{
+    MSG_DEFINE_MESSAGE(MsgSaveShaderCache);
+    uint32_t indexBufferId;
+    uint8_t vertexStride;
+    uint32_t vertexCount;
+    uint32_t vertexOffset;
+    uint8_t normalOffset;
+    uint32_t vertexBufferId;
+    uint32_t adjacencyBufferId;
+};
+
 #pragma pack(pop)
