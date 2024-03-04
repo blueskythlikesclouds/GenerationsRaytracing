@@ -287,6 +287,8 @@ bool RaytracingDevice::createTopLevelAccelStruct()
     return true;
 }
 
+static constexpr size_t s_uavTextureNum = 21;
+
 void RaytracingDevice::createRaytracingTextures()
 {
     m_upscaler->init({ *this, m_width, m_height, m_qualityMode });
@@ -327,6 +329,7 @@ void RaytracingDevice::createRaytracingTextures()
 
         { DXGI_FORMAT_R8_UNORM, m_shadowTexture },
         { DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture },
+        { DXGI_FORMAT_R32G32B32A32_UINT, m_prevReservoirTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
         { DXGI_FORMAT_R16G16B16A16_FLOAT, m_refractionTexture },
@@ -336,6 +339,8 @@ void RaytracingDevice::createRaytracingTextures()
         { DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture },
         { DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture },
     };
+
+    static_assert(_countof(textureDescs) == s_uavTextureNum);
 
     for (const auto& textureDesc : textureDescs)
     {
@@ -1279,7 +1284,7 @@ RaytracingDevice::RaytracingDevice()
         return;
 
     CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[1];
-    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 20, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+    descriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, s_uavTextureNum, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
     CD3DX12_ROOT_PARAMETER1 raytracingRootParams[9];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

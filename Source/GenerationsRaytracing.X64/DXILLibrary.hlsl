@@ -89,10 +89,34 @@ void ShadowRayGeneration()
         {
             uint sample = min(floor(NextRand(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
             float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
-            UpdateReservoir(reservoir, sample, weight, NextRand(randSeed));
+            UpdateReservoir(reservoir, sample, weight, 1, NextRand(randSeed));
         }
 
         ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
+
+        // Temporal reuse
+        if (g_CurrentFrame > 0)
+        {
+            int2 prevIndex = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectors[DispatchRaysIndex().xy];
+
+            // TODO: Check for previous normal and depth
+
+            Reservoir prevReservoir = LoadReservoir(g_PrevReservoir[prevIndex]);
+            prevReservoir.M = min(reservoir.M * 20, prevReservoir.M);
+            
+            Reservoir temporalReservoir = (Reservoir) 0;
+            
+            UpdateReservoir(temporalReservoir, reservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
+                g_LocalLights[reservoir.Y]) * reservoir.W * reservoir.M, reservoir.M, NextRand(randSeed));
+            
+            UpdateReservoir(temporalReservoir, prevReservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
+                g_LocalLights[prevReservoir.Y]) * prevReservoir.W * prevReservoir.M, prevReservoir.M, NextRand(randSeed));
+            
+            ComputeReservoirWeight(temporalReservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[temporalReservoir.Y]));
+            
+            reservoir = temporalReservoir;
+        }
+
         g_Reservoir[DispatchRaysIndex().xy] = StoreReservoir(reservoir);
     }
 

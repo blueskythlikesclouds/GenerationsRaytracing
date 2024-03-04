@@ -10,6 +10,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     float depth = g_Depth[dispatchThreadId.xy];
     float2 random = GetBlueNoise(dispatchThreadId.xy).xy;
 
+    Reservoir reservoir = (Reservoir) 0;
     float3 diffuseAlbedo = 0.0;
     float3 specularAlbedo = 0.0;
 
@@ -27,51 +28,52 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         if (g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
         {
-            shadingParams.Reservoir = LoadReservoir(g_Reservoir[dispatchThreadId.xy]);
             uint randSeed = InitRand(g_CurrentFrame, dispatchThreadId.y * g_InternalResolution.x + dispatchThreadId.x);
+            Reservoir prevReservoir = LoadReservoir(g_Reservoir[dispatchThreadId.xy]);
+
+            UpdateReservoir(reservoir, prevReservoir.Y, ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection,
+                g_LocalLights[prevReservoir.Y]) * prevReservoir.W * prevReservoir.M, prevReservoir.M, NextRand(randSeed));
 
             for (uint i = 0; i < 5; i++)
             {
-                float radius = 16.0 * NextRand(randSeed);
+                float radius = 30.0 * NextRand(randSeed);
                 float angle = 2.0 * PI * NextRand(randSeed);
 
                 int2 neighborIndex = round((float2) dispatchThreadId.xy + float2(cos(angle), sin(angle)) * radius);
 
                 if (all(and(neighborIndex >= 0, neighborIndex < g_InternalResolution)))
                 {
-                    Reservoir spatialReservoir = LoadReservoir(g_Reservoir[neighborIndex]);
+                    Reservoir neighborReservoir = LoadReservoir(g_Reservoir[neighborIndex]);
 
                     if (abs(depth - g_Depth[neighborIndex]) <= 0.05 && dot(gBufferData.Normal, LoadGBufferData(neighborIndex).Normal.xyz) >= 0.9063)
                     {
-                        uint newSampleCount = shadingParams.Reservoir.M + spatialReservoir.M;
-
-                        UpdateReservoir(shadingParams.Reservoir, spatialReservoir.Y, ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection,
-                            g_LocalLights[spatialReservoir.Y]) * spatialReservoir.W * spatialReservoir.M, NextRand(randSeed));
-
-                        shadingParams.Reservoir.M = newSampleCount;
+                        UpdateReservoir(reservoir, neighborReservoir.Y, ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection,
+                            g_LocalLights[neighborReservoir.Y]) * neighborReservoir.W * neighborReservoir.M, neighborReservoir.M, NextRand(randSeed));
                     }
                 }
             }
 
-            LocalLight localLight = g_LocalLights[shadingParams.Reservoir.Y];
+            LocalLight localLight = g_LocalLights[reservoir.Y];
 
-            ComputeReservoirWeight(shadingParams.Reservoir,
+            ComputeReservoirWeight(reservoir,
                 ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection, localLight));
 
-            if (shadingParams.Reservoir.W > 0.0f)
+            if (reservoir.W > 0.0f)
             {
                 float3 direction = localLight.Position - gBufferData.Position;
                 float distance = length(direction);
                 if (distance > 0.0)
                     direction /= distance;
 
-                shadingParams.Reservoir.W *= TraceLocalLightShadow(
+                reservoir.W *= TraceLocalLightShadow(
                     gBufferData.Position,
                     direction,
                     random,
                     1.0 / localLight.OutRange,
                     distance);
             }
+
+            shadingParams.Reservoir = reservoir;
         }
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
@@ -106,6 +108,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     g_Color[dispatchThreadId.xy] = float4(color, 1.0);
+    g_PrevReservoir[dispatchThreadId.xy] = StoreReservoir(reservoir);
     g_DiffuseAlbedo[dispatchThreadId.xy] = diffuseAlbedo;
     g_SpecularAlbedo[dispatchThreadId.xy] = specularAlbedo;
 

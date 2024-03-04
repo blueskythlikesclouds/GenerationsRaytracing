@@ -137,7 +137,7 @@ float TraceLocalLightShadow(float3 position, float3 direction, float2 random, fl
 float ComputeReservoirWeight(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
     float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
-    return dot(localLighting, float3(0.2126, 0.7152, 0.0722));
+    return length(localLighting);
 }
 
 float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)

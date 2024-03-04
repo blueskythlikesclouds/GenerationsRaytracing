@@ -126,6 +126,7 @@ protected:
 
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
     ComPtr<D3D12MA::Allocation> m_reservoirTexture;
+    ComPtr<D3D12MA::Allocation> m_prevReservoirTexture;
 
     ComPtr<D3D12MA::Allocation> m_giTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;

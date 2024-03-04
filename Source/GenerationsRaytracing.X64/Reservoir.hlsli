@@ -9,18 +9,18 @@ struct Reservoir
     float W;
 };
 
-void UpdateReservoir(inout Reservoir reservoir, uint sample, float weight, float random)
+void UpdateReservoir(inout Reservoir reservoir, uint y, float w, uint c, float random)
 {
-    reservoir.WSum += weight;
-    reservoir.M += 1;
+    reservoir.WSum += w;
+    reservoir.M += c;
 
-    if (random * reservoir.WSum < weight)
-        reservoir.Y = sample;
+    if (random * reservoir.WSum < w)
+        reservoir.Y = y;
 }
 
-void ComputeReservoirWeight(inout Reservoir reservoir, float weight)
+void ComputeReservoirWeight(inout Reservoir reservoir, float w)
 {
-    float denominator = reservoir.M * weight;
+    float denominator = reservoir.M * w;
     if (denominator > 0.0)
         reservoir.W = reservoir.WSum / denominator;
     else
