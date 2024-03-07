@@ -110,12 +110,14 @@ int main()
             WaitForMultipleObjects(_countof(handles), handles, FALSE, INFINITE);
             CloseHandle(processHandle);
 
-            s_device->setShouldExit();
+            if (s_device != nullptr)
+                s_device->setShouldExit();
         });
 
         s_device->runLoop();
         s_device->setEvents();
     }
+    s_device.reset();
 
     return 0;
 }

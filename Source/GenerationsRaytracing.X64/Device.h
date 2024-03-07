@@ -54,8 +54,6 @@ protected:
     Event m_cpuEvent{ Event::s_cpuEventName };
     Event m_gpuEvent{ Event::s_gpuEventName };
 
-    SwapChain m_swapChain;
-    uint32_t m_swapChainTextureId = 0;
     uint32_t m_frame = 0;
     uint32_t m_nextFrame = 1;
     bool m_shouldPresent = false;
@@ -126,6 +124,9 @@ protected:
     uint32_t m_dirtyFlags = ~0;
 
     uint32_t m_anisotropicFiltering = 0;
+
+    SwapChain m_swapChain;
+    uint32_t m_swapChainTextureId = 0;
 
     // Place chonky variables at the end.
     GlobalsVS m_globalsVS{};
