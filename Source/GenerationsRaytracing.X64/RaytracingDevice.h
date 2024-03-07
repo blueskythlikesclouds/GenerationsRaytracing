@@ -207,5 +207,5 @@ protected:
 
 public:
     RaytracingDevice();
-    ~RaytracingDevice();
+    ~RaytracingDevice() override;
 };

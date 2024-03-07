@@ -201,7 +201,7 @@ protected:
 
 public:
     Device();
-    ~Device();
+    virtual ~Device();
 
     void runLoop();
 

@@ -13,6 +13,7 @@ public:
 
     Event(LPCTSTR name, BOOL initialState);
     Event(LPCTSTR name);
+    ~Event();
 
     void wait() const;
     bool waitImm() const;

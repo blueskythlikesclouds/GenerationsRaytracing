@@ -12,11 +12,21 @@ static std::unique_ptr<RaytracingDevice> s_device;
 static struct ThreadHolder
 {
     std::thread processThread;
+    HANDLE event;
+
+    ThreadHolder()
+        : event(CreateEvent(nullptr, FALSE, FALSE, nullptr))
+    {
+    }
 
     ~ThreadHolder()
     {
+        SetEvent(event);
+
         if (processThread.joinable())
             processThread.join();
+
+        CloseHandle(event);
     }
 } s_threadHolder;
 
@@ -96,7 +106,10 @@ int main()
     {
         s_threadHolder.processThread = std::thread([processHandle]
         {
-            WaitForSingleObject(processHandle, INFINITE);
+            const HANDLE handles[] = { s_threadHolder.event, processHandle };
+            WaitForMultipleObjects(_countof(handles), handles, FALSE, INFINITE);
+            CloseHandle(processHandle);
+
             s_device->setShouldExit();
         });
 

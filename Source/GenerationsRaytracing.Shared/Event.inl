@@ -21,6 +21,11 @@ inline Event::Event(LPCTSTR name)
     assert(m_handle != nullptr);
 }
 
+inline Event::~Event()
+{
+    CloseHandle(m_handle);
+}
+
 inline void Event::wait() const
 {
     const DWORD result = WaitForSingleObject(m_handle, INFINITE);
