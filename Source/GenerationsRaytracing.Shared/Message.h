@@ -444,7 +444,7 @@ struct MsgComputePose
         uint8_t binormalOffset;
         uint8_t blendWeightOffset;
         uint8_t blendIndicesOffset;
-        uint8_t nodePalette[25];
+        uint8_t nodeCount;
     };
 
     uint32_t vertexBufferId;

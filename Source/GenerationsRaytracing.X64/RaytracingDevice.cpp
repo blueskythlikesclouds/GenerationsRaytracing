@@ -1067,18 +1067,20 @@ void RaytracingDevice::procMsgComputePose()
         m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
     }
 
-    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0,
-        createBuffer(message.data, message.nodeCount * sizeof(float[4][4]), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(0,
+        createBuffer(message.data, message.nodeCount * sizeof(float[4][4]), 0x10));
 
     auto geometryDesc = reinterpret_cast<const MsgComputePose::GeometryDesc*>(
         message.data + message.nodeCount * sizeof(float[4][4]));
+
+    auto nodePalette = reinterpret_cast<const uint32_t*>(geometryDesc + message.geometryCount);
 
     const auto destVertexBuffer = m_vertexBuffers[message.vertexBufferId].allocation->GetResource();
     auto destVirtualAddress = destVertexBuffer->GetGPUVirtualAddress();
 
     for (size_t i = 0; i < message.geometryCount; i++)
     {
-        struct GeometryDesc
+        struct
         {
             uint32_t vertexCount;
             uint32_t vertexStride;
@@ -1087,33 +1089,34 @@ void RaytracingDevice::procMsgComputePose()
             uint32_t binormalOffset;
             uint32_t blendWeightOffset;
             uint32_t blendIndicesOffset;
-            uint32_t padding0;
-            uint32_t nodePalette[25];
+            uint32_t nodeCount;
+        } cbGeometryDesc =
+        {
+            geometryDesc->vertexCount,
+            geometryDesc->vertexStride,
+            geometryDesc->normalOffset,
+            geometryDesc->tangentOffset,
+            geometryDesc->binormalOffset,
+            geometryDesc->blendWeightOffset,
+            geometryDesc->blendIndicesOffset,
+            geometryDesc->nodeCount
         };
 
-        GeometryDesc dstGeometryDesc;
-        dstGeometryDesc.vertexCount = geometryDesc->vertexCount;
-        dstGeometryDesc.vertexStride = geometryDesc->vertexStride;
-        dstGeometryDesc.normalOffset = geometryDesc->normalOffset;
-        dstGeometryDesc.tangentOffset = geometryDesc->tangentOffset;
-        dstGeometryDesc.binormalOffset = geometryDesc->binormalOffset;
-        dstGeometryDesc.blendWeightOffset = geometryDesc->blendWeightOffset;
-        dstGeometryDesc.blendIndicesOffset = geometryDesc->blendIndicesOffset;
-
-        for (size_t j = 0; j < 25; j++)
-            dstGeometryDesc.nodePalette[j] = geometryDesc->nodePalette[j];
-
         getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1,
-            createBuffer(&dstGeometryDesc, sizeof(GeometryDesc), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+            createBuffer(&cbGeometryDesc, sizeof(cbGeometryDesc), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
         getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2,
+            createBuffer(nodePalette, geometryDesc->nodeCount * sizeof(uint32_t), alignof(uint32_t)));
+
+        getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(3,
             m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress());
 
-        getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(3, destVirtualAddress);
+        getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(4, destVirtualAddress);
 
         getUnderlyingGraphicsCommandList()->Dispatch((geometryDesc->vertexCount + 63) / 64, 1, 1);
 
         destVirtualAddress += geometryDesc->vertexCount * (geometryDesc->vertexStride + 0xC); // Extra 12 bytes for previous position
+        nodePalette += geometryDesc->nodeCount;
         ++geometryDesc;
     }
     m_pendingPoses.push_back(message.vertexBufferId);
@@ -1531,11 +1534,12 @@ RaytracingDevice::RaytracingDevice()
 
     m_pipelineLibrary.createGraphicsPipelineState(&copyPipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
 
-    CD3DX12_ROOT_PARAMETER1 poseRootParams[4];
-    poseRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    poseRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    poseRootParams[2].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    poseRootParams[3].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
+    CD3DX12_ROOT_PARAMETER1 poseRootParams[5];
+    poseRootParams[0].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    poseRootParams[1].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    poseRootParams[2].InitAsShaderResourceView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    poseRootParams[3].InitAsShaderResourceView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    poseRootParams[4].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
 
     RootSignature::create(
         m_device.Get(),

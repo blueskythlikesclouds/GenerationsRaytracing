@@ -689,11 +689,17 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
         }
 
         uint32_t geometryCount = 0;
-        traverseModelData(modelDataEx, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
+        uint32_t nodeCount = 0;
+        traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+        {
+            ++geometryCount;
+            nodeCount += meshDataEx.m_NodeNum;
+        });
 
         auto& message = s_messageSender.makeMessage<MsgComputePose>(
             instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix) +
-            geometryCount * sizeof(MsgComputePose::GeometryDesc));
+            geometryCount * sizeof(MsgComputePose::GeometryDesc) +
+            nodeCount * sizeof(uint32_t));
 
         message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
         message.nodeCount = static_cast<uint8_t>(instanceInfoEx.m_spPose->GetMatrixNum());
@@ -707,6 +713,8 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
         memset(geometryDesc, 0, geometryCount * sizeof(MsgComputePose::GeometryDesc));
 
+        auto nodePalette = reinterpret_cast<uint32_t*>(geometryDesc + geometryCount);
+
         uint32_t vertexOffset = 0;
         traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
@@ -715,9 +723,6 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
             geometryDesc->vertexCount = meshDataEx.m_VertexNum;
             geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
             geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
-
-            if (meshDataEx.m_pNodeIndices != nullptr)
-                memcpy(geometryDesc->nodePalette, meshDataEx.m_pNodeIndices, std::min(25u, meshDataEx.m_NodeNum));
 
             const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
                 meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
@@ -754,6 +759,11 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
                 ++vertexElement;
             }
 
+            geometryDesc->nodeCount = static_cast<uint8_t>(meshDataEx.m_NodeNum);
+
+            for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
+                nodePalette[i] = meshDataEx.m_pNodeIndices[i] >= message.nodeCount ? 0 : static_cast<uint32_t>(meshDataEx.m_pNodeIndices[i]);
+
             if (shouldCheckForHash)
                 MaterialData::create(*meshDataEx.m_spMaterial, true);
 
@@ -771,9 +781,10 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
                 s_messageSender.endMessage();
             }
-            vertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
 
+            vertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
             ++geometryDesc;
+            nodePalette += meshDataEx.m_NodeNum;
         });
 
         s_messageSender.endMessage();
