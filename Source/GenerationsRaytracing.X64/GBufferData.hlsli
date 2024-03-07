@@ -684,6 +684,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     furColor = fur.rgb;
                     furAlpha = fur.a;
                 }
+
+                // Convert to sRGB, the logic above is from Frontiers, meaning it was in linear space.
+                furColor = pow(saturate(furColor), 1.0 / 2.2);
             
                 gBufferData.Diffuse = saturate(gBufferData.Diffuse * furColor);
                 gBufferData.Specular = saturate(gBufferData.Specular * furColor);
