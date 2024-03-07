@@ -16,5 +16,6 @@ void Configuration::init()
         s_qualityMode = static_cast<uint32_t>(reader.GetInteger("Mod", "QualityMode", 2));
         s_gachaLighting = reader.GetBoolean("Mod", "GachaLighting", false);
         s_toneMap = reader.GetBoolean("Mod", "ToneMap", true);
+        s_furStyle = static_cast<FurStyle>(reader.GetInteger("Mod", "FurStyle", static_cast<uint32_t>(FurStyle::Frontiers)));
     }
 }

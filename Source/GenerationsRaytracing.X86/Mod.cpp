@@ -19,6 +19,7 @@
 #include "TriangleFan.h"
 #include "TriangleStrip.h"
 #include "Window.h"
+#include "FileBinder.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
 
@@ -49,7 +50,7 @@ extern "C" void __declspec(dllexport) PreInit()
     RaytracingRendering::preInit();
 }
 
-extern "C" void __declspec(dllexport) Init()
+extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
 {
     Configuration::init();
     D3D9::init();
@@ -69,6 +70,7 @@ extern "C" void __declspec(dllexport) Init()
     MemoryAllocator::init();
     MeshData::init();
     ToneMap::init();
+    FileBinder::init(modInfo);
 
 #ifdef _DEBUG
 #if 0

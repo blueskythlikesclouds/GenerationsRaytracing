@@ -110,6 +110,7 @@
       </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="BaseTexture.cpp" />
+    <ClCompile Include="FileBinder.cpp" />
     <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="MotionData.cpp" />
@@ -149,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseTexture.h" />
+    <ClInclude Include="FileBinder.h" />
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="MotionData.h" />

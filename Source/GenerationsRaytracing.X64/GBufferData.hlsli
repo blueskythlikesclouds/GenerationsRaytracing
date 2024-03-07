@@ -644,9 +644,6 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
                 gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
                 gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb; 
-
-                float3 furColor = 1.0;
-                float furAlpha = 0.0;
                 
                 if (vertex.Flags & VERTEX_FLAG_MIPMAP)
                 {
@@ -655,6 +652,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     flow = flow * 2.0 - 1.0;
                     flow *= 0.01 * material.FurParam.x;
 
+                    float3 furColor = 1.0;
+                    float furAlpha = 0.0;
                     float2 offset = 0.0;
 
                     for (uint i = 0; i < (uint) material.FurParam.z; i++)
@@ -674,24 +673,26 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
                     furColor = ApplyFurParamTransform(float4(furColor, 0.0), material.FurParam.w).rgb;
                     furAlpha = ApplyFurParamTransform(float4(furAlpha / material.FurParam.z, 0.0, 0.0, 0.0), material.FurParam2.w).x;
-                }
-                else
-                {
-                    Texture2D texture = ResourceDescriptorHeap[
+
+                    // Convert to sRGB, the logic above is from Frontiers, meaning it was in linear space.
+                    furColor = pow(saturate(furColor), 1.0 / 2.2);
+
+                    gBufferData.Diffuse *= furColor;
+                    gBufferData.Specular *= furColor;
+                    gBufferData.SpecularGloss *= furAlpha;
+                    gBufferData.Falloff *= furColor;
+
+                    // Divide by last mip map to neutralize the color.
+                    Texture2D furTexture = ResourceDescriptorHeap[
                         NonUniformResourceIndex(material.DiffuseTexture2 & 0xFFFFF)];
                 
-                    float4 fur = texture.Load(int3(0, 0, 8));
-                    furColor = fur.rgb;
-                    furAlpha = fur.a;
-                }
+                    furColor = furTexture.Load(int3(0, 0, 8)).rgb;
+                    furColor = 1.0 / pow(saturate(furColor), 1.0 / 2.2);
 
-                // Convert to sRGB, the logic above is from Frontiers, meaning it was in linear space.
-                furColor = pow(saturate(furColor), 1.0 / 2.2);
-            
-                gBufferData.Diffuse = saturate(gBufferData.Diffuse * furColor);
-                gBufferData.Specular = saturate(gBufferData.Specular * furColor);
-                gBufferData.SpecularGloss *= furAlpha;
-                gBufferData.Falloff *= furColor;
+                    gBufferData.Diffuse = saturate(gBufferData.Diffuse * furColor.rgb);
+                    gBufferData.Specular = saturate(gBufferData.Specular * furColor.rgb);
+                    gBufferData.Falloff *= furColor.rgb;
+                }
 
                 break;
             }

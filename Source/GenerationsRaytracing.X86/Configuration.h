@@ -7,6 +7,12 @@ enum class DisplayMode
     Windowed = 2
 };
 
+enum class FurStyle
+{
+    Frontiers,
+    CG
+};
+
 class Configuration
 {
 public:
@@ -19,6 +25,8 @@ public:
     static inline bool s_gachaLighting;
 
     static inline bool s_toneMap;
+
+    static inline FurStyle s_furStyle;
 
     static void init();
 };

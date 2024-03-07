@@ -102,6 +102,9 @@
     <ClCompile Include="ToneMap.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
+    <ClCompile Include="FileBinder.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -203,6 +206,9 @@
     </ClInclude>
     <ClInclude Include="ToneMap.h">
       <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="FileBinder.h">
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
