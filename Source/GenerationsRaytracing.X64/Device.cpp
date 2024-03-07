@@ -2014,11 +2014,6 @@ void Device::runLoop()
         processMessages();
         m_swapChain.getWindow().processMessages();
     }
-
-    // Let the GPU finish its work before we quit
-    const uint64_t fenceValue = m_graphicsQueue.getNextFenceValue();
-    m_graphicsQueue.signal(fenceValue);
-    m_graphicsQueue.wait(fenceValue);
 }
 
 void Device::setEvents() const

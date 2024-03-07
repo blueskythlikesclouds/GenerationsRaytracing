@@ -1686,13 +1686,19 @@ RaytracingDevice::RaytracingDevice()
         IID_PPV_ARGS(m_smoothNormalPipeline.GetAddressOf()));
 }
 
+static void waitForQueueOnExit(CommandQueue& queue)
+{
+    if (queue.getUnderlyingQueue() != nullptr)
+    {
+        const uint64_t fenceValue = queue.getNextFenceValue();
+        queue.signal(fenceValue);
+        queue.wait(fenceValue);
+    }
+}
+
 RaytracingDevice::~RaytracingDevice()
 {
     // Wait for GPU operations to finish to exit cleanly
-    if (m_graphicsQueue.getUnderlyingQueue() != nullptr)
-    {
-        const uint64_t fenceValue = m_graphicsQueue.getNextFenceValue();
-        m_graphicsQueue.signal(fenceValue);
-        m_graphicsQueue.wait(fenceValue);
-    }
+    waitForQueueOnExit(m_copyQueue);
+    waitForQueueOnExit(m_graphicsQueue);
 }
