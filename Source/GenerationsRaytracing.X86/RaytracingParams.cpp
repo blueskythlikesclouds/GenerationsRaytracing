@@ -257,3 +257,225 @@ bool RaytracingParams::update()
     resetAccumulation |= loadSceneEffect();
     return resetAccumulation;
 }
+
+void RaytracingParams::imguiWindow()
+{
+    if (ImGui::Begin("Generations Raytracing", &Configuration::s_enableImgui, ImGuiWindowFlags_MenuBar))
+    {
+        if (ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("Save Raytracing.prm.xml"))
+                {
+                    FILE* file = fopen("work/Raytracing.prm.xml", "wb");
+                    if (file)
+                    {
+                        fputs("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n", file);
+                        fputs("<Raytracing.prm.xml>\n", file);
+                        fputs("  <Default>\n", file);
+                        fputs("    <Category>\n", file);
+
+                        fputs("      <GI>\n", file);
+                        fputs("        <Param>\n", file);
+                        fprintf(file, "          <DiffusePower>%g</DiffusePower>\n", s_diffusePower);
+                        fprintf(file, "          <LightPower>%g</LightPower>\n", s_lightPower);
+                        fprintf(file, "          <EmissivePower>%g</EmissivePower>\n", s_emissivePower);
+                        fprintf(file, "          <SkyPower>%g</SkyPower>\n", s_skyPower);
+                        fputs("        </Param>\n", file);
+                        fputs("      </GI>\n", file);
+
+                        fputs("      <Environment>\n", file);
+                        fputs("        <Param>\n", file);
+                        fprintf(file, "          <Mode>%d</Mode>\n", s_envMode);
+                        fprintf(file, "          <SkyColorR>%g</SkyColorR>\n", s_skyColor.x());
+                        fprintf(file, "          <SkyColorG>%g</SkyColorG>\n", s_skyColor.y());
+                        fprintf(file, "          <SkyColorB>%g</SkyColorB>\n", s_skyColor.z());
+                        fprintf(file, "          <GroundColorR>%g</GroundColorR>\n", s_groundColor.x());
+                        fprintf(file, "          <GroundColorG>%g</GroundColorG>\n", s_groundColor.y());
+                        fprintf(file, "          <GroundColorB>%g</GroundColorB>\n", s_groundColor.z());
+                        fputs("        </Param>\n", file);
+                        fputs("      </Environment>\n", file);
+
+                        fputs("      <ToneMap>\n", file);
+                        fputs("        <Param>\n", file);
+                        fprintf(file, "          <Mode>%d</Mode>\n", s_toneMapMode);
+                        fputs("        </Param>\n", file);
+                        fputs("      </ToneMap>\n", file);
+
+                        fputs("    </Category>\n", file);
+                        fputs("  </Default>\n", file);
+                        fputs("</Raytracing.prm.xml>\n", file);
+
+                        fclose(file);
+                    }
+                }
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("Close"))
+                    Configuration::s_enableImgui = false;
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenuBar();
+        }
+
+        if (ImGui::BeginTabBar("TabBar"))
+        {
+            if (ImGui::BeginTabItem("Upscaling"))
+            {
+                if (ImGui::BeginChild("Child"))
+                {
+                    if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_RowBg))
+                    {
+                        ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthStretch);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Upscaler");
+                        ImGui::TableNextColumn();
+                        ImGui::RadioButton("Unspecified##Upscaler", reinterpret_cast<int*>(&s_upscaler), 0);
+                        ImGui::RadioButton("DLSS", reinterpret_cast<int*>(&s_upscaler), 1);
+                        ImGui::RadioButton("DLSS Ray Reconstruction", reinterpret_cast<int*>(&s_upscaler), 2);
+                        ImGui::RadioButton("FSR2", reinterpret_cast<int*>(&s_upscaler), 3);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Quality Mode");
+                        ImGui::TableNextColumn();
+                        ImGui::RadioButton("Unspecified##Quality Mode", reinterpret_cast<int*>(&s_qualityMode), 0);
+                        ImGui::RadioButton("Native", reinterpret_cast<int*>(&s_qualityMode), 1);
+                        ImGui::RadioButton("Quality", reinterpret_cast<int*>(&s_qualityMode), 2);
+                        ImGui::RadioButton("Balanced", reinterpret_cast<int*>(&s_qualityMode), 3);
+                        ImGui::RadioButton("Performance", reinterpret_cast<int*>(&s_qualityMode), 4);
+                        ImGui::RadioButton("Ultra Performance", reinterpret_cast<int*>(&s_qualityMode), 5);
+
+                        ImGui::EndTable();
+                    }
+                }
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Stage"))
+            {
+                if (ImGui::BeginChild("Child"))
+                {
+                    ImGui::RadioButton("None", reinterpret_cast<int*>(&s_stageIndex), NULL);
+
+                    for (int i = 0; i < _countof(s_stages); i++)
+                        ImGui::RadioButton(s_stages[i].name, reinterpret_cast<int*>(&s_stageIndex), i + 1);
+                }
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Parameter"))
+            {
+                if (ImGui::BeginChild("Child"))
+                {
+                    if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_RowBg))
+                    {
+                        ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthStretch);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Tone Mapping");
+                        ImGui::TableNextColumn();
+                        ImGui::RadioButton("Unspecified", reinterpret_cast<int*>(&s_toneMapMode), TONE_MAP_MODE_UNSPECIFIED);
+                        ImGui::RadioButton("Enable##Tone Mapping", reinterpret_cast<int*>(&s_toneMapMode), TONE_MAP_MODE_ENABLE);
+                        ImGui::RadioButton("Disable", reinterpret_cast<int*>(&s_toneMapMode), TONE_MAP_MODE_DISABLE);
+
+                        static constexpr float s_speed = 0.01f;
+                        static constexpr float s_min = 1.0f;
+                        static constexpr float s_max = FLT_MAX;
+                        static constexpr const char* s_format = "%g";
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Diffuse Power");
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        ImGui::DragFloat("##Diffuse Power", &s_diffusePower, s_speed, s_min, s_max, s_format);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Light Power");
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        ImGui::DragFloat("##Light Power", &s_lightPower, s_speed, s_min, s_max, s_format);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Emissive Power");
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        ImGui::DragFloat("##Emissive Power", &s_emissivePower, s_speed, s_min, s_max, s_format);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Sky Power");
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        ImGui::DragFloat("##Sky Power", &s_skyPower, s_speed, s_min, s_max, s_format);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Environment Mode");
+                        ImGui::TableNextColumn();
+                        ImGui::RadioButton("Auto", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_AUTO);
+                        ImGui::RadioButton("Sky", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_SKY);
+                        ImGui::RadioButton("Color", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_COLOR);
+                        ImGui::SameLine();
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Sky Color");
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        ImGui::ColorEdit3("##Sky Color", s_skyColor.data());
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Ground Color");
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        ImGui::ColorEdit3("##Ground Color", s_groundColor.data());
+
+                        ImGui::EndTable();
+                    }
+                }
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Debug"))
+            {
+                if (ImGui::BeginChild("Child"))
+                {
+                    if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_RowBg))
+                    {
+                        ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthStretch);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Enable");
+                        ImGui::TableNextColumn();
+                        ImGui::Checkbox("##Enable", &s_enable);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("View");
+                        ImGui::TableNextColumn();
+                        ImGui::RadioButton("None", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_NONE);
+                        ImGui::RadioButton("Diffuse", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_DIFFUSE);
+                        ImGui::RadioButton("Specular", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR);
+                        ImGui::RadioButton("Normal", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_NORMAL);
+                        ImGui::RadioButton("Falloff", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_FALLOFF);
+                        ImGui::RadioButton("Emission", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_EMISSION);
+                        ImGui::RadioButton("Shadow", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SHADOW);
+                        ImGui::RadioButton("GI", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_GI);
+                        ImGui::RadioButton("Reflection", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFLECTION);
+                        ImGui::RadioButton("Refraction", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION);
+
+                        ImGui::EndTable();
+                    }
+                }
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
+}

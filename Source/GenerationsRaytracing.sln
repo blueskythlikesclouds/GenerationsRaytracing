@@ -17,6 +17,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Amicitia.IO", "..\Dependenc
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GenerationsRaytracing.ShaderConverter", "GenerationsRaytracing.ShaderConverter\GenerationsRaytracing.ShaderConverter.csproj", "{EFC1A463-CAFF-4373-AB9C-D8A166910173}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X86.Dependencies", "GenerationsRaytracing.X86.Dependencies\GenerationsRaytracing.X86.Dependencies.vcxproj", "{305B334C-12A4-43FB-824C-2B4420D9BD75}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -45,6 +47,9 @@ Global
 		{EFC1A463-CAFF-4373-AB9C-D8A166910173}.Debug|x64.Build.0 = Debug|Any CPU
 		{EFC1A463-CAFF-4373-AB9C-D8A166910173}.Release|x64.ActiveCfg = Release|Any CPU
 		{EFC1A463-CAFF-4373-AB9C-D8A166910173}.Release|x64.Build.0 = Release|Any CPU
+		{305B334C-12A4-43FB-824C-2B4420D9BD75}.Debug|x64.ActiveCfg = Debug|Win32
+		{305B334C-12A4-43FB-824C-2B4420D9BD75}.Release|x64.ActiveCfg = Release|Win32
+		{305B334C-12A4-43FB-824C-2B4420D9BD75}.Release|x64.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

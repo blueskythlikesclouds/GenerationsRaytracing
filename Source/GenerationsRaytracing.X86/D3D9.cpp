@@ -138,7 +138,10 @@ HRESULT D3D9::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindo
         height = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
     }
 
-    *ppReturnedDeviceInterface = new Device(pPresentationParameters->BackBufferWidth, pPresentationParameters->BackBufferHeight);
+    *ppReturnedDeviceInterface = new Device(
+        pPresentationParameters->BackBufferWidth, 
+        pPresentationParameters->BackBufferHeight,
+        pPresentationParameters->hDeviceWindow);
 
     auto& message = s_messageSender.makeMessage<MsgCreateSwapChain>();
 

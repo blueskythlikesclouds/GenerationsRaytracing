@@ -15,6 +15,7 @@ public:
     ~VertexBuffer() override;
 
     uint32_t getId() const;
+    uint32_t getByteSize() const;
 
     virtual HRESULT Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD Flags) final;
     virtual HRESULT Unlock() final;

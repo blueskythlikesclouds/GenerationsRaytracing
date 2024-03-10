@@ -1,5 +1,10 @@
 ﻿#include "Window.h"
 
+#include "Configuration.h"
+#include "RaytracingParams.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
     if (Msg < WM_USER)
@@ -11,6 +16,25 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     {
         Msg -= WM_USER;
     }
+
+    switch (Msg)
+    {
+    case WM_KEYDOWN:
+        switch (wParam)
+        {
+        case VK_F1: 
+            Configuration::s_enableImgui ^= true;
+            break;
+
+        case VK_F2:
+            RaytracingParams::s_enable ^= true;
+            break;
+        }
+        break;
+    }
+
+    if (Configuration::s_enableImgui)
+        ImGui_ImplWin32_WndProcHandler(hWnd, Msg, wParam, lParam);
 
     return reinterpret_cast<WNDPROC>(0xE7B6C0)(hWnd, Msg, wParam, lParam);
 }
@@ -31,7 +55,7 @@ static bool __fastcall createWindowMidAsmHook(
 
     if (RegisterClassEx(&wndClassEx))
     {
-        HWND handle = CreateWindowEx(
+        HWND hWnd = CreateWindowEx(
             0,
             wndClassEx.lpszClassName,
             wndClassEx.lpszClassName,
@@ -45,12 +69,12 @@ static bool __fastcall createWindowMidAsmHook(
             hInstance,
             (LPVOID)param);
 
-        if (handle)
+        if (hWnd)
         {
-            SetWindowLong(handle, GWL_USERDATA, TRUE);
+            SetWindowLong(hWnd, GWL_USERDATA, TRUE);
 
-            *(HWND*)(param + 72) = handle;
-            *(bool*)(param + 144) = true;
+            *reinterpret_cast<HWND*>(param + 72) = hWnd;
+            *reinterpret_cast<bool*>(param + 144) = true;
 
             return true;
         }

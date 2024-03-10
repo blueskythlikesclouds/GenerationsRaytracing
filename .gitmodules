@@ -22,3 +22,6 @@
 [submodule "Dependencies/lz4"]
 	path = Dependencies/lz4
 	url = https://github.com/lz4/lz4.git
+[submodule "Dependencies/imgui"]
+	path = Dependencies/imgui
+	url = https://github.com/ocornut/imgui

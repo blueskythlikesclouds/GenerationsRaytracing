@@ -16,6 +16,7 @@ class VertexShader;
 class Device : public Unknown
 {
 protected:
+    HWND m_hWnd;
     ComPtr<Texture> m_backBuffer;
 
     ComPtr<Texture> m_renderTargets[4];
@@ -54,8 +55,21 @@ protected:
 
     void createVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl, bool isFVF);
 
+    struct
+    {
+        bool init{};
+        bool render{};
+        ComPtr<VertexDeclaration> vertexDeclaration;
+        ComPtr<VertexBuffer> vertexBuffer;
+        ComPtr<IndexBuffer> indexBuffer;
+        ComPtr<Texture> fontTexture;
+    } m_imgui;
+
+    void initImgui();
+    void renderImgui();
+
 public:
-    Device(uint32_t width, uint32_t height);
+    Device(uint32_t width, uint32_t height, HWND hWnd);
 
     Texture* getBackBuffer() const;
 

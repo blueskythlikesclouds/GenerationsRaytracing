@@ -1715,6 +1715,30 @@ void Device::procMsgSaveShaderCache()
     }
 }
 
+void Device::procMsgDrawIndexedPrimitiveUP()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgDrawIndexedPrimitiveUP>();
+
+    const uint32_t verticesSize = message.vertexCount * message.vertexStride;
+    m_vertexBufferViews[0].BufferLocation = createBuffer(message.data, verticesSize, alignof(float));
+    m_vertexBufferViews[0].SizeInBytes = verticesSize;
+    m_vertexBufferViews[0].StrideInBytes = message.vertexStride;
+    m_dirtyFlags |= DIRTY_FLAG_VERTEX_BUFFER_VIEWS;
+    m_vertexBufferViewsFirst = 0;
+
+    const uint32_t indexSize = message.indexFormat == D3DFMT_INDEX32 ? 4 : 2;
+    const uint32_t indicesSize = indexSize * message.indexCount;
+    m_indexBufferView.BufferLocation = createBuffer(message.data + verticesSize, indicesSize, indexSize);
+    m_indexBufferView.Format = DxgiConverter::convert(static_cast<D3DFORMAT>(message.indexFormat));
+    m_indexBufferView.SizeInBytes = indicesSize;
+    m_dirtyFlags |= DIRTY_FLAG_INDEX_BUFFER_VIEW;
+
+    setPrimitiveType(static_cast<D3DPRIMITIVETYPE>(message.primitiveType));
+    flushGraphicsState();
+
+    getUnderlyingGraphicsCommandList()->DrawIndexedInstanced(message.indexCount, m_instanceCount, 0, 0, 0);
+}
+
 Device::Device()
 {
     HRESULT hr;
@@ -1925,6 +1949,7 @@ void Device::processMessages()
         case MsgCopyVertexBuffer::s_id: procMsgCopyVertexBuffer(); break;
         case MsgSetPixelShaderConstantB::s_id: procMsgSetPixelShaderConstantB(); break;
         case MsgSaveShaderCache::s_id: procMsgSaveShaderCache(); break;
+        case MsgDrawIndexedPrimitiveUP::s_id: procMsgDrawIndexedPrimitiveUP(); break;
 
         }
     }

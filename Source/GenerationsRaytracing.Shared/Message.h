@@ -533,4 +533,16 @@ struct MsgComputeSmoothNormal
     uint32_t adjacencyBufferId;
 };
 
+struct MsgDrawIndexedPrimitiveUP
+{
+    MSG_DEFINE_MESSAGE(MsgComputeSmoothNormal);
+    uint8_t primitiveType;
+    uint32_t vertexCount;
+    uint32_t indexCount;
+    uint8_t indexFormat;
+    uint8_t vertexStride;
+    uint32_t dataSize;
+    uint8_t data[1u];
+};
+
 #pragma pack(pop)

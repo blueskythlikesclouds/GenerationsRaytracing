@@ -29,6 +29,11 @@ uint32_t IndexBuffer::getId() const
     return m_id;
 }
 
+uint32_t IndexBuffer::getByteSize() const
+{
+    return m_byteSize;
+}
+
 HRESULT IndexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD Flags)
 {
     if (SizeToLock == 0)

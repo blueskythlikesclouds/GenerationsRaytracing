@@ -28,5 +28,7 @@ public:
 
     static inline FurStyle s_furStyle;
 
+    static inline bool s_enableImgui;
+
     static void init();
 };

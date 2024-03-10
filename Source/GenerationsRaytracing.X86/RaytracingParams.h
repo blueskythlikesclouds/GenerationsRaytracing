@@ -32,4 +32,6 @@ struct RaytracingParams
     static inline uint32_t s_toneMapMode;
 
     static bool update();
+
+    static void imguiWindow();
 };

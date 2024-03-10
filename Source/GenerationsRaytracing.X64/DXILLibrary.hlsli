@@ -168,7 +168,7 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool s
 
             if (g_LocalLightCount > 0)
             {
-                uint sample = min(floor(random.x * g_LocalLightCount), g_LocalLightCount - 1);
+                uint sample = min(floor((i == 0 ? random.x : random.z) * g_LocalLightCount), g_LocalLightCount - 1);
                 LocalLight localLight = g_LocalLights[sample];
 
                 float3 lightDirection = localLight.Position - payload.Position;

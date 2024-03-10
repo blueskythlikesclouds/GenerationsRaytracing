@@ -23,6 +23,8 @@ using Microsoft::WRL::ComPtr;
 #define XXH_STATIC_LINKING_ONLY
 #include <xxhash.h>
 #include <HE1ML/ModLoader.h>
+#include <imgui.h>
+#include <backends/imgui_impl_win32.h>
 
 #define FUNCTION_STUB(RETURN_TYPE, RETURN_VALUE, FUNCTION_NAME, ...) \
     RETURN_TYPE FUNCTION_NAME(__VA_ARGS__) { assert(!#FUNCTION_NAME); return RETURN_VALUE; }

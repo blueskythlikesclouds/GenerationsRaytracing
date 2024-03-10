@@ -29,6 +29,11 @@ uint32_t VertexBuffer::getId() const
     return m_id;
 }
 
+uint32_t VertexBuffer::getByteSize() const
+{
+    return m_byteSize;
+}
+
 HRESULT VertexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD Flags)
 {
     if (SizeToLock == 0)

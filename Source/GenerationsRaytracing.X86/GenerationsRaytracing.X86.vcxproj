@@ -56,13 +56,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;IMGUI_DEFINE_MATH_OPERATORS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -77,14 +77,14 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;IMGUI_DEFINE_MATH_OPERATORS;_HAS_EXCEPTIONS=0;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
       <ExceptionHandling>false</ExceptionHandling>
-      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\include;$(SolutionDir)..\Dependencies\xxHash;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\BlueBlur;$(SolutionDir)..\Dependencies\Detours\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -198,6 +198,11 @@
     <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\SubAllocator.inl">
       <FileType>Document</FileType>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GenerationsRaytracing.X86.Dependencies\GenerationsRaytracing.X86.Dependencies.vcxproj">
+      <Project>{305b334c-12a4-43fb-824c-2b4420d9bd75}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

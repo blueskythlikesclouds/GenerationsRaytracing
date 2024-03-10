@@ -1,9 +1,11 @@
 #include "Device.h"
 
+#include "Configuration.h"
 #include "IndexBuffer.h"
 #include "Message.h"
 #include "MessageSender.h"
 #include "PixelShader.h"
+#include "RaytracingParams.h"
 #include "Surface.h"
 #include "Texture.h"
 #include "VertexBuffer.h"
@@ -41,7 +43,215 @@ void Device::createVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, V
     pDecl.CopyTo(ppDecl);
 }
 
-Device::Device(uint32_t width, uint32_t height)
+void Device::initImgui()
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGui_ImplWin32_Init(m_hWnd);
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.BackendRendererName = "GenerationsRaytracing";
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+    io.MouseDrawCursor = true;
+
+    WCHAR winDir[MAX_PATH];
+    GetWindowsDirectoryW(winDir, MAX_PATH);
+
+    char fontFile[MAX_PATH];
+    WideCharToMultiByte(CP_UTF8, 0, winDir, -1, fontFile, _countof(fontFile), nullptr, nullptr);
+    strcat_s(fontFile, "\\Fonts\\segoeui.ttf");
+
+    if (!io.Fonts->AddFontFromFileTTF(fontFile, 18.0f))
+        io.Fonts->AddFontDefault();
+
+    io.Fonts->Build();
+
+    static constexpr D3DVERTEXELEMENT9 VERTEX_ELEMENTS[] =
+    {
+        { 0, offsetof(ImDrawVert, pos), D3DDECLTYPE_FLOAT2, 0, D3DDECLUSAGE_POSITION, 0 },
+        { 0, offsetof(ImDrawVert, uv), D3DDECLTYPE_FLOAT2, 0, D3DDECLUSAGE_TEXCOORD, 0 },
+        { 0, offsetof(ImDrawVert, col), D3DDECLTYPE_UBYTE4N, 0, D3DDECLUSAGE_COLOR, 0 },
+        D3DDECL_END()
+    };
+
+    createVertexDeclaration(VERTEX_ELEMENTS, m_imgui.vertexDeclaration.GetAddressOf(), false);
+
+    uint8_t* pixels;
+    int width, height, bpp;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bpp);
+
+    CreateTexture(width, height, 1, NULL, D3DFMT_A8B8G8R8, D3DPOOL_DEFAULT, m_imgui.fontTexture.GetAddressOf(), nullptr);
+
+    D3DLOCKED_RECT lockedRect{};
+    m_imgui.fontTexture->LockRect(0, &lockedRect, nullptr, 0);
+
+    if (width * bpp == lockedRect.Pitch)
+    {
+        memcpy(lockedRect.pBits, pixels, width * height * bpp);
+    }
+    else
+    {
+        const size_t pitch = width * bpp;
+
+        for (int i = 0; i < height; i++)
+            memcpy(static_cast<uint8_t*>(lockedRect.pBits) + lockedRect.Pitch * i, pixels + pitch * i, pitch);
+    }
+
+    m_imgui.fontTexture->UnlockRect(0);
+    io.Fonts->SetTexID(m_imgui.fontTexture.Get());
+}
+
+void Device::renderImgui()
+{
+    ImDrawData* drawData = ImGui::GetDrawData();
+
+    const size_t vertexBufferSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
+    const size_t indexBufferSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
+
+    if (vertexBufferSize == 0 || indexBufferSize == 0)
+        return;
+
+    Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(
+        Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spShaderDatabase.get());
+
+    const auto csdVS = wrapper.GetVertexShaderCodeData("csd");
+    const auto csdPS = wrapper.GetPixelShaderCodeData("csd");
+    const auto csdNoTexVS = wrapper.GetVertexShaderCodeData("csdNoTex");
+    const auto csdNoTexPS = wrapper.GetPixelShaderCodeData("csdNoTex");
+
+    if (!csdVS || !csdVS->IsMadeAll() ||
+        !csdPS || !csdPS->IsMadeAll() ||
+        !csdNoTexVS || !csdNoTexVS->IsMadeAll() ||
+        !csdNoTexPS || !csdNoTexPS->IsMadeAll())
+    {
+        return;
+    }
+
+    if (!m_imgui.vertexBuffer || m_imgui.vertexBuffer->getByteSize() < vertexBufferSize)
+        CreateVertexBuffer(vertexBufferSize, D3DUSAGE_WRITEONLY, 0, D3DPOOL_MANAGED, m_imgui.vertexBuffer.ReleaseAndGetAddressOf(), nullptr);
+
+    if (!m_imgui.indexBuffer || m_imgui.indexBuffer->getByteSize() < indexBufferSize)
+        CreateIndexBuffer(indexBufferSize, D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, m_imgui.indexBuffer.ReleaseAndGetAddressOf(), nullptr);
+
+    ImDrawVert* vtx = nullptr;
+    ImDrawIdx* idx = nullptr;
+
+    m_imgui.vertexBuffer->Lock(0, vertexBufferSize, reinterpret_cast<void**>(&vtx), D3DLOCK_DISCARD);
+    m_imgui.indexBuffer->Lock(0, indexBufferSize, reinterpret_cast<void**>(&idx), D3DLOCK_DISCARD);
+
+    for (int i = 0; i < drawData->CmdListsCount; i++)
+    {
+        const auto drawList = drawData->CmdLists[i];
+
+        const ImDrawVert* srcVtx = drawList->VtxBuffer.Data;
+        for (int j = 0; j < drawList->VtxBuffer.Size; j++)
+        {
+            const uint8_t r = (srcVtx->col >> IM_COL32_R_SHIFT) & 0xFF;
+            const uint8_t g = (srcVtx->col >> IM_COL32_G_SHIFT) & 0xFF;
+            const uint8_t b = (srcVtx->col >> IM_COL32_B_SHIFT) & 0xFF;
+            const uint8_t a = (srcVtx->col >> IM_COL32_A_SHIFT) & 0xFF;
+
+            // wxyz: rgba
+            // x: g
+            // y: b
+            // z: a
+            // w: r
+            vtx->col = (g << 0) | (b << 8) | (a << 16) | (r << 24);
+
+            vtx->pos[0] = srcVtx->pos.x + 0.5f;
+            vtx->pos[1] = srcVtx->pos.y + 0.5f;
+            vtx->uv[0] = srcVtx->uv.x;
+            vtx->uv[1] = srcVtx->uv.y;
+
+            vtx++;
+            srcVtx++;
+        }
+
+        memcpy(idx, drawList->IdxBuffer.Data, drawList->IdxBuffer.size_in_bytes());
+        idx += drawList->IdxBuffer.Size;
+    }
+
+    m_imgui.indexBuffer->Unlock();
+    m_imgui.vertexBuffer->Unlock();
+
+    D3DVIEWPORT9 viewport{};
+    viewport.Width = static_cast<DWORD>(drawData->DisplaySize.x);
+    viewport.Height = static_cast<DWORD>(drawData->DisplaySize.y);
+    viewport.MaxZ = 1.0f;
+
+    SetViewport(&viewport);
+    SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
+    SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+    SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+    SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    SetRenderState(D3DRS_ZENABLE, FALSE);
+    SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+    SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE);
+    SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+    SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_INVSRCALPHA);
+    SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+    SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+    SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+    SetVertexDeclaration(m_imgui.vertexDeclaration.Get());
+    SetStreamSource(0, m_imgui.vertexBuffer.Get(), 0, sizeof(ImDrawVert));
+    SetIndices(m_imgui.indexBuffer.Get());
+
+    const float viewportSize[] = { drawData->DisplaySize.x, drawData->DisplaySize.y, 1.0f / drawData->DisplaySize.x, 1.0f / drawData->DisplaySize.y };
+    constexpr float scaleSize[] = { 1.0f, 1.0f, 0.0f, 0.0f };
+    constexpr float z[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    SetVertexShaderConstantF(180, viewportSize, 1);
+    SetVertexShaderConstantF(246, z, 1);
+    SetVertexShaderConstantF(247, scaleSize, 1);
+
+    const ImVec2 clipOffset = drawData->DisplayPos;
+    size_t vtxOffset = 0;
+    size_t idxOffset = 0;
+
+    for (int i = 0; i < drawData->CmdListsCount; i++)
+    {
+        const ImDrawList* cmdList = drawData->CmdLists[i];
+
+        for (int j = 0; j < cmdList->CmdBuffer.Size; j++)
+        {
+            const ImDrawCmd& cmd = cmdList->CmdBuffer[j];
+
+            ImVec2 clipMin(cmd.ClipRect.x - clipOffset.x, cmd.ClipRect.y - clipOffset.y);
+            ImVec2 clipMax(cmd.ClipRect.z - clipOffset.x, cmd.ClipRect.w - clipOffset.y);
+
+            if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
+                continue;
+
+            const RECT scissorRect =
+            {
+                static_cast<LONG>(clipMin.x),
+                static_cast<LONG>(clipMin.y),
+                static_cast<LONG>(clipMax.x),
+                static_cast<LONG>(clipMax.y)
+            };
+
+            const bool hasTexture = cmd.GetTexID() != nullptr;
+
+            SetVertexShader(reinterpret_cast<VertexShader*>(hasTexture ? csdVS->m_pD3DVertexShader : csdNoTexVS->m_pD3DVertexShader));
+            SetPixelShader(reinterpret_cast<PixelShader*>(hasTexture ? csdPS->m_pD3DPixelShader : csdNoTexPS->m_pD3DPixelShader));
+
+            SetTexture(0, static_cast<BaseTexture*>(cmd.GetTexID()));
+
+            SetScissorRect(&scissorRect);
+            DrawIndexedPrimitive(D3DPT_TRIANGLELIST, cmd.VtxOffset + vtxOffset, 0, static_cast<UINT>(cmdList->VtxBuffer.Size), cmd.IdxOffset + idxOffset, cmd.ElemCount / 3);
+        }
+
+        idxOffset += cmdList->IdxBuffer.Size;
+        vtxOffset += cmdList->VtxBuffer.Size;
+    }
+}
+
+Device::Device(uint32_t width, uint32_t height, HWND hWnd)
+    : m_hWnd(hWnd)
 {
     m_backBuffer.Attach(new Texture(width, height, 1));
 }
@@ -81,6 +291,9 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::Reset, D3DPRESENT_PARAMETERS* pPresent
 
 HRESULT Device::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion)
 {
+    if (Configuration::s_enableImgui)
+        renderImgui();
+
     s_messageSender.makeMessage<MsgPresent>();
     s_messageSender.endMessage();
 
@@ -240,13 +453,38 @@ HRESULT Device::GetDepthStencilSurface(Surface** ppZStencilSurface)
 
 HRESULT Device::BeginScene()
 {
-    // nothing to do here...
+    if (Configuration::s_enableImgui)
+    {
+        if (!m_imgui.init)
+        {
+            initImgui();
+            m_imgui.init = true;
+        }
+
+        m_imgui.render = true;
+
+        ImGui_ImplWin32_NewFrame();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.DisplaySize = { static_cast<float>(m_backBuffer->getWidth()),
+            static_cast<float>(m_backBuffer->getHeight()) };
+
+        ImGui::NewFrame();
+
+        RaytracingParams::imguiWindow();
+    }
+
     return S_OK;
 }
 
 HRESULT Device::EndScene()
 {
-    // nothing to do here...
+    if (m_imgui.render)
+    {
+        ImGui::Render();
+        m_imgui.render = false;
+    }
+
     return S_OK;
 }
 
@@ -456,7 +694,7 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::SetNPatchMode, float nSegments)
 
 FUNCTION_STUB(float, 0.0f, Device::GetNPatchMode)
 
-UINT calculateVertexCount(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount)
+UINT calculatePrimitiveElements(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount)
 {
     UINT vertexCount = 0;
     switch (PrimitiveType)
@@ -489,7 +727,7 @@ HRESULT Device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, 
 
     message.primitiveType = PrimitiveType;
     message.startVertex = StartVertex;
-    message.vertexCount = calculateVertexCount(PrimitiveType, PrimitiveCount);
+    message.vertexCount = calculatePrimitiveElements(PrimitiveType, PrimitiveCount);
 
     s_messageSender.endMessage();
 
@@ -503,7 +741,7 @@ HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVer
     message.primitiveType = PrimitiveType;
     message.baseVertexIndex = BaseVertexIndex;
     message.startIndex = startIndex;
-    message.indexCount = calculateVertexCount(PrimitiveType, primCount);
+    message.indexCount = calculatePrimitiveElements(PrimitiveType, primCount);
 
     s_messageSender.endMessage();
 
@@ -512,7 +750,7 @@ HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseVer
 
 HRESULT Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 {
-    const uint32_t vertexCount = calculateVertexCount(PrimitiveType, PrimitiveCount);
+    const uint32_t vertexCount = calculatePrimitiveElements(PrimitiveType, PrimitiveCount);
 
     auto& message = s_messageSender.makeMessage<MsgDrawPrimitiveUP>(vertexCount * VertexStreamZeroStride);
 
@@ -526,7 +764,28 @@ HRESULT Device::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCo
     return S_OK;
 }
 
-FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::DrawIndexedPrimitiveUP, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
+HRESULT Device::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
+{
+    const uint32_t indexCount = calculatePrimitiveElements(PrimitiveType, PrimitiveCount);
+
+    const uint32_t verticesSize = VertexStreamZeroStride * NumVertices;
+    const uint32_t indicesSize = (IndexDataFormat == D3DFMT_INDEX32 ? 4 : 2) * indexCount;
+
+    auto& message = s_messageSender.makeMessage<MsgDrawIndexedPrimitiveUP>(verticesSize + indicesSize);
+
+    message.primitiveType = static_cast<uint8_t>(PrimitiveType);
+    message.vertexCount = NumVertices;
+    message.indexCount = indexCount;
+    message.indexFormat = static_cast<uint8_t>(IndexDataFormat);
+    message.vertexStride = VertexStreamZeroStride;
+
+    memcpy(message.data, pVertexStreamZeroData, verticesSize);
+    memcpy(message.data + verticesSize, pIndexData, indicesSize);
+
+    s_messageSender.endMessage();
+
+    return S_OK;
+}
 
 FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::ProcessVertices, UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, VertexBuffer* pDestBuffer, VertexDeclaration* pVertexDecl, DWORD Flags)
 
