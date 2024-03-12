@@ -114,6 +114,7 @@
     <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="MotionData.cpp" />
+    <ClCompile Include="QuickBoot.cpp" />
     <ClCompile Include="RaytracingUtil.cpp" />
     <ClCompile Include="ModelData.cpp" />
     <ClCompile Include="Configuration.cpp" />
@@ -154,6 +155,7 @@
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="MotionData.h" />
+    <ClInclude Include="QuickBoot.h" />
     <ClInclude Include="RaytracingStages.h" />
     <ClInclude Include="RaytracingUtil.h" />
     <ClInclude Include="ModelData.h" />

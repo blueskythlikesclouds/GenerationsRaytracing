@@ -105,6 +105,9 @@
     <ClCompile Include="Window.cpp">
       <Filter>Device</Filter>
     </ClCompile>
+    <ClCompile Include="QuickBoot.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -210,6 +213,9 @@
     <ClInclude Include="Window.h">
       <Filter>Device</Filter>
     </ClInclude>
+    <ClInclude Include="QuickBoot.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">
@@ -232,6 +238,9 @@
     </Filter>
     <Filter Include="Raytracing">
       <UniqueIdentifier>{17261374-f330-4cb6-988a-7287e02ccc17}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utilities">
+      <UniqueIdentifier>{a13b0a9c-ea8b-4fbc-9b35-32c2d4a3e70f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

@@ -2,6 +2,7 @@
 
 #include "Configuration.h"
 #include "EnvironmentMode.h"
+#include "QuickBoot.h"
 
 struct Stage
 {
@@ -469,6 +470,15 @@ void RaytracingParams::imguiWindow()
 
                         ImGui::EndTable();
                     }
+                }
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Quick Boot"))
+            {
+                if (ImGui::BeginChild("Child"))
+                {
+                    QuickBoot::renderImgui();
                 }
                 ImGui::EndChild();
                 ImGui::EndTabItem();

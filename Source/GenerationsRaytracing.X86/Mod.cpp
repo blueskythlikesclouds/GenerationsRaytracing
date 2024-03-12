@@ -20,6 +20,7 @@
 #include "TriangleStrip.h"
 #include "Window.h"
 #include "FileBinder.h"
+#include "QuickBoot.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
 
@@ -81,6 +82,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     MeshData::init();
     ToneMap::init();
     FileBinder::init(modInfo);
+    QuickBoot::init();
 
 #ifdef _DEBUG
 #if 0

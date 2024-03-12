@@ -11,8 +11,10 @@ using Microsoft::WRL::ComPtr;
 #include <cstdint>
 
 #include <atomic>
+#include <filesystem>
 #include <mutex>
 #include <vector>
+#include <thread>
 #include <unordered_set>
 #include <random>
 
