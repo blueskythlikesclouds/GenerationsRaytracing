@@ -196,6 +196,7 @@ protected:
     void procMsgSetPixelShaderConstantB();
     void procMsgSaveShaderCache();
     void procMsgDrawIndexedPrimitiveUP();
+    void procMsgShowCursor();
 
     void processMessages();
     virtual bool processRaytracingMessage() = 0;

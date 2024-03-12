@@ -470,6 +470,50 @@ void RaytracingParams::imguiWindow()
 
                         ImGui::EndTable();
                     }
+
+                    if (ImGui::Button("Switch To Environment Color Picking Mode (Requires Debug Shaders)"))
+                    {
+                        *reinterpret_cast<bool*>(0x1A421FB) = false;
+                        *reinterpret_cast<bool*>(0x1A4358E) = false;
+                        *reinterpret_cast<bool*>(0x1A4323D) = false;
+                        *reinterpret_cast<bool*>(0x1A4358D) = false;
+                        *reinterpret_cast<bool*>(0x1E5E333) = false;
+                        *reinterpret_cast<bool*>(0x1B22E8C) = false;
+                        *reinterpret_cast<uint32_t*>(0x1E5E3E0) = 1;
+                        s_enable = false;
+                        s_toneMapMode = TONE_MAP_MODE_DISABLE;
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Copy EnvironmentColor.cpp Array Item To Clipboard"))
+                    {
+                        const auto gameDocument = Sonic::CGameDocument::GetInstance();
+                        if (gameDocument)
+                        {
+                            const auto lightManager = gameDocument->m_pMember->m_spLightManager;
+                            if (lightManager)
+                            {
+                                XXH64_hash_t hash = 0;
+                                hash = XXH64(lightManager->m_GlobalLightDirection.data(), 12, hash);
+                                hash = XXH64(lightManager->m_GlobalLightDiffuse.data(), 12, hash);
+
+                                char text[0x400];
+                                sprintf(text, "{ 0x%llx, { 0, 0, 0 } }, // %s", hash, gameDocument->m_pMember->m_StageName.c_str());
+
+                                if (OpenClipboard(nullptr))
+                                {
+                                    EmptyClipboard();
+                                    const size_t strLen = strlen(text) + 1;
+                                    const HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, strLen);
+                                    memcpy(GlobalLock(hGlobal), text, strLen);
+                                    SetClipboardData(CF_TEXT, hGlobal);
+                                    GlobalUnlock(hGlobal);
+                                    CloseClipboard();
+                                }
+                            }
+                        }
+                    }
                 }
                 ImGui::EndChild();
                 ImGui::EndTabItem();

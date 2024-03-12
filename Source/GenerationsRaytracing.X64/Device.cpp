@@ -1739,6 +1739,12 @@ void Device::procMsgDrawIndexedPrimitiveUP()
     getUnderlyingGraphicsCommandList()->DrawIndexedInstanced(message.indexCount, m_instanceCount, 0, 0, 0);
 }
 
+void Device::procMsgShowCursor()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgShowCursor>();
+    m_swapChain.getWindow().procMsgShowCursor(message);
+}
+
 Device::Device()
 {
     HRESULT hr;
@@ -1950,6 +1956,7 @@ void Device::processMessages()
         case MsgSetPixelShaderConstantB::s_id: procMsgSetPixelShaderConstantB(); break;
         case MsgSaveShaderCache::s_id: procMsgSaveShaderCache(); break;
         case MsgDrawIndexedPrimitiveUP::s_id: procMsgDrawIndexedPrimitiveUP(); break;
+        case MsgShowCursor::s_id: procMsgShowCursor(); break;
 
         }
     }

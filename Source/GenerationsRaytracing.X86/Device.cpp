@@ -53,7 +53,6 @@ void Device::initImgui()
     ImGuiIO& io = ImGui::GetIO();
     io.BackendRendererName = "GenerationsRaytracing";
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
-    io.MouseDrawCursor = true;
 
     WCHAR winDir[MAX_PATH];
     GetWindowsDirectoryW(winDir, MAX_PATH);
@@ -453,6 +452,15 @@ HRESULT Device::GetDepthStencilSurface(Surface** ppZStencilSurface)
 
 HRESULT Device::BeginScene()
 {
+    if (Configuration::s_enableImgui != m_imgui.enable)
+    {
+        auto& message = s_messageSender.makeMessage<MsgShowCursor>();
+        message.showCursor = Configuration::s_enableImgui;
+        s_messageSender.endMessage();
+
+        m_imgui.enable = Configuration::s_enableImgui;
+    }
+
     if (Configuration::s_enableImgui)
     {
         if (!m_imgui.init)

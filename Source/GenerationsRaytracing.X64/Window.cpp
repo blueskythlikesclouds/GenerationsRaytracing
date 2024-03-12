@@ -134,6 +134,15 @@ void Window::procMsgCreateSwapChain(const MsgCreateSwapChain& message)
     AttachThreadInput(windowThreadProcessId, currentThreadId, FALSE);
 }
 
+void Window::procMsgShowCursor(const MsgShowCursor& message)
+{
+    if (message.showCursor != m_showCursor)
+    {
+        ShowCursor(message.showCursor ? TRUE : FALSE);
+        m_showCursor = message.showCursor;
+    }
+}
+
 HWND Window::getHandle() const
 {
     return m_handle;

@@ -545,4 +545,10 @@ struct MsgDrawIndexedPrimitiveUP
     uint8_t data[1u];
 };
 
+struct MsgShowCursor
+{
+    MSG_DEFINE_MESSAGE(MsgDrawIndexedPrimitiveUP);
+    bool showCursor;
+};
+
 #pragma pack(pop)

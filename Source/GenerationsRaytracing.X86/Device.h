@@ -58,6 +58,7 @@ protected:
     struct
     {
         bool init{};
+        bool enable{};
         bool render{};
         ComPtr<VertexDeclaration> vertexDeclaration;
         ComPtr<VertexBuffer> vertexBuffer;
