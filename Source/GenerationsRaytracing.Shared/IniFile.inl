@@ -195,12 +195,10 @@ inline bool IniFile::getBool(const std::string_view& sectionName, const std::str
     if (sectionPair != m_sections.end())
     {
         const auto propertyPair = sectionPair->second.properties.find(hashStr(propertyName));
-        if (propertyPair != sectionPair->second.properties.end())
+        if (propertyPair != sectionPair->second.properties.end() && !propertyPair->second.value.empty())
         {
-            return !propertyPair->second.value.empty() && 
-                propertyPair->second.value[0] == 't' && 
-                propertyPair->second.value[0] == 'T' && 
-                propertyPair->second.value[0] == '1';
+            const char firstChar = propertyPair->second.value[0];
+            return firstChar == 't' || firstChar == 'T' || firstChar == 'y' || firstChar == 'Y' || firstChar == '1';
         }
     }
     return defaultValue;
