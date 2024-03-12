@@ -27,12 +27,13 @@ inline bool IniFile::read(const char* filePath)
         return false;
 
     fseek(file, 0, SEEK_END);
-    const size_t dataSize = static_cast<size_t>(ftell(file));
-    fseek(file, 0, SEEK_SET);
 
-    const std::unique_ptr<char[]> data = std::make_unique<char[]>(dataSize + 1);
+    const size_t dataSize = static_cast<size_t>(ftell(file));
+    const auto data = std::make_unique<char[]>(dataSize + 1);
+    data[dataSize] = '\0';
+
+    fseek(file, 0, SEEK_SET);
     fread(data.get(), 1, dataSize, file);
-    *(data.get() + dataSize) = '\0';
 
     fclose(file);
 
@@ -62,39 +63,70 @@ inline bool IniFile::read(const char* filePath)
 
             dataPtr = endPtr + 1;
         }
-        else if (!isWhitespace(*dataPtr) && !isNewLine(*dataPtr) && *dataPtr != '"')
+        else if (!isWhitespace(*dataPtr) && !isNewLine(*dataPtr))
         {
             if (section == nullptr)
                 return false;
 
-            const char* endPtr = dataPtr;
-            while (*endPtr != '\0' && !isWhitespace(*endPtr) && !isNewLine(*endPtr) && *endPtr != '"' && *endPtr != '=')
-                ++endPtr;
+            const char* endPtr;
+            if (*dataPtr == '"')
+            {
+                ++dataPtr;
+                endPtr = dataPtr;
+
+                while (*endPtr != '\0' && !isNewLine(*endPtr) && *endPtr != '"')
+                    ++endPtr;
+
+                if (*endPtr != '"')
+                    return false;
+            }
+            else
+            {
+                endPtr = dataPtr;
+
+                while (*endPtr != '\0' && !isNewLine(*endPtr) && !isWhitespace(*endPtr) && *endPtr != '=')
+                    ++endPtr;
+
+                if (!isWhitespace(*endPtr) && *endPtr != '=')
+                    return false;
+            }
 
             std::string propertyName(dataPtr, endPtr - dataPtr);
             auto& property = section->properties[hashStr(propertyName)];
             property.name = std::move(propertyName);
 
             dataPtr = endPtr;
-            if (*dataPtr != '=')
-            {
-                while (*dataPtr != '\0' && !isNewLine(*dataPtr) && *dataPtr != '=')
-                    ++dataPtr;
-
-                if (*dataPtr != '=')
-                    return false;
-            }
-            ++dataPtr;
-
-            while (isWhitespace(*dataPtr) || *dataPtr == '"')
+            while (*dataPtr != '\0' && !isNewLine(*dataPtr) && *dataPtr != '=')
                 ++dataPtr;
 
-            endPtr = dataPtr;
-            while (*endPtr != '\0' && !isWhitespace(*endPtr) && !isNewLine(*endPtr) && *endPtr != '"')
-                ++endPtr;
+            if (*dataPtr != '=')
+                return false;
+
+            ++dataPtr;
+            
+            while (*dataPtr != '\0' && isWhitespace(*dataPtr))
+                ++dataPtr;
+
+            if (*dataPtr == '"')
+            {
+                ++dataPtr;
+                endPtr = dataPtr;
+
+                while (*endPtr != '\0' && !isNewLine(*endPtr) && *endPtr != '"')
+                    ++endPtr;
+
+                if (*endPtr != '"')
+                    return false;
+            }
+            else
+            {
+                endPtr = dataPtr;
+
+                while (*endPtr != '\0' && !isNewLine(*endPtr) && !isWhitespace(*endPtr))
+                    ++endPtr;
+            }
 
             property.value = std::string(dataPtr, endPtr - dataPtr);
-
             dataPtr = endPtr + 1;
         }
         else
@@ -117,9 +149,27 @@ inline bool IniFile::write(const char* filePath)
         if (section.properties.empty())
             continue;
 
-        fprintf(file, "[%s]\n", section.name.c_str());
+        fputc('[', file);
+        fputs(section.name.c_str(), file);
+        fputs("]\n", file);
+
         for (auto& [_, property] : section.properties)
-            fprintf(file, "%s=%s\n", property.name.c_str(), property.value.c_str());
+        {
+            const bool quoteName = property.name.find_first_of(" \t") != std::string::npos;
+            const bool quoteValue = property.value.find_first_of(" \t") != std::string::npos;
+
+            if (quoteName) fputc('"', file);
+            fputs(property.name.c_str(), file);
+            if (quoteName) fputc('"', file);
+
+            fputc('=', file);
+
+            if (quoteValue) fputc('"', file);
+            fputs(property.value.c_str(), file);
+            if (quoteValue) fputc('"', file);
+
+            fputc('\n', file);
+        }
     }
 
     fclose(file);
@@ -174,6 +224,17 @@ T IniFile::get(const std::string_view& sectionName, const std::string_view& prop
         }
     }
     return defaultValue;
+}
+
+template <typename T>
+void IniFile::enumerate(const std::string_view& sectionName, const T& function) const
+{
+    const auto sectionPair = m_sections.find(hashStr(sectionName));
+    if (sectionPair != m_sections.end())
+    {
+        for (const auto& property : sectionPair->second.properties)
+            function(property.second.name, property.second.value);
+    }
 }
 
 inline void IniFile::setString(const std::string_view& sectionName, const std::string_view& propertyName, std::string value)
