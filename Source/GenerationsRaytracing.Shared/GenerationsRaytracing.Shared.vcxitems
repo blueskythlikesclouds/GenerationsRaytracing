@@ -18,6 +18,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)EnvironmentMode.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Event.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)GeometryFlags.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)IniFile.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)LockGuard.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)MaterialFlags.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)MemoryMappedFile.h" />
@@ -29,6 +30,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)Event.inl" />
+    <None Include="$(MSBuildThisFileDirectory)IniFile.inl" />
     <None Include="$(MSBuildThisFileDirectory)LockGuard.inl" />
     <None Include="$(MSBuildThisFileDirectory)MemoryMappedFile.inl" />
     <None Include="$(MSBuildThisFileDirectory)Mutex.inl" />

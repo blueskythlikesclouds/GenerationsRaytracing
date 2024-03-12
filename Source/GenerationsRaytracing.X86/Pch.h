@@ -19,9 +19,9 @@ using Microsoft::WRL::ComPtr;
 #include <BlueBlur.h>
 #include <detours.h>
 #include <Helpers.h>
-#include <INIReader.h>
 #define XXH_STATIC_LINKING_ONLY
 #include <xxhash.h>
+#include <IniFile.h>
 #include <HE1ML/ModLoader.h>
 #include <imgui.h>
 #include <backends/imgui_impl_win32.h>

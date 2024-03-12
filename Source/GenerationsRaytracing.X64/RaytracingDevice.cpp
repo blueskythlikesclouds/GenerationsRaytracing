@@ -1561,13 +1561,13 @@ RaytracingDevice::RaytracingDevice()
     for (size_t i = 0; i < _countof(m_upscalerOverride); i++)
         m_upscalerOverride[i] = static_cast<UpscalerType>(i);
 
-    const INIReader reader("GenerationsRaytracing.ini");
-    if (reader.ParseError() == 0)
+    IniFile iniFile;
+    if (iniFile.read("GenerationsRaytracing.ini"))
     {
         m_qualityMode = static_cast<QualityMode>(
-            reader.GetInteger("Mod", "QualityMode", static_cast<long>(QualityMode::Balanced)));
+            iniFile.get<uint32_t>("Mod", "QualityMode", static_cast<uint32_t>(QualityMode::Balanced)));
 
-        const auto upscalerType = static_cast<UpscalerType>(reader.GetInteger("Mod", "Upscaler", static_cast<long>(UpscalerType::FSR2)));
+        const auto upscalerType = static_cast<UpscalerType>(iniFile.get<uint32_t>("Mod", "Upscaler", static_cast<uint32_t>(UpscalerType::FSR2)));
 
         if (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD)
         {
@@ -1593,7 +1593,7 @@ RaytracingDevice::RaytracingDevice()
             }
         }
 
-        m_anisotropicFiltering = static_cast<UINT>(reader.GetInteger("Mod", "AnisotropicFiltering", 0));
+        m_anisotropicFiltering = iniFile.get<uint32_t>("Mod", "AnisotropicFiltering", 0);
     }
 
     if (m_upscaler == nullptr)
