@@ -91,16 +91,21 @@ static void loadModsDb()
             return;
 
         modIndices.emplace(name, s_mods.size());
-        auto title = modIni.getString("Desc", "Title", "");
-
-        if (title == "Quick Boot+")
-            s_quickBootIndex = s_mods.size();
-
-        s_mods.push_back({ name, value, std::move(title) });
+        s_mods.push_back({ name, value, modIni.getString("Desc", "Title", "") });
     });
     
     std::sort(s_mods.begin(), s_mods.end(), 
         [](const auto& left, const auto& right) { return _stricmp(left.name.c_str(), right.name.c_str()) < 0; });
+
+    for (size_t i = 0; i < s_mods.size(); i++)
+    {
+        const auto& mod = s_mods[i];
+        if (mod.name == "Quick Boot+")
+        {
+            s_quickBootIndex = i;
+            break;
+        }
+    }
 
     s_fileSystemThreadHolder.thread = std::thread([stageIndices = std::move(stageIndices)]
     {
