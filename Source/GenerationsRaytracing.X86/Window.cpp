@@ -22,11 +22,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     case WM_KEYDOWN:
         switch (wParam)
         {
-        case VK_F1: 
+        case VK_F2: 
             Configuration::s_enableImgui ^= true;
             break;
 
-        case VK_F2:
+        case VK_F3:
             RaytracingParams::s_enable ^= true;
             break;
         }
