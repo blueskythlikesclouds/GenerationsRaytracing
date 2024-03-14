@@ -98,6 +98,9 @@ static void loadModsDb()
 
         s_mods.push_back({ name, value, std::move(title) });
     });
+    
+    std::sort(s_mods.begin(), s_mods.end(), 
+        [](const auto& left, const auto& right) { return _stricmp(left.name.c_str(), right.name.c_str()) < 0; });
 
     s_fileSystemThreadHolder.thread = std::thread([stageIndices = std::move(stageIndices)]
     {
