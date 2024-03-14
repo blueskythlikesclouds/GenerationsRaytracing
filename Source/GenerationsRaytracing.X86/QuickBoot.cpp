@@ -83,28 +83,25 @@ static void loadModsDb()
     for (size_t i = 0; i < _countof(s_stages); i++)
         stageIndices.emplace(s_stages[i], i);
 
-    std::unordered_map<std::string_view, uint32_t> modIndices;
     modsDbIni.enumerate("Mods", [&](const std::string& name, const std::string& value)
     {
         IniFile modIni;
-        if (!modIni.read(value.c_str()))
-            return;
-
-        modIndices.emplace(name, s_mods.size());
-        s_mods.push_back({ name, value, modIni.getString("Desc", "Title", "") });
+        if (modIni.read(value.c_str()))
+            s_mods.push_back({ name, value, modIni.getString("Desc", "Title", "") });
     });
-    
+        
     std::sort(s_mods.begin(), s_mods.end(), 
         [](const auto& left, const auto& right) { return _stricmp(left.name.c_str(), right.name.c_str()) < 0; });
+
+    std::unordered_map<std::string_view, uint32_t> modIndices;
 
     for (size_t i = 0; i < s_mods.size(); i++)
     {
         const auto& mod = s_mods[i];
+        modIndices.emplace(mod.guid, i);
+
         if (mod.name == "Quick Boot+")
-        {
             s_quickBootIndex = i;
-            break;
-        }
     }
 
     s_fileSystemThreadHolder.thread = std::thread([stageIndices = std::move(stageIndices)]
