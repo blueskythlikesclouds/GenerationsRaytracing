@@ -1644,16 +1644,28 @@ void Device::procMsgReleaseResource()
         break;
 
     case MsgReleaseResource::ResourceType::IndexBuffer:
-        m_tempBuffers[m_frame].emplace_back(std::move(m_indexBuffers[message.resourceId].allocation));
-        m_tempBuffers[m_frame].emplace_back(std::move(m_indexBuffers[message.resourceId].nextAllocation));
-        m_tempDescriptorIds[m_frame].push_back(m_indexBuffers[message.resourceId].srvIndex);
+    {
+        auto& indexBuffer = m_indexBuffers[message.resourceId];
+        m_tempBuffers[m_frame].emplace_back(std::move(indexBuffer.allocation));
+        m_tempBuffers[m_frame].emplace_back(std::move(indexBuffer.nextAllocation));
+
+        if (indexBuffer.srvIndex != NULL)
+            m_tempDescriptorIds[m_frame].push_back(indexBuffer.srvIndex);
+
         break;
+    }
 
     case MsgReleaseResource::ResourceType::VertexBuffer:
-        m_tempBuffers[m_frame].emplace_back(std::move(m_vertexBuffers[message.resourceId].allocation));
-        m_tempBuffers[m_frame].emplace_back(std::move(m_vertexBuffers[message.resourceId].nextAllocation));
-        m_tempDescriptorIds[m_frame].push_back(m_vertexBuffers[message.resourceId].srvIndex);
+    {
+        auto& vertexBuffer = m_vertexBuffers[message.resourceId];
+        m_tempBuffers[m_frame].emplace_back(std::move(vertexBuffer.allocation));
+        m_tempBuffers[m_frame].emplace_back(std::move(vertexBuffer.nextAllocation));
+
+        if (vertexBuffer.srvIndex != NULL)
+            m_tempDescriptorIds[m_frame].push_back(vertexBuffer.srvIndex);
+
         break;
+    }
 
     default: 
         assert(false);

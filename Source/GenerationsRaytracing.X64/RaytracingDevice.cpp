@@ -1039,6 +1039,8 @@ void RaytracingDevice::procMsgCreateMaterial()
         }
     }
 
+    assert((sizeof(Material) - offsetof(Material, texCoordOffsets)) == sizeof(MsgCreateMaterial) - offsetof(MsgCreateMaterial, texCoordOffsets));
+
     memcpy(material.texCoordOffsets, message.texCoordOffsets, sizeof(Material) - offsetof(Material, texCoordOffsets));
 }
 
