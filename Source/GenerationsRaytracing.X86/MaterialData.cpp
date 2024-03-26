@@ -147,14 +147,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                     }
                     else
                     {
-                        if (srcTexture->m_spPictureData != nullptr)
+                        if (srcTexture->m_spPictureData != nullptr &&
+                            srcTexture->m_spPictureData->m_pD3DTexture != nullptr)
                         {
-                            if (srcTexture->m_spPictureData->m_pD3DTexture == nullptr)
-                            {
-                                srcTexture->m_spPictureData->m_pD3DTexture =
-                                    reinterpret_cast<DX_PATCH::IDirect3DBaseTexture9*>(new Texture(NULL, NULL, NULL));
-                            }
-
                             // Skip materials that assign the diffuse texture as opacity
                             if (srcTexture->m_Type == s_opacitySymbol && (!hasOpacityTexture ||
                                 srcTexture->m_spPictureData->m_pD3DTexture == textureDescs[0].dxpTexture))

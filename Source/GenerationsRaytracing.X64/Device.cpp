@@ -1650,7 +1650,10 @@ void Device::procMsgReleaseResource()
         m_tempBuffers[m_frame].emplace_back(std::move(indexBuffer.nextAllocation));
 
         if (indexBuffer.srvIndex != NULL)
+        {
             m_tempDescriptorIds[m_frame].push_back(indexBuffer.srvIndex);
+            indexBuffer.srvIndex = NULL;
+        }
 
         break;
     }
@@ -1662,7 +1665,10 @@ void Device::procMsgReleaseResource()
         m_tempBuffers[m_frame].emplace_back(std::move(vertexBuffer.nextAllocation));
 
         if (vertexBuffer.srvIndex != NULL)
+        {
             m_tempDescriptorIds[m_frame].push_back(vertexBuffer.srvIndex);
+            vertexBuffer.srvIndex = NULL;
+        }
 
         break;
     }

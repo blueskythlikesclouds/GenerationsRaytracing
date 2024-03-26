@@ -29,6 +29,7 @@ inline void FreeListAllocator::free(uint32_t index)
 #ifndef _WIN64
     LockGuard lock(m_mutex);
 #endif
+    //assert(std::find(m_indices.begin(), m_indices.end(), index) == m_indices.end());
     m_indices.push_back(index);
 }
 
