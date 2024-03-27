@@ -108,6 +108,9 @@
     <ClCompile Include="QuickBoot.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
+    <ClCompile Include="ModelReplacer.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -215,6 +218,9 @@
     </ClInclude>
     <ClInclude Include="QuickBoot.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelReplacer.h">
+      <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

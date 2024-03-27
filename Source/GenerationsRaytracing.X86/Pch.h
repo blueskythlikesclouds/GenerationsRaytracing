@@ -12,6 +12,7 @@ using Microsoft::WRL::ComPtr;
 
 #include <atomic>
 #include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <vector>
 #include <thread>
@@ -27,6 +28,9 @@ using Microsoft::WRL::ComPtr;
 #include <HE1ML/ModLoader.h>
 #include <imgui.h>
 #include <backends/imgui_impl_win32.h>
+
+#include <json/json.hpp>
+using nlohmann::json;
 
 #define FUNCTION_STUB(RETURN_TYPE, RETURN_VALUE, FUNCTION_NAME, ...) \
     RETURN_TYPE FUNCTION_NAME(__VA_ARGS__) { assert(!#FUNCTION_NAME); return RETURN_VALUE; }

@@ -197,52 +197,6 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
     originalModelDataDestructor(This);
 }
 
-static struct
-{
-    const char* name;
-    const char* noAoName;
-    std::initializer_list<uint32_t> hashes;
-} s_noAoModels[] =
-{
-    { "chr_Sonic_HD", "chr_Sonic_HD_noao", { 0x33CB76CD, 0xE3838522 } },
-    { "chr_SuperSonic_HD", "chr_SuperSonic_HD_noao", { 0x4F5E76EA } },
-    { "chr_classic_sonic_HD", "chr_classic_sonic_HD_noao", { 0x8DA6A277 } },
-    { "chr_classic_SuperSonic_HD", "chr_classic_SuperSonic_HD_noao", { 0xCA42A635 } },
-    { "chr_Shadow_HD", "chr_Shadow_HD_noao", { 0x7695DA61, 0xDDDDD3FA } },
-};
-
-HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
-    const Hedgehog::Base::CSharedString& name,
-    const void* data,
-    uint32_t dataSize,
-    const boost::shared_ptr<Hedgehog::Database::CDatabase>& database,
-    Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)
-{
-    if (data != nullptr)
-    {
-        for (const auto& noAoModel : s_noAoModels)
-        {
-            if (name == noAoModel.name)
-            {
-                Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
-
-                const auto modelData = wrapper.GetModelData(name);
-                if (!modelData->IsMadeOne())
-                {
-                    auto& modelDataEx = *reinterpret_cast<ModelDataEx*>(modelData.get());
-                    const XXH32_hash_t hash = XXH32(data, dataSize, 0);
-                    if (std::find(noAoModel.hashes.begin(), noAoModel.hashes.end(), hash) != noAoModel.hashes.end())
-                        modelDataEx.m_noAoModel = wrapper.GetModelData(noAoModel.noAoName);
-                }
-
-                break;
-            }
-        }
-    }
-
-    originalModelDataMake(name, data, dataSize, database, renderingInfrastructure);
-}
-
 void ModelData::createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDataEx)
 {
     if (terrainModelDataEx.m_bottomLevelAccelStructId == NULL)
@@ -980,6 +934,4 @@ void ModelData::init()
 
     INSTALL_HOOK(ModelDataConstructor);
     INSTALL_HOOK(ModelDataDestructor);
-
-    INSTALL_HOOK(ModelDataMake);
 }

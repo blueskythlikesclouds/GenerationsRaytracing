@@ -113,6 +113,7 @@
     <ClCompile Include="FileBinder.cpp" />
     <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="MeshData.cpp" />
+    <ClCompile Include="ModelReplacer.cpp" />
     <ClCompile Include="MotionData.cpp" />
     <ClCompile Include="QuickBoot.cpp" />
     <ClCompile Include="RaytracingUtil.cpp" />
@@ -154,6 +155,7 @@
     <ClInclude Include="FileBinder.h" />
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />
+    <ClInclude Include="ModelReplacer.h" />
     <ClInclude Include="MotionData.h" />
     <ClInclude Include="QuickBoot.h" />
     <ClInclude Include="RaytracingStages.h" />
