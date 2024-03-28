@@ -182,6 +182,11 @@ void Device::setPrimitiveType(D3DPRIMITIVETYPE primitiveType)
         primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         break;
 
+    case D3DPT_TRIANGLEFAN:
+        primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN;
+        primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        break;
+
     default:
         assert(false);
         break;

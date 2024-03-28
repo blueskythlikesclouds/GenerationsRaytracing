@@ -69,7 +69,6 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     PictureData::init();
     FillTexture::init();
     Window::init();
-    TriangleFan::init();
     HalfPixel::init();
     TriangleStrip::init();
     ModelData::init();

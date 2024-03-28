@@ -51,9 +51,6 @@
     <ClCompile Include="Configuration.cpp">
       <Filter>Base</Filter>
     </ClCompile>
-    <ClCompile Include="TriangleFan.cpp">
-      <Filter>Patch</Filter>
-    </ClCompile>
     <ClCompile Include="HalfPixel.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
@@ -161,9 +158,6 @@
     </ClInclude>
     <ClInclude Include="Configuration.h">
       <Filter>Base</Filter>
-    </ClInclude>
-    <ClInclude Include="TriangleFan.h">
-      <Filter>Patch</Filter>
     </ClInclude>
     <ClInclude Include="HalfPixel.h">
       <Filter>Patch</Filter>

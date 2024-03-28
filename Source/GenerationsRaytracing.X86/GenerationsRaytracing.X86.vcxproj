@@ -142,7 +142,6 @@
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="InstanceData.cpp" />
     <ClCompile Include="ToneMap.cpp" />
-    <ClCompile Include="TriangleFan.cpp" />
     <ClCompile Include="TriangleStrip.cpp" />
     <ClCompile Include="Unknown.cpp" />
     <ClCompile Include="VertexBuffer.cpp" />
@@ -181,7 +180,6 @@
     <ClInclude Include="Texture.h" />
     <ClInclude Include="InstanceData.h" />
     <ClInclude Include="ToneMap.h" />
-    <ClInclude Include="TriangleFan.h" />
     <ClInclude Include="TriangleStrip.h" />
     <ClInclude Include="Unknown.h" />
     <ClInclude Include="VertexBuffer.h" />
