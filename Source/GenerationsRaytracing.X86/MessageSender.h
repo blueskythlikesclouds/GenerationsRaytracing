@@ -19,6 +19,11 @@ protected:
     uint8_t* m_memoryMap;
 
 public:
+    static bool canMakeMessage(uint32_t byteSize, uint32_t alignment);
+
+    template<typename T>
+    static bool canMakeMessage(uint32_t dataSize);
+
     MessageSender();
     ~MessageSender();
 

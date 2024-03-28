@@ -14,7 +14,7 @@ HOOK(void, __cdecl, PictureDataMake, Hedgehog::Mirage::fpCPictureDataMake0,
     {
         assert(pictureData->m_pD3DTexture == nullptr);
 
-        if (*reinterpret_cast<uint32_t*>(data) == MAKEFOURCC('D', 'D', 'S', ' '))
+        if (*reinterpret_cast<uint32_t*>(data) == MAKEFOURCC('D', 'D', 'S', ' ') && MessageSender::canMakeMessage<MsgMakeTexture>(dataSize))
         {
             const auto texture = new Texture(
                 *reinterpret_cast<uint32_t*>(data + 16),

@@ -3,6 +3,11 @@
 #include "LockGuard.h"
 #include "Message.h"
 
+bool MessageSender::canMakeMessage(uint32_t byteSize, uint32_t alignment)
+{
+    return ((sizeof(uint32_t) + alignment - 1) & ~(alignment - 1)) + byteSize <= MemoryMappedFile::s_size;
+}
+
 MessageSender::MessageSender() : m_pendingMessages(0)
 {
     m_messages = static_cast<uint8_t*>(_aligned_malloc(MemoryMappedFile::s_size, 0x10));

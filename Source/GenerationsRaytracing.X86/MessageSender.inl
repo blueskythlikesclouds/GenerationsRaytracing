@@ -1,4 +1,10 @@
 template <typename T>
+bool MessageSender::canMakeMessage(uint32_t dataSize)
+{
+    return canMakeMessage(offsetof(T, data) + dataSize, alignof(T));
+}
+
+template <typename T>
 T& MessageSender::makeMessage()
 {
     T* message = static_cast<T*>(makeMessage(sizeof(T), alignof(T)));
