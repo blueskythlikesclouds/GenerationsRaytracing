@@ -22,7 +22,7 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
             (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
         {
             auto modelDataEx = reinterpret_cast<ModelDataEx*>(element->m_spModel.get());
-            if (modelDataEx->m_noAoModel != nullptr)
+            if (modelDataEx->m_noAoModel != nullptr && RaytracingParams::s_enableNoAoModels)
                 modelDataEx = reinterpret_cast<ModelDataEx*>(modelDataEx->m_noAoModel.get());
 
             if (modelDataEx->IsMadeAll())

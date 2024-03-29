@@ -455,6 +455,11 @@ void RaytracingParams::imguiWindow()
                         ImGui::Checkbox("##Enable", &s_enable);
 
                         ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("No AO Model");
+                        ImGui::TableNextColumn();
+                        ImGui::Checkbox("##No AO Model", &RaytracingParams::s_enableNoAoModels);
+
+                        ImGui::TableNextColumn();
                         ImGui::TextUnformatted("View");
                         ImGui::TableNextColumn();
                         ImGui::RadioButton("None", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_NONE);

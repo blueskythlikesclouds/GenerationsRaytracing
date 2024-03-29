@@ -31,6 +31,8 @@ struct RaytracingParams
 
     static inline uint32_t s_toneMapMode;
 
+    static inline bool s_enableNoAoModels = true;
+
     static bool update();
 
     static void imguiWindow();

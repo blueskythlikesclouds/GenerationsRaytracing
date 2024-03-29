@@ -16,7 +16,6 @@
 #include "ShaderCache.h"
 #include "Sofdec.h"
 #include "ToneMap.h"
-#include "TriangleFan.h"
 #include "TriangleStrip.h"
 #include "Window.h"
 #include "FileBinder.h"
