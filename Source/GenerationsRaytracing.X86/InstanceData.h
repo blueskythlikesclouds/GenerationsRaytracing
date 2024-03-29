@@ -1,13 +1,14 @@
 #pragma once
 
 #include "FreeListAllocator.h"
+#include "InstanceMask.h"
 #include "VertexBuffer.h"
 
 class InstanceInfoEx : public Hedgehog::Mirage::CInstanceInfo
 {
 public:
-    uint32_t m_instanceId;
-    uint32_t m_bottomLevelAccelStructId;
+    uint32_t m_instanceIds[_countof(s_instanceMasks)];
+    uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceMasks)];
     ComPtr<VertexBuffer> m_poseVertexBuffer;
     uint32_t m_headNodeIndex;
     bool m_handledEyeMaterials;

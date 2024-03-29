@@ -127,7 +127,7 @@ float TraceLocalLightShadow(float3 position, float3 direction, float2 random, fl
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        INSTANCE_MASK_DEFAULT,
+        INSTANCE_MASK_OPAQUE,
         ray);
 
     query.Proceed();

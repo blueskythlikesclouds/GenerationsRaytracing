@@ -32,7 +32,7 @@ void PrimaryRayGeneration()
     TraceRay(
         g_BVH,
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
-        INSTANCE_MASK_DEFAULT,
+        INSTANCE_MASK_OPAQUE | INSTANCE_MASK_TRANSPARENT,
         HIT_GROUP_PRIMARY,
         HIT_GROUP_NUM,
         MISS_PRIMARY,
@@ -238,19 +238,10 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-
-    [branch]
-    if (geometryDesc.Flags & GEOMETRY_FLAG_TRANSPARENT)
-    {
+    Material material = g_Materials[geometryDesc.MaterialId];
+    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
+    
+    if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0], 2).a < 0.5)
         IgnoreHit();
-    }
-    else
-    {
-        Material material = g_Materials[geometryDesc.MaterialId];
-        InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-        Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-
-        if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0], 2).a < 0.5)
-            IgnoreHit();
-    }
 }

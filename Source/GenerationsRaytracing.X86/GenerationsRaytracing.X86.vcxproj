@@ -152,6 +152,7 @@
   <ItemGroup>
     <ClInclude Include="BaseTexture.h" />
     <ClInclude Include="FileBinder.h" />
+    <ClInclude Include="InstanceMask.h" />
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="ModelReplacer.h" />

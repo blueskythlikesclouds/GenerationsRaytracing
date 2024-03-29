@@ -216,6 +216,9 @@
     <ClInclude Include="ModelReplacer.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
+    <ClInclude Include="InstanceMask.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">

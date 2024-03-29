@@ -66,7 +66,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
     query.TraceRayInline(
         g_BVH,
         rayFlag,
-        INSTANCE_MASK_DEFAULT,
+        INSTANCE_MASK_OPAQUE,
         ray);
 
     if (rayFlag & RAY_FLAG_CULL_NON_OPAQUE)
@@ -80,38 +80,34 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
             if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
             {
                 GeometryDesc geometryDesc = g_GeometryDescs[query.CandidateInstanceID() + query.CandidateGeometryIndex()];
-        
-                if (geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH)
+                Material material = g_Materials[geometryDesc.MaterialId];
+
+                if (material.DiffuseTexture != 0)
                 {
-                    Material material = g_Materials[geometryDesc.MaterialId];
-                    if (material.DiffuseTexture != 0)
-                    {
-                        ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
-                        Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
-        
-                        uint3 indices;
-                        indices.x = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 0];
-                        indices.y = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 1];
-                        indices.z = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 2];
-        
-                        uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
-        
-                        float2 texCoord0 = DecodeFloat2(vertexBuffer.Load(offsets.x));
-                        float2 texCoord1 = DecodeFloat2(vertexBuffer.Load(offsets.y));
-                        float2 texCoord2 = DecodeFloat2(vertexBuffer.Load(offsets.z));
-        
-                        float3 uv = float3(
-                            1.0 - query.CandidateTriangleBarycentrics().x - query.CandidateTriangleBarycentrics().y,
-                            query.CandidateTriangleBarycentrics().x,
-                            query.CandidateTriangleBarycentrics().y);
-        
-                        float2 texCoord = texCoord0 * uv.x + texCoord1 * uv.y + texCoord2 * uv.z;
-                        texCoord += material.TexCoordOffsets[0].xy;
-        
-                        if (SampleMaterialTexture2D(material.DiffuseTexture, texCoord, level).a > 0.5)
-                            query.CommitNonOpaqueTriangleHit();
-                    }
-        
+                    ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
+                    Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
+                
+                    uint3 indices;
+                    indices.x = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 0];
+                    indices.y = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 1];
+                    indices.z = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 2];
+                
+                    uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
+                
+                    float2 texCoord0 = DecodeFloat2(vertexBuffer.Load(offsets.x));
+                    float2 texCoord1 = DecodeFloat2(vertexBuffer.Load(offsets.y));
+                    float2 texCoord2 = DecodeFloat2(vertexBuffer.Load(offsets.z));
+                
+                    float3 uv = float3(
+                        1.0 - query.CandidateTriangleBarycentrics().x - query.CandidateTriangleBarycentrics().y,
+                        query.CandidateTriangleBarycentrics().x,
+                        query.CandidateTriangleBarycentrics().y);
+                
+                    float2 texCoord = texCoord0 * uv.x + texCoord1 * uv.y + texCoord2 * uv.z;
+                    texCoord += material.TexCoordOffsets[0].xy;
+                
+                    if (SampleMaterialTexture2D(material.DiffuseTexture, texCoord, level).a > 0.5)
+                        query.CommitNonOpaqueTriangleHit();
                 }
             }
         }
@@ -150,7 +146,7 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool s
         TraceRay(
             g_BVH,
             i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
-            INSTANCE_MASK_DEFAULT,
+            INSTANCE_MASK_OPAQUE,
             HIT_GROUP_SECONDARY,
             HIT_GROUP_NUM,
             i == 0 ? missShaderIndex : MISS_GI,

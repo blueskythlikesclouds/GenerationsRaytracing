@@ -29,47 +29,56 @@ static void traverseMeshGroup(const hh::vector<boost::shared_ptr<Hedgehog::Mirag
 }
 
 template<typename TModelData, typename TFunction>
-static void traverseModelData(const TModelData& modelData, const TFunction& function)
+static void traverseModelData(const TModelData& modelData, uint32_t geometryMask, const TFunction& function)
 {
-    traverseMeshGroup(modelData.m_OpaqueMeshes, NULL, function);
-    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+    if (geometryMask & GEOMETRY_FLAG_OPAQUE)
     {
-        if (nodeGroupModelData->m_Visible)
-            traverseMeshGroup(nodeGroupModelData->m_OpaqueMeshes, NULL, function);
+        traverseMeshGroup(modelData.m_OpaqueMeshes, GEOMETRY_FLAG_OPAQUE, function);
+        for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+        {
+            if (nodeGroupModelData->m_Visible)
+                traverseMeshGroup(nodeGroupModelData->m_OpaqueMeshes, GEOMETRY_FLAG_OPAQUE, function);
+        }
     }
 
-    traverseMeshGroup(modelData.m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
-    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+    if (geometryMask & GEOMETRY_FLAG_PUNCH_THROUGH)
     {
-        if (nodeGroupModelData->m_Visible)
-            traverseMeshGroup(nodeGroupModelData->m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
+        traverseMeshGroup(modelData.m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
+        for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+        {
+            if (nodeGroupModelData->m_Visible)
+                traverseMeshGroup(nodeGroupModelData->m_PunchThroughMeshes, GEOMETRY_FLAG_PUNCH_THROUGH, function);
+        }
     }
 
-    traverseMeshGroup(modelData.m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
-    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+    if (geometryMask & GEOMETRY_FLAG_TRANSPARENT)
     {
-        if (nodeGroupModelData->m_Visible)
-            traverseMeshGroup(nodeGroupModelData->m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
-    }
+        traverseMeshGroup(modelData.m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
+        for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+        {
+            if (nodeGroupModelData->m_Visible)
+                traverseMeshGroup(nodeGroupModelData->m_TransparentMeshes, GEOMETRY_FLAG_TRANSPARENT, function);
+        }
 
-    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
-    {
-        if (!nodeGroupModelData->m_Visible)
-            continue;
+        for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+        {
+            if (!nodeGroupModelData->m_Visible)
+                continue;
 
-        for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
-            traverseMeshGroup(specialMeshGroup, GEOMETRY_FLAG_TRANSPARENT, function);
+            for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
+                traverseMeshGroup(specialMeshGroup, GEOMETRY_FLAG_TRANSPARENT, function);
+        }
     }
 }
 
 template<typename T>
-static void createBottomLevelAccelStruct(const T& modelData, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId)
+static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMask, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId)
 {
     assert(bottomLevelAccelStructId == NULL);
 
     size_t geometryCount = 0;
 
-    traverseModelData(modelData, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
+    traverseModelData(modelData, geometryMask, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
 
     if (geometryCount == 0)
         return;
@@ -84,26 +93,29 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t& bottomLev
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
     uint32_t poseVertexOffset = 0;
 
-    traverseModelData(modelData, [&](const MeshDataEx& meshDataEx, uint32_t flags)
+    traverseModelData(modelData, poseVertexBufferId != NULL ? ~0 : geometryMask, [&](const MeshDataEx& meshDataEx, uint32_t flags)
     {
+        uint32_t vertexOffset = meshDataEx.m_VertexOffset;
         if (poseVertexBufferId != NULL)
+        {
+            vertexOffset = poseVertexOffset;
+            poseVertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
+
+            if ((flags & geometryMask) == 0)
+                return;
+
             flags |= GEOMETRY_FLAG_POSE;
+        }
 
         geometryDesc->flags = flags;
         geometryDesc->indexBufferId = meshDataEx.m_indices->getId();
         geometryDesc->indexCount = meshDataEx.m_indexCount;
 
-        uint32_t vertexOffset = meshDataEx.m_VertexOffset;
         if (poseVertexBufferId != NULL)
-        {
             geometryDesc->vertexBufferId = poseVertexBufferId;
-            vertexOffset = poseVertexOffset;
-            poseVertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
-        }
         else
-        {
             geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
-        }
+
         geometryDesc->vertexStride = meshDataEx.m_VertexSize;
         geometryDesc->vertexCount = meshDataEx.m_VertexNum;
         geometryDesc->vertexOffset = vertexOffset;
@@ -137,8 +149,6 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t& bottomLev
 
             case D3DDECLUSAGE_COLOR:
                 geometryDesc->colorOffset = vertexElement->Offset;
-                if (vertexElement->Type != D3DDECLTYPE_FLOAT4)
-                    geometryDesc->flags |= GEOMETRY_FLAG_D3DCOLOR;
                 break;
             }
 
@@ -168,14 +178,17 @@ HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, Ter
 {
     const auto result = originalTerrainModelDataConstructor(This);
 
-    This->m_bottomLevelAccelStructId = NULL;
+    for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
+        bottomLevelAccelStructId = NULL;
 
     return result;
 }
 
 HOOK(void, __fastcall, TerrainModelDataDestructor, 0x717230, TerrainModelDataEx* This)
 {
-    RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
+    for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
+        RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
+
     originalTerrainModelDataDestructor(This);
 }
 
@@ -183,7 +196,9 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
 {
     const auto result = originalModelDataConstructor(This);
 
-    This->m_bottomLevelAccelStructId = NULL;
+    for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
+        bottomLevelAccelStructId = NULL;
+
     new (&This->m_noAoModel) boost::shared_ptr<Hedgehog::Mirage::CModelData>();
 
     return result;
@@ -192,15 +207,22 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
 HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
 {
     This->m_noAoModel.~shared_ptr();
-    RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
+
+    for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
+        RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
     originalModelDataDestructor(This);
 }
 
-void ModelData::createBottomLevelAccelStruct(TerrainModelDataEx& terrainModelDataEx)
+void ModelData::createBottomLevelAccelStructs(TerrainModelDataEx& terrainModelDataEx)
 {
-    if (terrainModelDataEx.m_bottomLevelAccelStructId == NULL)
-        ::createBottomLevelAccelStruct(terrainModelDataEx, terrainModelDataEx.m_bottomLevelAccelStructId, NULL);
+    for (size_t i = 0; i < _countof(s_instanceMasks); i++)
+    {
+        auto& bottomLevelAccelStructId = terrainModelDataEx.m_bottomLevelAccelStructIds[i];
+
+        if (bottomLevelAccelStructId == NULL)
+            ::createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL);
+    }
 }
 
 static boost::shared_ptr<Hedgehog::Mirage::CMaterialData> cloneMaterial(const Hedgehog::Mirage::CMaterialData& material)
@@ -357,7 +379,7 @@ void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& in
         static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionSymbol("g_SonicEyeHighLightPosition");
         static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPositionRaytracing");
 
-        traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+        traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
             if (meshDataEx.m_spMaterial == nullptr || meshDataEx.m_spMaterial->m_spShaderListData == nullptr || 
                 strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "ChrEye") == nullptr)
@@ -531,7 +553,7 @@ void ModelData::processSingleElementEffect(MaterialMap& materialMap, Hedgehog::M
     }
 }
 
-void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap)
+void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap)
 {
     static Hedgehog::Base::CStringSymbol s_texCoordOffsetSymbol("mrgTexcoordOffset");
 
@@ -584,7 +606,11 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
         }
 
         if (modelDataEx.m_modelHash != modelHash || modelDataEx.m_visibilityBits != visibilityBits)
-            RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, modelDataEx.m_bottomLevelAccelStructId);
+        {
+            for (auto& bottomLevelAccelStructId : modelDataEx.m_bottomLevelAccelStructIds)
+                RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
+
+        }
 
         modelDataEx.m_modelHash = modelHash;
         modelDataEx.m_visibilityBits = visibilityBits;
@@ -593,8 +619,12 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
     if (instanceInfoEx.m_modelHash != modelDataEx.m_modelHash || instanceInfoEx.m_visibilityBits != modelDataEx.m_visibilityBits)
     {
-        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceInfoEx.m_instanceId);
-        RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, instanceInfoEx.m_bottomLevelAccelStructId);
+        for (auto& instanceId : instanceInfoEx.m_instanceIds)
+            RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
+
+        for (auto& bottomLevelAccelStructId : instanceInfoEx.m_bottomLevelAccelStructIds)
+            RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
+
         instanceInfoEx.m_poseVertexBuffer = nullptr;
     }
 
@@ -603,14 +633,14 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
     instanceInfoEx.m_hashFrame = modelDataEx.m_hashFrame;
 
     auto transform = instanceInfoEx.m_Transform;
-    uint32_t bottomLevelAccelStructId;
+    uint32_t bottomLevelAccelStructIds[_countof(s_instanceMasks)]{};
 
     if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > 1)
     {
         if (instanceInfoEx.m_poseVertexBuffer == nullptr)
         {
             uint32_t length = 0;
-            traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+            traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
             {
                 length += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
             });
@@ -627,7 +657,7 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
             s_messageSender.endMessage();
 
             uint32_t offset = 0;
-            traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+            traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
             {
                 auto& copyMessage = s_messageSender.makeMessage<MsgCopyVertexBuffer>();
                 copyMessage.dstVertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
@@ -644,7 +674,7 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
         uint32_t geometryCount = 0;
         uint32_t nodeCount = 0;
-        traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+        traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
             ++geometryCount;
             nodeCount += meshDataEx.m_NodeNum;
@@ -670,7 +700,7 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
         auto nodePalette = reinterpret_cast<uint32_t*>(geometryDesc + geometryCount);
 
         uint32_t vertexOffset = 0;
-        traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+        traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
             assert(meshDataEx.m_VertexOffset == 0);
 
@@ -743,27 +773,30 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
 
         s_messageSender.endMessage();
 
-        if (instanceInfoEx.m_bottomLevelAccelStructId == NULL)
+        for (size_t i = 0; i < _countof(s_instanceMasks); i++)
         {
-            ::createBottomLevelAccelStruct(modelDataEx, instanceInfoEx.m_bottomLevelAccelStructId, 
-                instanceInfoEx.m_poseVertexBuffer->getId());
+            auto& bottomLevelAccelStructId = instanceInfoEx.m_bottomLevelAccelStructIds[i];
 
-            if (instanceInfoEx.m_bottomLevelAccelStructId == NULL)
-                return;
+            if (bottomLevelAccelStructId == NULL)
+            {
+                ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, 
+                    bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId());
+            }
+            else
+            {
+                auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
+                buildMessage.bottomLevelAccelStructId = bottomLevelAccelStructId;
+                s_messageSender.endMessage();
+            }
+
+            bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;
         }
-        else
-        {
-            auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
-            buildMessage.bottomLevelAccelStructId = instanceInfoEx.m_bottomLevelAccelStructId;
-            s_messageSender.endMessage();
-        }
-        bottomLevelAccelStructId = instanceInfoEx.m_bottomLevelAccelStructId;
     }
     else
     {
         if (shouldCheckForHash)
         {
-            traverseModelData(modelDataEx, [&](const MeshDataEx& meshDataEx, uint32_t)
+            traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
             {
                 MaterialData::create(*meshDataEx.m_spMaterial, true);
             });
@@ -772,58 +805,71 @@ void ModelData::createBottomLevelAccelStruct(ModelDataEx& modelDataEx, InstanceI
         if (instanceInfoEx.m_spPose != nullptr)
             transform = transform * (*instanceInfoEx.m_spPose->GetMatrixList());
 
-        if (modelDataEx.m_bottomLevelAccelStructId == NULL)
+        for (size_t i = 0; i < _countof(s_instanceMasks); i++)
         {
-            ::createBottomLevelAccelStruct(modelDataEx, modelDataEx.m_bottomLevelAccelStructId, NULL);
+            auto& bottomLevelAccelStructId = instanceInfoEx.m_bottomLevelAccelStructIds[i];
 
-            if (modelDataEx.m_bottomLevelAccelStructId == NULL)
-                return;
+            if (bottomLevelAccelStructId == NULL)
+            {
+                ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask,
+                    bottomLevelAccelStructId, NULL);
+            }
+
+            bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;
         }
-
-        bottomLevelAccelStructId = modelDataEx.m_bottomLevelAccelStructId;
     }
 
-    auto& message = s_messageSender.makeMessage<MsgCreateInstance>(
-        materialMap.size() * sizeof(uint32_t) * 2);
-
-    for (size_t i = 0; i < 3; i++)
+    for (size_t i = 0; i < _countof(s_instanceMasks); i++)
     {
-        for (size_t j = 0; j < 4; j++)
-            message.transform[i][j] = transform(i, j);
+        const auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
+        if (bottomLevelAccelStructId != NULL)
+        {
+            auto& message = s_messageSender.makeMessage<MsgCreateInstance>(
+                materialMap.size() * sizeof(uint32_t) * 2);
+
+            for (size_t l = 0; l < 3; l++)
+            {
+                for (size_t k = 0; k < 4; k++)
+                    message.transform[l][k] = transform(l, k);
+            }
+
+            auto& instanceId = instanceInfoEx.m_instanceIds[i];
+
+            if (instanceId == NULL)
+            {
+                instanceId = InstanceData::s_idAllocator.allocate();
+                message.storePrevTransform = false;
+            }
+            else
+            {
+                message.storePrevTransform = true;
+            }
+
+            message.instanceId = instanceId;
+            message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+            message.isMirrored = false;
+            message.instanceMask = s_instanceMasks[i].instanceMask;
+
+            auto materialIds = reinterpret_cast<uint32_t*>(message.data);
+
+            for (auto& [key, value] : materialMap)
+            {
+                *materialIds = reinterpret_cast<MaterialDataEx*>(key)->m_materialId;
+                ++materialIds;
+
+                *materialIds = reinterpret_cast<MaterialDataEx*>(value.get())->m_materialId;
+                ++materialIds;
+            }
+
+            s_messageSender.endMessage();
+        }
     }
-
-    if (instanceInfoEx.m_instanceId == NULL)
-    {
-        instanceInfoEx.m_instanceId = InstanceData::s_idAllocator.allocate();
-        message.storePrevTransform = false;
-    }
-    else
-    {
-        message.storePrevTransform = true;
-    }
-
-    message.instanceId = instanceInfoEx.m_instanceId;
-    message.bottomLevelAccelStructId = bottomLevelAccelStructId;
-    message.isMirrored = false;
-
-    auto materialIds = reinterpret_cast<uint32_t*>(message.data);
-
-    for (auto& [key, value] : materialMap)
-    {
-        *materialIds = reinterpret_cast<MaterialDataEx*>(key)->m_materialId;
-        ++materialIds;
-
-        *materialIds = reinterpret_cast<MaterialDataEx*>(value.get())->m_materialId;
-        ++materialIds;
-    }
-
-    s_messageSender.endMessage();
 }
 
 void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
 {
     size_t geometryCount = 0;
-    traverseModelData(modelData, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
+    traverseModelData(modelData, ~0, [&](const MeshDataEx&, uint32_t) { ++geometryCount; });
 
     if (geometryCount == 0)
         return;
@@ -843,7 +889,7 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
 
     DX_PATCH::IDirect3DBaseTexture9* diffuseTexture = nullptr;
 
-    traverseModelData(modelData, [&](const MeshDataEx& meshDataEx, uint32_t flags)
+    traverseModelData(modelData, ~0, [&](const MeshDataEx& meshDataEx, uint32_t flags)
     {
         geometryDesc->flags = flags;
         geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();

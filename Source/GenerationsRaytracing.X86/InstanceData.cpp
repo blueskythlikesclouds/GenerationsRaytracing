@@ -9,7 +9,7 @@
 class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoData
 {
 public:
-    uint32_t m_instanceId;
+    uint32_t m_instanceIds[_countof(s_instanceMasks)];
 };
 
 static std::unordered_set<TerrainInstanceInfoDataEx*> s_instancesToCreate;
@@ -22,7 +22,8 @@ HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor,
 {
     const auto result = originalTerrainInstanceInfoDataConstructor(This);
 
-    This->m_instanceId = NULL;
+    for (auto& instanceId : This->m_instanceIds)
+        instanceId = NULL;
 
     return result;
 }
@@ -33,7 +34,9 @@ HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInsta
     s_instancesToCreate.erase(This);
     s_instanceCreateMutex.unlock();
 
-    RaytracingUtil::releaseResource(RaytracingResourceType::Instance, This->m_instanceId);
+    for (auto& instanceId : This->m_instanceIds)
+        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
+
     originalTerrainInstanceInfoDataDestructor(This);
 }
 
@@ -49,8 +52,12 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 {
     const auto result = originalInstanceInfoConstructor(This);
 
-    This->m_instanceId = NULL;
-    This->m_bottomLevelAccelStructId = NULL;
+    for (auto& instanceId : This->m_instanceIds)
+        instanceId = NULL;
+
+    for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
+        bottomLevelAccelStructId = NULL;
+
     new (std::addressof(This->m_poseVertexBuffer)) ComPtr<VertexBuffer>();
     This->m_headNodeIndex = 0;
     This->m_handledEyeMaterials = false;
@@ -67,8 +74,11 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     s_trackedInstances.erase(This);
     s_instanceTrackMutex.unlock();
 
-    RaytracingUtil::releaseResource(RaytracingResourceType::Instance, This->m_instanceId);
-    RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
+    for (auto& instanceId : This->m_instanceIds)
+        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
+
+    for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
+        RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
     This->m_poseVertexBuffer.~ComPtr();
 
@@ -88,27 +98,36 @@ void InstanceData::createPendingInstances()
                 const auto terrainModelEx =
                     reinterpret_cast<TerrainModelDataEx*>((*it)->m_spTerrainModel.get());
 
-                ModelData::createBottomLevelAccelStruct(*terrainModelEx);
+                ModelData::createBottomLevelAccelStructs(*terrainModelEx);
 
-                if (terrainModelEx->m_bottomLevelAccelStructId != NULL)
+                const bool isMirrored = (*it)->m_scpTransform->determinant() < 0.0f;
+
+                for (size_t i = 0; i < _countof(s_instanceMasks); i++)
                 {
-                    assert((*it)->m_instanceId == NULL);
-                    (*it)->m_instanceId = s_idAllocator.allocate();
+                    const auto bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructIds[i];
 
-                    auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
-
-                    for (size_t i = 0; i < 3; i++)
+                    if (bottomLevelAccelStructId != NULL)
                     {
-                        for (size_t j = 0; j < 4; j++)
-                            message.transform[i][j] = (*(*it)->m_scpTransform)(i, j);
+                        auto& instanceId = (*it)->m_instanceIds[i];
+                        assert(instanceId == NULL);
+                        instanceId = s_idAllocator.allocate();
+
+                        auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
+
+                        for (size_t j = 0; j < 3; j++)
+                        {
+                            for (size_t k = 0; k < 4; k++)
+                                message.transform[j][k] = (*(*it)->m_scpTransform)(j, k);
+                        }
+
+                        message.instanceId = instanceId;
+                        message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+                        message.storePrevTransform = false;
+                        message.isMirrored = isMirrored;
+                        message.instanceMask = s_instanceMasks[i].instanceMask;
+
+                        s_messageSender.endMessage();
                     }
-
-                    message.instanceId = (*it)->m_instanceId;
-                    message.bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructId;
-                    message.storePrevTransform = false;
-                    message.isMirrored = (*it)->m_scpTransform->determinant() < 0.0f;
-
-                    s_messageSender.endMessage();
                 }
             }
             it = s_instancesToCreate.erase(it);
@@ -134,7 +153,9 @@ void InstanceData::releaseUnusedInstances()
     {
         if ((*it)->m_hashFrame != RaytracingRendering::s_frame)
         {
-            RaytracingUtil::releaseResource(RaytracingResourceType::Instance, (*it)->m_instanceId);
+            for (auto& instanceId : (*it)->m_instanceIds)
+                RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
+
             it = s_trackedInstances.erase(it);
         }
         else
