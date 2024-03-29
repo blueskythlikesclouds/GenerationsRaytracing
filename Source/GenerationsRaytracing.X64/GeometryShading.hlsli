@@ -4,6 +4,7 @@
 #include "GBufferData.hlsli"
 #include "Reservoir.hlsli"
 #include "RootSignature.hlsli"
+#include "ShaderTable.h"
 #include "SharedDefinitions.hlsli"
 
 struct ShadingParams
@@ -126,7 +127,7 @@ float TraceLocalLightShadow(float3 position, float3 direction, float2 random, fl
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        1,
+        INSTANCE_MASK_DEFAULT,
         ray);
 
     query.Proceed();

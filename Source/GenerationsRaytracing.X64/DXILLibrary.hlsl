@@ -32,10 +32,10 @@ void PrimaryRayGeneration()
     TraceRay(
         g_BVH,
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
-        1,
-        0,
-        2,
-        0,
+        INSTANCE_MASK_DEFAULT,
+        HIT_GROUP_PRIMARY,
+        HIT_GROUP_NUM,
+        MISS_PRIMARY,
         ray,
         payload);
 }
@@ -136,7 +136,7 @@ void GIRayGeneration()
         g_GlobalIllumination[DispatchRaysIndex().xy] = TracePath(
             gBufferData.Position, 
             TangentToWorld(gBufferData.Normal, GetCosWeightedSample(GetBlueNoise().xy)),
-            1,
+            MISS_GI,
             false);
     }
 }
@@ -150,7 +150,7 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     {
         color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
     }
-    else if (g_UseSkyTexture && RayTCurrent() != 0)
+    else if (g_UseSkyTexture)
     {
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
         color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_SkyPower;
@@ -191,7 +191,7 @@ void ReflectionRayGeneration()
         g_Reflection[DispatchRaysIndex().xy] = pdf * TracePath(
             gBufferData.Position,
             rayDirection,
-            2,
+            MISS_SECONDARY,
             true);
     }
 }
@@ -214,7 +214,7 @@ void RefractionRayGeneration()
         g_Refraction[DispatchRaysIndex().xy] = TracePath(
             gBufferData.Position, 
             rayDirection,
-            2,
+            MISS_SECONDARY,
             false);
     }
 }
@@ -224,7 +224,7 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     float3 color = 0.0;
 
-    if (g_UseSkyTexture && RayTCurrent() != 0)
+    if (g_UseSkyTexture)
     {
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
         color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;

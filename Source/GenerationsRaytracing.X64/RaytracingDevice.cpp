@@ -18,6 +18,7 @@
 #include "SkyVertexShader.h"
 #include "SkyPixelShader.h"
 #include "PIXEvent.h"
+#include "ShaderTable.h"
 #include "SmoothNormalComputeShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
@@ -794,7 +795,7 @@ void RaytracingDevice::procMsgCreateInstance()
         instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
     }
 
-    instanceDesc.InstanceMask = 1;
+    instanceDesc.InstanceMask = INSTANCE_MASK_DEFAULT;
     instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
     instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
 

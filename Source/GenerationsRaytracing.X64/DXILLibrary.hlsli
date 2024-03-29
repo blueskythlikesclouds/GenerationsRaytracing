@@ -1,6 +1,7 @@
 #include "GBufferData.hlsli"
 #include "GeometryShading.hlsli"
 #include "Reservoir.hlsli"
+#include "ShaderTable.h"
 
 struct [raypayload] PrimaryRayPayload
 {
@@ -65,7 +66,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
     query.TraceRayInline(
         g_BVH,
         rayFlag,
-        1,
+        INSTANCE_MASK_DEFAULT,
         ray);
 
     if (rayFlag & RAY_FLAG_CULL_NON_OPAQUE)
@@ -149,10 +150,10 @@ float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool s
         TraceRay(
             g_BVH,
             i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
-            1,
-            1,
-            2,
-            i == 0 ? missShaderIndex : 1,
+            INSTANCE_MASK_DEFAULT,
+            HIT_GROUP_SECONDARY,
+            HIT_GROUP_NUM,
+            i == 0 ? missShaderIndex : MISS_GI,
             ray,
             payload);
 

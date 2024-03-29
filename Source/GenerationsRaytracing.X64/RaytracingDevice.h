@@ -63,8 +63,6 @@ struct SmoothNormalCmd
     uint32_t adjacencyBufferId;
 };
 
-inline constexpr size_t HIT_GROUP_NUM = 2;
-
 class RaytracingDevice final : public Device
 {
 protected:
