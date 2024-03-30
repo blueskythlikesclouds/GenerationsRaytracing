@@ -274,6 +274,12 @@ float2 ComputeLightScattering(float3 position, float3 viewPosition)
     return float2(r0.x, r0.y * g_LightScatteringFarNearScale.w);
 }
 
+float3 ComputePrimaryRayDirection(uint2 index, uint2 resolution)
+{
+    float2 ndc = (index - g_PixelJitter + 0.5) / resolution * float2(2.0, -2.0) + float2(-1.0, 1.0);
+    return mul(g_MtxView, float4(ndc.x / g_MtxProjection[0][0], ndc.y / g_MtxProjection[1][1], -1.0, 0.0)).xyz;
+}
+
 float2 ComputePixelPosition(float3 position, float4x4 view, float4x4 projection)
 {
     float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);

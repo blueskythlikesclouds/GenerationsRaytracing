@@ -75,7 +75,6 @@ protected:
     size_t m_shadowStackSize = 0;
     size_t m_giStackSize = 0;
     size_t m_reflectionStackSize = 0;
-    size_t m_refractionStackSize = 0;
     void* m_hitGroups[_countof(s_shaderHitGroups)]{};
     std::vector<uint8_t> m_rayGenShaderTable;
     std::vector<uint8_t> m_missShaderTable;
@@ -117,6 +116,8 @@ protected:
     ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
     ComPtr<D3D12MA::Allocation> m_exposureTexture;
 
+    ComPtr<D3D12MA::Allocation> m_layerNumTexture;
+
     ComPtr<D3D12MA::Allocation> m_gBufferTexture0;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture1;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture2;
@@ -131,12 +132,11 @@ protected:
 
     ComPtr<D3D12MA::Allocation> m_giTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
-    ComPtr<D3D12MA::Allocation> m_refractionTexture;
 
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_specularAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_linearDepthTexture;
-    ComPtr<D3D12MA::Allocation> m_diffuseHitDistanceTexture;
+    ComPtr<D3D12MA::Allocation> m_colorBeforeTransparencyTexture;
     ComPtr<D3D12MA::Allocation> m_specularHitDistanceTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;

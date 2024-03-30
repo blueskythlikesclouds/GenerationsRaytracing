@@ -1,3 +1,4 @@
+#include "GBufferData.h"
 #include "GBufferData.hlsli"
 #include "GeometryShading.hlsli"
 #include "Reservoir.hlsli"
@@ -6,8 +7,8 @@
 struct [raypayload] PrimaryRayPayload
 {
     float3 dDdx : read(closesthit) : write(caller);
-    float Random : read(anyhit) : write(caller);
     float3 dDdy : read(closesthit) : write(caller);
+    float T : read(caller) : write(closesthit, miss);
 };
 
 void PrimaryAnyHit(uint shaderType,
@@ -19,10 +20,7 @@ void PrimaryAnyHit(uint shaderType,
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
     GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
 
-    float random = payload.Random;
-    float alphaThreshold = geometryDesc.Flags & GEOMETRY_FLAG_PUNCH_THROUGH ? 0.5 : random;
-
-    if (gBufferData.Alpha < alphaThreshold)
+    if (gBufferData.Alpha < 0.5)
         IgnoreHit();
 }
 
@@ -33,7 +31,10 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
     Material material = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
-    StoreGBufferData(DispatchRaysIndex().xy, CreateGBufferData(vertex, material, shaderType));
+
+    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
+    gBufferData.Alpha = 1.0;
+    StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
 
     g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
 
@@ -42,6 +43,36 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 
     g_LinearDepth[DispatchRaysIndex().xy] = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
+
+    payload.T = RayTCurrent();
+}
+
+struct [raypayload] PrimaryTransparentRayPayload
+{
+    float3 dDdx : read(anyhit) : write(caller);
+    float3 dDdy : read(anyhit) : write(caller);
+    uint LayerIndex : read(anyhit, caller) : write(caller, anyhit);
+};
+
+void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
+    inout PrimaryTransparentRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
+{
+    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
+    Material material = g_Materials[geometryDesc.MaterialId];
+    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
+    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
+
+    if (gBufferData.Alpha > 0.0)
+    {
+        StoreGBufferData(uint3(DispatchRaysIndex().xy, payload.LayerIndex), gBufferData);
+
+        ++payload.LayerIndex;
+        if (payload.LayerIndex == GBUFFER_LAYER_NUM)
+            AcceptHitAndEndSearch();
+    }
+
+    IgnoreHit();
 }
 
 float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG rayFlag, uint level)

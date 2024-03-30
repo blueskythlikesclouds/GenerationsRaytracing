@@ -186,6 +186,9 @@
     <ClInclude Include="DLSSD.h">
       <Filter>Upscaler</Filter>
     </ClInclude>
+    <ClInclude Include="GBufferData.h">
+      <Filter>Shader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">

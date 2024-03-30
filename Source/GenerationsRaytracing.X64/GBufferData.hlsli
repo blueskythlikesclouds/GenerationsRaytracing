@@ -1096,7 +1096,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
     return gBufferData;
 }
 
-GBufferData LoadGBufferData(uint2 index)
+GBufferData LoadGBufferData(uint3 index)
 {
     float4 gBuffer0 = g_GBuffer0[index];
     float4 gBuffer1 = g_GBuffer1[index];
@@ -1112,7 +1112,9 @@ GBufferData LoadGBufferData(uint2 index)
     gBufferData.Flags = asuint(gBuffer0.w);
 
     gBufferData.Diffuse = gBuffer1.rgb;
-    gBufferData.Refraction = gBuffer1.a;
+    gBufferData.Alpha = gBuffer1.a;
+
+    gBufferData.Refraction = gBuffer6.a;
 
     gBufferData.Specular = gBuffer2.rgb;
 
@@ -1128,19 +1130,19 @@ GBufferData LoadGBufferData(uint2 index)
     return gBufferData;
 }
 
-void StoreGBufferData(uint2 index, GBufferData gBufferData)
+void StoreGBufferData(uint3 index, GBufferData gBufferData)
 {
     float roughness = 0.0;
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION)))
         roughness = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
 
     g_GBuffer0[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
-    g_GBuffer1[index] = float4(gBufferData.Diffuse, gBufferData.Refraction);
+    g_GBuffer1[index] = float4(gBufferData.Diffuse, gBufferData.Alpha);
     g_GBuffer2[index] = float4(gBufferData.Specular, gBufferData.TransColor.r);
     g_GBuffer3[index] = float4(gBufferData.SpecularGloss, gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.TransColor.g);
     g_GBuffer4[index] = float4(gBufferData.Normal, roughness);
     g_GBuffer5[index] = float4(gBufferData.Falloff, gBufferData.TransColor.b);
-    g_GBuffer6[index] = float4(gBufferData.Emission, 0.0);
+    g_GBuffer6[index] = float4(gBufferData.Emission, gBufferData.Refraction);
 }
 
 #endif

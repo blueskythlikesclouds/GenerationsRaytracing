@@ -107,7 +107,9 @@ public static class RaytracingShaderCompiler
 		foreach (var shaderType in ShaderTypes)
 		{
 			writer.WriteLine("\tL\"{0}_PrimaryHitGroup\",", shaderType);
-			writer.WriteLine("\tL\"{0}_PrimaryHitGroup_ConstTexCoord\",", shaderType);
+			writer.WriteLine("\tL\"{0}_PrimaryHitGroup_ConstTexCoord\",", shaderType);		
+            writer.WriteLine("\tL\"{0}_PrimaryTransparentHitGroup\",", shaderType);
+			writer.WriteLine("\tL\"{0}_PrimaryTransparentHitGroup_ConstTexCoord\",", shaderType);
 			writer.WriteLine("\tL\"{0}_SecondaryHitGroup\",", shaderType);
 		}
 
@@ -122,68 +124,68 @@ public static class RaytracingShaderCompiler
 		WriteShaderTypeHeaderFile(solutionDirectoryPath);
 
 		var shaderSources = new List<string>(ShaderTypes.Count);
-		var stringBuilder = new StringBuilder();
 
 		foreach (var shaderType in ShaderTypes)
 		{
-			stringBuilder.AppendLine("#include \"DXILLibrary.hlsli\"");
-
-			stringBuilder.AppendLine("[shader(\"anyhit\")]");
-			stringBuilder.AppendFormat(
-				"void {0}_PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)\n",
-				shaderType);
-			stringBuilder.AppendLine("{");
-			stringBuilder.AppendFormat("\tPrimaryAnyHit(SHADER_TYPE_{0}, payload, attributes);\n",
-				shaderType);
-			stringBuilder.AppendLine("}");
-
-			stringBuilder.AppendLine("[shader(\"closesthit\")]");
-			stringBuilder.AppendFormat(
-				"void {0}_PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)\n",
-				shaderType);
-			stringBuilder.AppendLine("{");
-			stringBuilder.AppendFormat("\tPrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);\n",
-				shaderType);
-			stringBuilder.AppendLine("}");
-
-			stringBuilder.AppendLine("[shader(\"closesthit\")]");
-			stringBuilder.AppendFormat(
-				"void {0}_PrimaryClosestHit_ConstTexCoord(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)\n",
-				shaderType);
-			stringBuilder.AppendLine("{");
-			stringBuilder.AppendFormat("\tPrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);\n",
-				shaderType);
-			stringBuilder.AppendLine("}");
-
-			stringBuilder.AppendLine("[shader(\"closesthit\")]");
-			stringBuilder.AppendFormat(
-				"void {0}_SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)\n",
-				shaderType);
-			stringBuilder.AppendLine("{");
-			stringBuilder.AppendFormat("\tSecondaryClosestHit(SHADER_TYPE_{0}, payload, attributes);\n",
-				shaderType);
-			stringBuilder.AppendLine("}");
-
-			stringBuilder.AppendFormat("TriangleHitGroup {0}_PrimaryHitGroup =\n", shaderType);
-			stringBuilder.AppendLine("{");
-			stringBuilder.AppendFormat("\t\"{0}_PrimaryAnyHit\",\n", shaderType);
-			stringBuilder.AppendFormat("\t\"{0}_PrimaryClosestHit\"\n", shaderType);
-			stringBuilder.AppendLine("};");
-
-			stringBuilder.AppendFormat("TriangleHitGroup {0}_PrimaryHitGroup_ConstTexCoord =\n", shaderType);
-			stringBuilder.AppendLine("{");
-			stringBuilder.AppendFormat("\t\"{0}_PrimaryAnyHit\",\n", shaderType);
-			stringBuilder.AppendFormat("\t\"{0}_PrimaryClosestHit_ConstTexCoord\"\n", shaderType);
-			stringBuilder.AppendLine("};");
-
-			stringBuilder.AppendFormat("TriangleHitGroup {0}_SecondaryHitGroup =\n", shaderType);
-			stringBuilder.AppendLine("{");
-			stringBuilder.AppendLine("\t\"SecondaryAnyHit\",");
-			stringBuilder.AppendFormat("\t\"{0}_SecondaryClosestHit\"\n", shaderType);
-			stringBuilder.AppendLine("};");
-
-			shaderSources.Add(stringBuilder.ToString());
-			stringBuilder.Clear();
+			shaderSources.Add(string.Format(
+                """
+                #include "DXILLibrary.hlsli"
+                [shader("anyhit")]
+                void {0}_PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	PrimaryAnyHit(SHADER_TYPE_{0}, payload, attributes);
+                }}
+                [shader("closesthit")]
+                void {0}_PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	PrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);
+                }}
+                [shader("closesthit")]
+                void {0}_PrimaryClosestHit_ConstTexCoord(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	PrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);
+                }}
+                [shader("anyhit")]
+                void {0}_PrimaryTransparentAnyHit(inout PrimaryTransparentRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	PrimaryTransparentAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);
+                }}
+                [shader("anyhit")]
+                void {0}_PrimaryTransparentAnyHit_ConstTexCoord(inout PrimaryTransparentRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	PrimaryTransparentAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);
+                }}
+                [shader("closesthit")]
+                void {0}_SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	SecondaryClosestHit(SHADER_TYPE_{0}, payload, attributes);
+                }}
+                TriangleHitGroup {0}_PrimaryHitGroup =
+                {{
+                	"{0}_PrimaryAnyHit",
+                	"{0}_PrimaryClosestHit"
+                }};
+                TriangleHitGroup {0}_PrimaryHitGroup_ConstTexCoord =
+                {{
+                	"{0}_PrimaryAnyHit",
+                	"{0}_PrimaryClosestHit_ConstTexCoord"
+                }};
+                TriangleHitGroup {0}_PrimaryTransparentHitGroup =
+                {{
+                	"{0}_PrimaryTransparentAnyHit",
+                	""
+                }};
+                TriangleHitGroup {0}_PrimaryTransparentHitGroup_ConstTexCoord =
+                {{
+                	"{0}_PrimaryTransparentAnyHit_ConstTexCoord",
+                	""
+                }};
+                TriangleHitGroup {0}_SecondaryHitGroup =
+                {{
+                	"SecondaryAnyHit",
+                	"{0}_SecondaryClosestHit"
+                }};
+                """, shaderType));
 		}
 
 		var args = new[]

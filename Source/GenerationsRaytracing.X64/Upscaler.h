@@ -46,6 +46,7 @@ public:
         ID3D12Resource* linearDepth = nullptr;
         ID3D12Resource* motionVectors = nullptr;
         ID3D12Resource* exposure = nullptr;
+        ID3D12Resource* colorBeforeTransparency = nullptr;
         ID3D12Resource* specularHitDistance = nullptr;
         float jitterX = 0.0f;
         float jitterY = 0.0f;

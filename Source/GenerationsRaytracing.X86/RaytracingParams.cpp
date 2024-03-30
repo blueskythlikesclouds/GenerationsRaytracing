@@ -145,8 +145,7 @@ static void createParameterFile()
             { "Emission", DEBUG_VIEW_EMISSION },
             { "Shadow", DEBUG_VIEW_SHADOW },
             { "GI", DEBUG_VIEW_GI },
-            { "Reflection", DEBUG_VIEW_REFLECTION },
-            { "Refraction", DEBUG_VIEW_REFRACTION } });
+            { "Reflection", DEBUG_VIEW_REFLECTION } });
 
         paramGroup->Flush();
     }
@@ -471,7 +470,6 @@ void RaytracingParams::imguiWindow()
                         ImGui::RadioButton("Shadow", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SHADOW);
                         ImGui::RadioButton("GI", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_GI);
                         ImGui::RadioButton("Reflection", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFLECTION);
-                        ImGui::RadioButton("Refraction", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION);
 
                         ImGui::EndTable();
                     }
