@@ -266,5 +266,8 @@
     <FxCompile Include="SmoothNormalComputeShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="ResolveTransparencyComputeShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
 #ifndef GBUFFER_DATA_H_INCLUDED
 #define GBUFFER_DATA_H_INCLUDED
 
-#define GBUFFER_LAYER_NUM 5
+#define GBUFFER_LAYER_NUM 8
 
 #endif

@@ -59,22 +59,27 @@ float ComputeFresnel(float3 normal, float2 fresnelParam)
     return lerp(fresnelParam.x, 1.0, ComputeFresnel(normal)) * fresnelParam.y;
 }
 
-float3 DecodeNormalMap(Vertex vertex, float2 value)
+float3 DecodeNormalMap(float4 value)
 {
-    float3 normalMap;
-    normalMap.xy = value * 2.0 - 1.0;
-    normalMap.z = sqrt(1.0 - saturate(dot(normalMap.xy, normalMap.xy)));
+    value.x *= value.w;
 
+    float3 normalMap;
+    normalMap.xy = value.xy * 2.0 - 1.0;
+    normalMap.z = sqrt(abs(1.0 - dot(normalMap.xy, normalMap.xy)));
+    return normalMap;
+}
+
+float3 DecodeNormalMap(Vertex vertex, float3 value)
+{
     return NormalizeSafe(
-        vertex.Tangent * normalMap.x -
-        vertex.Binormal * normalMap.y +
-        vertex.Normal * normalMap.z);
+        vertex.Tangent * value.x -
+        vertex.Binormal * value.y +
+        vertex.Normal * value.z);
 }
 
 float3 DecodeNormalMap(Vertex vertex, float4 value)
 {
-    value.x *= value.w;
-    return DecodeNormalMap(vertex, value.xy);
+    return DecodeNormalMap(vertex, DecodeNormalMap(value));
 }
 
 float ComputeFalloff(float3 normal, float3 falloffParam)
@@ -116,11 +121,12 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
     
     gBufferData.Diffuse = decal.rgb * vertex.Color.rgb;
     gBufferData.Alpha = decal.a * vertex.Color.a;
+
+    float3 normal1 = DecodeNormalMap(SampleMaterialTexture2D(material.NormalTexture, vertex, float2(0.0, offset.x)));
+    float3 normal2 = DecodeNormalMap(SampleMaterialTexture2D(material.NormalTexture2, vertex, float2(0.0, offset.y)));
+    float3 normal = (normal1 + normal2) * 0.5;
     
-    float4 normal1 = SampleMaterialTexture2D(material.NormalTexture, vertex, float2(0.0, offset.x));
-    float4 normal2 = SampleMaterialTexture2D(material.NormalTexture2, vertex, float2(0.0, offset.y));
-    
-    gBufferData.Normal = NormalizeSafe(DecodeNormalMap(vertex, normal1) + DecodeNormalMap(vertex, normal2));
+    gBufferData.Normal = NormalizeSafe(DecodeNormalMap(vertex, NormalizeSafe(normal)));
 }
 
 float4 ApplyFurParamTransform(float4 value, float furParam)
@@ -207,7 +213,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 float2 gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).xy;
                 float4 normalMap = SampleMaterialTexture2D(material.NormalTexture, vertex);
 
-                float3 highlightNormal = DecodeNormalMap(vertex, normalMap.xy);
+                float3 highlightNormal = DecodeNormalMap(vertex, float4(normalMap.xy, 0.0, 1.0));
                 float3 lightDirection = NormalizeSafe(vertex.Position - material.SonicEyeHighLightPosition.xyz);
                 float3 halfwayDirection = NormalizeSafe(-WorldRayDirection() + lightDirection);
 
@@ -222,7 +228,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 gBufferData.Specular *= vertex.Color.a;
                 gBufferData.SpecularGloss *= gloss.y;    
                 gBufferData.SpecularLevel *= gloss.y;
-                gBufferData.SpecularFresnel = ComputeFresnel(DecodeNormalMap(vertex, normalMap.zw)) * 0.7 + 0.3;
+                gBufferData.SpecularFresnel = ComputeFresnel(DecodeNormalMap(vertex, float4(normalMap.zw, 0.0, 1.0))) * 0.7 + 0.3;
                 gBufferData.Emission = highlightSpecular * material.SonicEyeHighLightColor.rgb;
 
                 break;
@@ -1098,13 +1104,13 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
 GBufferData LoadGBufferData(uint3 index)
 {
-    float4 gBuffer0 = g_GBuffer0[index];
-    float4 gBuffer1 = g_GBuffer1[index];
-    float4 gBuffer2 = g_GBuffer2[index];
-    float4 gBuffer3 = g_GBuffer3[index];
-    float4 gBuffer4 = g_GBuffer4[index];
-    float4 gBuffer5 = g_GBuffer5[index];
-    float4 gBuffer6 = g_GBuffer6[index];
+    float4 gBuffer0 = g_GBuffer0_SRV[index];
+    float4 gBuffer1 = g_GBuffer1_SRV[index];
+    float4 gBuffer2 = g_GBuffer2_SRV[index];
+    float4 gBuffer3 = g_GBuffer3_SRV[index];
+    float4 gBuffer4 = g_GBuffer4_SRV[index];
+    float4 gBuffer5 = g_GBuffer5_SRV[index];
+    float4 gBuffer6 = g_GBuffer6_SRV[index];
 
     GBufferData gBufferData = (GBufferData) 0;
 

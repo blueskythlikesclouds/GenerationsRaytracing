@@ -33,5 +33,9 @@ public:
 
     void transitionBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
     void uavBarrier(ID3D12Resource* resource);
+
+    void transitionAndUavBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
+    void transitionAndUavBarriers(std::initializer_list<ID3D12Resource*> resources, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
+
     void commitBarriers();
 };

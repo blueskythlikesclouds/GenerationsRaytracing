@@ -110,6 +110,7 @@ protected:
     uint32_t m_width = 0;
     uint32_t m_height = 0;
     uint32_t m_uavId = 0;
+    uint32_t m_srvId = 0;
 
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
@@ -145,6 +146,7 @@ protected:
 
     // Resolve
     ComPtr<ID3D12PipelineState> m_resolvePipeline;
+    ComPtr<ID3D12PipelineState> m_resolveTransparencyPipeline;
 
     // Copy
     ComPtr<ID3D12RootSignature> m_copyTextureRootSignature;

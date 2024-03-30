@@ -5,6 +5,7 @@ FVFVertexShader.h
 FVFPixelShader.h
 PoseComputeShader.h
 ResolveComputeShader.h
+ResolveTransparencyComputeShader.h
 SkyVertexShader.h
 SkyPixelShader.h
 SmoothNormalComputeShader.h

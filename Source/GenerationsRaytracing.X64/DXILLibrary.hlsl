@@ -41,7 +41,7 @@ void PrimaryRayGeneration()
     PrimaryTransparentRayPayload payload1;
     payload1.dDdx = dDdx;
     payload1.dDdy = dDdy;
-    payload1.LayerIndex = payload.T != INF ? 1 : 0;
+    payload1.LayerIndex = 1;
 
     TraceRay(
         g_BVH,
@@ -59,13 +59,26 @@ void PrimaryRayGeneration()
 [shader("miss")]
 void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 {
+    TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
+
+    GBufferData gBufferData = (GBufferData) 0;
+    gBufferData.Position = WorldRayOrigin() + WorldRayDirection() * g_CameraNearFarAspect.y;
+    gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
+    gBufferData.SpecularGloss = 1.0;
+    gBufferData.Normal = -WorldRayDirection();
+
+    if (g_UseSkyTexture)
+        gBufferData.Emission = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+    else
+        gBufferData.Emission = g_BackgroundColor;
+
+    StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
+
     g_Depth[DispatchRaysIndex().xy] = 1.0;
 
-    float3 position = WorldRayOrigin() + WorldRayDirection() * g_CameraNearFarAspect.y;
-
     g_MotionVectors[DispatchRaysIndex().xy] =
-        ComputePixelPosition(position, g_MtxPrevView, g_MtxPrevProjection) -
-        ComputePixelPosition(position, g_MtxView, g_MtxProjection);
+        ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
+        ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
 
     g_LinearDepth[DispatchRaysIndex().xy] = g_CameraNearFarAspect.y;
 
@@ -81,7 +94,7 @@ void PrimaryTransparentMiss(inout PrimaryTransparentRayPayload payload : SV_RayP
 [shader("raygeneration")]
 void ShadowRayGeneration()
 {
-    uint layerNum = g_LayerNum[DispatchRaysIndex().xy];
+    uint layerNum = min(GBUFFER_LAYER_NUM, g_LayerNum_SRV[DispatchRaysIndex().xy]);
     for (uint i = 0; i < layerNum; i++)
     {
         GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, i));
@@ -111,7 +124,7 @@ void ShadowRayGeneration()
             // Temporal reuse
             if (g_CurrentFrame > 0)
             {
-                int2 prevIndex = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectors[DispatchRaysIndex().xy];
+                int2 prevIndex = (float2) DispatchRaysIndex().xy - g_PixelJitter + 0.5 + g_MotionVectors_SRV[DispatchRaysIndex().xy];
 
                 // TODO: Check for previous normal and depth
 
@@ -143,7 +156,7 @@ void ShadowRayGeneration()
 [shader("raygeneration")]
 void GIRayGeneration()
 {
-    uint layerNum = g_LayerNum[DispatchRaysIndex().xy];
+    uint layerNum = min(GBUFFER_LAYER_NUM, g_LayerNum_SRV[DispatchRaysIndex().xy]);
     for (uint i = 0; i < layerNum; i++)
     {
         GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, i));
@@ -182,7 +195,7 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 [shader("raygeneration")]
 void ReflectionRayGeneration()
 {
-    uint layerNum = g_LayerNum[DispatchRaysIndex().xy];
+    uint layerNum = min(GBUFFER_LAYER_NUM, g_LayerNum_SRV[DispatchRaysIndex().xy]);
     for (uint i = 0; i < layerNum; i++)
     {
         GBufferData gBufferData = LoadGBufferData(uint3(DispatchRaysIndex().xy, i));

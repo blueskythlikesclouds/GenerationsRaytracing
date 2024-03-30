@@ -76,6 +76,20 @@ void CommandList::uavBarrier(ID3D12Resource* resource)
     }
 }
 
+void CommandList::transitionAndUavBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial,
+    D3D12_RESOURCE_STATES stateAfter)
+{
+    transitionBarrier(resource, stateInitial, stateAfter);
+    uavBarrier(resource);
+}
+
+void CommandList::transitionAndUavBarriers(std::initializer_list<ID3D12Resource*> resources,
+    D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter)
+{
+    for (const auto resource : resources)
+        transitionAndUavBarrier(resource, stateInitial, stateAfter);
+}
+
 void CommandList::commitBarriers()
 {
     for (auto& [resource, states] : m_resourceStates)
