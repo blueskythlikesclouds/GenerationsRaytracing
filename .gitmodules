@@ -25,3 +25,6 @@
 [submodule "Dependencies/imgui"]
 	path = Dependencies/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "Dependencies/ThreadGroupIDSwizzling"]
+	path = Dependencies/ThreadGroupIDSwizzling
+	url = https://github.com/LouisBavoil/ThreadGroupIDSwizzling.git
