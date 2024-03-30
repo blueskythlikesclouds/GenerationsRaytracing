@@ -2,22 +2,30 @@
 #include "GeometryShading.hlsli"
 #include "RootSignature.hlsli"
 
+struct Layer
+{
+    float4 Color;
+    float3 DiffuseAlbedo;
+    float3 SpecularAlbedo;
+    float Distance;
+    bool Additive;
+};
+
 [numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     if (any(dispatchThreadId.xy >= g_InternalResolution))
         return;
 
-    float3 composite = g_ColorBeforeTransparency_SRV[dispatchThreadId.xy];
+    float3 colorComposite = g_ColorBeforeTransparency_SRV[dispatchThreadId.xy];
+    float3 diffuseAlbedoComposite = g_DiffuseAlbedo[dispatchThreadId.xy];
+    float3 specularAlbedoComposite = g_SpecularAlbedo[dispatchThreadId.xy];
 
     uint layerNum = min(GBUFFER_LAYER_NUM, g_LayerNum_SRV[dispatchThreadId.xy]);
     if (layerNum > 1)
     {
         --layerNum;
-
-        float4 color[GBUFFER_LAYER_NUM - 1];
-        float distance[GBUFFER_LAYER_NUM - 1];
-        bool additive[GBUFFER_LAYER_NUM - 1];
+        Layer layers[GBUFFER_LAYER_NUM - 1];
 
         for (uint i = 0; i < layerNum; i++)
         {
@@ -27,9 +35,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             shadingParams.EyePosition = g_EyePosition.xyz;
             shadingParams.EyeDirection = g_EyePosition.xyz - gBufferData.Position;
 
-            distance[i] = length(shadingParams.EyeDirection);
-            shadingParams.EyeDirection /= distance[i];
-            additive[i] = (gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE) != 0;
+            layers[i] = (Layer) 0;
+            layers[i].Distance = length(shadingParams.EyeDirection);
+            shadingParams.EyeDirection /= layers[i].Distance;
+
+            layers[i].Additive = (gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE) != 0;
 
             if (!(gBufferData.Flags & (GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
                 shadingParams.Shadow = g_Shadow_SRV[uint3(dispatchThreadId.xy, i + 1)];
@@ -37,10 +47,16 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                 shadingParams.Shadow = 1.0;
 
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
+            {
                 shadingParams.GlobalIllumination = g_GlobalIllumination_SRV[uint3(dispatchThreadId.xy, i + 1)];
+                layers[i].DiffuseAlbedo = ComputeGI(gBufferData, 1.0);
+            }
 
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
+            {
                 shadingParams.Reflection = g_Reflection_SRV[uint3(dispatchThreadId.xy, i + 1)];
+                layers[i].SpecularAlbedo = ComputeReflection(gBufferData, 1.0);
+            }
 
             float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
 
@@ -53,7 +69,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
                 shadingParams.Refraction = g_ColorBeforeTransparency_SRV.SampleLevel(g_SamplerState, texCoord, 0);
 
                 if (ComputeDepth(gBufferData.Position, g_MtxView, g_MtxProjection) >= g_Depth_SRV[texCoord * g_InternalResolution])
-                    shadingParams.Refraction = composite;
+                    shadingParams.Refraction = colorComposite;
 
                 float3 viewPositionToCompare = mul(
                     float4(LoadGBufferData(uint3(dispatchThreadId.xy, 0)).Position, 1.0), g_MtxView).xyz;
@@ -62,43 +78,50 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             }
 
             if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
-                color[i].rgb = ComputeWaterShading(gBufferData, shadingParams);
+                layers[i].Color.rgb = ComputeWaterShading(gBufferData, shadingParams);
             else
-                color[i].rgb = ComputeGeometryShading(gBufferData, shadingParams);
+                layers[i].Color.rgb = ComputeGeometryShading(gBufferData, shadingParams);
 
             float2 lightScattering = ComputeLightScattering(gBufferData.Position, viewPosition);
 
             if (all(and(!isnan(lightScattering), !isinf(lightScattering))))
-                color[i].rgb = color[i].rgb * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+                layers[i].Color.rgb = layers[i].Color.rgb * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
 
-            color[i].a = gBufferData.Alpha;
+            layers[i].Color.a = gBufferData.Alpha;
         }
 
         for (uint j = 0; j < layerNum - 1; j++)
         {
             for (uint k = 0; k < layerNum - j - 1; k++)
             {
-                if (distance[k] < distance[k + 1])
+                if (layers[k].Distance < layers[k + 1].Distance)
                 {
-                    float4 tempColor = color[k + 1];
-                    float tempDistance = distance[k + 1];
-
-                    color[k + 1] = color[k];
-                    distance[k + 1] = distance[k];
-                    color[k] = tempColor;
-                    distance[k] = tempDistance;
+                    Layer temp = layers[k + 1];
+                    layers[k + 1] = layers[k];
+                    layers[k] = temp;
                 }
             }
         }
 
         for (uint i = 0; i < layerNum; i++)
         {
-            if (!additive[i])
-                composite *= 1.0 - color[i].a;
+            Layer layer = layers[i];
 
-            composite += color[i].rgb * color[i].a;
+            if (!layer.Additive)
+            {
+                colorComposite *= 1.0 - layer.Color.a;
+                diffuseAlbedoComposite *= 1.0 - layer.Color.a;
+                specularAlbedoComposite *= 1.0 - layer.Color.a;
+            }
+
+            colorComposite += layer.Color.rgb * layer.Color.a;
+            diffuseAlbedoComposite += layer.DiffuseAlbedo * layer.Color.a;
+            specularAlbedoComposite += layer.SpecularAlbedo * layer.Color.a;
         }
+
+        g_DiffuseAlbedo[dispatchThreadId.xy] = diffuseAlbedoComposite;
+        g_SpecularAlbedo[dispatchThreadId.xy] = specularAlbedoComposite;
     }
 
-    g_Color[dispatchThreadId.xy] = float4(composite, 1.0);
+    g_Color[dispatchThreadId.xy] = float4(colorComposite, 1.0);
 }

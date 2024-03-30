@@ -557,6 +557,9 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
     getGraphicsCommandList().transitionAndUavBarrier(m_colorBeforeTransparencyTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+    getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
+    getGraphicsCommandList().uavBarrier(m_specularAlbedoTexture->GetResource());
+
     getGraphicsCommandList().commitBarriers();
 
     PIX_END_EVENT();
