@@ -157,10 +157,9 @@ struct [raypayload] SecondaryRayPayload
     float NormalZ : read(caller) : write(closesthit);
 };
 
-float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool storeHitDistance)
+float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool storeHitDistance, float3 throughput = 1.0)
 {
     float3 radiance = 0.0;
-    float3 throughput = 1.0;
     float4 random = GetBlueNoise();
 
     [unroll]

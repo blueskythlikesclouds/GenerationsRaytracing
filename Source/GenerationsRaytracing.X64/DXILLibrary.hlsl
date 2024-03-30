@@ -223,11 +223,12 @@ void ReflectionRayGeneration()
                 pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
             }
 
-            g_Reflection[uint3(DispatchRaysIndex().xy, i)] = pdf * TracePath(
+            g_Reflection[uint3(DispatchRaysIndex().xy, i)] = TracePath(
                 gBufferData.Position,
                 rayDirection,
                 MISS_SECONDARY,
-                true);
+                true,
+                pdf);
         }
     }
 }
