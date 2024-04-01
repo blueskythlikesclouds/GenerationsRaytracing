@@ -138,8 +138,14 @@ StructuredBuffer<Material> g_Materials : register(t2);
 StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t3);
 StructuredBuffer<LocalLight> g_LocalLights : register(t4);
 
+#define DISPATCH_RAYS_DESC_BYTE_SIZE    0x68
+#define DISPATCH_RAYS_DESC_WIDTH_OFFSET 0x58
+
+RWByteAddressBuffer g_DispatchRaysDesc : register(u0);
+RWByteAddressBuffer g_DispatchRaysIndex : register(u1);
+
 #define DEFINE_TEXTURE(type, name, reg) \
-    RW##type name : register(u##reg); \
+    RW##type name : register(u##reg, space1); \
     type name##_SRV : register(t##reg, space1)
 
 DEFINE_TEXTURE(Texture2D<float4>, g_Color, 0);

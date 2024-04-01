@@ -34,7 +34,7 @@ void Device::createBuffer(
 }
 
 void Device::writeBuffer(
-    const uint8_t* memory, 
+    const void* memory, 
     uint32_t offset, 
     uint32_t dataSize, 
     ID3D12Resource* dstResource,
@@ -736,9 +736,6 @@ void Device::procMsgCreateTexture()
 
     D3D12MA::ALLOCATION_DESC allocDesc{};
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-
-    if ((message.usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0)
-        allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
     D3D12_RESOURCE_DESC resourceDesc;
     resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;

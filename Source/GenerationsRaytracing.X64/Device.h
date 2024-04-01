@@ -142,7 +142,7 @@ protected:
         ComPtr<D3D12MA::Allocation>& allocation) const;
 
     void writeBuffer(
-        const uint8_t* memory,
+        const void* memory,
         uint32_t offset,
         uint32_t dataSize,
         ID3D12Resource* dstResource,

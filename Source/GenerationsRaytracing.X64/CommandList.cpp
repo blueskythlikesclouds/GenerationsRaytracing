@@ -40,7 +40,13 @@ void CommandList::close()
     if (m_isOpen)
     {
         for (auto& [resource, states] : m_resourceStates)
-            states.stateAfter = states.stateInitial;
+        {
+            if (states.stateInitial != D3D12_RESOURCE_STATE_COMMON ||
+                states.stateBefore == D3D12_RESOURCE_STATE_RENDER_TARGET)
+            {
+                states.stateAfter = states.stateInitial;
+            }
+        }
 
         commitBarriers();
         m_resourceStates.clear();
@@ -79,8 +85,8 @@ void CommandList::uavBarrier(ID3D12Resource* resource)
 void CommandList::transitionAndUavBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial,
     D3D12_RESOURCE_STATES stateAfter)
 {
-    transitionBarrier(resource, stateInitial, stateAfter);
     uavBarrier(resource);
+    transitionBarrier(resource, stateInitial, stateAfter);
 }
 
 void CommandList::transitionAndUavBarriers(std::initializer_list<ID3D12Resource*> resources,

@@ -9,6 +9,7 @@ struct [raypayload] PrimaryRayPayload
     float3 dDdx : read(closesthit) : write(caller);
     float3 dDdy : read(closesthit) : write(caller);
     float T : read(caller) : write(closesthit, miss);
+    uint RayGenerationFlags : read(caller) : write(closesthit, miss);
 };
 
 void PrimaryAnyHit(uint shaderType,
@@ -45,13 +46,26 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
     g_LinearDepth[DispatchRaysIndex().xy] = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
 
     payload.T = RayTCurrent();
+    
+    uint rayGenerationFlags = 0;
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
+        rayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_SHADOW - 1));
+
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
+        rayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_GI - 1));
+
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
+        rayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_REFLECTION - 1));
+
+    payload.RayGenerationFlags = rayGenerationFlags;
 }
 
 struct [raypayload] PrimaryTransparentRayPayload
 {
     float3 dDdx : read(anyhit) : write(caller);
     float3 dDdy : read(anyhit) : write(caller);
-    uint LayerIndex : read(anyhit, caller) : write(caller, anyhit);
+    uint LayerIndex : read(caller, anyhit) : write(caller, anyhit);
+    uint RayGenerationFlags : read(caller, anyhit) : write(caller, anyhit);
 };
 
 void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
@@ -66,6 +80,15 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     if (gBufferData.Alpha > 0.0)
     {
         StoreGBufferData(uint3(DispatchRaysIndex().xy, payload.LayerIndex), gBufferData);
+
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
+            payload.RayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_SHADOW - 1) + payload.LayerIndex);
+
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
+            payload.RayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_GI - 1) + payload.LayerIndex);
+
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
+            payload.RayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_REFLECTION - 1) + payload.LayerIndex);
 
         ++payload.LayerIndex;
         if (payload.LayerIndex == GBUFFER_LAYER_NUM)
@@ -157,10 +180,9 @@ struct [raypayload] SecondaryRayPayload
     float NormalZ : read(caller) : write(closesthit);
 };
 
-float3 TracePath(float3 position, float3 direction, uint missShaderIndex, bool storeHitDistance, float3 throughput = 1.0)
+float3 TracePath(float3 position, float3 direction, float4 random, uint missShaderIndex, bool storeHitDistance, float3 throughput = 1.0)
 {
     float3 radiance = 0.0;
-    float4 random = GetBlueNoise();
 
     [unroll]
     for (uint i = 0; i < 2; i++)

@@ -80,6 +80,8 @@ protected:
     std::vector<uint8_t> m_missShaderTable;
     std::vector<uint8_t> m_hitGroupShaderTable;
     GlobalsRT m_globalsRT;
+    ComPtr<ID3D12CommandSignature> m_commandSignature;
+    ComPtr<D3D12MA::Allocation> m_dispatchRaysDescBuffers[NUM_FRAMES];
 
     // Accel Struct
     ComPtr<D3D12MA::Allocation> m_scratchBuffers[NUM_FRAMES];
@@ -109,6 +111,9 @@ protected:
     // Textures
     uint32_t m_width = 0;
     uint32_t m_height = 0;
+
+    ComPtr<D3D12MA::Allocation> m_dispatchRaysIndexBuffer;
+
     uint32_t m_uavId = 0;
     uint32_t m_srvId = 0;
 

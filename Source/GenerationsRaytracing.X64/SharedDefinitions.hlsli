@@ -11,11 +11,6 @@ float4 GetBlueNoise(uint2 index)
     return texture.Load(int4((index + g_BlueNoiseOffset.xy) % 64, g_BlueNoiseOffset.z, 0));
 }
 
-float4 GetBlueNoise()
-{
-    return GetBlueNoise(DispatchRaysIndex().xy);
-}
-
 float GetExposure()
 {
     Texture2D texture = ResourceDescriptorHeap[g_AdaptionLuminanceTextureId];
