@@ -66,6 +66,7 @@ void PrimaryRayGeneration()
 
     g_LayerNum[DispatchRaysIndex().xy] = payload1.LayerIndex;
 
+    [unroll]
     for (uint i = 0; i < RAY_GENERATION_NUM - 1; i++)
     {
         uint rayGenerationFlags = (payload1.RayGenerationFlags >> (i * GBUFFER_LAYER_NUM)) & ((1 << GBUFFER_LAYER_NUM) - 1);
@@ -82,6 +83,7 @@ void PrimaryRayGeneration()
         indexOffset += WavePrefixSum(layerNum);
         indexOffset += i * DispatchRaysDimensions().x * DispatchRaysDimensions().y * GBUFFER_LAYER_NUM;
 
+        [unroll]
         for (uint j = 0; j < GBUFFER_LAYER_NUM; j++)
         {
             if (rayGenerationFlags & (1u << j))
@@ -138,6 +140,9 @@ void ShadowRayGeneration()
 
     GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
 
+    g_Shadow[dispatchRaysIndex] = TraceShadow(gBufferData.Position, 
+        -mrgGlobalLight_Direction.xyz, GetBlueNoise(dispatchRaysIndex.xy).xy, RAY_FLAG_NONE, 0);
+
     if (dispatchRaysIndex.z == 0 && g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
     {
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
@@ -184,8 +189,6 @@ void ShadowRayGeneration()
     
         g_Reservoir[dispatchRaysIndex.xy] = StoreReservoir(reservoir);
     }
-
-    g_Shadow[dispatchRaysIndex] = TraceShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz, GetBlueNoise(dispatchRaysIndex.xy).xy, RAY_FLAG_NONE, 0);
 }
 
 [shader("raygeneration")]
@@ -203,8 +206,8 @@ void GIRayGeneration()
         TangentToWorld(gBufferData.Normal, GetCosWeightedSample(random.xy)),
         random,
         MISS_GI,
+        dispatchRaysIndex.xy,
         false,
-        dispatchRaysIndex,
         1.0);
 }
 
@@ -261,8 +264,8 @@ void ReflectionRayGeneration()
         rayDirection,
         random,
         MISS_SECONDARY,
+        dispatchRaysIndex.xy,
         dispatchRaysIndex.z == 0,
-        dispatchRaysIndex,
         pdf);
 }
 
