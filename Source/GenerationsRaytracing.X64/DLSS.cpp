@@ -14,34 +14,14 @@ NVSDK_NGX_PerfQuality_Value DLSS::getPerfQualityValue(QualityMode qualityMode)
     return NVSDK_NGX_PerfQuality_Value_DLAA;
 }
 
-DLSS::DLSS(const Device& device)
+DLSS::DLSS(const NGX& ngx) : m_ngx(ngx)
 {
-    if (NVSDK_NGX_FAILED(NVSDK_NGX_D3D12_Init(0x205452736E654720, L".", device.getUnderlyingDevice())))
-        return;
-
-    m_device = device.getUnderlyingDevice();
-
-    if (NVSDK_NGX_FAILED(NVSDK_NGX_D3D12_GetCapabilityParameters(&m_parameters)))
-        return;
-
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
-    NVSDK_NGX_Parameter_SetUI(m_parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, NVSDK_NGX_DLSS_Hint_Render_Preset_C);
 }
 
 DLSS::~DLSS()
 {
     if (m_feature != nullptr)
         THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(m_feature));
-
-    if (m_parameters != nullptr)
-        THROW_IF_FAILED(NVSDK_NGX_D3D12_DestroyParameters(m_parameters));
-
-    if (m_device != nullptr)
-        THROW_IF_FAILED(NVSDK_NGX_D3D12_Shutdown1(m_device.Get()));
 }
 
 void DLSS::init(const InitArgs& args)
@@ -52,7 +32,7 @@ void DLSS::init(const InitArgs& args)
     uint32_t _;
     
     THROW_IF_FAILED(NGX_DLSS_GET_OPTIMAL_SETTINGS(
-        m_parameters,
+        m_ngx.getParameters(),
         args.width,
         args.height,
         params.Feature.InPerfQualityValue,
@@ -82,7 +62,7 @@ void DLSS::init(const InitArgs& args)
         1,
         1,
         &m_feature,
-        m_parameters,
+        m_ngx.getParameters(),
         &params));
 }
 
@@ -105,7 +85,7 @@ void DLSS::dispatch(const DispatchArgs& args)
     THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSS_EXT(
         args.device.getUnderlyingGraphicsCommandList(),
         m_feature, 
-        m_parameters, 
+        m_ngx.getParameters(),
         &params));
 }
 
@@ -114,19 +94,16 @@ UpscalerType DLSS::getType()
     return UpscalerType::DLSS;
 }
 
-bool DLSS::valid() const
+bool DLSS::valid(const NGX& ngx)
 {
-    if (m_parameters == nullptr)
-        return false;
-
     int32_t needsUpdatedDriver;
-    NVSDK_NGX_Result result = m_parameters->Get(NVSDK_NGX_Parameter_SuperSampling_NeedsUpdatedDriver, &needsUpdatedDriver);
+    NVSDK_NGX_Result result = ngx.getParameters()->Get(NVSDK_NGX_Parameter_SuperSampling_NeedsUpdatedDriver, &needsUpdatedDriver);
 
     if (NVSDK_NGX_SUCCEED(result) && needsUpdatedDriver != 0)
         return false;
 
     int32_t available;
-    result = m_parameters->Get(NVSDK_NGX_Parameter_SuperSampling_Available, &available);
+    result = ngx.getParameters()->Get(NVSDK_NGX_Parameter_SuperSampling_Available, &available);
 
     if (NVSDK_NGX_FAILED(result) || available == 0)
         return false;

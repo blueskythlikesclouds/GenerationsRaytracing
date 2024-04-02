@@ -5,11 +5,12 @@
 class DLSSD : public DLSS
 {
 public:
-    DLSSD(const Device& device);
+    DLSSD(const NGX& ngx);
 
     void init(const InitArgs& args) override;
     void dispatch(const DispatchArgs& args) override;
 
     UpscalerType getType() override;
-    bool valid() const override;
+
+    static bool valid(const NGX& ngx);
 };

@@ -63,6 +63,9 @@
     <ClCompile Include="DLSSD.cpp">
       <Filter>Upscaler</Filter>
     </ClCompile>
+    <ClCompile Include="NGX.cpp">
+      <Filter>Upscaler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -188,6 +191,9 @@
     </ClInclude>
     <ClInclude Include="GBufferData.h">
       <Filter>Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="NGX.h">
+      <Filter>Upscaler</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

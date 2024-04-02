@@ -904,26 +904,33 @@ void RaytracingDevice::procMsgTraceRays()
 
         if (upscalerMismatch)
         {
-            std::unique_ptr<DLSS> upscaler;
-
-            if (message.upscaler == static_cast<uint32_t>(UpscalerType::DLSS) + 1)
-                upscaler = std::make_unique<DLSS>(*this);
-
-            else if (message.upscaler == static_cast<uint32_t>(UpscalerType::DLSSD) + 1)
-                upscaler = std::make_unique<DLSSD>(*this);
-
-            m_upscaler = nullptr;
-
-            if (upscaler != nullptr)
+            if (m_ngx == nullptr && 
+                ((message.upscaler == static_cast<uint32_t>(UpscalerType::DLSS) + 1) || 
+                (message.upscaler == static_cast<uint32_t>(UpscalerType::DLSSD) + 1)))
             {
-                if (upscaler->valid())
-                    m_upscaler = std::move(upscaler);
-                else
-                    m_upscalerOverride[message.upscaler - 1] = UpscalerType::FSR2;
+                m_ngx = std::make_unique<NGX>(*this);
             }
 
-            if (m_upscaler == nullptr)
+            std::unique_ptr<DLSS> upscaler;
+
+            if (m_ngx != nullptr && m_ngx->valid())
+            {
+                if ((message.upscaler == static_cast<uint32_t>(UpscalerType::DLSS) + 1) && DLSS::valid(*m_ngx))
+                    upscaler = std::make_unique<DLSS>(*m_ngx);
+
+                else if ((message.upscaler == static_cast<uint32_t>(UpscalerType::DLSSD) + 1) && DLSSD::valid(*m_ngx))
+                    upscaler = std::make_unique<DLSSD>(*m_ngx);
+            }
+
+            if (upscaler == nullptr)
+            {
                 m_upscaler = std::make_unique<FSR2>(*this);
+                m_upscalerOverride[message.upscaler - 1] = UpscalerType::FSR2;
+            }
+            else
+            {
+                m_upscaler = std::move(upscaler);
+            }
         }
 
         if (qualityModeMismatch)
@@ -1718,13 +1725,17 @@ RaytracingDevice::RaytracingDevice()
         if (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD)
         {
             std::unique_ptr<DLSS> upscaler;
+            auto ngx = std::make_unique<NGX>(*this);
 
-            if (upscalerType == UpscalerType::DLSSD)
-                upscaler = std::make_unique<DLSSD>(*this);
-            else
-                upscaler = std::make_unique<DLSS>(*this);
+            if (ngx->valid())
+            {
+                if (upscalerType == UpscalerType::DLSSD && DLSSD::valid(*ngx))
+                    upscaler = std::make_unique<DLSSD>(*ngx);
+                else if (upscalerType == UpscalerType::DLSS && DLSS::valid(*ngx))
+                    upscaler = std::make_unique<DLSS>(*ngx);
+            }
 
-            if (!upscaler->valid())
+            if (upscaler == nullptr)
             {
                 MessageBox(nullptr,
                     TEXT("An NVIDIA GPU with up to date drivers is required for DLSS. FSR2 will be used instead as a fallback."),
@@ -1736,6 +1747,7 @@ RaytracingDevice::RaytracingDevice()
             else
             {
                 m_upscaler = std::move(upscaler);
+                m_ngx = std::move(ngx);
             }
         }
 

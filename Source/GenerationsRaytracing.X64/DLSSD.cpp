@@ -1,7 +1,7 @@
 #include "DLSSD.h"
 #include "Device.h"
 
-DLSSD::DLSSD(const Device& device) : DLSS(device)
+DLSSD::DLSSD(const NGX& ngx) : DLSS(ngx)
 {
 }
 
@@ -13,7 +13,7 @@ void DLSSD::init(const InitArgs& args)
     uint32_t _;
     
     THROW_IF_FAILED(NGX_DLSSD_GET_OPTIMAL_SETTINGS(
-        m_parameters,
+        m_ngx.getParameters(),
         args.width,
         args.height,
         params.InPerfQualityValue,
@@ -45,7 +45,7 @@ void DLSSD::init(const InitArgs& args)
         1,
         1,
         &m_feature,
-        m_parameters,
+        m_ngx.getParameters(),
         &params));
 }
 
@@ -75,7 +75,7 @@ void DLSSD::dispatch(const DispatchArgs& args)
     THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSSD_EXT(
         args.device.getUnderlyingGraphicsCommandList(),
         m_feature, 
-        m_parameters, 
+        m_ngx.getParameters(),
         &params));
 }
 
@@ -84,19 +84,16 @@ UpscalerType DLSSD::getType()
     return UpscalerType::DLSSD;
 }
 
-bool DLSSD::valid() const
+bool DLSSD::valid(const NGX& ngx)
 {
-    if (m_parameters == nullptr)
-        return false;
-
     int32_t needsUpdatedDriver;
-    NVSDK_NGX_Result result = m_parameters->Get(NVSDK_NGX_Parameter_SuperSamplingDenoising_NeedsUpdatedDriver, &needsUpdatedDriver);
+    NVSDK_NGX_Result result = ngx.getParameters()->Get(NVSDK_NGX_Parameter_SuperSamplingDenoising_NeedsUpdatedDriver, &needsUpdatedDriver);
 
     if (NVSDK_NGX_SUCCEED(result) && needsUpdatedDriver != 0)
         return false;
 
     int32_t available;
-    result = m_parameters->Get(NVSDK_NGX_Parameter_SuperSamplingDenoising_Available, &available);
+    result = ngx.getParameters()->Get(NVSDK_NGX_Parameter_SuperSamplingDenoising_Available, &available);
 
     if (NVSDK_NGX_FAILED(result) || available == 0)
         return false;
