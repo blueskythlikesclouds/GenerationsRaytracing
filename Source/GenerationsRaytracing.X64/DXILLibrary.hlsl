@@ -203,7 +203,9 @@ void GIRayGeneration()
         TangentToWorld(gBufferData.Normal, GetCosWeightedSample(random.xy)),
         random,
         MISS_GI,
-        false);
+        false,
+        dispatchRaysIndex,
+        1.0);
 }
 
 [shader("miss")]
@@ -259,7 +261,8 @@ void ReflectionRayGeneration()
         rayDirection,
         random,
         MISS_SECONDARY,
-        true,
+        dispatchRaysIndex.z == 0,
+        dispatchRaysIndex,
         pdf);
 }
 

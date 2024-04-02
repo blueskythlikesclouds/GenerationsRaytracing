@@ -180,7 +180,7 @@ struct [raypayload] SecondaryRayPayload
     float NormalZ : read(caller) : write(closesthit);
 };
 
-float3 TracePath(float3 position, float3 direction, float4 random, uint missShaderIndex, bool storeHitDistance, float3 throughput = 1.0)
+float3 TracePath(float3 position, float3 direction, float4 random, uint missShaderIndex, uint2 dispatchRaysIndex, bool storeHitDistance, float3 throughput)
 {
     float3 radiance = 0.0;
 
@@ -241,7 +241,7 @@ float3 TracePath(float3 position, float3 direction, float4 random, uint missShad
         }
 
         if (storeHitDistance && i == 0)
-            g_SpecularHitDistance[DispatchRaysIndex().xy] = terminatePath ? 0.0 : distance(position, payload.Position);
+            g_SpecularHitDistance[dispatchRaysIndex] = terminatePath ? 0.0 : distance(position, payload.Position);
 
         radiance += throughput * color;
 
