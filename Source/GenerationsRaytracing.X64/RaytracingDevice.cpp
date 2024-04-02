@@ -1030,19 +1030,27 @@ void RaytracingDevice::procMsgTraceRays()
     getGraphicsCommandList().transitionAndUavBarrier(m_dispatchRaysDescBuffers[m_frame]->GetResource(), 
         D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
-    getGraphicsCommandList().uavBarrier(m_dispatchRaysIndexBuffer->GetResource());
+    // There is currently a bug on NVIDIA where transitioning
+    // RGBA16_FLOAT textures with more than 512x512 pixels in one
+    // slice causes crash when calling ExecuteIndirect, so we
+    // need to keep doing UAV loads for these geometry buffers in particular.
+
+    getGraphicsCommandList().uavBarriers(
+        {
+            m_dispatchRaysIndexBuffer->GetResource(),
+            m_gBufferTexture1->GetResource(),
+            m_gBufferTexture2->GetResource(),
+            m_gBufferTexture3->GetResource(),
+            m_gBufferTexture5->GetResource(),
+            m_gBufferTexture6->GetResource()
+        });
 
     getGraphicsCommandList().transitionAndUavBarriers(
         {
             m_motionVectorsTexture->GetResource(),
             m_layerNumTexture->GetResource(),
             m_gBufferTexture0->GetResource(),
-            m_gBufferTexture1->GetResource(),
-            m_gBufferTexture2->GetResource(),
-            m_gBufferTexture3->GetResource(),
             m_gBufferTexture4->GetResource(),
-            m_gBufferTexture5->GetResource(),
-            m_gBufferTexture6->GetResource()
         }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     getGraphicsCommandList().commitBarriers();

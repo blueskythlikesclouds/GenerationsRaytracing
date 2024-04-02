@@ -1105,12 +1105,12 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 GBufferData LoadGBufferData(uint3 index)
 {
     float4 gBuffer0 = g_GBuffer0_SRV[index];
-    float4 gBuffer1 = g_GBuffer1_SRV[index];
-    float4 gBuffer2 = g_GBuffer2_SRV[index];
-    float4 gBuffer3 = g_GBuffer3_SRV[index];
+    float4 gBuffer1 = g_GBuffer1[index];
+    float4 gBuffer2 = g_GBuffer2[index];
+    float4 gBuffer3 = g_GBuffer3[index];
     float4 gBuffer4 = g_GBuffer4_SRV[index];
-    float4 gBuffer5 = g_GBuffer5_SRV[index];
-    float4 gBuffer6 = g_GBuffer6_SRV[index];
+    float4 gBuffer5 = g_GBuffer5[index];
+    float4 gBuffer6 = g_GBuffer6[index];
 
     GBufferData gBufferData = (GBufferData) 0;
 

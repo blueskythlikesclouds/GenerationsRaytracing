@@ -32,7 +32,10 @@ public:
     void close();
 
     void transitionBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
+    void transitionBarriers(std::initializer_list<ID3D12Resource*> resources, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
+
     void uavBarrier(ID3D12Resource* resource);
+    void uavBarriers(std::initializer_list<ID3D12Resource*> resources);
 
     void transitionAndUavBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);
     void transitionAndUavBarriers(std::initializer_list<ID3D12Resource*> resources, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter);

@@ -58,7 +58,8 @@ void CommandList::close()
     }
 }
 
-void CommandList::transitionBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter)
+void CommandList::transitionBarrier(ID3D12Resource* resource, 
+    D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter)
 {
     const auto result = m_resourceStates.find(resource);
 
@@ -73,6 +74,19 @@ void CommandList::transitionBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STA
     }
 }
 
+void CommandList::transitionBarriers(std::initializer_list<ID3D12Resource*> resources,
+    D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter)
+{
+    for (const auto resource : resources)
+        transitionBarrier(resource, stateInitial, stateAfter);
+}
+
+void CommandList::uavBarriers(std::initializer_list<ID3D12Resource*> resources)
+{
+    for (const auto resource : resources)
+        uavBarrier(resource);
+}
+
 void CommandList::uavBarrier(ID3D12Resource* resource)
 {
     if (!m_uavResources.contains(resource))
@@ -82,8 +96,8 @@ void CommandList::uavBarrier(ID3D12Resource* resource)
     }
 }
 
-void CommandList::transitionAndUavBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateInitial,
-    D3D12_RESOURCE_STATES stateAfter)
+void CommandList::transitionAndUavBarrier(ID3D12Resource* resource, 
+    D3D12_RESOURCE_STATES stateInitial, D3D12_RESOURCE_STATES stateAfter)
 {
     uavBarrier(resource);
     transitionBarrier(resource, stateInitial, stateAfter);
