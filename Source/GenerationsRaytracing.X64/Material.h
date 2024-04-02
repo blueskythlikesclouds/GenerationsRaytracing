@@ -32,8 +32,11 @@ struct Material
     float chrEmissionParam[4];
     float transColorMask[3];
     float emissionParam[4];
-    float offsetParam[2];
-    float waterParam[2];
+    float offsetParam[4];
+    float waterParam[4];
     float furParam[4];
     float furParam2[4];
+    float chrEyeFHL1[4];
+    float chrEyeFHL2[4];
+    float chrEyeFHL3[4];
 };

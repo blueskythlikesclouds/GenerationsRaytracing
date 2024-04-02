@@ -75,11 +75,6 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
 
                 if (ComputeDepth(gBufferData.Position, g_MtxView, g_MtxProjection) >= g_Depth_SRV[texCoord * g_InternalResolution])
                     shadingParams.Refraction = colorComposite;
-
-                float3 viewPositionToCompare = mul(
-                    float4(LoadGBufferData(uint3(dispatchThreadId, 0)).Position, 1.0), g_MtxView).xyz;
-
-                gBufferData.Alpha *= saturate((viewPosition.z - viewPositionToCompare.z) * 0.5 / 8.0);
             }
 
             if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)

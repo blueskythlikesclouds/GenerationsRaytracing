@@ -35,10 +35,13 @@ struct Material
     float4 ChrEmissionParam;
     float3 TransColorMask;
     float4 EmissionParam;
-    float2 OffsetParam;
-    float2 WaterParam;
+    float4 OffsetParam;
+    float4 WaterParam;
     float4 FurParam;
     float4 FurParam2;
+    float4 ChrEyeFHL1;
+    float4 ChrEyeFHL2;
+    float4 ChrEyeFHL3;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord, uint level)

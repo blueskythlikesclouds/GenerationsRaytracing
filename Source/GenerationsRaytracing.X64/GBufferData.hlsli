@@ -239,13 +239,10 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 float3 direction = NormalizeSafe(mul(float4(material.SonicEyeHighLightPosition.xyz, 0.0), g_MtxView).xyz);
                 float2 offset = direction.xy * float2(-1.0, 1.0);
 
-                const float4 ChrEyeFHL1 = float4(0.03, -0.05, 0.01, 0.01);
-                const float4 ChrEyeFHL2 = float4(0.02, 0.09, 0.12, 0.07);
-                const float4 ChrEyeFHL3 = float4(0.0, 0.0, 0.1, 0.1);
-
-                float2 pupilOffset = -ChrEyeFHL1.zw * offset;
-                float2 highLightOffset = ChrEyeFHL3.xy + ChrEyeFHL3.zw * offset;
-                float2 catchLightOffset = ChrEyeFHL1.xy - float2(offset.x < 0 ? ChrEyeFHL2.x : ChrEyeFHL2.y, offset.y < 0 ? ChrEyeFHL2.z : ChrEyeFHL2.w) * offset;
+                float2 pupilOffset = -material.ChrEyeFHL1.zw * offset;
+                float2 highLightOffset = material.ChrEyeFHL3.xy + material.ChrEyeFHL3.zw * offset;
+                float2 catchLightOffset = material.ChrEyeFHL1.xy - float2(offset.x < 0 ? material.ChrEyeFHL2.x : material.ChrEyeFHL2.y, 
+                    offset.y < 0 ? material.ChrEyeFHL2.z : material.ChrEyeFHL2.w) * offset;
 
                 float3 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex).rgb;
                 float pupil = SampleMaterialTexture2D(material.DiffuseTexture, vertex, pupilOffset).w;
@@ -1049,6 +1046,13 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
             {
                 CreateWaterGBufferData(vertex, material, gBufferData);
                 gBufferData.Flags |= GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_REFRACTION_ADD;
+
+                if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
+                {
+                    float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
+                    gBufferData.Alpha *= saturate(viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]);
+                }
+
                 break;
             }
 
@@ -1056,6 +1060,13 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
             {
                 CreateWaterGBufferData(vertex, material, gBufferData);
                 gBufferData.Flags |= GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_REFRACTION_MUL;
+
+                if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
+                {
+                    float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
+                    gBufferData.Alpha *= saturate(viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]);
+                }
+
                 break;
             }
 
@@ -1064,7 +1075,13 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 CreateWaterGBufferData(vertex, material, gBufferData);
                 gBufferData.Flags |= GBUFFER_FLAG_REFRACTION_OPACITY;
                 gBufferData.Refraction = gBufferData.Alpha;
-                gBufferData.Alpha = 1.0;
+
+                if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
+                {
+                    float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
+                    gBufferData.Alpha = saturate((viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]) / material.WaterParam.w);
+                }
+
                 break;
             }
 #ifndef ENABLE_SYS_ERROR_FALLBACK
