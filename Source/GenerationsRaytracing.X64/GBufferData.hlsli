@@ -1081,23 +1081,33 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 #endif
     }
 
-    gBufferData.SpecularGloss = clamp(gBufferData.SpecularGloss, 1.0, 1024.0);
-
     if (material.Flags & MATERIAL_FLAG_ADDITIVE)
         gBufferData.Flags |= GBUFFER_FLAG_IS_ADDITIVE;
 
     if (material.Flags & MATERIAL_FLAG_REFLECTION)
         gBufferData.Flags |= GBUFFER_FLAG_IS_MIRROR_REFLECTION;
 
-    if (dot(gBufferData.Diffuse, gBufferData.Diffuse) == 0.0)
-        gBufferData.Flags |= GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION;
+    gBufferData.SpecularGloss = clamp(gBufferData.SpecularGloss, 1.0, 1024.0);
 
-    if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION)) &&
-        (dot(gBufferData.Specular, gBufferData.Specular) == 0.0 ||
-        gBufferData.SpecularLevel == 0.0 || gBufferData.SpecularFresnel == 0.0))
-    {
-        gBufferData.Flags |= GBUFFER_FLAG_IGNORE_REFLECTION;
-    }
+    bool diffuseMask = all(gBufferData.Diffuse == 0.0);
+
+    if (diffuseMask)
+        gBufferData.Flags |= GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION;
+
+    bool specularMask = (all(gBufferData.Specular == 0.0) || gBufferData.SpecularLevel == 0.0 ||
+        gBufferData.SpecularFresnel == 0.0) && !(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION);
+
+    if (specularMask)
+        gBufferData.Flags |= GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT | GBUFFER_FLAG_IGNORE_REFLECTION;
+
+    diffuseMask |= (gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT) != 0;
+    specularMask |= (gBufferData.Flags & GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT) != 0;
+
+    if (diffuseMask && specularMask)
+        gBufferData.Flags |= GBUFFER_FLAG_IGNORE_SHADOW | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT;
+
+    if (gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT)
+        gBufferData.Flags |= GBUFFER_FLAG_IGNORE_SHADOW;
 
     return gBufferData;
 }

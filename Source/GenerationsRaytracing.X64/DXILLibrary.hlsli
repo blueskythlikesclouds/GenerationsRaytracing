@@ -81,7 +81,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     {
         StoreGBufferData(uint3(DispatchRaysIndex().xy, payload.LayerIndex), gBufferData);
 
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW) || !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
             payload.RayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_SHADOW - 1) + payload.LayerIndex);
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))

@@ -143,10 +143,13 @@ void ShadowRayGeneration()
 
     GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
 
-    g_Shadow[dispatchRaysIndex] = TraceShadow(gBufferData.Position, 
-        -mrgGlobalLight_Direction.xyz, GetBlueNoise(dispatchRaysIndex.xy).xy, RAY_FLAG_NONE, 0);
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
+    {
+        g_Shadow[dispatchRaysIndex] = TraceShadow(gBufferData.Position,
+            -mrgGlobalLight_Direction.xyz, GetBlueNoise(dispatchRaysIndex.xy).xy, RAY_FLAG_NONE, 0);
+    }
 
-    if (dispatchRaysIndex.z == 0 && g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
+    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && dispatchRaysIndex.z == 0 && g_LocalLightCount > 0)
     {
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
     
