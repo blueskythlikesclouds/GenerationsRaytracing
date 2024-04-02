@@ -90,26 +90,23 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
     m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
 }
 
-uint32_t RaytracingDevice::buildAccelStruct(ComPtr<D3D12MA::Allocation>& allocation,
+uint32_t RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate)
 {
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
     m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
 
-    if (allocation == nullptr || allocation->GetSize() < preBuildInfo.ResultDataMaxSizeInBytes)
+    if (allocation.blockAllocation == nullptr || allocation.byteSize < preBuildInfo.ResultDataMaxSizeInBytes)
     {
-        if (allocation != nullptr)
-            m_tempBuffers[m_frame].push_back(std::move(allocation));
+        if (allocation.blockAllocation != nullptr)
+            m_tempBottomLevelAccelStructs[m_frame].push_back(std::move(allocation));
 
-        createBuffer(
-            D3D12_HEAP_TYPE_DEFAULT,
-            static_cast<uint32_t>(preBuildInfo.ResultDataMaxSizeInBytes),
-            D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-            D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-            allocation);
+        allocation = m_bottomLevelAccelStructAllocator.allocate(m_allocator.Get(),
+            static_cast<uint32_t>(preBuildInfo.ResultDataMaxSizeInBytes));
     }
 
-    accelStructDesc.DestAccelerationStructureData = allocation->GetResource()->GetGPUVirtualAddress();
+    accelStructDesc.DestAccelerationStructureData =
+        allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + allocation.byteOffset;
 
     if (buildImmediate)
     {
@@ -136,7 +133,7 @@ uint32_t RaytracingDevice::buildAccelStruct(ComPtr<D3D12MA::Allocation>& allocat
         }
 
         getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
-        getGraphicsCommandList().uavBarrier(allocation->GetResource());
+        getGraphicsCommandList().uavBarrier(allocation.blockAllocation->GetResource());
     }
 
     return static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
@@ -168,7 +165,7 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
     }
 
     getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
-    getGraphicsCommandList().uavBarrier(bottomLevelAccelStruct.allocation->GetResource());
+    getGraphicsCommandList().uavBarrier(bottomLevelAccelStruct.allocation.blockAllocation->GetResource());
 }
 
 void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
@@ -181,12 +178,7 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
     getGraphicsCommandList().commitBarriers();
 
     for (const auto pendingBuild : m_pendingBuilds)
-    {
-        auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[pendingBuild];
-
-        if (bottomLevelAccelStruct.allocation != nullptr)
-            buildBottomLevelAccelStruct(bottomLevelAccelStruct);
-    }
+        buildBottomLevelAccelStruct(m_bottomLevelAccelStructs[pendingBuild]);
 
     m_pendingPoses.clear();
     m_pendingBuilds.clear();
@@ -764,7 +756,7 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.resourceId];
 
-        m_tempBuffers[m_frame].emplace_back(std::move(bottomLevelAccelStruct.allocation));
+        m_tempBottomLevelAccelStructs[m_frame].emplace_back(std::move(bottomLevelAccelStruct.allocation));
         freeGeometryDescs(m_bottomLevelAccelStructs[message.resourceId].geometryId, m_bottomLevelAccelStructs[message.resourceId].geometryCount);
 
         bottomLevelAccelStruct = {};
@@ -882,7 +874,8 @@ void RaytracingDevice::procMsgCreateInstance()
     if (message.isMirrored && !(instanceDesc.Flags & D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE))
         instanceDesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
 
-    instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation->GetResource()->GetGPUVirtualAddress();
+    instanceDesc.AccelerationStructure = 
+        bottomLevelAccelStruct.allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + bottomLevelAccelStruct.allocation.byteOffset;
 }
 
 void RaytracingDevice::procMsgTraceRays()
@@ -948,8 +941,8 @@ void RaytracingDevice::procMsgTraceRays()
 
     const auto globalsRT = createGlobalsRT(message);
 
-    const auto topLevelAccelStruct = m_topLevelAccelStruct != nullptr ? 
-        m_topLevelAccelStruct->GetResource()->GetGPUVirtualAddress() : NULL;
+    const auto topLevelAccelStruct =
+        m_topLevelAccelStruct.blockAllocation->GetResource()->GetGPUVirtualAddress() + m_topLevelAccelStruct.byteOffset;
 
     const auto geometryDescs = createBuffer(m_geometryDescs.data(), 
         static_cast<uint32_t>(m_geometryDescs.size() * sizeof(GeometryDesc)), 0x10);
@@ -1490,6 +1483,11 @@ void RaytracingDevice::releaseRaytracingResources()
     m_curRootSignature = nullptr;
     m_curPipeline = nullptr;
     m_scratchBufferOffset = 0;
+
+    for (auto& subAllocation : m_tempBottomLevelAccelStructs[m_frame])
+        m_bottomLevelAccelStructAllocator.free(subAllocation);
+
+    m_tempBottomLevelAccelStructs[m_frame].clear();
 }
 
 RaytracingDevice::RaytracingDevice()

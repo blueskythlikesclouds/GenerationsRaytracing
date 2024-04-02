@@ -1,8 +1,10 @@
 #pragma once
 
+#include "SubAllocator.h"
+
 struct BottomLevelAccelStruct
 {
-    ComPtr<D3D12MA::Allocation> allocation;
+    SubAllocation allocation;
     uint32_t geometryId = 0;
     uint32_t geometryCount = 0;
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC desc{};

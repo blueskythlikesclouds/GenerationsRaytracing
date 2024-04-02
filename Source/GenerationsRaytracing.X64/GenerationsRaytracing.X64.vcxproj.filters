@@ -66,6 +66,9 @@
     <ClCompile Include="NGX.cpp">
       <Filter>Upscaler</Filter>
     </ClCompile>
+    <ClCompile Include="SubAllocator.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -194,6 +197,9 @@
     </ClInclude>
     <ClInclude Include="NGX.h">
       <Filter>Upscaler</Filter>
+    </ClInclude>
+    <ClInclude Include="SubAllocator.h">
+      <Filter>Resource</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -165,6 +165,7 @@
     <ClCompile Include="RootSignature.cpp" />
     <ClCompile Include="ShaderCache.cpp" />
     <ClCompile Include="ShaderConverter.cpp" />
+    <ClCompile Include="SubAllocator.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="DxgiConverter.cpp" />
     <ClCompile Include="Upscaler.cpp" />
@@ -198,6 +199,7 @@
     <ClInclude Include="RootSignature.h" />
     <ClInclude Include="ShaderCache.h" />
     <ClInclude Include="ShaderConverter.h" />
+    <ClInclude Include="SubAllocator.h" />
     <ClInclude Include="SwapChain.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="DxgiConverter.h" />

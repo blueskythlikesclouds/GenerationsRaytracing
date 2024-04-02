@@ -192,9 +192,8 @@ public static class RaytracingShaderCompiler
 		{
 			"-T lib_6_6",
 			"-HV 2021",
-			"-enable-payload-qualifiers",
 			"-all-resources-bound",
-			"-enable-16bit-types",
+			"-enable-payload-qualifiers",
 			$"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64")}",
 			$"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.Shared")}",
 			$"-I {Path.Combine(solutionDirectoryPath, "..", "Dependencies", "self-intersection-avoidance")}",

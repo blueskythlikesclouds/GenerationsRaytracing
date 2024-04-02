@@ -9,6 +9,7 @@
 #include "Material.h"
 #include "NGX.h"
 #include "ShaderType.h"
+#include "SubAllocator.h"
 #include "Upscaler.h"
 
 struct MsgTraceRays;
@@ -89,11 +90,18 @@ protected:
     uint32_t m_scratchBufferOffset = 0;
 
     // Bottom Level Accel Struct
+    SubAllocator m_bottomLevelAccelStructAllocator{
+        DEFAULT_BLOCK_SIZE,
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT,
+        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE };
+
     std::vector<BottomLevelAccelStruct> m_bottomLevelAccelStructs;
     std::vector<GeometryDesc> m_geometryDescs;
     std::multimap<uint32_t, uint32_t> m_freeCounts;
     std::map<uint32_t, std::multimap<uint32_t, uint32_t>::iterator> m_freeIndices;
     std::vector<uint32_t> m_pendingBuilds;
+    std::vector<SubAllocation> m_tempBottomLevelAccelStructs[NUM_FRAMES];
 
     // Material
     std::vector<Material> m_materials;
@@ -102,7 +110,7 @@ protected:
     std::vector<D3D12_RAYTRACING_INSTANCE_DESC> m_instanceDescs;
     std::vector<InstanceDesc> m_instanceDescsEx;
     std::vector<std::pair<uint32_t, uint32_t>> m_geometryRanges;
-    ComPtr<D3D12MA::Allocation> m_topLevelAccelStruct;
+    SubAllocation m_topLevelAccelStruct;
 
     // Upscaler
     std::unique_ptr<NGX> m_ngx;
@@ -180,7 +188,7 @@ protected:
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
-    uint32_t buildAccelStruct(ComPtr<D3D12MA::Allocation>& allocation, 
+    uint32_t buildAccelStruct(SubAllocation& allocation, 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate);
 
     void buildBottomLevelAccelStruct(BottomLevelAccelStruct& bottomLevelAccelStruct);

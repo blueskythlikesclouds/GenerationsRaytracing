@@ -1104,7 +1104,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
     specularMask |= (gBufferData.Flags & GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT) != 0;
 
     if (diffuseMask && specularMask)
-        gBufferData.Flags |= GBUFFER_FLAG_IGNORE_SHADOW | GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT;
+        gBufferData.Flags |= GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT;
 
     if (gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT)
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_SHADOW;
