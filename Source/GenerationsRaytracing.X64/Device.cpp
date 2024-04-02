@@ -786,6 +786,9 @@ void Device::procMsgCreateTexture()
 
     assert(SUCCEEDED(hr) && texture.allocation != nullptr);
 
+    if (message.usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL))
+        getUnderlyingGraphicsCommandList()->DiscardResource(texture.allocation->GetResource(), nullptr);
+
 #ifdef _DEBUG
     wchar_t name[0x100];
 
