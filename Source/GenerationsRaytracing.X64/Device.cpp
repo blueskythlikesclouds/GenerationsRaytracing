@@ -2085,6 +2085,11 @@ ID3D12Device* Device::getUnderlyingDevice() const
     return m_device.Get();
 }
 
+D3D12MA::Allocator* Device::getAllocator() const
+{
+    return m_allocator.Get();
+}
+
 CommandQueue& Device::getGraphicsQueue()
 {
     return m_graphicsQueue;

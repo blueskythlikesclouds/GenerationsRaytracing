@@ -75,10 +75,9 @@
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput>$(IntDir)%(Filename).obj</ObjectFileOutput>
-      <AdditionalOptions>-enable-16bit-types -Qembed_debug -HV 2021 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-HV 2021 -all-resources-bound -Zi -Qembed_debug %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance;$(SolutionDir)..\Dependencies\ThreadGroupIDSwizzling</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
-      <AllResourcesBound>true</AllResourcesBound>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -115,8 +114,7 @@
       <ObjectFileOutput>$(IntDir)%(Filename).obj</ObjectFileOutput>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance;$(SolutionDir)..\Dependencies\ThreadGroupIDSwizzling</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
-      <AdditionalOptions>-enable-16bit-types -HV 2021 %(AdditionalOptions)</AdditionalOptions>
-      <AllResourcesBound>true</AllResourcesBound>
+      <AdditionalOptions>-HV 2021 -all-resources-bound %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

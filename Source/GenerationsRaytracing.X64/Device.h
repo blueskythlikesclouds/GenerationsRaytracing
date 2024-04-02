@@ -212,6 +212,7 @@ public:
     void setShouldExit();
 
     ID3D12Device* getUnderlyingDevice() const;
+    D3D12MA::Allocator* getAllocator() const;
 
     CommandQueue& getGraphicsQueue();
     CommandQueue& getCopyQueue();

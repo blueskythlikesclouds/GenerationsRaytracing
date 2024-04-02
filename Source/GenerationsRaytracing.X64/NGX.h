@@ -22,13 +22,15 @@ class Device;
 class NGX
 {
 protected:
-    ComPtr<ID3D12Device> m_device;
+    const Device& m_device;
+    bool m_valid = false;
     NVSDK_NGX_Parameter* m_parameters = nullptr;
 
 public:
     NGX(const Device& device);
     ~NGX();
 
+    const Device& getDevice() const;
     NVSDK_NGX_Parameter* getParameters() const;
 
     bool valid() const;

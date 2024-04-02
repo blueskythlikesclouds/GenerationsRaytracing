@@ -85,10 +85,9 @@ void PrimaryRayGeneration()
         for (uint j = 0; j < GBUFFER_LAYER_NUM; j++)
         {
             bool layerValid = rayGenerationFlags & (1u << j);
-            uint dispatchRaysIndex = WavePrefixSum(layerValid);
             if (layerValid)
             {
-                g_DispatchRaysIndex.Store((baseDispatchRaysIndex + dispatchRaysIndex) * sizeof(uint), 
+                g_DispatchRaysIndex.Store((baseDispatchRaysIndex + WavePrefixSum(layerValid)) * sizeof(uint),
                     StoreDispatchRaysIndex(DispatchRaysIndex().xy, j));
             }
 
