@@ -64,35 +64,39 @@ void PrimaryRayGeneration()
         ray,
         payload1);
 
-    g_LayerNum[DispatchRaysIndex().xy] = payload1.LayerIndex;
-
     [unroll]
     for (uint i = 0; i < RAY_GENERATION_NUM - 1; i++)
     {
         uint rayGenerationFlags = (payload1.RayGenerationFlags >> (i * GBUFFER_LAYER_NUM)) & ((1 << GBUFFER_LAYER_NUM) - 1);
-        uint layerNum = countbits(rayGenerationFlags);
-        uint indexNum = WaveActiveSum(layerNum);
 
-        uint indexOffset;
+        uint laneLayerNum = countbits(rayGenerationFlags);
+        uint waveLayerNum = WaveActiveSum(laneLayerNum);
+
+        uint baseDispatchRaysIndex;
         if (WaveIsFirstLane())
         {
             g_DispatchRaysDesc.InterlockedAdd(i * DISPATCH_RAYS_DESC_BYTE_SIZE +
-                DISPATCH_RAYS_DESC_WIDTH_OFFSET, indexNum, indexOffset);
+                DISPATCH_RAYS_DESC_WIDTH_OFFSET, waveLayerNum, baseDispatchRaysIndex);
         }
-        indexOffset = WaveReadLaneFirst(indexOffset);
-        indexOffset += WavePrefixSum(layerNum);
-        indexOffset += i * DispatchRaysDimensions().x * DispatchRaysDimensions().y * GBUFFER_LAYER_NUM;
+        baseDispatchRaysIndex = WaveReadLaneFirst(baseDispatchRaysIndex);
+        baseDispatchRaysIndex += i * DispatchRaysDimensions().x * DispatchRaysDimensions().y * GBUFFER_LAYER_NUM;
 
         [unroll]
         for (uint j = 0; j < GBUFFER_LAYER_NUM; j++)
         {
-            if (rayGenerationFlags & (1u << j))
+            bool layerValid = rayGenerationFlags & (1u << j);
+            uint dispatchRaysIndex = WavePrefixSum(layerValid);
+            if (layerValid)
             {
-                g_DispatchRaysIndex.Store(indexOffset * sizeof(uint), StoreDispatchRaysIndex(DispatchRaysIndex().xy, j));
-                ++indexOffset;
+                g_DispatchRaysIndex.Store((baseDispatchRaysIndex + dispatchRaysIndex) * sizeof(uint), 
+                    StoreDispatchRaysIndex(DispatchRaysIndex().xy, j));
             }
+
+            baseDispatchRaysIndex += WaveActiveSum(layerValid);
         }
     }
+
+    g_LayerNum[DispatchRaysIndex().xy] = payload1.LayerIndex;
 }
 
 [shader("miss")]
