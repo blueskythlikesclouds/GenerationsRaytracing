@@ -105,10 +105,10 @@ protected:
     ComPtr<D3D12MA::Allocation> m_topLevelAccelStruct;
 
     // Upscaler
+    std::unique_ptr<NGX> m_ngx;
     std::unique_ptr<Upscaler> m_upscaler;
     QualityMode m_qualityMode = QualityMode::Balanced;
     UpscalerType m_upscalerOverride[static_cast<size_t>(UpscalerType::Max)];
-    std::unique_ptr<NGX> m_ngx;
 
     // Textures
     uint32_t m_width = 0;

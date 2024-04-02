@@ -1724,8 +1724,8 @@ RaytracingDevice::RaytracingDevice()
 
         if (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD)
         {
-            std::unique_ptr<DLSS> upscaler;
             auto ngx = std::make_unique<NGX>(*this);
+            std::unique_ptr<DLSS> upscaler;
 
             if (ngx->valid())
             {
@@ -1746,8 +1746,8 @@ RaytracingDevice::RaytracingDevice()
             }
             else
             {
-                m_upscaler = std::move(upscaler);
                 m_ngx = std::move(ngx);
+                m_upscaler = std::move(upscaler);
             }
         }
 
