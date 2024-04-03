@@ -104,7 +104,11 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         float2 lightScattering = ComputeLightScattering(gBufferData.Position, viewPosition);
     
         if (all(and(!isnan(lightScattering), !isinf(lightScattering))))
+        {
             color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+            diffuseAlbedo = diffuseAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+            specularAlbedo = specularAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+        }
     }
     else
     {
