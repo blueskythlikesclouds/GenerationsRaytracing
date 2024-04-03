@@ -226,6 +226,9 @@ static const xxHashMap<std::array<uint8_t, 6>> s_environmentColors =
     // Wave Ocean
     { 0x98a72de6a1476a01, { 255, 255, 255 } }, // pam000
     { 0xce8d6b9a3da7c45d, { 255, 255, 255 } }, // ghz200
+
+    // Sonic Adventure Gameplay + Emerald Coast
+    { 0xf9f45fa953e30919, { 96, 143, 246 } }, // ghz200
 };
 
 bool EnvironmentColor::get(const GlobalsPS& globalsPS, float* skyColor, float* groundColor)
