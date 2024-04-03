@@ -7,6 +7,9 @@ DLSSD::DLSSD(const NGX& ngx) : DLSS(ngx)
 
 void DLSSD::init(const InitArgs& args)
 {
+    if (m_feature != nullptr)
+        THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(m_feature));
+
     NVSDK_NGX_DLSSD_Create_Params params{};
     params.InPerfQualityValue = getPerfQualityValue(args.qualityMode);
     
@@ -36,9 +39,6 @@ void DLSSD::init(const InitArgs& args)
     params.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
         NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
-
-    if (m_feature != nullptr)
-        THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(m_feature));
 
     THROW_IF_FAILED(NGX_D3D12_CREATE_DLSSD_EXT(
         args.device.getUnderlyingGraphicsCommandList(),

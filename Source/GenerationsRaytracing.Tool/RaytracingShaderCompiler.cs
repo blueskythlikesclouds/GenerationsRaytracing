@@ -1,4 +1,5 @@
-﻿using Vortice.Dxc;
+﻿using Vortice.D3DCompiler;
+using Vortice.Dxc;
 
 public static class RaytracingShaderCompiler
 {
@@ -187,47 +188,52 @@ public static class RaytracingShaderCompiler
                 }};
                 """, shaderType));
 		}
-
-		var args = new[]
+		
+#if DEBUG
+        const string configuration = "Debug";
+#else
+		const string configuration = "Release";
+#endif
+		var globalArgs = new[]
 		{
-			"-T lib_6_6",
+            $"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64")}",
+            $"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.Shared")}",
+            $"-I {Path.Combine(solutionDirectoryPath, "..", "Dependencies", "self-intersection-avoidance")}",
+            "-T lib_6_6",
 			"-HV 2021",
 			"-all-resources-bound",
+            "-Zi",
 			"-enable-payload-qualifiers",
-			$"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64")}",
-			$"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.Shared")}",
-			$"-I {Path.Combine(solutionDirectoryPath, "..", "Dependencies", "self-intersection-avoidance")}",
-#if DEBUG 
-			"-Zi",
-			"-Qembed_debug"
-#endif
+			null,
 		};
 
-		var includeHandler = DxcCompiler.Utils.CreateDefaultIncludeHandler();
+        var compiler = new ThreadLocal<IDxcCompiler3>(Dxc.CreateDxcCompiler<IDxcCompiler3>);
+		var includeHandler = new ThreadLocal<IDxcIncludeHandler>(DxcCompiler.Utils.CreateDefaultIncludeHandler);
 		var shaderBlobs = new byte[shaderSources.Count][];
 
 		int progress = 0;
 
 		Parallel.For(0, shaderSources.Count, i =>
-		{
-			var dxcResult = DxcCompiler.Compile(shaderSources[i], args, includeHandler);
+        {
+            string pdbFilePath = Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "obj", configuration, $"{ShaderTypes[i]}.pdb");
+            var localArgs = (string[])globalArgs.Clone();
+            localArgs[^1] = $"-Fd {pdbFilePath}";
+
+            var dxcResult = compiler.Value.Compile(shaderSources[i], localArgs, includeHandler.Value);
 
 			var byteCode = dxcResult.GetObjectBytecode();
 			string errors = dxcResult.GetErrors();
 
 			if (byteCode.IsEmpty)
 				throw new Exception(errors);
-			
-			if (!string.IsNullOrEmpty(errors))
+
+            using var pdb = File.Create(pdbFilePath);
+            pdb.Write(dxcResult.GetOutput(DxcOutKind.Pdb).AsSpan());
+
+            if (!string.IsNullOrEmpty(errors))
 				Console.WriteLine(dxcResult.GetErrors());
 
 			shaderBlobs[i] = byteCode.ToArray();
-
-#if DEBUG
-			File.WriteAllBytes(
-				Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "obj", "Debug",
-					$"{ShaderTypes[i]}.cso"), shaderBlobs[i]);
-#endif
 
 			Console.WriteLine("({0}/{1}): {2}", Interlocked.Increment(ref progress), ShaderTypes.Count, ShaderTypes[i]);
 		});

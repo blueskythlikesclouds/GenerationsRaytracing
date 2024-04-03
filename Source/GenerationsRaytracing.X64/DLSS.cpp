@@ -26,6 +26,9 @@ DLSS::~DLSS()
 
 void DLSS::init(const InitArgs& args)
 {
+    if (m_feature != nullptr)
+        THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(m_feature));
+
     NVSDK_NGX_DLSS_Create_Params params{};
     params.Feature.InPerfQualityValue = getPerfQualityValue(args.qualityMode);
     
@@ -53,9 +56,6 @@ void DLSS::init(const InitArgs& args)
     params.InFeatureCreateFlags =
         NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
         NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
-
-    if (m_feature != nullptr)
-        THROW_IF_FAILED(NVSDK_NGX_D3D12_ReleaseFeature(m_feature));
 
     THROW_IF_FAILED(NGX_D3D12_CREATE_DLSS_EXT(
         args.device.getUnderlyingGraphicsCommandList(),
