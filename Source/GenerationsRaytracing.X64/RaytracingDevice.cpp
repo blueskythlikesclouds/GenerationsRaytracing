@@ -366,6 +366,7 @@ void RaytracingDevice::createRaytracingTextures()
 
     setDescriptorHeaps();
     m_curRootSignature = nullptr;
+    m_globalsRT.currentFrame = 0;
 
     D3D12MA::ALLOCATION_DESC allocDesc{};
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
@@ -377,7 +378,7 @@ void RaytracingDevice::createRaytracingTextures()
     HRESULT hr = m_allocator->CreateResource(
         &allocDesc,
         &bufferDesc,
-        D3D12_RESOURCE_STATE_COMMON,
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
         nullptr,
         m_dispatchRaysIndexBuffer.ReleaseAndGetAddressOf(),
         IID_ID3D12Resource,
@@ -447,6 +448,8 @@ void RaytracingDevice::createRaytracingTextures()
             nullptr);
 
         assert(SUCCEEDED(hr) && textureDesc.allocation != nullptr);
+
+        getUnderlyingGraphicsCommandList()->DiscardResource(textureDesc.allocation->GetResource(), nullptr);
     }
 
     if (m_uavId == NULL)
@@ -516,6 +519,8 @@ void RaytracingDevice::createRaytracingTextures()
         nullptr);
 
     assert(SUCCEEDED(hr) && m_outputTexture != nullptr);
+
+    getUnderlyingGraphicsCommandList()->DiscardResource(m_outputTexture->GetResource(), nullptr);
 
     m_debugViewTextures[DEBUG_VIEW_NONE] = m_outputTexture->GetResource();
     m_debugViewTextures[DEBUG_VIEW_DIFFUSE] = m_gBufferTexture1->GetResource();
@@ -1021,7 +1026,7 @@ void RaytracingDevice::procMsgTraceRays()
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
     getGraphicsCommandList().transitionAndUavBarrier(m_dispatchRaysDescBuffers[m_frame]->GetResource(), 
-        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
     // There is currently a bug on NVIDIA where transitioning
     // RGBA16_FLOAT textures with more than 512x512 pixels in one
@@ -1639,7 +1644,7 @@ RaytracingDevice::RaytracingDevice()
             m_gpuUploadHeapSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
             sizeof(D3D12_DISPATCH_RAYS_DESC) * (RAY_GENERATION_NUM - 1),
             D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-            D3D12_RESOURCE_STATE_COMMON,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
             dispatchRaysDescBuffer);
     }
 

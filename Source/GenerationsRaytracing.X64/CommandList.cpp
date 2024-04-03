@@ -40,13 +40,7 @@ void CommandList::close()
     if (m_isOpen)
     {
         for (auto& [resource, states] : m_resourceStates)
-        {
-            if (states.stateInitial != D3D12_RESOURCE_STATE_COMMON ||
-                states.stateBefore == D3D12_RESOURCE_STATE_RENDER_TARGET)
-            {
-                states.stateAfter = states.stateInitial;
-            }
-        }
+            states.stateAfter = states.stateInitial;
 
         commitBarriers();
         m_resourceStates.clear();
