@@ -28,8 +28,7 @@ static constexpr const char* s_stages[] =
     "bsl",
     "bde",
     "bpc",
-    "bne",
-    "blb"
+    "bne"
 };
 
 struct Mod
@@ -227,10 +226,14 @@ static void writeModsDbAndRestart(size_t modIndex, const char* stage)
     std::string filePath = quickBootMod.filePath.substr(0, index + 1);
     filePath += "GenerationsQuickBoot.ini";
 
+    const bool isClassicStage = strcmp(stage, "bms") == 0 || 
+        strcmp(stage, "bde") == 0 || (strlen(stage) > 3 && stage[3] == '1');
+
     IniFile quickBootIni;
     quickBootIni.read(filePath.c_str());
     quickBootIni.setString("QuickBoot", "StageName", stage);
     quickBootIni.set("QuickBoot", "g_IsQuickBoot", 3);
+    quickBootIni.set("QuickBoot", "PlayerClass", isClassicStage ? 1 : 0);
     quickBootIni.write(filePath.c_str());
 
     IniFile modsDbIni;
