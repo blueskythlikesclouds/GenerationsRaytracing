@@ -28,3 +28,6 @@
 [submodule "Dependencies/ThreadGroupIDSwizzling"]
 	path = Dependencies/ThreadGroupIDSwizzling
 	url = https://github.com/LouisBavoil/ThreadGroupIDSwizzling.git
+[submodule "Dependencies/implot"]
+	path = Dependencies/implot
+	url = https://github.com/epezent/implot.git

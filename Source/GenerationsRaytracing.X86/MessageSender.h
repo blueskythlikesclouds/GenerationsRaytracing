@@ -18,6 +18,10 @@ protected:
     MemoryMappedFile m_memoryMappedFile;
     uint8_t* m_memoryMap;
 
+    std::chrono::high_resolution_clock::time_point m_time;
+    double m_x86Duration{};
+    double m_x64Duration{};
+
 public:
     static bool canMakeMessage(uint32_t byteSize, uint32_t alignment);
 
@@ -39,6 +43,9 @@ public:
     void commitMessages();
 
     void notifyShouldExit() const;
+
+    double getX86Duration() const;
+    double getX64Duration() const;
 };
 
 inline MessageSender s_messageSender;

@@ -65,6 +65,12 @@ void MessageSender::endMessage()
     --m_pendingMessages;
 }
 
+static double computeDuration(const std::chrono::high_resolution_clock::time_point& time)
+{
+    return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+        std::chrono::high_resolution_clock::now() - time).count();
+}
+
 void MessageSender::commitMessages()
 {
     LockGuard lock(m_mutex);
@@ -74,10 +80,16 @@ void MessageSender::commitMessages()
 
     *reinterpret_cast<uint32_t*>(m_messages) = m_offset;
 
+    m_x86Duration = computeDuration(m_time);
+
     if (!(*s_shouldExit))
     {
         // Wait for bridge to copy messages
         m_gpuEvent.wait();
+
+        m_x64Duration = computeDuration(m_time);
+        m_time = std::chrono::high_resolution_clock::now();
+
         m_gpuEvent.reset();
 
         memcpy(m_memoryMap, m_messages, m_offset);
@@ -93,5 +105,15 @@ void MessageSender::notifyShouldExit() const
 {
     m_cpuEvent.reset();
     m_gpuEvent.set();
+}
+
+double MessageSender::getX86Duration() const
+{
+    return m_x86Duration;
+}
+
+double MessageSender::getX64Duration() const
+{
+    return m_x64Duration;
 }
 

@@ -47,6 +47,7 @@ void Device::initImgui()
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
 
     ImGui_ImplWin32_Init(m_hWnd);
 

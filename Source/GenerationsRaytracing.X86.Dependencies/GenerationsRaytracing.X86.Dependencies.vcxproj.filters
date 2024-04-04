@@ -4,6 +4,9 @@
     <Filter Include="imgui">
       <UniqueIdentifier>{ec0bc690-ca52-40d4-809f-9e9483c1af49}</UniqueIdentifier>
     </Filter>
+    <Filter Include="implot">
+      <UniqueIdentifier>{f34bdde4-bb43-48b4-8cfa-728a8e752cd4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Dependencies\imgui\imgui.cpp">
@@ -23,6 +26,15 @@
     </ClCompile>
     <ClCompile Include="..\..\Dependencies\imgui\backends\imgui_impl_win32.cpp">
       <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Dependencies\implot\implot.cpp">
+      <Filter>implot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Dependencies\implot\implot_demo.cpp">
+      <Filter>implot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Dependencies\implot\implot_items.cpp">
+      <Filter>implot</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
