@@ -2019,6 +2019,13 @@ void Device::processMessages()
         m_shouldPresent = false;
     }
 
+    if (m_uploadBufferOffset > 0)
+        m_uploadBuffers[m_frame].resize(m_uploadBufferIndex + 1);
+    else if (m_uploadBufferIndex > 0)
+        m_uploadBuffers[m_frame].resize(m_uploadBufferIndex - 1);
+    else
+        m_uploadBuffers[m_frame].clear();
+
     m_uploadBufferIndex = 0;
     m_uploadBufferOffset = 0;
 

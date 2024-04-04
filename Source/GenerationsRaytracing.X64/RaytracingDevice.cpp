@@ -88,7 +88,15 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
             m_freeIndices.erase(next->first);
         }
     }
-    m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
+    if ((id + count) == m_geometryDescs.size())
+    {
+        m_geometryDescs.resize(id);
+        m_hitGroupShaderTable.resize(id * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * HIT_GROUP_NUM);
+    }
+    else
+    {
+        m_freeIndices.emplace(id, m_freeCounts.emplace(count, id));
+    }
 }
 
 uint32_t RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
@@ -738,7 +746,7 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         }
 
         const auto& material = m_materials[geometryDesc.materialId];
-        writeHitGroupShaderTable(bottomLevelAccelStruct.geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
+        writeHitGroupShaderTable(bottomLevelAccelStruct.geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
 
         if (material.flags & MATERIAL_FLAG_DOUBLE_SIDED)
             bottomLevelAccelStruct.instanceFlags = D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
@@ -837,7 +845,7 @@ void RaytracingDevice::procMsgCreateInstance()
             for (size_t i = 0; i < geometryCount; i++)
             {
                 const auto& material = m_materials[geometryDesc.materialId];
-                writeHitGroupShaderTable(geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
+                writeHitGroupShaderTable(geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
             }
         }
 
@@ -867,7 +875,7 @@ void RaytracingDevice::procMsgCreateInstance()
             }
 
             const auto& material = m_materials[dstGeometry.materialId];
-            writeHitGroupShaderTable(geometryId + i, material.shaderType, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
+            writeHitGroupShaderTable(geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
         }
     }
     else
@@ -1115,7 +1123,7 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     auto& material = m_materials[message.materialId];
 
-    material.shaderType = message.shaderType;
+    material.shaderType = message.shaderType + 1;
     material.flags = message.flags;
 
     const std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
@@ -1496,6 +1504,15 @@ void RaytracingDevice::releaseRaytracingResources()
         m_bottomLevelAccelStructAllocator.free(subAllocation);
 
     m_tempBottomLevelAccelStructs[m_frame].clear();
+
+    while (!m_materials.empty() && m_materials.back().shaderType == NULL)
+        m_materials.pop_back();
+
+    while (!m_instanceDescs.empty() && m_instanceDescs.back().AccelerationStructure == NULL)
+    {
+        m_instanceDescs.pop_back();
+        m_instanceDescsEx.pop_back();
+    }
 }
 
 RaytracingDevice::RaytracingDevice()
