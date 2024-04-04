@@ -11,6 +11,8 @@ protected:
     bool m_pendingWrite = true;
 
 public:
+    static inline alignas(0x4) std::atomic<uint32_t> s_wastedMemory;
+
     explicit IndexBuffer(uint32_t byteSize);
     ~IndexBuffer() override;
 

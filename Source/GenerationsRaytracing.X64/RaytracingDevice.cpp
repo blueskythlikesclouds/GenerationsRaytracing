@@ -12,6 +12,7 @@
 #include "GBufferData.h"
 #include "GeometryFlags.h"
 #include "MaterialFlags.h"
+#include "AlignmentUtil.h"
 #include "Message.h"
 #include "RootSignature.h"
 #include "PoseComputeShader.h"
@@ -126,10 +127,11 @@ uint32_t RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
         }
         else
         {
-            accelStructDesc.ScratchAccelerationStructureData = m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
+            accelStructDesc.ScratchAccelerationStructureData = 
+                m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
 
-            m_scratchBufferOffset = static_cast<uint32_t>((m_scratchBufferOffset + preBuildInfo.ScratchDataSizeInBytes
-                + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1));
+            m_scratchBufferOffset = alignUp<uint32_t>(m_scratchBufferOffset +
+                static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes), D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
         }
 
         getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
@@ -160,8 +162,8 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
         bottomLevelAccelStruct.desc.ScratchAccelerationStructureData =
             m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
 
-        m_scratchBufferOffset = (m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize
-            + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1);
+        m_scratchBufferOffset = alignUp<uint32_t>(m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize,
+            D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
     }
 
     getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);

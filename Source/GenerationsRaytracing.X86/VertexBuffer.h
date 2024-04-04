@@ -4,13 +4,14 @@
 
 class VertexBuffer : public Resource
 {
-public:
 protected:
     uint32_t m_id;
     uint32_t m_byteSize;
     bool m_pendingWrite = true;
 
 public:
+    static inline alignas(0x4) std::atomic<uint32_t> s_wastedMemory;
+
     explicit VertexBuffer(uint32_t byteSize);
     ~VertexBuffer() override;
 

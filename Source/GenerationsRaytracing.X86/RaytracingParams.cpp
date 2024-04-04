@@ -1,5 +1,7 @@
 ﻿#include "RaytracingParams.h"
 
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
 #include "Configuration.h"
 #include "EnvironmentMode.h"
 #include "QuickBoot.h"
@@ -517,6 +519,9 @@ void RaytracingParams::imguiWindow()
                             }
                         }
                     }
+
+                    ImGui::Text("Vertex Buffer Wasted Memory: %g MB", static_cast<float>(VertexBuffer::s_wastedMemory) / (1024.0f * 1024.0f));
+                    ImGui::Text("Index Buffer Wasted Memory: %g MB", static_cast<float>(IndexBuffer::s_wastedMemory) / (1024.0f * 1024.0f));
                 }
                 ImGui::EndChild();
                 ImGui::EndTabItem();

@@ -3,6 +3,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "FreeListAllocator.h"
+#include "AlignmentUtil.h"
 
 static FreeListAllocator s_idAllocator;
 
@@ -10,6 +11,8 @@ VertexBuffer::VertexBuffer(uint32_t byteSize)
 {
     m_id = s_idAllocator.allocate();
     m_byteSize = byteSize;
+
+    s_wastedMemory += alignUp(byteSize, 0x10000u) - byteSize;
 }
 
 VertexBuffer::~VertexBuffer()
@@ -22,6 +25,8 @@ VertexBuffer::~VertexBuffer()
     s_messageSender.endMessage();
 
     s_idAllocator.free(m_id);
+
+    s_wastedMemory -= alignUp(m_byteSize, 0x10000u) - m_byteSize;
 }
 
 uint32_t VertexBuffer::getId() const

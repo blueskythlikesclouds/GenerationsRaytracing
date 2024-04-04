@@ -5,6 +5,7 @@
 #include "Message.h"
 #include "FVFVertexShader.h"
 #include "FVFPixelShader.h"
+#include "AlignmentUtil.h"
 #include "RootSignature.h"
 
 void Device::createBuffer(
@@ -103,7 +104,7 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::createBuffer(const void* memory, uint32_t data
 {
     assert(dataSize <= UPLOAD_BUFFER_SIZE);
 
-    m_uploadBufferOffset = (m_uploadBufferOffset + dataAlignment - 1) & ~(dataAlignment - 1);
+    m_uploadBufferOffset = alignUp(m_uploadBufferOffset, dataAlignment);
 
     if (m_uploadBufferOffset + dataSize > UPLOAD_BUFFER_SIZE)
     {
