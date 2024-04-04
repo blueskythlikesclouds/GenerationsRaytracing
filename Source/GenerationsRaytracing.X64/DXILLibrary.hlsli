@@ -182,7 +182,8 @@ struct [raypayload] SecondaryRayPayload
 
 float3 TracePath(float3 position, float3 direction, float4 random, uint missShaderIndex, uint2 dispatchRaysIndex, bool storeHitDistance, float3 throughput)
 {
-    float3 radiance = 0.0;
+    min16float3 halfRadiance = 0.0;
+    min16float3 halfThroughput = (min16float3) throughput;
 
     [unroll]
     for (uint i = 0; i < 2; i++)
@@ -243,17 +244,23 @@ float3 TracePath(float3 position, float3 direction, float4 random, uint missShad
         if (storeHitDistance && i == 0)
             g_SpecularHitDistance[dispatchRaysIndex] = terminatePath ? 0.0 : distance(position, payload.Position);
 
+        float3 radiance = (float3) halfRadiance;
+        throughput = (float3) halfThroughput;
+
         radiance += throughput * color;
+        throughput *= payload.Diffuse;
+
+        halfRadiance = (min16float3) radiance;
+        halfThroughput = (min16float3) throughput;
 
         if (terminatePath)
             break;
 
         position = payload.Position;
         direction = TangentToWorld(normal, GetCosWeightedSample(random.zw));
-        throughput *= payload.Diffuse;
     }
 
-    return radiance;
+    return (float3) halfRadiance;
 }
 
 void SecondaryClosestHit(uint shaderType,
