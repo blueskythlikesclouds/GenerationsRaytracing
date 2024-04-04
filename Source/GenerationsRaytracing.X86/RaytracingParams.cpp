@@ -541,16 +541,20 @@ void RaytracingParams::imguiWindow()
 
             if (ImGui::BeginTabItem("Profiling"))
             {
-                if (ImPlot::BeginPlot("Frametimes"))
+                if (ImGui::BeginChild("Child"))
                 {
-                    ImPlot::SetupAxisLimits(ImAxis_Y1, 8.0, 32.0);
-                    ImPlot::SetupAxis(ImAxis_Y1, "ms", ImPlotAxisFlags_AutoFit);
-                    ImPlot::PlotLine<double>("X86 Process", s_x86Durations, s_durationNum, 1.0, 0.0, ImPlotLineFlags_None, s_durationIndex);
-                    ImPlot::PlotLine<double>("X64 Process", s_x64Durations, s_durationNum, 1.0, 0.0, ImPlotLineFlags_None, s_durationIndex);
-                    ImPlot::EndPlot();
-
                     s_x86Durations[s_durationIndex] = s_messageSender.getX86Duration();
                     s_x64Durations[s_durationIndex] = s_messageSender.getX64Duration();
+
+                    if (ImPlot::BeginPlot("Frametimes"))
+                    {
+                        ImPlot::SetupAxisLimits(ImAxis_Y1, 8.0, 32.0);
+                        ImPlot::SetupAxis(ImAxis_Y1, "ms", ImPlotAxisFlags_AutoFit);
+                        ImPlot::PlotLine<double>("X86 Process", s_x86Durations, s_durationNum, 1.0, 0.0, ImPlotLineFlags_None, s_durationIndex);
+                        ImPlot::PlotLine<double>("X64 Process", s_x64Durations, s_durationNum, 1.0, 0.0, ImPlotLineFlags_None, s_durationIndex);
+                        ImPlot::EndPlot();
+                    }
+
                     s_durationIndex = (s_durationIndex + 1) % s_durationNum;
 
                     const double x86DurationAvg = std::accumulate(s_x86Durations, s_x86Durations + s_durationNum, 0.0) / s_durationNum;
@@ -558,10 +562,13 @@ void RaytracingParams::imguiWindow()
 
                     ImGui::Text("Average X86 Process: %g ms (%g FPS)", x86DurationAvg, 1000.0 / x86DurationAvg);
                     ImGui::Text("Average X64 Process: %g ms (%g FPS)", x64DurationAvg, 1000.0 / x64DurationAvg);
+
+                    ImGui::Text("Vertex Buffer Wasted Memory: %g MB", static_cast<double>(VertexBuffer::s_wastedMemory) / (1024.0 * 1024.0));
+                    ImGui::Text("Index Buffer Wasted Memory: %g MB", static_cast<double>(IndexBuffer::s_wastedMemory) / (1024.0 * 1024.0));
                 }
 
-                ImGui::Text("Vertex Buffer Wasted Memory: %g MB", static_cast<double>(VertexBuffer::s_wastedMemory) / (1024.0 * 1024.0));
-                ImGui::Text("Index Buffer Wasted Memory: %g MB", static_cast<double>(IndexBuffer::s_wastedMemory) / (1024.0 * 1024.0));
+                ImGui::EndChild();
+                ImGui::EndTabItem();
             }
 
             ImGui::EndTabBar();
