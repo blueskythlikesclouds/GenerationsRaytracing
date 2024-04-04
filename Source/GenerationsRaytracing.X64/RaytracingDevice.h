@@ -57,6 +57,7 @@ struct GlobalsSB
 struct SmoothNormalCmd
 {
     uint32_t indexBufferId;
+    uint32_t indexOffset;
     uint32_t vertexStride;
     uint32_t vertexCount;
     uint32_t vertexOffset;

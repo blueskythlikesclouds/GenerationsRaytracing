@@ -218,12 +218,14 @@ void RaytracingDevice::handlePendingSmoothNormalCommands()
         struct
         {
             uint32_t indexBufferId;
+            uint32_t indexOffset;
             uint32_t vertexStride;
             uint32_t vertexCount;
             uint32_t normalOffset;
         } geometryDesc = 
         {
             m_indexBuffers[cmd.indexBufferId].srvIndex,
+            cmd.indexOffset,
             cmd.vertexStride,
             cmd.vertexCount,
             cmd.normalOffset
@@ -1256,7 +1258,7 @@ void RaytracingDevice::procMsgComputePose()
             createBuffer(nodePalette, geometryDesc->nodeCount * sizeof(uint32_t), alignof(uint32_t)));
 
         getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(3,
-            m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress());
+            m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc->vertexOffset);
 
         getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(4, destVirtualAddress);
 
@@ -1409,14 +1411,14 @@ void RaytracingDevice::procMsgRenderSky()
             createBuffer(&globalsSB, sizeof(GlobalsSB), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
-        vertexBufferView.BufferLocation = m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
+        vertexBufferView.BufferLocation = m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc->vertexOffset;
         vertexBufferView.StrideInBytes = geometryDesc->vertexStride;
         vertexBufferView.SizeInBytes = geometryDesc->vertexStride * geometryDesc->vertexCount;
 
         getUnderlyingGraphicsCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
 
         D3D12_INDEX_BUFFER_VIEW indexBufferView{};
-        indexBufferView.BufferLocation = m_indexBuffers[geometryDesc->indexBufferId].allocation->GetResource()->GetGPUVirtualAddress();
+        indexBufferView.BufferLocation = m_indexBuffers[geometryDesc->indexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc->indexOffset * 2;
         indexBufferView.SizeInBytes = geometryDesc->indexCount * 2;
         indexBufferView.Format = DXGI_FORMAT_R16_UINT;
             
@@ -1465,6 +1467,7 @@ void RaytracingDevice::procMsgComputeSmoothNormal()
     m_smoothNormalCommands.push_back(
     {
         message.indexBufferId,
+        message.indexOffset,
         message.vertexStride,
         message.vertexCount,
         message.vertexOffset,

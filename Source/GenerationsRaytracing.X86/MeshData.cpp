@@ -2,6 +2,7 @@
 #include "IndexBuffer.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "ShareVertexBuffer.h"
 
 HOOK(MeshDataEx*, __fastcall, MeshDataConstructor, 0x722860, MeshDataEx* This)
 {
@@ -161,7 +162,7 @@ static void optimizeVertexFormat(MeshResource* meshResource)
         ++vertexElement;
     }
 
-    if (*reinterpret_cast<uint32_t*>(0x1B244D4) != NULL) // Share vertex buffer is only set when terrain models are loaded
+    if (!ShareVertexBuffer::s_makingModelData)
     {
         usages[D3DDECLUSAGE_BLENDWEIGHT][0] = false;
         usages[D3DDECLUSAGE_BLENDINDICES][0] = false;

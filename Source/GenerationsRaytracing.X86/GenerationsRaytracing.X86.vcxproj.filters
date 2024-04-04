@@ -108,6 +108,9 @@
     <ClCompile Include="ModelReplacer.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
+    <ClCompile Include="ShareVertexBuffer.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -217,6 +220,9 @@
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="InstanceMask.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="ShareVertexBuffer.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>

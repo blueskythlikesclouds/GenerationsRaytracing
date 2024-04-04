@@ -21,6 +21,7 @@
 #include "FileBinder.h"
 #include "ModelReplacer.h"
 #include "QuickBoot.h"
+#include "ShareVertexBuffer.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
 
@@ -83,6 +84,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     FileBinder::init(modInfo);
     QuickBoot::init();
     ModelReplacer::init();
+    ShareVertexBuffer::init();
 
 #ifdef _DEBUG
 #if 0

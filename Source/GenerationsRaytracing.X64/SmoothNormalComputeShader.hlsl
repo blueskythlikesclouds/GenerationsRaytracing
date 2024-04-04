@@ -3,6 +3,7 @@
 cbuffer GeometryDesc : register(b0)
 {
     uint g_IndexBufferId;
+    uint g_IndexOffset;
     uint g_VertexStride;
     uint g_VertexCount;
     uint g_NormalOffset;
@@ -27,9 +28,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     {
         uint index = g_Adjacency.Load((adjacency.x + i) * sizeof(uint));
 
-        uint a = indices[index * 3 + 0];
-        uint b = indices[index * 3 + 1];
-        uint c = indices[index * 3 + 2];
+        uint a = indices[g_IndexOffset + index * 3 + 0];
+        uint b = indices[g_IndexOffset + index * 3 + 1];
+        uint c = indices[g_IndexOffset + index * 3 + 2];
 
         float3 posA = g_Vertices.Load<float3>(a * g_VertexStride);
         float3 posB = g_Vertices.Load<float3>(b * g_VertexStride);

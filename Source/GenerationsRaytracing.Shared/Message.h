@@ -443,6 +443,7 @@ struct MsgComputePose
     {
         uint32_t vertexCount;
         uint32_t vertexBufferId;
+        uint32_t vertexOffset;
         uint8_t vertexStride;
         uint8_t normalOffset;
         uint8_t tangentOffset;
@@ -483,9 +484,11 @@ struct MsgRenderSky
     {
         uint32_t flags;
         uint32_t vertexBufferId;
+        uint32_t vertexOffset;
         uint32_t vertexStride;
         uint32_t vertexCount;
         uint32_t indexBufferId;
+        uint32_t indexOffset;
         uint32_t indexCount;
         uint32_t vertexDeclarationId;
         bool isAdditive;
@@ -530,6 +533,7 @@ struct MsgComputeSmoothNormal
 {
     MSG_DEFINE_MESSAGE(MsgSaveShaderCache);
     uint32_t indexBufferId;
+    uint32_t indexOffset;
     uint8_t vertexStride;
     uint32_t vertexCount;
     uint32_t vertexOffset;

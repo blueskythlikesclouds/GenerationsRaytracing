@@ -703,11 +703,10 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         uint32_t vertexOffset = 0;
         traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
         {
-            assert(meshDataEx.m_VertexOffset == 0);
-
             geometryDesc->vertexCount = meshDataEx.m_VertexNum;
             geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
             geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
+            geometryDesc->vertexOffset = meshDataEx.m_VertexOffset;
 
             const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
                 meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
@@ -757,6 +756,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                 auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
 
                 smoothNormalMsg.indexBufferId = meshDataEx.m_indices->getId();
+                smoothNormalMsg.indexOffset = meshDataEx.m_indexOffset;
                 smoothNormalMsg.vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
                 smoothNormalMsg.vertexCount = meshDataEx.m_VertexNum;
                 smoothNormalMsg.vertexOffset = vertexOffset;
@@ -894,9 +894,11 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
     {
         geometryDesc->flags = flags;
         geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
+        geometryDesc->vertexOffset = meshDataEx.m_VertexOffset;
         geometryDesc->vertexStride = meshDataEx.m_VertexSize;
         geometryDesc->vertexCount = meshDataEx.m_VertexNum;
         geometryDesc->indexBufferId = reinterpret_cast<const IndexBuffer*>(meshDataEx.m_pD3DIndexBuffer)->getId();
+        geometryDesc->indexOffset = meshDataEx.m_IndexOffset;
         geometryDesc->indexCount = meshDataEx.m_IndexNum;
         geometryDesc->vertexDeclarationId = reinterpret_cast<const VertexDeclaration*>(meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration)->getId();
     
