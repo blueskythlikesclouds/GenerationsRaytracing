@@ -62,5 +62,10 @@ static void __declspec(naked) meshDataDrawIndexedPrimitiveMidAsmHook()
 void ShareVertexBuffer::init()
 {
     INSTALL_HOOK(ModelDataMake);
+
+    // Fix game not using index offset when drawing models
     WRITE_JUMP(0x6FD572, meshDataDrawIndexedPrimitiveMidAsmHook);
+
+    // Fix game overallocating index buffers
+    WRITE_NOP(0x72EA3F, 3);
 }

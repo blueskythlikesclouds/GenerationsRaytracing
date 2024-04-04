@@ -109,7 +109,7 @@
       <Filter>Raytracing</Filter>
     </ClCompile>
     <ClCompile Include="ShareVertexBuffer.cpp">
-      <Filter>Raytracing</Filter>
+      <Filter>Patch</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -223,7 +223,7 @@
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="ShareVertexBuffer.h">
-      <Filter>Raytracing</Filter>
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
