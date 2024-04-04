@@ -578,7 +578,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         (m_upscaler->getHeight() + 7) / 8,
         1);
 
-    getGraphicsCommandList().transitionAndUavBarrier(m_colorBeforeTransparencyTexture->GetResource(),
+    getGraphicsCommandList().transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
@@ -597,7 +597,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         (m_upscaler->getHeight() + 7) / 8,
         1);
 
-    getGraphicsCommandList().transitionAndUavBarriers(
+    getGraphicsCommandList().transitionBarriers(
         {
             m_colorTexture->GetResource(),
             m_exposureTexture->GetResource(),
@@ -1038,7 +1038,7 @@ void RaytracingDevice::procMsgTraceRays()
     m_properties->SetPipelineStackSize(m_primaryStackSize);
     getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
 
-    getGraphicsCommandList().transitionAndUavBarrier(m_dispatchRaysDescBuffers[m_frame]->GetResource(), 
+    getGraphicsCommandList().transitionBarrier(m_dispatchRaysDescBuffers[m_frame]->GetResource(), 
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
     // There is currently a bug on NVIDIA where transitioning
@@ -1056,7 +1056,7 @@ void RaytracingDevice::procMsgTraceRays()
             m_gBufferTexture6->GetResource()
         });
 
-    getGraphicsCommandList().transitionAndUavBarriers(
+    getGraphicsCommandList().transitionBarriers(
         {
             m_motionVectorsTexture->GetResource(),
             m_layerNumTexture->GetResource(),
@@ -1101,7 +1101,7 @@ void RaytracingDevice::procMsgTraceRays()
         0);
     PIX_END_EVENT();
 
-    getGraphicsCommandList().transitionAndUavBarriers(
+    getGraphicsCommandList().transitionBarriers(
         {
             m_depthTexture->GetResource(),
             m_shadowTexture->GetResource(),
