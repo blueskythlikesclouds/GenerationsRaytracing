@@ -12,7 +12,7 @@ static void screenRenderParamCallback(void* A1, Hedgehog::FxRenderFramework::SSc
     if ((Configuration::s_toneMap && 
         RaytracingParams::s_toneMapMode != TONE_MAP_MODE_DISABLE) || RaytracingParams::s_toneMapMode == TONE_MAP_MODE_ENABLE)
     {
-        shaderIndex = screenRenderParam->m_ShaderIndex;
+        shaderIndex = screenRenderParam->ShaderIndex;
     }
 
     screenDefaultExec(A1, screenRenderParam, shaderIndex);
@@ -32,9 +32,9 @@ static FUNCTION_PTR(void, __thiscall, makeShaderPair, 0x654480,
 HOOK(void, __fastcall, MakeShaderList, 0x654590, void* This, void* _, Hedgehog::Database::CDatabase* database)
 {
     memset(static_cast<uint8_t*>(This) + 
-        s_screenRenderParam.m_ShaderIndex * sizeof(Hedgehog::Mirage::SShaderPair), 0, sizeof(Hedgehog::Mirage::SShaderPair));
+        s_screenRenderParam.ShaderIndex * sizeof(Hedgehog::Mirage::SShaderPair), 0, sizeof(Hedgehog::Mirage::SShaderPair));
 
-    makeShaderPair(This, s_screenRenderParam.m_ShaderIndex, database, "FxFilterT", "FxToneMap");
+    makeShaderPair(This, s_screenRenderParam.ShaderIndex, database, "FxFilterT", "FxToneMap");
 
     originalMakeShaderList(This, _, database);
 }
@@ -43,7 +43,7 @@ static uint32_t* s_shaderListByteSize = reinterpret_cast<uint32_t*>(0x6514E3);
 
 void ToneMap::init()
 {
-    s_screenRenderParam.m_ShaderIndex = *s_shaderListByteSize / sizeof(Hedgehog::Mirage::SShaderPair);
+    s_screenRenderParam.ShaderIndex = *s_shaderListByteSize / sizeof(Hedgehog::Mirage::SShaderPair);
     WRITE_MEMORY(s_shaderListByteSize, uint32_t, *s_shaderListByteSize + sizeof(Hedgehog::Mirage::SShaderPair));
     INSTALL_HOOK(MakeShaderList);
     WRITE_MEMORY(0x13DD70C, void*, &s_screenRenderParam);

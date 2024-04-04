@@ -8,6 +8,7 @@ HOOK(MeshDataEx*, __fastcall, MeshDataConstructor, 0x722860, MeshDataEx* This)
     const auto result = originalMeshDataConstructor(This);
 
     new (std::addressof(This->m_indices)) ComPtr<IndexBuffer>();
+    This->m_indexOffset = 0;
     This->m_indexCount = 0;
     new (std::addressof(This->m_adjacency)) ComPtr<IndexBuffer>();
 
@@ -291,6 +292,29 @@ static void optimizeVertexFormat(MeshResource* meshResource)
 
 static std::vector<uint16_t> s_indices;
 
+static IndexBuffer* createIndexBuffer()
+{
+    const size_t byteSize = s_indices.size() * sizeof(uint16_t);
+    const auto indexBuffer = new IndexBuffer(byteSize);
+
+    auto& createMsg = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
+    createMsg.length = byteSize;
+    createMsg.format = D3DFMT_INDEX16;
+    createMsg.indexBufferId = indexBuffer->getId();
+    s_messageSender.endMessage();
+
+    auto& copyMsg = s_messageSender.makeMessage<MsgWriteIndexBuffer>(byteSize);
+    copyMsg.indexBufferId = indexBuffer->getId();
+    copyMsg.offset = 0;
+    copyMsg.initialWrite = true;
+    memcpy(copyMsg.data, s_indices.data(), byteSize);
+    s_messageSender.endMessage();
+
+    s_indices.clear();
+
+    return indexBuffer;
+}
+
 static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshResource)
 {
     assert(meshData.m_indices == nullptr);
@@ -299,8 +323,12 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
     if (indexNum <= 2)
         return;
 
-    s_indices.reserve((indexNum - 2) * 3);
-    s_indices.clear();
+    const bool shareVertexBuffer = *reinterpret_cast<uint32_t*>(0x1B244D4) != 0;
+
+    if (shareVertexBuffer)
+        meshData.m_indexOffset = s_indices.size();
+
+    s_indices.reserve(s_indices.size() + (indexNum - 2) * 3);
 
     size_t start = 0;
 
@@ -328,54 +356,38 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
         }
     }
 
-    if (s_indices.empty())
+    meshData.m_indexCount = s_indices.size() - meshData.m_indexOffset;
+
+    if (meshData.m_indexCount == 0)
         return;
-
-    const size_t byteSize = s_indices.size() * sizeof(uint16_t);
-
-    meshData.m_indices.Attach(new IndexBuffer(byteSize));
-    meshData.m_indexCount = s_indices.size();
-
-    auto& createMsg = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
-    createMsg.length = byteSize;
-    createMsg.format = D3DFMT_INDEX16;
-    createMsg.indexBufferId = meshData.m_indices->getId();
-    s_messageSender.endMessage();
-
-    auto& copyMsg = s_messageSender.makeMessage<MsgWriteIndexBuffer>(byteSize);
-    copyMsg.indexBufferId = meshData.m_indices->getId();
-    copyMsg.offset = 0;
-    copyMsg.initialWrite = true;
-    memcpy(copyMsg.data, s_indices.data(), byteSize);
-    s_messageSender.endMessage();
 
     if (strstr(meshResource->materialName, "_smooth_normal") != nullptr)
     {
         std::vector<std::vector<uint32_t>> adjacentTriangles(_byteswap_ulong(meshResource->vertexCount));
 
-        for (size_t i = 0; i < s_indices.size(); i++)
-            adjacentTriangles[s_indices[i]].push_back(i / 3);
+        for (size_t i = 0; i < meshData.m_indexCount; i++)
+            adjacentTriangles[s_indices[meshData.m_indexOffset + i]].push_back(i / 3);
 
         size_t adjacentIndexNum = 0;
         for (const auto& adjacencyIndices : adjacentTriangles)
             adjacentIndexNum += adjacencyIndices.size();
 
-        const size_t adjacencyByteSize = (adjacentTriangles.size() * 2 + adjacentIndexNum) * sizeof(uint32_t);
+        const size_t byteSize = (adjacentTriangles.size() * 2 + adjacentIndexNum) * sizeof(uint32_t);
 
-        meshData.m_adjacency.Attach(new IndexBuffer(adjacencyByteSize));
+        meshData.m_adjacency.Attach(new IndexBuffer(byteSize));
 
-        auto& adjacencyCreateMsg = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
-        adjacencyCreateMsg.length = adjacencyByteSize;
-        adjacencyCreateMsg.format = D3DFMT_UNKNOWN;
-        adjacencyCreateMsg.indexBufferId = meshData.m_adjacency->getId();
+        auto& createMsg = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
+        createMsg.length = byteSize;
+        createMsg.format = D3DFMT_UNKNOWN;
+        createMsg.indexBufferId = meshData.m_adjacency->getId();
         s_messageSender.endMessage();
 
-        auto& adjacencyCopyMsg = s_messageSender.makeMessage<MsgWriteIndexBuffer>(adjacencyByteSize);
-        adjacencyCopyMsg.indexBufferId = meshData.m_adjacency->getId();
-        adjacencyCopyMsg.offset = 0;
-        adjacencyCopyMsg.initialWrite = true;
+        auto& copyMsg = s_messageSender.makeMessage<MsgWriteIndexBuffer>(byteSize);
+        copyMsg.indexBufferId = meshData.m_adjacency->getId();
+        copyMsg.offset = 0;
+        copyMsg.initialWrite = true;
 
-        auto metaCursor = reinterpret_cast<uint32_t*>(adjacencyCopyMsg.data);
+        auto metaCursor = reinterpret_cast<uint32_t*>(copyMsg.data);
         auto indexCursor = metaCursor + adjacentTriangles.size() * 2;
 
         size_t curIndex = 0;
@@ -393,6 +405,23 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
 
         s_messageSender.endMessage();
     }
+
+    if (!shareVertexBuffer)
+        meshData.m_indices.Attach(createIndexBuffer());
+}
+
+HOOK(void, __fastcall, ProcessShareVertexBuffer, 0x72EBD0, Hedgehog::Mirage::CShareVertexBuffer* This)
+{
+    if (!s_indices.empty())
+    {
+        ComPtr<IndexBuffer> indexBuffer;
+        indexBuffer.Attach(createIndexBuffer());
+
+        for (const auto& meshData : This->m_MeshDataList)
+            reinterpret_cast<MeshDataEx*>(meshData.pMeshData)->m_indices = indexBuffer;
+    }
+
+    originalProcessShareVertexBuffer(This);
 }
 
 HOOK(void, __cdecl, MakeMeshData, 0x744A00,
@@ -452,6 +481,8 @@ void MeshData::init()
 
     INSTALL_HOOK(MeshDataConstructor);
     INSTALL_HOOK(MeshDataDestructor);
+
+    INSTALL_HOOK(ProcessShareVertexBuffer);
 
     INSTALL_HOOK(MakeMeshData);
     INSTALL_HOOK(MakeMeshData2);

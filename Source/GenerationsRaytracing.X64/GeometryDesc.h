@@ -4,6 +4,7 @@ struct GeometryDesc
 {
     uint32_t flags : 12;
     uint32_t indexBufferId : 20;
+    uint32_t indexOffset;
 
     uint32_t vertexBufferId : 20;
     uint32_t vertexStride : 12;
@@ -21,5 +22,4 @@ struct GeometryDesc
     uint32_t texCoordOffset3 : 8;
 
     uint32_t materialId;
-    uint32_t padding0;
 };

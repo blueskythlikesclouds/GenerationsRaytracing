@@ -110,6 +110,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
         geometryDesc->flags = flags;
         geometryDesc->indexBufferId = meshDataEx.m_indices->getId();
         geometryDesc->indexCount = meshDataEx.m_indexCount;
+        geometryDesc->indexOffset = meshDataEx.m_indexOffset;
 
         if (poseVertexBufferId != NULL)
             geometryDesc->vertexBufferId = poseVertexBufferId;

@@ -10,6 +10,7 @@ struct GeometryDesc
 {
     uint Flags : 12;
     uint IndexBufferId : 20;
+    uint IndexOffset;
 
     uint VertexBufferId : 20;
     uint VertexStride : 12;
@@ -27,7 +28,6 @@ struct GeometryDesc
     uint TexCoordOffset3 : 8;
 
     uint MaterialId;
-    uint Padding0;
 };
 
 struct InstanceDesc
@@ -80,9 +80,9 @@ Vertex LoadVertex(
         attributes.barycentrics.y);
 
     uint3 indices;
-    indices.x = indexBuffer[PrimitiveIndex() * 3 + 0];
-    indices.y = indexBuffer[PrimitiveIndex() * 3 + 1];
-    indices.z = indexBuffer[PrimitiveIndex() * 3 + 2];
+    indices.x = indexBuffer[geometryDesc.IndexOffset + PrimitiveIndex() * 3 + 0];
+    indices.y = indexBuffer[geometryDesc.IndexOffset + PrimitiveIndex() * 3 + 1];
+    indices.z = indexBuffer[geometryDesc.IndexOffset + PrimitiveIndex() * 3 + 2];
 
     uint3 prevPositionOffsets = geometryDesc.VertexOffset +
         geometryDesc.VertexCount * geometryDesc.VertexStride + indices * 0xC;

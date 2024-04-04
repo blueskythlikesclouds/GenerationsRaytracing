@@ -142,9 +142,9 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
                     Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
                 
                     uint3 indices;
-                    indices.x = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 0];
-                    indices.y = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 1];
-                    indices.z = indexBuffer[query.CandidatePrimitiveIndex() * 3 + 2];
+                    indices.x = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 0];
+                    indices.y = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 1];
+                    indices.z = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 2];
                 
                     uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
                 
