@@ -64,6 +64,8 @@ void PrimaryRayGeneration()
         ray,
         payload1);
 
+    g_LayerNum[DispatchRaysIndex().xy] = payload1.LayerIndex;
+
     [unroll]
     for (uint i = 0; i < RAY_GENERATION_NUM - 1; i++)
     {
@@ -95,8 +97,6 @@ void PrimaryRayGeneration()
             baseDispatchRaysIndex += WaveActiveSum(layerValid);
         }
     }
-
-    g_LayerNum[DispatchRaysIndex().xy] = payload1.LayerIndex;
 }
 
 [shader("miss")]
