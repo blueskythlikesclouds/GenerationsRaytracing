@@ -134,6 +134,12 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::createBuffer(const void* memory, uint32_t data
 
         assert(SUCCEEDED(hr) && uploadBuffer.allocation != nullptr);
 
+#ifdef _DEBUG
+        wchar_t name[0x100];
+        swprintf_s(name, L"Upload Buffer %d (Frame %d)", m_uploadBufferIndex, m_frame);
+        uploadBuffer.allocation->GetResource()->SetName(name);
+#endif
+
         constexpr D3D12_RANGE readRange{};
 
         hr = uploadBuffer.allocation->GetResource()->Map(
@@ -794,11 +800,11 @@ void Device::procMsgCreateTexture()
     wchar_t name[0x100];
 
     if ((message.usage & D3DUSAGE_RENDERTARGET) != 0)
-        _swprintf(name, L"Render Target %d %dx%d", message.textureId, message.width, message.height);
+        swprintf_s(name, L"Render Target %d %dx%d", message.textureId, message.width, message.height);
     else if ((message.usage & D3DUSAGE_DEPTHSTENCIL) != 0)
-        _swprintf(name, L"Depth Stencil %d %dx%d", message.textureId, message.width, message.height);
+        swprintf_s(name, L"Depth Stencil %d %dx%d", message.textureId, message.width, message.height);
     else
-        _swprintf(name, L"Texture %d %dx%d", message.textureId, message.width, message.height);
+        swprintf_s(name, L"Texture %d %dx%d", message.textureId, message.width, message.height);
 
     texture.allocation->GetResource()->SetName(name);
 #endif
@@ -1288,6 +1294,12 @@ void Device::procMsgWriteVertexBuffer()
                 D3D12_RESOURCE_FLAG_NONE,
                 D3D12_RESOURCE_STATE_COMMON, 
                 vertexBuffer.allocation);
+
+#ifdef _DEBUG
+            wchar_t name[0x100];
+            swprintf_s(name, L"Vertex Buffer %d (Next Allocation)", message.vertexBufferId);
+            vertexBuffer.allocation->GetResource()->SetName(name);
+#endif
         }
     }
 
@@ -1362,6 +1374,12 @@ void Device::procMsgWriteIndexBuffer()
                 D3D12_RESOURCE_FLAG_NONE,
                 D3D12_RESOURCE_STATE_COMMON,
                 indexBuffer.allocation);
+
+#ifdef _DEBUG
+            wchar_t name[0x100];
+            swprintf_s(name, L"Index Buffer %d (Next Allocation)", message.indexBufferId);
+            indexBuffer.allocation->GetResource()->SetName(name);
+#endif
         }
     }
 

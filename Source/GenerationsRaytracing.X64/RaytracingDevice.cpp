@@ -398,6 +398,10 @@ void RaytracingDevice::createRaytracingTextures()
 
     assert(SUCCEEDED(hr) && m_dispatchRaysIndexBuffer != nullptr);
 
+#ifdef _DEBUG
+    m_dispatchRaysIndexBuffer->GetResource()->SetName(L"Dispatch Rays Index Buffer");
+#endif
+
     auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_UNKNOWN,
         0, 0, 1, 1, 1, 0,
@@ -408,37 +412,38 @@ void RaytracingDevice::createRaytracingTextures()
         uint16_t depthOrArraySize;
         DXGI_FORMAT format;
         ComPtr<D3D12MA::Allocation>& allocation;
+        const wchar_t* name;
         uint32_t width;
         uint32_t height;
     }
     const textureDescs[] =
     {
-        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture },
-        { 1, DXGI_FORMAT_R32_FLOAT, m_depthTexture },
-        { 1, DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture },
-        { 1, DXGI_FORMAT_R32_FLOAT, m_exposureTexture, 1, 1 },
+        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture, L"Color Texture" },
+        { 1, DXGI_FORMAT_R32_FLOAT, m_depthTexture, L"Depth Texture" },
+        { 1, DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture, L"Motion Vectors Texture" },
+        { 1, DXGI_FORMAT_R32_FLOAT, m_exposureTexture, L"Exposure Texture", 1, 1 },
 
-        { 1, DXGI_FORMAT_R8_UINT, m_layerNumTexture },
+        { 1, DXGI_FORMAT_R8_UINT, m_layerNumTexture, L"Layer Num Texture" },
 
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0 },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1 },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2 },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3 },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture4 },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5 },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6 },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0, L"Geometry Buffer Texture 0" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1, L"Geometry Buffer Texture 1" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2, L"Geometry Buffer Texture 2" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3, L"Geometry Buffer Texture 3" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5, L"Geometry Buffer Texture 5" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6, L"Geometry Buffer Texture 6" },
 
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R8_UNORM, m_shadowTexture },
-        { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture },
-        { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_prevReservoirTexture },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R8_UNORM, m_shadowTexture, L"Shadow Texture" },
+        { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture, L"Reservoir Texture" },
+        { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_prevReservoirTexture, L"Previous Reservoir Texture" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, L"GI Texture" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture, L"Reflection Texture" },
 
-        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoTexture },
-        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture },
-        { 1, DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture },
-        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorBeforeTransparencyTexture },
-        { 1, DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture },
+        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoTexture, L"Diffuse Albedo Texture" },
+        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture, L"Specular Albedo Texture" },
+        { 1, DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture, L"Linear Depth Texture" },
+        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
+        { 1, DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture, L"Specular Hit Distance Texture" },
     };
 
     static_assert(_countof(textureDescs) == s_textureNum);
@@ -461,7 +466,9 @@ void RaytracingDevice::createRaytracingTextures()
 
         assert(SUCCEEDED(hr) && textureDesc.allocation != nullptr);
 
-        getUnderlyingGraphicsCommandList()->DiscardResource(textureDesc.allocation->GetResource(), nullptr);
+#ifdef _DEBUG
+        textureDesc.allocation->GetResource()->SetName(textureDesc.name);
+#endif
     }
 
     if (m_uavId == NULL)
@@ -532,7 +539,9 @@ void RaytracingDevice::createRaytracingTextures()
 
     assert(SUCCEEDED(hr) && m_outputTexture != nullptr);
 
-    getUnderlyingGraphicsCommandList()->DiscardResource(m_outputTexture->GetResource(), nullptr);
+#ifdef _DEBUG
+    m_outputTexture->GetResource()->SetName(L"Output Texture");
+#endif
 
     m_debugViewTextures[DEBUG_VIEW_NONE] = m_outputTexture->GetResource();
     m_debugViewTextures[DEBUG_VIEW_DIFFUSE] = m_gBufferTexture1->GetResource();
@@ -1669,6 +1678,10 @@ RaytracingDevice::RaytracingDevice()
             D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
             dispatchRaysDescBuffer);
+
+#ifdef _DEBUG
+        dispatchRaysDescBuffer->GetResource()->SetName(L"Dispatch Rays Desc Buffer");
+#endif
     }
 
     for (auto& scratchBuffer : m_scratchBuffers)
@@ -1679,6 +1692,10 @@ RaytracingDevice::RaytracingDevice()
             D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
             D3D12_RESOURCE_STATE_COMMON,
             scratchBuffer);
+
+#ifdef _DEBUG
+        scratchBuffer->GetResource()->SetName(L"Scratch Buffer");
+#endif
     }
 
     CD3DX12_DESCRIPTOR_RANGE1 copyDescriptorRanges[1];

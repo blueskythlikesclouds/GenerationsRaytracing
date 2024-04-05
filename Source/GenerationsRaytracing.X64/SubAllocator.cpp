@@ -81,6 +81,12 @@ SubAllocation SubAllocator::allocate(D3D12MA::Allocator* allocator, uint32_t byt
 
     assert(SUCCEEDED(hr) && block.blockAllocation != nullptr);
 
+#ifdef _DEBUG
+    wchar_t name[0x100];
+    swprintf_s(name, L"Sub Allocation Buffer %d", static_cast<uint32_t>(m_blocks.size()));
+    block.blockAllocation->GetResource()->SetName(name);
+#endif
+
     hr = block.virtualBlock->Allocate(&virtualAllocDesc, &subAllocation.virtualAllocation, &offset);
     assert(SUCCEEDED(hr));
 

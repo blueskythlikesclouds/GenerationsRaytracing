@@ -22,6 +22,12 @@ static void resourceAllocCallback(D3D12_RESOURCE_DESC* desc, int state, CD3DX12_
 
     assert(SUCCEEDED(hr) && allocation != nullptr);
 
+#ifdef _DEBUG
+    wchar_t name[0x100];
+    swprintf_s(name, L"NGX Resource %p", allocation->GetResource());
+    allocation->GetResource()->SetName(name);
+#endif
+
     *resource = allocation->GetResource();
     s_allocations.emplace(allocation->GetResource(), std::move(allocation));
 }

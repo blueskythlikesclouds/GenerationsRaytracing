@@ -90,7 +90,7 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
 
 #ifdef _DEBUG
         wchar_t name[0x100];
-        _swprintf(name, L"Swap Chain %d", i);
+        swprintf_s(name, L"Swap Chain %d", i);
         resource->SetName(name);
 #endif
 
