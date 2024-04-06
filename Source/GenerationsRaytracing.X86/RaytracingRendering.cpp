@@ -184,13 +184,17 @@ static uint32_t s_prevEnvMode;
 static Hedgehog::Math::CVector s_prevSkyColor;
 static Hedgehog::Math::CVector s_prevGroundColor;
 
+// Deadlock workaround: Acquiring a handle to GameDocument hangs the loading
+// thread when rendering, so let's call our logic only in the main thread.
+static DWORD s_mainThreadId;
+
 static void __cdecl implOfSceneRender(void* a1)
 {
     bool resetAccumulation = RaytracingParams::update();
     const bool shouldRender = s_prevRaytracingEnable;
     initRaytracingPatches(RaytracingParams::s_enable);
 
-    if (shouldRender)
+    if (shouldRender && GetCurrentThreadId() == s_mainThreadId)
     {
         setSceneSurface(a1, *reinterpret_cast<void**>(**reinterpret_cast<uint32_t**>(a1) + 84));
 
@@ -367,6 +371,8 @@ static void __cdecl implOfSceneRender(void* a1)
 
 void RaytracingRendering::init()
 {
+    s_mainThreadId = GetCurrentThreadId();
+
     WRITE_MEMORY(0x13DDB20, uint32_t, 0); // Disable sky render
 }
 
