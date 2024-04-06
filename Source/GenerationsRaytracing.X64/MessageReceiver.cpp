@@ -26,4 +26,8 @@ void MessageReceiver::receiveMessages()
     m_offset = sizeof(uint32_t);
     m_length = *reinterpret_cast<uint32_t*>(m_memoryMap);
     memcpy(m_messages.get(), m_memoryMap, m_length);
+
+#ifdef _DEBUG
+    m_types.clear();
+#endif
 }

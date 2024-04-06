@@ -10,6 +10,9 @@ protected:
     std::unique_ptr<uint8_t[]> m_messages;
     uint32_t m_offset = 0;
     uint32_t m_length = 0;
+#ifdef _DEBUG
+    std::vector<const char*> m_types;
+#endif
 
 public:
     MessageReceiver();

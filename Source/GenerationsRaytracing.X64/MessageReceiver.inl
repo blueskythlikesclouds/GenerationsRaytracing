@@ -16,5 +16,9 @@ const T& MessageReceiver::getMessage()
     else
         m_offset += sizeof(T);
 
+#ifdef _DEBUG
+    m_types.push_back(typeid(T).name() + 7);
+#endif
+
     return *message;
 }

@@ -471,11 +471,7 @@ void RaytracingDevice::createRaytracingTextures()
 #endif
     }
 
-    if (m_uavId == NULL)
-        m_uavId = m_descriptorHeap.allocateMany(_countof(textureDescs));
-
-    if (m_srvId == NULL)
-        m_srvId = m_descriptorHeap.allocateMany(_countof(textureDescs));
+    assert(m_uavId != NULL && m_srvId != NULL);
     
     auto uavHandle = m_descriptorHeap.getCpuHandle(m_uavId);
     auto srvHandle = m_descriptorHeap.getCpuHandle(m_srvId);
@@ -558,9 +554,7 @@ void RaytracingDevice::createRaytracingTextures()
     for (size_t i = 0; i < DEBUG_VIEW_MAX; i++)
     {
         auto& srvId = m_srvIds[i];
-
-        if (srvId == NULL)
-            srvId = m_descriptorHeap.allocateMany(2);
+        assert(srvId != NULL);
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = m_debugViewTextures[i]->GetDesc().Format;
@@ -1697,6 +1691,12 @@ RaytracingDevice::RaytracingDevice()
         scratchBuffer->GetResource()->SetName(L"Scratch Buffer");
 #endif
     }
+
+    m_uavId = m_descriptorHeap.allocateMany(s_textureNum);
+    m_srvId = m_descriptorHeap.allocateMany(s_textureNum);
+
+    for (auto& srvId : m_srvIds)
+        srvId = m_descriptorHeap.allocateMany(2);
 
     CD3DX12_DESCRIPTOR_RANGE1 copyDescriptorRanges[1];
     copyDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
