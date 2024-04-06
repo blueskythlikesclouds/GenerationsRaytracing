@@ -9,6 +9,7 @@
 #include "Texture.h"
 #include "InstanceData.h"
 #include "RaytracingParams.h"
+#include "RopeRenderable.h"
 #include "ToneMap.h"
 #include "UpReelRenderable.h"
 
@@ -80,6 +81,10 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
     else if (const auto reelRenderer = dynamic_cast<Sonic::CObjUpReel::CReelRenderer*>(renderable))
     {
         UpReelRenderable::createInstanceAndBottomLevelAccelStruct(reelRenderer);
+    }
+    else if (const auto ropeRenderable = dynamic_cast<Sonic::CRopeRenderable*>(renderable))
+    {
+        RopeRenderable::createInstanceAndBottomLevelAccelStruct(ropeRenderable);
     }
 }
 

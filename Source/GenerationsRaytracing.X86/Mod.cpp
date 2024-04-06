@@ -21,6 +21,7 @@
 #include "FileBinder.h"
 #include "ModelReplacer.h"
 #include "QuickBoot.h"
+#include "RopeRenderable.h"
 #include "ShareVertexBuffer.h"
 #include "UpReelRenderable.h"
 
@@ -82,6 +83,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     ModelReplacer::init();
     ShareVertexBuffer::init();
     UpReelRenderable::init();
+    RopeRenderable::init();
 
 #ifdef _DEBUG
 #if 0

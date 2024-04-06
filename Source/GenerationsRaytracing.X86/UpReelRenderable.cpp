@@ -79,7 +79,16 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
             createMsg.shaderType = SHADER_TYPE_COMMON;
             createMsg.flags = MATERIAL_FLAG_CONST_TEX_COORD;
 
-            createMsg.diffuseTexture.id = reinterpret_cast<Texture*>(reelRendererEx->m_pObjUpReel->m_spDiffusePicture->m_pD3DTexture)->getId();
+            if (reelRendererEx->m_pObjUpReel->m_spDiffusePicture != nullptr &&
+                reelRendererEx->m_pObjUpReel->m_spDiffusePicture->m_pD3DTexture != nullptr)
+            {
+                createMsg.diffuseTexture.id = reinterpret_cast<Texture*>(reelRendererEx->m_pObjUpReel->m_spDiffusePicture->m_pD3DTexture)->getId();
+            }
+            else
+            {
+                createMsg.diffuseTexture.id = NULL;
+            }
+
             createMsg.diffuseTexture.addressModeU = D3DTADDRESS_WRAP;
             createMsg.diffuseTexture.addressModeV = D3DTADDRESS_WRAP;
 

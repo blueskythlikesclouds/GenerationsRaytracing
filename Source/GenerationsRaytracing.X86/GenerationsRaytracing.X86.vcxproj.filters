@@ -114,6 +114,9 @@
     <ClCompile Include="UpReelRenderable.cpp">
       <Filter>Raytracing\Renderable</Filter>
     </ClCompile>
+    <ClCompile Include="RopeRenderable.cpp">
+      <Filter>Raytracing\Renderable</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -233,6 +236,9 @@
     </ClInclude>
     <ClInclude Include="MeshOpt.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="RopeRenderable.h">
+      <Filter>Raytracing\Renderable</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -136,6 +136,7 @@
     <ClCompile Include="RaytracingParams.cpp" />
     <ClCompile Include="RaytracingRendering.cpp" />
     <ClCompile Include="Resource.cpp" />
+    <ClCompile Include="RopeRenderable.cpp" />
     <ClCompile Include="ShaderCache.cpp" />
     <ClCompile Include="ShareVertexBuffer.cpp" />
     <ClCompile Include="Sofdec.cpp" />
@@ -178,6 +179,7 @@
     <ClInclude Include="RaytracingParams.h" />
     <ClInclude Include="RaytracingRendering.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="RopeRenderable.h" />
     <ClInclude Include="ShaderCache.h" />
     <ClInclude Include="ShareVertexBuffer.h" />
     <ClInclude Include="Sofdec.h" />
