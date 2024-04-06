@@ -10,6 +10,7 @@
 #include "InstanceData.h"
 #include "RaytracingParams.h"
 #include "ToneMap.h"
+#include "UpReelRenderable.h"
 
 static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable)
 {
@@ -75,6 +76,10 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
     {
         for (const auto it : optimalBundle->m_RenderableList)
             createInstancesAndBottomLevelAccelStructs(it);
+    }
+    else if (const auto reelRenderer = dynamic_cast<Sonic::CObjUpReel::CReelRenderer*>(renderable))
+    {
+        UpReelRenderable::createInstanceAndBottomLevelAccelStruct(reelRenderer);
     }
 }
 

@@ -111,6 +111,9 @@
     <ClCompile Include="ShareVertexBuffer.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
+    <ClCompile Include="UpReelRenderable.cpp">
+      <Filter>Raytracing\Renderable</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -225,6 +228,12 @@
     <ClInclude Include="ShareVertexBuffer.h">
       <Filter>Patch</Filter>
     </ClInclude>
+    <ClInclude Include="UpReelRenderable.h">
+      <Filter>Raytracing\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshOpt.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">
@@ -250,6 +259,9 @@
     </Filter>
     <Filter Include="Utilities">
       <UniqueIdentifier>{a13b0a9c-ea8b-4fbc-9b35-32c2d4a3e70f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Raytracing\Renderable">
+      <UniqueIdentifier>{f6b71695-006a-45f3-b817-b45a96ae2dc0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

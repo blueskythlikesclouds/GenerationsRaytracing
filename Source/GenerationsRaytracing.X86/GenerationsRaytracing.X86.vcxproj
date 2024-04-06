@@ -145,6 +145,7 @@
     <ClCompile Include="ToneMap.cpp" />
     <ClCompile Include="TriangleStrip.cpp" />
     <ClCompile Include="Unknown.cpp" />
+    <ClCompile Include="UpReelRenderable.cpp" />
     <ClCompile Include="VertexBuffer.cpp" />
     <ClCompile Include="VertexDeclaration.cpp" />
     <ClCompile Include="VertexShader.cpp" />
@@ -156,6 +157,7 @@
     <ClInclude Include="InstanceMask.h" />
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />
+    <ClInclude Include="MeshOpt.h" />
     <ClInclude Include="ModelReplacer.h" />
     <ClInclude Include="MotionData.h" />
     <ClInclude Include="QuickBoot.h" />
@@ -185,6 +187,7 @@
     <ClInclude Include="ToneMap.h" />
     <ClInclude Include="TriangleStrip.h" />
     <ClInclude Include="Unknown.h" />
+    <ClInclude Include="UpReelRenderable.h" />
     <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VertexDeclaration.h" />
     <ClInclude Include="VertexShader.h" />
