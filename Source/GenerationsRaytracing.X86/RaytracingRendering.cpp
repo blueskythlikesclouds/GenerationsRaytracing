@@ -127,7 +127,7 @@ static void createLocalLight(Hedgehog::Mirage::CLightData& lightData, size_t loc
 }
 
 // 2 elements for post processing on particles
-static Hedgehog::FxRenderFramework::SDrawInstanceParam s_drawInstanceParams[2u];
+static Hedgehog::FxRenderFramework::SDrawInstanceParam s_drawInstanceParams[5u];
 static uint32_t s_drawInstanceParamCount;
 
 static bool s_prevRaytracingEnable;
@@ -378,31 +378,38 @@ void RaytracingRendering::init()
 
 void RaytracingRendering::postInit()
 {
+    // Draw instance params for raytracing disabled
     s_gameSceneChildCount = *reinterpret_cast<uint32_t*>(0x13DDCA0);
     s_gameSceneChildren = std::make_unique<Hedgehog::FxRenderFramework::SDrawInstanceParam[]>(s_gameSceneChildCount);
 
-    memcpy(s_gameSceneChildren.get(), *reinterpret_cast<void**>(0x13DDC9C), 
-        s_gameSceneChildCount * sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
-
+    memcpy(s_gameSceneChildren.get(), *reinterpret_cast<void**>(0x13DDC9C), s_gameSceneChildCount * sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
     s_gameSceneChildren[0].pCallback = implOfSceneRender;
 
     WRITE_MEMORY(0x13DDC9C, void*, s_gameSceneChildren.get());
 
-    // Init draw instance params
-    memcpy(s_drawInstanceParams, reinterpret_cast<void*>(0x13DC2C8), 
-        sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
-
+    // Draw instance params for raytracing enabled
+    memcpy(s_drawInstanceParams, reinterpret_cast<void*>(0x13DC2C8), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
     s_drawInstanceParams[0].pCallback = implOfSceneRender;
+    ++s_drawInstanceParamCount;
+
+    memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC1A8), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
+    s_drawInstanceParams[s_drawInstanceParamCount].ChildParams = reinterpret_cast<void*>(0x13DBFE8);
+    s_drawInstanceParams[s_drawInstanceParamCount].ChildParamCount = 1;
+    ++s_drawInstanceParamCount;
+
+    memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC228), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
+    s_drawInstanceParams[s_drawInstanceParamCount].ChildParams = reinterpret_cast<void*>(0x13DBFE8);
+    s_drawInstanceParams[s_drawInstanceParamCount].ChildParamCount = 1;
+    ++s_drawInstanceParamCount;
+
+    memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC648), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
+    ++s_drawInstanceParamCount;
 
     if (*reinterpret_cast<uint32_t*>(0x13DD790) == 2)
     {
-        memcpy(s_drawInstanceParams + 1, reinterpret_cast<void*>(0x13DC8C8), 
+        memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC8C8), 
             sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
 
-        s_drawInstanceParamCount = 2;
-    }
-    else
-    {
-        s_drawInstanceParamCount = 1;
+        ++s_drawInstanceParamCount;
     }
 }
