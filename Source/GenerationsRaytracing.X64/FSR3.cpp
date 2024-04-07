@@ -13,21 +13,39 @@
 
 FSR3::FSR3(const Device& device)
 {
-    const size_t scratchBufferSize = ffxGetScratchMemorySizeDX12(FFX_FSR3_CONTEXT_COUNT);
-    m_scratchBuffer = std::make_unique<uint8_t[]>(scratchBufferSize);
-
-    THROW_IF_FAILED(ffxGetInterfaceDX12(
+    FfxInterface* const backends[] =
+    {
+        &m_contextDesc.backendInterfaceSharedResources,
         &m_contextDesc.backendInterfaceUpscaling,
-        ffxGetDeviceDX12(device.getUnderlyingDevice()), 
-        m_scratchBuffer.get(),
-        scratchBufferSize,
-        FFX_FSR3_CONTEXT_COUNT));
+        &m_contextDesc.backendInterfaceFrameInterpolation
+    };
+    static_assert(_countof(backends) == FSR3_BACKEND_COUNT);
+
+    const size_t scratchBufferSize = ffxGetScratchMemorySizeDX12(FFX_FSR3_CONTEXT_COUNT);
+    for (size_t i = 0; i < _countof(backends); i++)
+    {
+        m_scratchBuffers[i] = std::make_unique<uint8_t[]>(scratchBufferSize);
+
+        THROW_IF_FAILED(ffxGetInterfaceDX12(
+            backends[i],
+            ffxGetDeviceDX12(device.getUnderlyingDevice()),
+            m_scratchBuffers[i].get(),
+            scratchBufferSize,
+            FFX_FSR3_CONTEXT_COUNT));
+    }
 }
 
 FSR3::~FSR3()
 {
     if (m_valid)
+    {
+        FfxFrameGenerationConfig config{};
+        config.swapChain = ffxGetSwapchainDX12(m_swapChain);
+        config.frameGenerationEnabled = false;
+        ffxWaitForPresents(config.swapChain);
+        ffxFsr3ConfigureFrameGeneration(&m_context, &config);
         ffxFsr3ContextDestroy(&m_context);
+    }
 }
 
 void FSR3::init(const InitArgs& args)
@@ -54,7 +72,7 @@ void FSR3::init(const InitArgs& args)
             args.qualityMode == QualityMode::Performance ? FFX_FSR3_QUALITY_MODE_PERFORMANCE : FFX_FSR3_QUALITY_MODE_ULTRA_PERFORMANCE));
     }
 
-    m_contextDesc.flags = FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE | FFX_FSR3_ENABLE_UPSCALING_ONLY;
+    m_contextDesc.flags = FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE;
     m_contextDesc.maxRenderSize.width = m_width;
     m_contextDesc.maxRenderSize.height = m_height;
     m_contextDesc.upscaleOutputSize.width = args.width;
@@ -64,12 +82,22 @@ void FSR3::init(const InitArgs& args)
 #ifdef _DEBUG
     m_contextDesc.fpMessage = [](auto, const wchar_t* message) { OutputDebugStringW(message); };
 #endif
+    m_contextDesc.backBufferFormat = FFX_SURFACE_FORMAT_R8G8B8A8_UNORM;
 
     THROW_IF_FAILED(ffxFsr3ContextCreate(&m_context, &m_contextDesc));
+
+    args.device.getSwapChain().replaceSwapChainForFrameInterpolation(args.device);
+    m_swapChain = args.device.getSwapChain().getSwapChain();
 }
 
 void FSR3::dispatch(const DispatchArgs& args)
 {
+    FfxFrameGenerationConfig config{};
+    config.swapChain = ffxGetSwapchainDX12(args.device.getSwapChain().getSwapChain());
+    config.frameGenerationEnabled = true;
+    config.frameGenerationCallback = ffxFsr3DispatchFrameGeneration;
+    ffxFsr3ConfigureFrameGeneration(&m_context, &config);
+
     FfxFsr3DispatchUpscaleDescription desc{};
     desc.commandList = ffxGetCommandListDX12(args.device.getUnderlyingGraphicsCommandList());
     desc.color = ffxGetResourceDX12(args.color, GetFfxResourceDescriptionDX12(args.color), nullptr);

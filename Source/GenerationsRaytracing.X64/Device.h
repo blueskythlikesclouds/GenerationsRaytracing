@@ -215,6 +215,7 @@ public:
     D3D12MA::Allocator* getAllocator() const;
 
     CommandQueue& getGraphicsQueue();
+    const CommandQueue& getGraphicsQueue() const;
     CommandQueue& getCopyQueue();
 
     CommandList& getGraphicsCommandList();
@@ -226,8 +227,11 @@ public:
     DescriptorHeap& getDescriptorHeap();
     DescriptorHeap& getSamplerDescriptorHeap();
     DescriptorHeap& getRtvDescriptorHeap();
+    const DescriptorHeap& getRtvDescriptorHeap() const;
     DescriptorHeap& getDsvDescriptorHeap();
 
     const GlobalsVS& getGlobalsVS() const;
     const GlobalsPS& getGlobalsPS() const;
+
+    SwapChain& getSwapChain();
 };

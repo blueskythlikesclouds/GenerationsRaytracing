@@ -403,9 +403,6 @@ void Device::procMsgCreateSwapChain()
         m_textures.resize(m_swapChainTextureId + 1);
 
     m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-
-    getGraphicsCommandList().transitionBarrier(m_swapChain.getResource(), 
-        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void Device::procMsgSetRenderTarget()
@@ -422,6 +419,11 @@ void Device::procMsgSetRenderTarget()
         {
             getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        }
+        else
+        {
+            getGraphicsCommandList().transitionBarrier(m_swapChain.getResource(),
+                D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
         }
 
         if (texture.rtvIndex == NULL)
@@ -841,6 +843,8 @@ void Device::procMsgSetTexture()
                 &srvDesc,
                 m_descriptorHeap.getCpuHandle(texture.srvIndex));
         }
+
+        assert(texture.allocation != nullptr);
 
         if (texture.rtvIndex != NULL)
         {
@@ -1944,10 +1948,7 @@ void Device::processMessages()
     getGraphicsCommandList().open();
 
     if (m_swapChainTextureId != 0)
-    {
         m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
-        getGraphicsCommandList().transitionBarrier(m_swapChain.getResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
-    }
 
     setDescriptorHeaps();
 
@@ -2124,6 +2125,11 @@ CommandQueue& Device::getGraphicsQueue()
     return m_graphicsQueue;
 }
 
+const CommandQueue& Device::getGraphicsQueue() const
+{
+    return m_graphicsQueue;
+}
+
 CommandQueue& Device::getCopyQueue()
 {
     return m_copyQueue;
@@ -2164,6 +2170,11 @@ DescriptorHeap& Device::getRtvDescriptorHeap()
     return m_rtvDescriptorHeap;
 }
 
+const DescriptorHeap& Device::getRtvDescriptorHeap() const
+{
+    return m_rtvDescriptorHeap;
+}
+
 DescriptorHeap& Device::getDsvDescriptorHeap()
 {
     return m_dsvDescriptorHeap;
@@ -2177,4 +2188,9 @@ const GlobalsVS& Device::getGlobalsVS() const
 const GlobalsPS& Device::getGlobalsPS() const
 {
     return m_globalsPS;
+}
+
+SwapChain& Device::getSwapChain()
+{
+    return m_swapChain;
 }

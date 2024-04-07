@@ -27,6 +27,11 @@ Window& SwapChain::getWindow()
     return m_window;
 }
 
+IDXGISwapChain4* SwapChain::getSwapChain() const
+{
+    return m_swapChain.Get();
+}
+
 const Texture& SwapChain::getTexture() const
 {
     return m_textures[m_swapChain->GetCurrentBackBufferIndex()];
@@ -50,7 +55,7 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
     DXGI_SWAP_CHAIN_DESC1 desc{};
     desc.Width = message.renderWidth;
     desc.Height = message.renderHeight;
-    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     desc.Stereo = FALSE;
     desc.SampleDesc.Count = 1;
     desc.SampleDesc.Quality = 0;
@@ -94,10 +99,36 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
         resource->SetName(name);
 #endif
 
-        texture.format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        texture.format = DXGI_FORMAT_R8G8B8A8_UNORM;
         texture.rtvIndex = device.getRtvDescriptorHeap().allocate();
 
         device.getUnderlyingDevice()->CreateRenderTargetView(
             resource.Get(), nullptr, device.getRtvDescriptorHeap().getCpuHandle(texture.rtvIndex));
+    }
+}
+
+void SwapChain::replaceSwapChainForFrameInterpolation(const Device& device)
+{
+    if (!m_frameInterpolation)
+    {
+        for (auto& resource : m_resources)
+            resource = nullptr;
+
+        FfxCommandQueue commandQueue = ffxGetCommandQueueDX12(device.getGraphicsQueue().getUnderlyingQueue());
+        FfxSwapchain swapChain = ffxGetSwapchainDX12(m_swapChain.Detach());
+        ffxReplaceSwapchainForFrameinterpolationDX12(commandQueue, swapChain);
+        m_swapChain.Attach(ffxGetDX12SwapchainPtr(swapChain));
+
+        for (uint32_t i = 0; i < m_textures.size(); i++)
+        {
+            auto& resource = m_resources[i];
+            HRESULT hr = m_swapChain->GetBuffer(i, IID_PPV_ARGS(resource.GetAddressOf()));
+            assert(SUCCEEDED(hr) && resource != nullptr);
+
+            device.getUnderlyingDevice()->CreateRenderTargetView(
+                resource.Get(), nullptr, device.getRtvDescriptorHeap().getCpuHandle(m_textures[i].rtvIndex));
+        }
+
+        m_frameInterpolation = true;
     }
 }
