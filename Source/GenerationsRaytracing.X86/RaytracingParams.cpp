@@ -136,33 +136,6 @@ static void createParameterFile()
 
     auto paramGroup = s_parameterFile->CreateParameterGroup("Default", "");
 
-    auto commonParam = paramGroup->CreateParameterCategory("Common", "");
-    {
-        commonParam->CreateParamBool(&RaytracingParams::s_enable, "Enable");
-        commonParam->CreateParamTypeList(&RaytracingParams::s_debugView, "DebugView", "", {
-            { "None", DEBUG_VIEW_NONE },
-            { "Diffuse", DEBUG_VIEW_DIFFUSE },
-            { "Specular", DEBUG_VIEW_SPECULAR },
-            { "Normal", DEBUG_VIEW_NORMAL },
-            { "Falloff", DEBUG_VIEW_FALLOFF },
-            { "Emission", DEBUG_VIEW_EMISSION },
-            { "Shadow", DEBUG_VIEW_SHADOW },
-            { "GI", DEBUG_VIEW_GI },
-            { "Reflection", DEBUG_VIEW_REFLECTION } });
-
-        paramGroup->Flush();
-    }
-
-    auto stageParam = paramGroup->CreateParameterCategory("Stage", "");
-    {
-        std::vector<Sonic::SParamEnumValue> enumValues = { { "None", 0 } };
-        for (size_t i = 0; i < _countof(s_stages); i++)
-            enumValues.push_back({ s_stages[i].name, i + 1 });
-
-        stageParam->CreateParamTypeList(&s_stageIndex, "Stage", "", enumValues);
-        paramGroup->Flush();
-    }
-
     auto giParam = paramGroup->CreateParameterCategory("GI", "");
     {
         giParam->CreateParamFloat(&RaytracingParams::s_diffusePower, "DiffusePower");
@@ -185,25 +158,6 @@ static void createParameterFile()
         envParam->CreateParamFloat(&RaytracingParams::s_groundColor.x(), "GroundColorR");
         envParam->CreateParamFloat(&RaytracingParams::s_groundColor.y(), "GroundColorG");
         envParam->CreateParamFloat(&RaytracingParams::s_groundColor.z(), "GroundColorB");
-        paramGroup->Flush();
-    }
-
-    auto upscalerParam = paramGroup->CreateParameterCategory("Upscaler", "");
-    {
-        upscalerParam->CreateParamTypeList(&RaytracingParams::s_upscaler, "Upscaler", "", {
-            {"Unspecified", 0},
-            {"DLSS", 1},
-            {"DLSS Ray Reconstruction", 2},
-            {"FSR2", 3} });
-
-        upscalerParam->CreateParamTypeList(&RaytracingParams::s_qualityMode, "QualityMode", "", {
-            {"Unspecified", 0},
-            {"Native", 1},
-            {"Quality", 2},
-            {"Balanced", 3},
-            {"Performance", 4},
-            {"Ultra Performance", 5}});
-
         paramGroup->Flush();
     }
 
