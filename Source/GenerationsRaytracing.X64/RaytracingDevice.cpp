@@ -8,7 +8,7 @@
 #include "DLSSD.h"
 #include "EnvironmentColor.h"
 #include "EnvironmentMode.h"
-#include "FSR2.h"
+#include "FSR3.h"
 #include "GBufferData.h"
 #include "GeometryFlags.h"
 #include "MaterialFlags.h"
@@ -311,8 +311,8 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
 
     }
 
-    ffxFsr2GetJitterOffset(&m_globalsRT.pixelJitterX, &m_globalsRT.pixelJitterY, static_cast<int32_t>(m_globalsRT.currentFrame),
-        ffxFsr2GetJitterPhaseCount(static_cast<int32_t>(m_upscaler->getWidth()), static_cast<int32_t>(m_width)));
+    ffxFsr3GetJitterOffset(&m_globalsRT.pixelJitterX, &m_globalsRT.pixelJitterY, static_cast<int32_t>(m_globalsRT.currentFrame),
+        ffxFsr3GetJitterPhaseCount(static_cast<int32_t>(m_upscaler->getWidth()), static_cast<int32_t>(m_width)));
 
     m_globalsRT.internalResolutionWidth = m_upscaler->getWidth();
     m_globalsRT.internalResolutionHeight = m_upscaler->getHeight();
@@ -939,8 +939,8 @@ void RaytracingDevice::procMsgTraceRays()
 
             if (upscaler == nullptr)
             {
-                m_upscaler = std::make_unique<FSR2>(*this);
-                m_upscalerOverride[message.upscaler - 1] = UpscalerType::FSR2;
+                m_upscaler = std::make_unique<FSR3>(*this);
+                m_upscalerOverride[message.upscaler - 1] = UpscalerType::FSR3;
             }
             else
             {
@@ -1772,7 +1772,7 @@ RaytracingDevice::RaytracingDevice()
         m_qualityMode = static_cast<QualityMode>(
             iniFile.get<uint32_t>("Mod", "QualityMode", static_cast<uint32_t>(QualityMode::Balanced)));
 
-        const auto upscalerType = static_cast<UpscalerType>(iniFile.get<uint32_t>("Mod", "Upscaler", static_cast<uint32_t>(UpscalerType::FSR2)));
+        const auto upscalerType = static_cast<UpscalerType>(iniFile.get<uint32_t>("Mod", "Upscaler", static_cast<uint32_t>(UpscalerType::FSR3)));
 
         if (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD)
         {
@@ -1790,11 +1790,11 @@ RaytracingDevice::RaytracingDevice()
             if (upscaler == nullptr)
             {
                 MessageBox(nullptr,
-                    TEXT("An NVIDIA GPU with up to date drivers is required for DLSS. FSR2 will be used instead as a fallback."),
+                    TEXT("An NVIDIA GPU with up to date drivers is required for DLSS. FSR3 will be used instead as a fallback."),
                     TEXT("Generations Raytracing"),
                     MB_ICONERROR);
 
-                m_upscalerOverride[static_cast<size_t>(upscalerType)] = UpscalerType::FSR2;
+                m_upscalerOverride[static_cast<size_t>(upscalerType)] = UpscalerType::FSR3;
             }
             else
             {
@@ -1807,7 +1807,7 @@ RaytracingDevice::RaytracingDevice()
     }
 
     if (m_upscaler == nullptr)
-        m_upscaler = std::make_unique<FSR2>(*this);
+        m_upscaler = std::make_unique<FSR3>(*this);
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC resolvePipelineDesc{};
     resolvePipelineDesc.pRootSignature = m_raytracingRootSignature.Get();

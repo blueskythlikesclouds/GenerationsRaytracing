@@ -23,6 +23,7 @@
 #include "QuickBoot.h"
 #include "RopeRenderable.h"
 #include "ShareVertexBuffer.h"
+#include "SoundSystem.h"
 #include "UpReelRenderable.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
@@ -84,6 +85,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     ShareVertexBuffer::init();
     UpReelRenderable::init();
     RopeRenderable::init();
+    SoundSystem::init();
 
 #ifdef _DEBUG
 #if 0

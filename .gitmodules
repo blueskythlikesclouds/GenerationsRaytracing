@@ -31,3 +31,6 @@
 [submodule "Dependencies/implot"]
 	path = Dependencies/implot
 	url = https://github.com/epezent/implot.git
+[submodule "Dependencies/FidelityFX-SDK"]
+	path = Dependencies/FidelityFX-SDK
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK.git

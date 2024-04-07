@@ -48,7 +48,7 @@
     <ClCompile Include="PIXEvent.cpp">
       <Filter>Base</Filter>
     </ClCompile>
-    <ClCompile Include="FSR2.cpp">
+    <ClCompile Include="FSR3.cpp">
       <Filter>Upscaler</Filter>
     </ClCompile>
     <ClCompile Include="ShaderCache.cpp">
@@ -177,7 +177,7 @@
     <ClInclude Include="PIXEvent.h">
       <Filter>Base</Filter>
     </ClInclude>
-    <ClInclude Include="FSR2.h">
+    <ClInclude Include="FSR3.h">
       <Filter>Upscaler</Filter>
     </ClInclude>
     <ClInclude Include="ShaderCache.h">

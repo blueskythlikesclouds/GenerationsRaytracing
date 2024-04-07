@@ -310,7 +310,7 @@ void RaytracingParams::imguiWindow()
                         ImGui::RadioButton("Unspecified##Upscaler", reinterpret_cast<int*>(&s_upscaler), 0);
                         ImGui::RadioButton("DLSS", reinterpret_cast<int*>(&s_upscaler), 1);
                         ImGui::RadioButton("DLSS Ray Reconstruction", reinterpret_cast<int*>(&s_upscaler), 2);
-                        ImGui::RadioButton("FSR2", reinterpret_cast<int*>(&s_upscaler), 3);
+                        ImGui::RadioButton("FSR3", reinterpret_cast<int*>(&s_upscaler), 3);
 
                         ImGui::TableNextColumn();
                         ImGui::TextUnformatted("Quality Mode");

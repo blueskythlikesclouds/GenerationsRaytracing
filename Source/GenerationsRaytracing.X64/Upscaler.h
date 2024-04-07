@@ -15,7 +15,7 @@ enum class UpscalerType
 {
     DLSS,
     DLSSD,
-    FSR2,
+    FSR3,
     Max
 };
 

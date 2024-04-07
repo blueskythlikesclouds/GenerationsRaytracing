@@ -117,6 +117,9 @@
     <ClCompile Include="RopeRenderable.cpp">
       <Filter>Raytracing\Renderable</Filter>
     </ClCompile>
+    <ClCompile Include="SoundSystem.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -239,6 +242,9 @@
     </ClInclude>
     <ClInclude Include="RopeRenderable.h">
       <Filter>Raytracing\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="SoundSystem.h">
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
