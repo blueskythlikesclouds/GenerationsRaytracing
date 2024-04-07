@@ -136,6 +136,16 @@ static void createParameterFile()
 
     auto paramGroup = s_parameterFile->CreateParameterGroup("Default", "");
 
+    auto stageParam = paramGroup->CreateParameterCategory("Stage", "");
+    {
+        std::vector<Sonic::SParamEnumValue> enumValues = { { "None", 0 } };
+        for (size_t i = 0; i < _countof(s_stages); i++)
+            enumValues.push_back({ s_stages[i].name, i + 1 });
+
+        stageParam->CreateParamTypeList(&s_stageIndex, "Stage", "", enumValues);
+        paramGroup->Flush();
+    }
+
     auto giParam = paramGroup->CreateParameterCategory("GI", "");
     {
         giParam->CreateParamFloat(&RaytracingParams::s_diffusePower, "DiffusePower");
