@@ -148,9 +148,9 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
                 
                     uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
                 
-                    float2 texCoord0 = DecodeFloat2(vertexBuffer.Load(offsets.x));
-                    float2 texCoord1 = DecodeFloat2(vertexBuffer.Load(offsets.y));
-                    float2 texCoord2 = DecodeFloat2(vertexBuffer.Load(offsets.z));
+                    float2 texCoord0 = DecodeHalf2(vertexBuffer.Load(offsets.x));
+                    float2 texCoord1 = DecodeHalf2(vertexBuffer.Load(offsets.y));
+                    float2 texCoord2 = DecodeHalf2(vertexBuffer.Load(offsets.z));
                 
                     float3 uv = float3(
                         1.0 - query.CandidateTriangleBarycentrics().x - query.CandidateTriangleBarycentrics().y,

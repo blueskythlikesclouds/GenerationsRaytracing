@@ -104,9 +104,11 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         struct Vertex
         {
             float position[3];
-            uint16_t normal[4];
-            uint16_t texCoord[2];
             uint32_t color;
+            uint32_t normal;
+            uint32_t tangent;
+            uint32_t binormal;
+            uint16_t texCoord[2];
         };
 
         constexpr size_t vertexByteSize = sizeof(Vertex) * _countof(reelRendererEx->m_aVertexData);
@@ -134,12 +136,10 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
             vertex->position[0] = vertexData.Position.x();
             vertex->position[1] = vertexData.Position.y();
             vertex->position[2] = vertexData.Position.z();
-            vertex->normal[0] = quantizeHalf(vertexData.Normal.x());
-            vertex->normal[1] = quantizeHalf(vertexData.Normal.y());
-            vertex->normal[2] = quantizeHalf(vertexData.Normal.z());
+            vertex->color = 0xFFFFFFFF;
+            vertex->normal = quantizeSnorm10(vertexData.Normal.normalized());
             vertex->texCoord[0] = quantizeHalf(vertexData.TexCoord.x());
             vertex->texCoord[1] = quantizeHalf(vertexData.TexCoord.y());
-            vertex->color = 0xFFFFFFFF;
 
             ++vertex;
         }

@@ -43,17 +43,17 @@ struct InstanceDesc
 
 struct Vertex
 {
+    uint Flags;
     float3 Position;
-    float3 PrevPosition;
     float3 SafeSpawnPoint;
-    float3 Normal;
-    float3 Tangent;
-    float3 Binormal;
+    float3 PrevPosition;
     float2 TexCoords[4];
     float2 TexCoordsDdx[4];
     float2 TexCoordsDdy[4];
+    float3 Normal;
+    float3 Tangent;
+    float3 Binormal;
     float4 Color;
-    uint Flags;
 };
 
 float3 NormalizeSafe(float3 value)
@@ -84,22 +84,67 @@ Vertex LoadVertex(
     indices.y = indexBuffer[geometryDesc.IndexOffset + PrimitiveIndex() * 3 + 1];
     indices.z = indexBuffer[geometryDesc.IndexOffset + PrimitiveIndex() * 3 + 2];
 
+    uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride;
+    uint3 normalOffsets = offsets + geometryDesc.NormalOffset;
+
+    uint texCoordOffsets[4] = {
+        geometryDesc.TexCoordOffset0, geometryDesc.TexCoordOffset1,
+        geometryDesc.TexCoordOffset2, geometryDesc.TexCoordOffset3 };
+
     uint3 prevPositionOffsets = geometryDesc.VertexOffset +
         geometryDesc.VertexCount * geometryDesc.VertexStride + indices * 0xC;
 
-    uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride;
-    uint3 normalOffsets = offsets + geometryDesc.NormalOffset;
-    uint3 tangentOffsets = offsets + geometryDesc.TangentOffset;
-    uint3 binormalOffsets = offsets + geometryDesc.BinormalOffset;
-    uint3 colorOffsets = offsets + geometryDesc.ColorOffset;
+    uint4 posColor0 = vertexBuffer.Load4(offsets.x);
+    uint4 posColor1 = vertexBuffer.Load4(offsets.y);
+    uint4 posColor2 = vertexBuffer.Load4(offsets.z);
+    uint4 nrmTgnBinTex0 = vertexBuffer.Load4(normalOffsets.x);
+    uint4 nrmTgnBinTex1 = vertexBuffer.Load4(normalOffsets.y);
+    uint4 nrmTgnBinTex2 = vertexBuffer.Load4(normalOffsets.z);
+    float3 position0 = asfloat(posColor0.xyz);
+    float3 position1 = asfloat(posColor1.xyz);
+    float3 position2 = asfloat(posColor2.xyz);
+    float4 color0 = DecodeColor(posColor0.w);
+    float4 color1 = DecodeColor(posColor1.w);
+    float4 color2 = DecodeColor(posColor2.w);
+    float3 normal0 = DecodeSnorm10(nrmTgnBinTex0.x);
+    float3 normal1 = DecodeSnorm10(nrmTgnBinTex1.x);
+    float3 normal2 = DecodeSnorm10(nrmTgnBinTex2.x);
+    float3 tangent0 = DecodeSnorm10(nrmTgnBinTex0.y);
+    float3 tangent1 = DecodeSnorm10(nrmTgnBinTex1.y);
+    float3 tangent2 = DecodeSnorm10(nrmTgnBinTex2.y);
+    float3 binormal0 = DecodeSnorm10(nrmTgnBinTex0.z);
+    float3 binormal1 = DecodeSnorm10(nrmTgnBinTex1.z);
+    float3 binormal2 = DecodeSnorm10(nrmTgnBinTex2.z);
+    float2 texCoord0 = DecodeHalf2(nrmTgnBinTex0.w);
+    float2 texCoord1 = DecodeHalf2(nrmTgnBinTex1.w);
+    float2 texCoord2 = DecodeHalf2(nrmTgnBinTex2.w);
 
-    Vertex vertex = (Vertex) 0;
+    Vertex vertex;
 
-    float3 p0 = vertexBuffer.Load<float3>(offsets.x);
-    float3 p1 = vertexBuffer.Load<float3>(offsets.y);
-    float3 p2 = vertexBuffer.Load<float3>(offsets.z);
+    vertex.Flags = flags;
+    vertex.Position = position0 * uv.x + position1 * uv.y + position2 * uv.z;
+    vertex.Color = color0 * uv.x + color1 * uv.y + color2 * uv.z;
+    vertex.Normal = normal0 * uv.x + normal1 * uv.y + normal2 * uv.z;
+    vertex.Tangent = tangent0 * uv.x + tangent1 * uv.y + tangent2 * uv.z;
+    vertex.Binormal = binormal0 * uv.x + binormal1 * uv.y + binormal2 * uv.z;
 
-    vertex.Position = p0 * uv.x + p1 * uv.y + p2 * uv.z;
+    float2 texCoords[4][3];
+    for (uint i = 0; i < 4; i++)
+    {
+        if (i == 0)
+        {
+            texCoords[i][0] = texCoord0;
+            texCoords[i][1] = texCoord1;
+            texCoords[i][2] = texCoord2;
+        }
+        else
+        {
+            for (uint j = 0; j < 3; j++)
+                texCoords[i][j] = DecodeHalf2(vertexBuffer.Load(offsets[j] + texCoordOffsets[i]));
+        }
+
+        vertex.TexCoords[i] = texCoords[i][0] * uv.x + texCoords[i][1] * uv.y + texCoords[i][2] * uv.z;
+    }
 
     if (geometryDesc.Flags & GEOMETRY_FLAG_POSE)
     {
@@ -113,19 +158,13 @@ Vertex LoadVertex(
         vertex.PrevPosition = vertex.Position;
     }
 
-    vertex.Normal =
-        DecodeFloat3(vertexBuffer.Load2(normalOffsets.x)) * uv.x +
-        DecodeFloat3(vertexBuffer.Load2(normalOffsets.y)) * uv.y +
-        DecodeFloat3(vertexBuffer.Load2(normalOffsets.z)) * uv.z;
-
     float3 outWldNormal = 0.0;
-
     if (flags & VERTEX_FLAG_SAFE_POSITION)
     {
         // Some models have correct normals but flipped triangle order
         // Could check for view direction but that makes plants look bad
         // as they have spherical normals
-        bool isBackFace = dot(cross(p0 - p2, p0 - p1), vertex.Normal) > 0.0;
+        bool isBackFace = dot(cross(position0 - position2, position0 - position1), vertex.Normal) > 0.0;
 
         float3 outObjPosition;
         float3 outWldPosition;
@@ -135,54 +174,13 @@ Vertex LoadVertex(
             outObjPosition, outWldPosition,
             outObjNormal, outWldNormal,
             outWldOffset,
-            p0, isBackFace ? p2 : p1, isBackFace ? p1 : p2,
+            position0, isBackFace ? position2 : position1, isBackFace ? position1 : position2,
             isBackFace ? attributes.barycentrics.yx : attributes.barycentrics.xy,
             ObjectToWorld3x4(),
             WorldToObject3x4());
 
         vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
     }
-
-    uint4 tangentAndBinormal0 = vertexBuffer.Load4(tangentOffsets.x);
-    uint4 tangentAndBinormal1 = vertexBuffer.Load4(tangentOffsets.y);
-    uint4 tangentAndBinormal2 = vertexBuffer.Load4(tangentOffsets.z);
-
-    vertex.Tangent =
-        DecodeFloat3(tangentAndBinormal0.xy) * uv.x +
-        DecodeFloat3(tangentAndBinormal1.xy) * uv.y +
-        DecodeFloat3(tangentAndBinormal2.xy) * uv.z;
-
-    vertex.Binormal =
-        DecodeFloat3(tangentAndBinormal0.zw) * uv.x +
-        DecodeFloat3(tangentAndBinormal1.zw) * uv.y +
-        DecodeFloat3(tangentAndBinormal2.zw) * uv.z;
-
-    uint texCoordOffsets[4] = { geometryDesc.TexCoordOffset0, geometryDesc.TexCoordOffset1,
-        geometryDesc.TexCoordOffset2, geometryDesc.TexCoordOffset3 };
-
-    float2 texCoords[4][3];
-
-    [unroll]
-    for (uint i = 0; i < 4; i++)
-    {
-        [unroll]
-        for (uint j = 0; j < 3; j++)
-            texCoords[i][j] = DecodeFloat2(vertexBuffer.Load(offsets[j] + texCoordOffsets[i]));
-
-        vertex.TexCoords[i] = texCoords[i][0] * uv.x + texCoords[i][1] * uv.y + texCoords[i][2] * uv.z;
-    }
-
-    vertex.TexCoords[0] += texCoordOffset[0].xy;
-    vertex.TexCoords[1] += texCoordOffset[0].zw;
-    vertex.TexCoords[2] += texCoordOffset[1].xy;
-    vertex.TexCoords[3] += texCoordOffset[1].zw;
-
-    vertex.Color =
-        DecodeColor(vertexBuffer.Load(colorOffsets.x)) * uv.x +
-        DecodeColor(vertexBuffer.Load(colorOffsets.y)) * uv.y +
-        DecodeColor(vertexBuffer.Load(colorOffsets.z)) * uv.z;
-
-    vertex.Flags = flags;
 
     if (flags & VERTEX_FLAG_MIPMAP)
     {
@@ -195,10 +193,10 @@ Vertex LoadVertex(
         ComputeBarycentricDifferentials(
             PropagateRayDifferentials(rayDiff, WorldRayOrigin(), WorldRayDirection(), RayTCurrent(), outWldNormal),
             WorldRayDirection(),
-            mul(ObjectToWorld3x4(), float4(p1 - p0, 0.0)).xyz,
-            mul(ObjectToWorld3x4(), float4(p2 - p0, 0.0)).xyz,
-            outWldNormal, 
-            dBarydx, 
+            mul(ObjectToWorld3x4(), float4(position1 - position0, 0.0)).xyz,
+            mul(ObjectToWorld3x4(), float4(position2 - position0, 0.0)).xyz,
+            outWldNormal,
+            dBarydx,
             dBarydy);
 
         [unroll]
@@ -211,6 +209,10 @@ Vertex LoadVertex(
     vertex.Normal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
     vertex.Tangent = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
     vertex.Binormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
+    vertex.TexCoords[0] += texCoordOffset[0].xy;
+    vertex.TexCoords[1] += texCoordOffset[0].zw;
+    vertex.TexCoords[2] += texCoordOffset[1].xy;
+    vertex.TexCoords[3] += texCoordOffset[1].zw;
 
     if (!(flags & VERTEX_FLAG_SAFE_POSITION))
         vertex.SafeSpawnPoint = vertex.Position + vertex.Normal * 0.001;

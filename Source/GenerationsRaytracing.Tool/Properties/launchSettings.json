@@ -1,8 +1,12 @@
 {
   "profiles": {
-    "GenerationsRaytracing.Tool": {
+    "DXILLibrary.cso": {
       "commandName": "Project",
       "commandLineArgs": "\"C:\\Repositories\\GenerationsRaytracing\\Source\" \"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sonic Generations\\mods\\GenerationsRaytracing\\DXILLibrary.cso\""
+    },
+    "pregenerated_shader_cache.bin": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sonic Generations\\disk\\bb3\" \"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Sonic Generations\\mods\\GenerationsRaytracing\""
     }
   }
 }

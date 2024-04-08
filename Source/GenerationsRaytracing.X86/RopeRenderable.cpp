@@ -15,9 +15,11 @@
 struct Vertex
 {
     float position[3];
-    uint16_t texCoord[2];
-    uint16_t normal[4];
     uint32_t color;
+    uint32_t normal;
+    uint32_t tangent;
+    uint32_t binormal;
+    uint16_t texCoord[2];
 };
 
 class RopeRenderableEx : public Sonic::CRopeRenderable
@@ -174,12 +176,10 @@ static void __cdecl implOfMemCpy(Vertex* dest, const Sonic::CRopeRenderable::SVe
         dest->position[0] = src->Position.x();
         dest->position[1] = src->Position.y();
         dest->position[2] = src->Position.z();
+        dest->color = src->Color;
+        dest->normal = quantizeSnorm10(src->Normal.normalized());
         dest->texCoord[0] = quantizeHalf(src->TexCoord.x());
         dest->texCoord[1] = quantizeHalf(src->TexCoord.y());
-        dest->normal[0] = quantizeHalf(src->Normal.x());
-        dest->normal[1] = quantizeHalf(src->Normal.y());
-        dest->normal[2] = quantizeHalf(src->Normal.z());
-        dest->color = src->Color;
 
         ++dest;
         ++src;
@@ -215,9 +215,10 @@ void RopeRenderable::init()
     WRITE_MEMORY(0x1122D38, uint8_t, 0x6B, 0xFE, sizeof(Vertex), 0x83, 0xFF, 0x00, 0x90);
     WRITE_CALL(0x1122D82, implOfMemCpy);
 
+    WRITE_MEMORY(0x112054B, uint32_t, offsetof(Vertex, texCoord));
     WRITE_MEMORY(0x1120557, uint32_t, offsetof(Vertex, color));
     WRITE_MEMORY(0x112055D, uint32_t, offsetof(Vertex, normal));
-    WRITE_MEMORY(0x1120598, uint8_t, D3DDECLTYPE_FLOAT16_2);
-    WRITE_MEMORY(0x11205AA, uint8_t, D3DDECLTYPE_FLOAT16_4);
+    WRITE_MEMORY(0x1120598, uint8_t, D3DDECLTYPE_FLOAT16_4);
+    WRITE_MEMORY(0x11205AA, uint8_t, D3DDECLTYPE_DEC3N);
     WRITE_MEMORY(0x11207D3, uint8_t, sizeof(Vertex));
 }

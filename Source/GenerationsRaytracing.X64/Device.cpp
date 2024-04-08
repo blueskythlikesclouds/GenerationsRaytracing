@@ -512,6 +512,8 @@ void Device::procMsgCreateVertexDeclaration()
     uint32_t texCoordOffset = 0;
     auto texCoordFormat = DXGI_FORMAT_R32G32_FLOAT;
 
+    bool enable10BitNormal = false;
+
     const D3DVERTEXELEMENT9* vertexElement = reinterpret_cast<const D3DVERTEXELEMENT9*>(message.data);
 
     while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
@@ -536,6 +538,10 @@ void Device::procMsgCreateVertexDeclaration()
                 normalOffset = vertexElement->Offset;
                 normalFormat = inputElement.Format;
             }
+
+            if (vertexElement->Type == D3DDECLTYPE_DEC3N)
+                enable10BitNormal = true;
+
             break;
 
         case D3DDECLUSAGE_TEXCOORD:
@@ -572,6 +578,7 @@ void Device::procMsgCreateVertexDeclaration()
     vertexDeclaration.inputElements = std::make_unique<D3D12_INPUT_ELEMENT_DESC[]>(inputElements.size() * 2);
     vertexDeclaration.inputElementsSize = static_cast<uint32_t>(inputElements.size());
     vertexDeclaration.isFVF = message.isFVF;
+    vertexDeclaration.enable10BitNormal = enable10BitNormal;
 
     memcpy(vertexDeclaration.inputElements.get(), 
         inputElements.data(), inputElements.size() * sizeof(D3D12_INPUT_ELEMENT_DESC));
@@ -615,6 +622,7 @@ void Device::procMsgCreateVertexShader()
 
 static constexpr size_t GLOBALS_VS_UNUSED_CONSTANT = 196;
 static constexpr size_t GLOBALS_VS_BOOLEANS = 0;
+static constexpr size_t GLOBALS_VS_ENABLE_10_BIT_NORMAL = 1;
 
 static constexpr size_t GLOBALS_PS_UNUSED_CONSTANT = 148;
 static constexpr size_t GLOBALS_PS_ENABLE_ALPHA_TEST = 0;
@@ -1140,6 +1148,17 @@ void Device::procMsgSetVertexDeclaration()
 
     if (m_vertexDeclarationId != message.vertexDeclarationId)
         m_dirtyFlags |= DIRTY_FLAG_VERTEX_DECLARATION;
+
+    const auto& vertexDeclaration = m_vertexDeclarations[message.vertexDeclarationId];
+
+    auto& enable10BitNormal = reinterpret_cast<uint32_t&>(
+        m_globalsVS.floatConstants[GLOBALS_VS_UNUSED_CONSTANT][GLOBALS_VS_ENABLE_10_BIT_NORMAL]);
+
+    if (enable10BitNormal != vertexDeclaration.enable10BitNormal)
+    {
+        enable10BitNormal = vertexDeclaration.enable10BitNormal;
+        m_dirtyFlags |= DIRTY_FLAG_GLOBALS_VS;
+    }
 
     m_vertexDeclarationId = message.vertexDeclarationId;
 }

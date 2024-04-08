@@ -152,11 +152,11 @@ static void optimizeVertexFormat(MeshResource* meshResource)
     const std::pair<size_t, size_t> usageAndTypePairs[] =
     { 
         { D3DDECLUSAGE_POSITION, DECLTYPE_FLOAT3 },
-        { D3DDECLUSAGE_NORMAL, DECLTYPE_FLOAT16_4 },
-        { D3DDECLUSAGE_TANGENT, DECLTYPE_FLOAT16_4 },
-        { D3DDECLUSAGE_BINORMAL, DECLTYPE_FLOAT16_4 },
-        { D3DDECLUSAGE_TEXCOORD, DECLTYPE_FLOAT16_2 },
         { D3DDECLUSAGE_COLOR, DECLTYPE_UBYTE4N },
+        { D3DDECLUSAGE_NORMAL, DECLTYPE_DEC3N },
+        { D3DDECLUSAGE_TANGENT, DECLTYPE_DEC3N },
+        { D3DDECLUSAGE_BINORMAL, DECLTYPE_DEC3N },
+        { D3DDECLUSAGE_TEXCOORD, DECLTYPE_FLOAT16_2 },
         { D3DDECLUSAGE_BLENDINDICES, DECLTYPE_UBYTE4 },
         { D3DDECLUSAGE_BLENDWEIGHT, DECLTYPE_UBYTE4N }
     };
@@ -208,23 +208,31 @@ static void optimizeVertexFormat(MeshResource* meshResource)
                 switch (vertexElement->usage)
                 {
                 case D3DDECLUSAGE_POSITION:
+                {
                     for (size_t j = 0; j < 3; j++)
                         reinterpret_cast<uint32_t*>(destination)[j] = _byteswap_ulong(reinterpret_cast<uint32_t*>(source)[j]);
 
                     break;
+                }
 
                 case D3DDECLUSAGE_NORMAL:
                 case D3DDECLUSAGE_TANGENT:
                 case D3DDECLUSAGE_BINORMAL:
+                {
+                    Sonic::CNoAlignVector vector;
+
                     for (size_t j = 0; j < 3; j++)
                     {
                         const uint32_t value = _byteswap_ulong(reinterpret_cast<uint32_t*>(source)[j]);
-                        reinterpret_cast<uint16_t*>(destination)[j] = quantizeHalf(*reinterpret_cast<const float*>(&value));
+                        vector[j] = *reinterpret_cast<const float*>(&value);
                     }
 
+                    *reinterpret_cast<uint32_t*>(destination) = quantizeSnorm10(vector.normalized());
                     break;
+                }
 
                 case D3DDECLUSAGE_TEXCOORD:
+                {
                     for (size_t j = 0; j < 2; j++)
                     {
                         const uint32_t value = _byteswap_ulong(reinterpret_cast<uint32_t*>(source)[j]);
@@ -232,8 +240,10 @@ static void optimizeVertexFormat(MeshResource* meshResource)
                     }
 
                     break;
+                }
 
                 case D3DDECLUSAGE_COLOR:
+                {
                     if (_byteswap_ulong(vertexElement->type) == DECLTYPE_FLOAT4)
                     {
                         for (size_t j = 0; j < 4; j++)
@@ -248,11 +258,14 @@ static void optimizeVertexFormat(MeshResource* meshResource)
                     }
 
                     break;
+                }
 
                 case D3DDECLUSAGE_BLENDINDICES:
                 case D3DDECLUSAGE_BLENDWEIGHT:
+                {
                     *reinterpret_cast<uint32_t*>(destination) = _byteswap_ulong(*reinterpret_cast<uint32_t*>(source));
                     break;
+                }
                 }
             }
 

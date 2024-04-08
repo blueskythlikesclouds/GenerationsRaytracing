@@ -39,5 +39,5 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         normal += normalize(cross(posA - posC, posA - posB));
     }
 
-    g_Vertices.Store2(g_NormalOffset + dispatchThreadId.x * g_VertexStride, EncodeFloat3(normalize(normal)));
+    g_Vertices.Store(g_NormalOffset + dispatchThreadId.x * g_VertexStride, EncodeSnorm10(normalize(normal)));
 }

@@ -291,6 +291,7 @@ public class ShaderConverter
         else
         {
             stringBuilder.AppendLine("\tuint g_Booleans : packoffset(c196.x);");
+            stringBuilder.AppendLine("\tbool g_Enable10BitNormal : packoffset(c196.y);");
         }
 
         stringBuilder.AppendLine("}\n");
@@ -298,6 +299,7 @@ public class ShaderConverter
         stringBuilder.AppendLine("void main(");
 
         bool isMetaInstancer = !isPixelShader && constants.Any(x => x.Name == "g_InstanceTypes");
+        var varsToCheck10BitNormal = new HashSet<string>();
 
         foreach (var semantic in inSemantics)
         {
@@ -305,6 +307,9 @@ public class ShaderConverter
 
             if (semantic.Key == "BLENDINDICES" || (isMetaInstancer && semantic.Key == "TEXCOORD2"))
                 type = "uint";
+
+            if (semantic.Key == "NORMAL" || semantic.Key == "TANGENT" || semantic.Key == "BINORMAL")
+                varsToCheck10BitNormal.Add(semantic.Value);
 
             stringBuilder.AppendFormat("\tin {0}4 {1} : {2},\n", type, semantic.Value, semantic.Key);
         }
@@ -405,6 +410,9 @@ public class ShaderConverter
 
                     else if (argument.Token[0] == 'c')
                         argument.Token = $"C[{argument.Token.Substring(1)}]";
+
+                    else if (varsToCheck10BitNormal.Contains(argument.Token))
+                        argument.Token = $"(g_Enable10BitNormal ? {argument.Token} * 2.0 - 1.0 : {argument.Token})";
                 }
             }
 
