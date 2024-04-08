@@ -22,7 +22,7 @@ public:
 
     IDXGIFactory4* getUnderlyingFactory() const;
     Window& getWindow();
-    IDXGISwapChain4* getSwapChain() const;
+    IDXGISwapChain4* getUnderlyingSwapChain() const;
     const Texture& getTexture() const;
     ID3D12Resource* getResource() const;
 

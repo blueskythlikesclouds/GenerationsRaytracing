@@ -39,11 +39,13 @@ FSR3::~FSR3()
 {
     if (m_valid)
     {
+#if 0
         FfxFrameGenerationConfig config{};
         config.swapChain = ffxGetSwapchainDX12(m_swapChain);
         config.frameGenerationEnabled = false;
         ffxWaitForPresents(config.swapChain);
         ffxFsr3ConfigureFrameGeneration(&m_context, &config);
+#endif
         ffxFsr3ContextDestroy(&m_context);
     }
 }
@@ -72,7 +74,7 @@ void FSR3::init(const InitArgs& args)
             args.qualityMode == QualityMode::Performance ? FFX_FSR3_QUALITY_MODE_PERFORMANCE : FFX_FSR3_QUALITY_MODE_ULTRA_PERFORMANCE));
     }
 
-    m_contextDesc.flags = FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE;
+    m_contextDesc.flags = FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE | FFX_FSR3_ENABLE_UPSCALING_ONLY;
     m_contextDesc.maxRenderSize.width = m_width;
     m_contextDesc.maxRenderSize.height = m_height;
     m_contextDesc.upscaleOutputSize.width = args.width;
@@ -86,17 +88,21 @@ void FSR3::init(const InitArgs& args)
 
     THROW_IF_FAILED(ffxFsr3ContextCreate(&m_context, &m_contextDesc));
 
+#if 0
     args.device.getSwapChain().replaceSwapChainForFrameInterpolation(args.device);
-    m_swapChain = args.device.getSwapChain().getSwapChain();
+    m_swapChain = args.device.getSwapChain().getUnderlyingSwapChain();
+#endif
 }
 
 void FSR3::dispatch(const DispatchArgs& args)
 {
+#if 0
     FfxFrameGenerationConfig config{};
     config.swapChain = ffxGetSwapchainDX12(args.device.getSwapChain().getSwapChain());
     config.frameGenerationEnabled = true;
     config.frameGenerationCallback = ffxFsr3DispatchFrameGeneration;
     ffxFsr3ConfigureFrameGeneration(&m_context, &config);
+#endif
 
     FfxFsr3DispatchUpscaleDescription desc{};
     desc.commandList = ffxGetCommandListDX12(args.device.getUnderlyingGraphicsCommandList());

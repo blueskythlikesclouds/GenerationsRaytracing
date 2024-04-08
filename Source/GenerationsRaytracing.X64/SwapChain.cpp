@@ -27,7 +27,7 @@ Window& SwapChain::getWindow()
     return m_window;
 }
 
-IDXGISwapChain4* SwapChain::getSwapChain() const
+IDXGISwapChain4* SwapChain::getUnderlyingSwapChain() const
 {
     return m_swapChain.Get();
 }
