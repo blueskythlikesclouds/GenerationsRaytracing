@@ -551,6 +551,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     gBufferData.Emission += SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb;
 
                 gBufferData.Emission *= material.Ambient.rgb * material.ChrEmissionParam.w * vertex.Color.rgb;
+                gBufferData.Emission += gBufferData.Diffuse;
 
                 break;
             }
