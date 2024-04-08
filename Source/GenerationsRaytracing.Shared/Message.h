@@ -409,6 +409,7 @@ struct MsgCreateMaterial
     Texture reflectionTexture;
     Texture opacityTexture;
     Texture displacementTexture;
+    Texture displacementTexture2;
     Texture levelTexture;
 
     float texCoordOffsets[8];

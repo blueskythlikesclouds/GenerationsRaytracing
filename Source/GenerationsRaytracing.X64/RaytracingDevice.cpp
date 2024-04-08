@@ -1144,6 +1144,7 @@ void RaytracingDevice::procMsgCreateMaterial()
         { message.reflectionTexture,    material.reflectionTexture    },
         { message.opacityTexture,       material.opacityTexture       },
         { message.displacementTexture,  material.displacementTexture  },
+        { message.displacementTexture2, material.displacementTexture2 },
         { message.levelTexture,         material.levelTexture         },
     };
 

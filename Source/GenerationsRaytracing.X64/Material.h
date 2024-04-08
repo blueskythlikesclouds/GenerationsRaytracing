@@ -15,6 +15,7 @@ struct Material
     uint32_t reflectionTexture;
     uint32_t opacityTexture;
     uint32_t displacementTexture;
+    uint32_t displacementTexture2;
     uint32_t levelTexture;
 
     float texCoordOffsets[8];

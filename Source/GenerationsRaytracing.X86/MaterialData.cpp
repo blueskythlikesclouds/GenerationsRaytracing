@@ -95,6 +95,12 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
         if (strstr(shaderName, "SoftEdge") != nullptr)
             message.flags |= MATERIAL_FLAG_SOFT_EDGE;
+
+        if (strstr(shaderName, "noGIs") != nullptr || strstr(shaderName, "BlbBlend") != nullptr)
+            message.flags |= MATERIAL_FLAG_NO_SHADOW;
+
+        if (strstr(shaderName, "Blb") != nullptr)
+            message.flags |= MATERIAL_FLAG_VIEW_Z_ALPHA_FADE;
     }
 
     static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
@@ -125,6 +131,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         { s_reflectionSymbol, 0, message.reflectionTexture },
         { s_opacitySymbol, 0, message.opacityTexture },
         { s_displacementSymbol, 0, message.displacementTexture },
+        { s_displacementSymbol, 1, message.displacementTexture2 },
         { s_levelSymbol, 0, message.levelTexture }
     };
 
@@ -154,7 +161,8 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                             srcTexture->m_spPictureData->m_pD3DTexture != nullptr)
                         {
                             // Skip materials that assign the diffuse texture as opacity
-                            if (srcTexture->m_Type == s_opacitySymbol && (!hasOpacityTexture ||
+                            if ((message.shaderType == SHADER_TYPE_COMMON || message.shaderType == SHADER_TYPE_IGNORE_LIGHT) &&
+                                srcTexture->m_Type == s_opacitySymbol && (!hasOpacityTexture ||
                                 srcTexture->m_spPictureData->m_pD3DTexture == textureDescs[0].dxpTexture))
                             {
                                 continue;

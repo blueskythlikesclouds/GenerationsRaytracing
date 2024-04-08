@@ -18,6 +18,7 @@ struct Material
     uint ReflectionTexture;
     uint OpacityTexture;
     uint DisplacementTexture;
+    uint DisplacementTexture2;
     uint LevelTexture;
 
     float4 TexCoordOffsets[2];

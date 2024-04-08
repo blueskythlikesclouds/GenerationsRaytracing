@@ -1154,9 +1154,9 @@ void Device::procMsgSetVertexDeclaration()
     auto& enable10BitNormal = reinterpret_cast<uint32_t&>(
         m_globalsVS.floatConstants[GLOBALS_VS_UNUSED_CONSTANT][GLOBALS_VS_ENABLE_10_BIT_NORMAL]);
 
-    if (enable10BitNormal != vertexDeclaration.enable10BitNormal)
+    if (enable10BitNormal != static_cast<uint32_t>(vertexDeclaration.enable10BitNormal))
     {
-        enable10BitNormal = vertexDeclaration.enable10BitNormal;
+        enable10BitNormal = static_cast<uint32_t>(vertexDeclaration.enable10BitNormal);
         m_dirtyFlags |= DIRTY_FLAG_GLOBALS_VS;
     }
 

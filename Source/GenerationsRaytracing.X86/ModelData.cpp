@@ -906,10 +906,17 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
         {
             geometryDesc->isAdditive = meshDataEx.m_spMaterial->m_Additive;
 
+            bool enableOpacity = false;
+            bool enableEmission = false;
+
             if (meshDataEx.m_spMaterial->m_spShaderListData != nullptr)
             {
                 const char* bracket = strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "[");
                 geometryDesc->enableVertexColor = bracket != nullptr && strstr(bracket, "v") != nullptr;
+
+                const char* underscore = strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "_");
+                enableOpacity = underscore != nullptr && strstr(underscore, "a") != nullptr;
+                enableEmission = underscore != nullptr && strstr(underscore, "E") != nullptr;
             }
 
             if (meshDataEx.m_spMaterial->m_spTexsetData != nullptr)
@@ -931,13 +938,16 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
                     }
                     else if (texture->m_Type == s_opacitySymbol)
                     {
-                        if (diffuseTexture == texture->m_spPictureData->m_pD3DTexture)
+                        if (!enableOpacity || diffuseTexture == texture->m_spPictureData->m_pD3DTexture)
                             continue;
 
                         textureDesc = &geometryDesc->alphaTexture;
                     }
                     else if (texture->m_Type == s_displacementSymbol)
                     {
+                        if (!enableEmission)
+                            continue;
+
                         textureDesc = &geometryDesc->emissionTexture;
                     }
         
