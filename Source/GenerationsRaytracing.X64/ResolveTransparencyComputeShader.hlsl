@@ -71,10 +71,19 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                 texCoord = texCoord * 2.0 - 1.0;
                 texCoord += gBufferData.Normal.xz * 0.05;
                 texCoord = texCoord * 0.5 + 0.5;
-                shadingParams.Refraction = g_ColorBeforeTransparency_SRV.SampleLevel(g_SamplerState, texCoord, 0);
 
-                if (ComputeDepth(gBufferData.Position, g_MtxView, g_MtxProjection) >= g_Depth_SRV[texCoord * g_InternalResolution])
+                if (ComputeDepth(gBufferData.Position, g_MtxView, g_MtxProjection) < g_Depth_SRV[texCoord * g_InternalResolution])
+                    shadingParams.Refraction = g_ColorBeforeTransparency_SRV.SampleLevel(g_SamplerState, texCoord, 0);
+                else 
                     shadingParams.Refraction = colorComposite;
+
+                if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_OPACITY)
+                {
+                    layers[i].DiffuseAlbedo *= gBufferData.Refraction;
+                    layers[i].SpecularAlbedo *= gBufferData.Refraction;
+                }
+                layers[i].DiffuseAlbedo += ComputeRefraction(gBufferData, diffuseAlbedoComposite);
+                layers[i].SpecularAlbedo += ComputeRefraction(gBufferData, specularAlbedoComposite);
             }
 
             if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
