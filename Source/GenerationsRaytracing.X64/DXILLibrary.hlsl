@@ -295,10 +295,10 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
+    MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
     
-    if (SampleMaterialTexture2D(material.DiffuseTexture, vertex.TexCoords[0], 2).a < 0.5)
+    if (SampleMaterialTexture2D(materialData.Textures[0], vertex.TexCoords[0], 2).a < 0.5)
         IgnoreHit();
 }

@@ -16,10 +16,10 @@ void PrimaryAnyHit(uint shaderType,
     inout PrimaryRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
+    MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
 
     if (gBufferData.Alpha < 0.5)
         IgnoreHit();
@@ -29,11 +29,11 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
     inout PrimaryRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
+    MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
     gBufferData.Alpha = 1.0;
     StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
 
@@ -72,10 +72,10 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     inout PrimaryTransparentRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
+    MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
-    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
 
     if (gBufferData.Alpha > 0.0)
     {
@@ -134,9 +134,9 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
             if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
             {
                 GeometryDesc geometryDesc = g_GeometryDescs[query.CandidateInstanceID() + query.CandidateGeometryIndex()];
-                Material material = g_Materials[geometryDesc.MaterialId];
+                MaterialData material = g_Materials[geometryDesc.MaterialId];
 
-                if (material.DiffuseTexture != 0)
+                if (material.Textures[0] != 0)
                 {
                     ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
                     Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
@@ -160,7 +160,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
                     float2 texCoord = texCoord0 * uv.x + texCoord1 * uv.y + texCoord2 * uv.z;
                     texCoord += material.TexCoordOffsets[0].xy;
                 
-                    if (SampleMaterialTexture2D(material.DiffuseTexture, texCoord, level).a > 0.5)
+                    if (SampleMaterialTexture2D(material.Textures[0], texCoord, level).a > 0.5)
                         query.CommitNonOpaqueTriangleHit();
                 }
             }
@@ -267,11 +267,11 @@ void SecondaryClosestHit(uint shaderType,
     inout SecondaryRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    Material material = g_Materials[geometryDesc.MaterialId];
+    MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, material.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_MIPMAP_LOD);
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_MIPMAP_LOD);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, material, shaderType);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
 
     payload.Color = gBufferData.Emission * g_EmissivePower;
     payload.Diffuse = gBufferData.Diffuse * g_DiffusePower;

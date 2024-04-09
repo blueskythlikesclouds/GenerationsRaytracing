@@ -80,24 +80,24 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
             createMsg.shaderType = SHADER_TYPE_COMMON;
             createMsg.flags = MATERIAL_FLAG_CONST_TEX_COORD;
 
+            createMsg.textureNum = 1;
             if (ropeRenderableEx->m_spDiffusePicture != nullptr &&
                 ropeRenderableEx->m_spDiffusePicture->m_pD3DTexture != nullptr)
             {
-                createMsg.diffuseTexture.id = reinterpret_cast<Texture*>(ropeRenderableEx->m_spDiffusePicture->m_pD3DTexture)->getId();
+                createMsg.textures[0].id = reinterpret_cast<Texture*>(ropeRenderableEx->m_spDiffusePicture->m_pD3DTexture)->getId();
             }
             else
             {
-                createMsg.diffuseTexture.id = NULL;
+                createMsg.textures[0].id = NULL;
             }
 
-            createMsg.diffuseTexture.addressModeU = D3DTADDRESS_WRAP;
-            createMsg.diffuseTexture.addressModeV = D3DTADDRESS_WRAP;
+            createMsg.textures[0].addressModeU = D3DTADDRESS_WRAP;
+            createMsg.textures[0].addressModeV = D3DTADDRESS_WRAP;
 
-            memset(&createMsg.diffuseTexture2, 0, sizeof(MsgCreateMaterial) - offsetof(MsgCreateMaterial, diffuseTexture2));
-
-            createMsg.diffuse[0] = 1.0f;
-            createMsg.diffuse[1] = 1.0f;
-            createMsg.diffuse[2] = 1.0f;
+            createMsg.parameterNum = 3;
+            createMsg.parameters[0] = 1.0f;
+            createMsg.parameters[1] = 1.0f;
+            createMsg.parameters[2] = 1.0f;
 
             s_messageSender.endMessage();
         }

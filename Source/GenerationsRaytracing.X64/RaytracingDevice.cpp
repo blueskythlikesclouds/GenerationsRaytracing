@@ -23,6 +23,7 @@
 #include "ShaderTable.h"
 #include "SmoothNormalComputeShader.h"
 #include "ResolveTransparencyComputeShader.h"
+#include "ShaderType.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
@@ -1130,23 +1131,7 @@ void RaytracingDevice::procMsgCreateMaterial()
 
     material.shaderType = message.shaderType + 1;
     material.flags = message.flags;
-
-    const std::pair<const MsgCreateMaterial::Texture&, uint32_t&> textures[] =
-    {
-        { message.diffuseTexture,       material.diffuseTexture       },
-        { message.diffuseTexture2,      material.diffuseTexture2      },
-        { message.specularTexture,      material.specularTexture      },
-        { message.specularTexture2,     material.specularTexture2     },
-        { message.glossTexture,         material.glossTexture         },
-        { message.glossTexture2,        material.glossTexture2        },
-        { message.normalTexture,        material.normalTexture        },
-        { message.normalTexture2,       material.normalTexture2       },
-        { message.reflectionTexture,    material.reflectionTexture    },
-        { message.opacityTexture,       material.opacityTexture       },
-        { message.displacementTexture,  material.displacementTexture  },
-        { message.displacementTexture2, material.displacementTexture2 },
-        { message.levelTexture,         material.levelTexture         },
-    };
+    memcpy(material.texCoordOffsets, message.texCoordOffsets, sizeof(material.texCoordOffsets));
 
     D3D12_SAMPLER_DESC samplerDesc{};
     samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -1166,8 +1151,10 @@ void RaytracingDevice::procMsgCreateMaterial()
         samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     }
 
-    for (const auto& [srcTexture, dstTexture] : textures)
+    for (size_t i = 0; i < message.textureNum; i++)
     {
+        auto& dstTexture = material.textures[i];
+        auto& srcTexture = message.textures[i];
         dstTexture = NULL;
 
         if (srcTexture.id != NULL)
@@ -1190,9 +1177,7 @@ void RaytracingDevice::procMsgCreateMaterial()
         }
     }
 
-    assert((sizeof(Material) - offsetof(Material, texCoordOffsets)) == sizeof(MsgCreateMaterial) - offsetof(MsgCreateMaterial, texCoordOffsets));
-
-    memcpy(material.texCoordOffsets, message.texCoordOffsets, sizeof(Material) - offsetof(Material, texCoordOffsets));
+    memcpy(material.parameters, message.parameters, message.parameterNum * sizeof(float));
 }
 
 void RaytracingDevice::procMsgBuildBottomLevelAccelStruct()

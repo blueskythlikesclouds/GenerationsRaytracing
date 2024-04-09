@@ -8,7 +8,7 @@
 #include "LocalLight.h"
 #include "Material.h"
 #include "NGX.h"
-#include "ShaderType.h"
+#include "HitGroups.h"
 #include "SubAllocator.h"
 #include "Upscaler.h"
 

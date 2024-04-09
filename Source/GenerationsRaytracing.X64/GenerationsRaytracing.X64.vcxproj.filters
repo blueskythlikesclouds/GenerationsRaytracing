@@ -150,9 +150,6 @@
     <ClInclude Include="GeometryDesc.h">
       <Filter>Resource</Filter>
     </ClInclude>
-    <ClInclude Include="Material.h">
-      <Filter>Resource</Filter>
-    </ClInclude>
     <ClInclude Include="EnvironmentColor.h">
       <Filter>Shader</Filter>
     </ClInclude>
@@ -201,6 +198,12 @@
     <ClInclude Include="SubAllocator.h">
       <Filter>Resource</Filter>
     </ClInclude>
+    <ClInclude Include="HitGroups.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
@@ -218,7 +221,7 @@
     <None Include="GBufferData.hlsli">
       <Filter>Shader</Filter>
     </None>
-    <None Include="MaterialData.hlsli">
+    <None Include="Material.hlsli">
       <Filter>Shader</Filter>
     </None>
     <None Include="SharedDefinitions.hlsli">
@@ -241,6 +244,9 @@
       <Filter>Shader</Filter>
     </None>
     <None Include="ColorSpace.hlsli">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="MaterialData.hlsli">
       <Filter>Shader</Filter>
     </None>
   </ItemGroup>

@@ -163,6 +163,7 @@
     <ClInclude Include="ModelReplacer.h" />
     <ClInclude Include="MotionData.h" />
     <ClInclude Include="QuickBoot.h" />
+    <ClInclude Include="RaytracingShader.h" />
     <ClInclude Include="RaytracingStages.h" />
     <ClInclude Include="RaytracingUtil.h" />
     <ClInclude Include="ModelData.h" />

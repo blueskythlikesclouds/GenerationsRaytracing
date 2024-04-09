@@ -398,42 +398,11 @@ struct MsgCreateMaterial
     uint32_t materialId;
     uint32_t shaderType;
     uint32_t flags;
-    Texture diffuseTexture;
-    Texture diffuseTexture2;
-    Texture specularTexture;
-    Texture specularTexture2;
-    Texture glossTexture;
-    Texture glossTexture2;
-    Texture normalTexture;
-    Texture normalTexture2;
-    Texture reflectionTexture;
-    Texture opacityTexture;
-    Texture displacementTexture;
-    Texture displacementTexture2;
-    Texture levelTexture;
-
     float texCoordOffsets[8];
-    float diffuse[4];
-    float ambient[3];
-    float specular[3];
-    float emissive[3];
-    float glossLevel[2];
-    float opacityReflectionRefractionSpectype[1];
-    float luminanceRange[1];
-    float fresnelParam[2];
-    float sonicEyeHighLightPosition[3];
-    float sonicEyeHighLightColor[3];
-    float sonicSkinFalloffParam[3];
-    float chrEmissionParam[4];
-    float transColorMask[3];
-    float emissionParam[4];
-    float offsetParam[4];
-    float waterParam[4];
-    float furParam[4];
-    float furParam2[4];
-    float chrEyeFHL1[4];
-    float chrEyeFHL2[4];
-    float chrEyeFHL3[4];
+    uint32_t textureNum;
+    Texture textures[16];
+    uint32_t parameterNum;
+    float parameters[32];
 };
 
 struct MsgComputePose

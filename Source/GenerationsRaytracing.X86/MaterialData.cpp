@@ -5,6 +5,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "RaytracingRendering.h"
+#include "RaytracingShader.h"
 #include "RaytracingUtil.h"
 #include "ShaderType.h"
 #include "Texture.h"
@@ -73,6 +74,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     if (materialDataEx.m_DoubleSided)
         message.flags |= MATERIAL_FLAG_DOUBLE_SIDED;
 
+    auto shader = &s_shader_SYS_ERROR;
     bool hasOpacityTexture = false;
 
     if (materialDataEx.m_spShaderListData != nullptr)
@@ -84,14 +86,16 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         if (underscore != nullptr)
             hasOpacityTexture = strstr(underscore + 1, "a") != nullptr;
 
-        for (const auto& [name, type] : s_shaderTypes)
+        for (const auto& [name, alsoShader] : s_shaders)
         {
             if (strncmp(shaderName, name.data(), name.size()) == 0)
             {
-                message.shaderType = type;
+                shader = alsoShader;
                 break;
             }
         }
+
+        message.shaderType = shader->type;
 
         if (strstr(shaderName, "SoftEdge") != nullptr)
             message.flags |= MATERIAL_FLAG_SOFT_EDGE;
@@ -103,55 +107,37 @@ static void createMaterial(MaterialDataEx& materialDataEx)
             message.flags |= MATERIAL_FLAG_VIEW_Z_ALPHA_FADE;
     }
 
-    static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
-    static Hedgehog::Base::CStringSymbol s_specularSymbol("specular");
-    static Hedgehog::Base::CStringSymbol s_glossSymbol("gloss");
-    static Hedgehog::Base::CStringSymbol s_normalSymbol("normal");
-    static Hedgehog::Base::CStringSymbol s_reflectionSymbol("reflection");
-    static Hedgehog::Base::CStringSymbol s_opacitySymbol("opacity");
-    static Hedgehog::Base::CStringSymbol s_displacementSymbol("displacement");
-    static Hedgehog::Base::CStringSymbol s_levelSymbol("level");
-
-    struct
-    {
-        Hedgehog::Base::CStringSymbol type;
-        uint32_t offset;
-        MsgCreateMaterial::Texture& dstTexture;
-        DX_PATCH::IDirect3DBaseTexture9* dxpTexture;
-    } textureDescs[] =
-    {
-        { s_diffuseSymbol, 0, message.diffuseTexture },
-        { s_diffuseSymbol, 1, message.diffuseTexture2 },
-        { s_specularSymbol, 0, message.specularTexture },
-        { s_specularSymbol, 1, message.specularTexture2 },
-        { s_glossSymbol, 0, message.glossTexture },
-        { s_glossSymbol, 1, message.glossTexture2 },
-        { s_normalSymbol, 0, message.normalTexture },
-        { s_normalSymbol, 1, message.normalTexture2 },
-        { s_reflectionSymbol, 0, message.reflectionTexture },
-        { s_opacitySymbol, 0, message.opacityTexture },
-        { s_displacementSymbol, 0, message.displacementTexture },
-        { s_displacementSymbol, 1, message.displacementTexture2 },
-        { s_levelSymbol, 0, message.levelTexture }
-    };
-
     bool constTexCoord = true;
+    message.textureNum = shader->textureNum;
 
-    for (auto& textureDesc : textureDescs)
+    for (size_t i = 0; i < shader->textureNum; i++)
     {
-        textureDesc.dstTexture.id = 0;
-        textureDesc.dstTexture.addressModeU = D3DTADDRESS_WRAP;
-        textureDesc.dstTexture.addressModeV = D3DTADDRESS_WRAP;
-        textureDesc.dstTexture.texCoordIndex = 0;
+        auto& texture = shader->textures[i];
+        auto& dstTexture = message.textures[i];
+
+        dstTexture.id = 0;
+        dstTexture.addressModeU = D3DTADDRESS_WRAP;
+        dstTexture.addressModeV = D3DTADDRESS_WRAP;
+        dstTexture.texCoordIndex = 0;
+
+        if ((message.shaderType == SHADER_TYPE_COMMON ||
+            message.shaderType == SHADER_TYPE_IGNORE_LIGHT) &&
+            texture.isOpacity && !hasOpacityTexture)
+        {
+            continue;
+        }
+
+        if (texture.nameSymbol == Hedgehog::Base::CStringSymbol{})
+            texture.nameSymbol = texture.name;
 
         if (materialDataEx.m_spTexsetData != nullptr)
         {
             uint32_t offset = 0;
             for (const auto& srcTexture : materialDataEx.m_spTexsetData->m_TextureList)
             {
-                if (srcTexture->m_Type == textureDesc.type)
+                if (srcTexture->m_Type == texture.nameSymbol)
                 {
-                    if (textureDesc.offset != offset)
+                    if (texture.index != offset)
                     {
                         ++offset;
                     }
@@ -160,30 +146,17 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                         if (srcTexture->m_spPictureData != nullptr &&
                             srcTexture->m_spPictureData->m_pD3DTexture != nullptr)
                         {
-                            // Skip materials that assign the diffuse texture as opacity
-                            if ((message.shaderType == SHADER_TYPE_COMMON || message.shaderType == SHADER_TYPE_IGNORE_LIGHT) &&
-                                srcTexture->m_Type == s_opacitySymbol && (!hasOpacityTexture ||
-                                srcTexture->m_spPictureData->m_pD3DTexture == textureDescs[0].dxpTexture))
-                            {
-                                continue;
-                            }
-
-                            textureDesc.dstTexture.id = reinterpret_cast<const Texture*>(
+                            dstTexture.id = reinterpret_cast<const Texture*>(
                                 srcTexture->m_spPictureData->m_pD3DTexture)->getId();
 
-                            textureDesc.dxpTexture = srcTexture->m_spPictureData->m_pD3DTexture;
-
-                            if (srcTexture->m_Type == s_reflectionSymbol &&
-                                srcTexture->m_spPictureData->m_TypeAndName == "Mirage.picture sph_st1_envmap_cube")
-                            {
+                            if (texture.isReflection && srcTexture->m_spPictureData->m_TypeAndName == "Mirage.picture sph_st1_envmap_cube")
                                 message.flags |= MATERIAL_FLAG_REFLECTION;
-                            }
                         }
-                        textureDesc.dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
-                        textureDesc.dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
-                        textureDesc.dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
+                        dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
+                        dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
+                        dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
 
-                        if (textureDesc.dstTexture.texCoordIndex != 0)
+                        if (dstTexture.texCoordIndex != 0)
                             constTexCoord = false;
 
                         break;
@@ -196,74 +169,48 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     if (constTexCoord)
         message.flags |= MATERIAL_FLAG_CONST_TEX_COORD;
 
-    static Hedgehog::Base::CStringSymbol s_texcoordOffsetSymbol("mrgTexcoordOffset");
-    static Hedgehog::Base::CStringSymbol s_ambientSymbol("ambient");
-    static Hedgehog::Base::CStringSymbol s_emissiveSymbol("emissive");
-    static Hedgehog::Base::CStringSymbol s_powerGlossLevelSymbol("power_gloss_level");
-    static Hedgehog::Base::CStringSymbol s_opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
-    static Hedgehog::Base::CStringSymbol s_luminanceRangeSymbol("mrgLuminanceRange");
-    static Hedgehog::Base::CStringSymbol s_fresnelParamSymbol("mrgFresnelParam");
-    static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPositionRaytracing");
-    static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightColorSymbol("g_SonicEyeHighLightColor");
-    static Hedgehog::Base::CStringSymbol s_sonicSkinFalloffParamSymbol("g_SonicSkinFalloffParam");
-    static Hedgehog::Base::CStringSymbol s_chrEmissionParamSymbol("mrgChrEmissionParam");
-    static Hedgehog::Base::CStringSymbol s_transColorMaskSymbol("g_TransColorMask");
-    static Hedgehog::Base::CStringSymbol s_emissionParamSymbol("g_EmissionParam");
-    static Hedgehog::Base::CStringSymbol s_offsetParamSymbol("g_OffsetParam");
-    static Hedgehog::Base::CStringSymbol s_waterParamSymbol("g_WaterParam");
-    static Hedgehog::Base::CStringSymbol s_furParamSymbol("FurParam");
-    static Hedgehog::Base::CStringSymbol s_furParam2Symbol("FurParam2");
-    static Hedgehog::Base::CStringSymbol s_chrEyeFHL1Symbol("ChrEyeFHL1");
-    static Hedgehog::Base::CStringSymbol s_chrEyeFHL2Symbol("ChrEyeFHL2");
-    static Hedgehog::Base::CStringSymbol s_chrEyeFHL3Symbol("ChrEyeFHL3");
+    static Hedgehog::Base::CStringSymbol s_texCoordOffsetSymbol("mrgTexcoordOffset");
+    memset(message.texCoordOffsets, 0, sizeof(message.texCoordOffsets));
 
-    struct
+    for (const auto& float4Param : materialDataEx.m_Float4Params)
     {
-        Hedgehog::Base::CStringSymbol name;
-        float* destParam;
-        uint32_t paramOffset;
-        uint32_t paramSize;
-    } const parameterDescs[] =
-    {
-        { s_texcoordOffsetSymbol, message.texCoordOffsets, 0, 8 },
-        { s_diffuseSymbol, message.diffuse, 0, 4 },
-        { s_ambientSymbol, message.ambient, 0, 3 },
-        { s_specularSymbol, message.specular, 0, 3 },
-        { s_emissiveSymbol, message.emissive, 0, 3 },
-        { s_powerGlossLevelSymbol, message.glossLevel, 1, 2 },
-        { s_opacityReflectionRefractionSpectypeSymbol, message.opacityReflectionRefractionSpectype, 0, 1 },
-        { s_luminanceRangeSymbol, message.luminanceRange, 0, 1 },
-        { s_fresnelParamSymbol, message.fresnelParam, 0, 2 },
-        { s_sonicEyeHighLightPositionRaytracingSymbol, message.sonicEyeHighLightPosition, 0, 3 },
-        { s_sonicEyeHighLightColorSymbol, message.sonicEyeHighLightColor, 0, 3 },
-        { s_sonicSkinFalloffParamSymbol, message.sonicSkinFalloffParam, 0, 3 },
-        { s_chrEmissionParamSymbol, message.chrEmissionParam, 0, 4 },
-        { s_transColorMaskSymbol, message.transColorMask, 0, 3 },
-        { s_emissionParamSymbol, message.emissionParam, 0, 4 },
-        { s_offsetParamSymbol, message.offsetParam, 0, 4 },
-        { s_waterParamSymbol, message.waterParam, 0, 4 },
-        { s_furParamSymbol, message.furParam, 0, 4 },
-        { s_furParam2Symbol, message.furParam2, 0, 4 },
-        { s_chrEyeFHL1Symbol, message.chrEyeFHL1, 0, 4 },
-        { s_chrEyeFHL2Symbol, message.chrEyeFHL2, 0, 4 },
-        { s_chrEyeFHL3Symbol, message.chrEyeFHL3, 0, 4 }
-    };
+        if (float4Param->m_Name == s_texCoordOffsetSymbol)
+        {
+            memcpy(message.texCoordOffsets, float4Param->m_spValue.get(),
+                std::min(float4Param->m_ValueNum * 4, 8u) * sizeof(float));
 
-    for (const auto& parameterDesc : parameterDescs)
+            break;
+        }
+    }
+
+    message.parameterNum = 0;
+    float* destParam = message.parameters;
+
+    for (size_t i = 0; i < shader->parameterNum; i++)
     {
-        memset(parameterDesc.destParam, 0, parameterDesc.paramSize * sizeof(float));
+        auto& parameter = shader->parameters[i];
+        memset(destParam, 0, parameter.size * sizeof(float));
+
+        if (parameter.nameSymbol == Hedgehog::Base::CStringSymbol{})
+            parameter.nameSymbol = parameter.name;
 
         for (const auto& float4Param : materialDataEx.m_Float4Params)
         {
-            if (float4Param->m_Name == parameterDesc.name)
+            if (float4Param->m_Name == parameter.nameSymbol)
             {
-                memcpy(parameterDesc.destParam, &float4Param->m_spValue[parameterDesc.paramOffset], 
-                    std::min(parameterDesc.paramSize, float4Param->m_ValueNum * 4) * sizeof(float));
+                memcpy(destParam, &float4Param->m_spValue[parameter.index], 
+                    std::min(parameter.size, float4Param->m_ValueNum * 4 - parameter.index) * sizeof(float));
 
                 break;
             }
         }
+
+        message.parameterNum += parameter.size;
+        destParam += parameter.size;
     }
+
+    assert(message.textureNum <= _countof(message.textures));
+    assert(message.parameterNum <= _countof(message.parameters));
 
     s_messageSender.endMessage();
 }
