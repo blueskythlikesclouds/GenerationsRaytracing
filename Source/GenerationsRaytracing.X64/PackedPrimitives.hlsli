@@ -1,5 +1,4 @@
-#ifndef PACKED_PRIMITIVES_HLSLI_INCLUDED
-#define PACKED_PRIMITIVES_HLSLI_INCLUDED
+#pragma once
 
 float4 DecodeColor(uint value)
 {
@@ -69,5 +68,3 @@ uint EncodeSnorm10(float3 value)
 {
     return EncodeUnorm10(value * 0.5 + 0.5);
 }
-
-#endif

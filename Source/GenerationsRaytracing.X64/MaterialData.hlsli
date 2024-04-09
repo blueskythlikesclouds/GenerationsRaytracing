@@ -1,5 +1,4 @@
-#ifndef MATERIAL_DATA_HLSLI_INCLUDED
-#define MATERIAL_DATA_HLSLI_INCLUDED
+#pragma once
 
 #include "ShaderType.h"
 #include "Material.hlsli"
@@ -691,4 +690,3 @@ Material GetMaterial(uint shaderType, MaterialData materialData)
    }
    return material;
 }
-#endif

@@ -1,5 +1,4 @@
-#ifndef RAY_DIFFERENTIALS_HLSLI_INCLUDED
-#define RAY_DIFFERENTIALS_HLSLI_INCLUDED
+#pragma once
 
 struct RayDiff
 {
@@ -58,5 +57,3 @@ void InterpolateDifferentials(float2 dBarydx, float2 dBarydy, float2 uv0, float2
     dx = dBarydx.x * delta1 + dBarydx.y * delta2;
     dy = dBarydy.x * delta1 + dBarydy.y * delta2;
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef SKY_SHARED_DEFINITIONS_HLSLI_INCLUDED
-#define SKY_SHARED_DEFINITIONS_HLSLI_INCLUDED
+#pragma once
 
 cbuffer GlobalsSB : register(b0)
 {
@@ -33,5 +32,3 @@ struct PixelShaderInput
     float4 Position : SV_Position;
     uint RenderTargetArrayIndex : SV_RenderTargetArrayIndex;
 };
-
-#endif

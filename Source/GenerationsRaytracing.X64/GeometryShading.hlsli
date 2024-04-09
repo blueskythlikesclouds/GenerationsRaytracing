@@ -1,5 +1,4 @@
-#ifndef GEOMETRY_SHADING_HLSLI_INCLUDED
-#define GEOMETRY_SHADING_HLSLI_INCLUDED
+#pragma once
 
 #include "GBufferData.hlsli"
 #include "Reservoir.hlsli"
@@ -291,5 +290,3 @@ float ComputeDepth(float3 position, float4x4 view, float4x4 projection)
     float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);
     return projectedPosition.z / projectedPosition.w;
 }
-
-#endif 

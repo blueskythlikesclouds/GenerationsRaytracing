@@ -1,5 +1,4 @@
-#ifndef SHADER_TABLE_H_INCLUDED
-#define SHADER_TABLE_H_INCLUDED
+#pragma once
 
 #define RAY_GENERATION_PRIMARY        0
 #define RAY_GENERATION_SHADOW         1
@@ -20,5 +19,3 @@
 
 #define INSTANCE_MASK_OPAQUE          1
 #define INSTANCE_MASK_TRANSPARENT     2  
-
-#endif

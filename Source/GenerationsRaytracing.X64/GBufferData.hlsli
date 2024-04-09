@@ -1,5 +1,4 @@
-#ifndef GBUFFER_DATA_HLSLI_INCLUDED
-#define GBUFFER_DATA_HLSLI_INCLUDED
+#pragma once
 
 #include "GeometryDesc.hlsli"
 #include "MaterialData.hlsli"
@@ -1214,5 +1213,3 @@ void StoreGBufferData(uint3 index, GBufferData gBufferData)
     g_GBuffer5[index] = float4(gBufferData.Falloff, gBufferData.TransColor.b);
     g_GBuffer6[index] = float4(gBufferData.Emission, gBufferData.Refraction);
 }
-
-#endif

@@ -681,15 +681,12 @@ public static class RaytracingShaderCompiler
         using var writer = new StreamWriter(
             Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.Shared", "ShaderType.h"));
 
-        writer.WriteLine("#ifndef SHADER_TYPE_H_INCLUDED");
-        writer.WriteLine("#define SHADER_TYPE_H_INCLUDED");
+        writer.WriteLine("#pragma once");
 
         for (int i = 0; i < Shaders.Count; i++)
             writer.WriteLine("#define SHADER_TYPE_{0} {1}", Shaders[i].Name, i);
 
         writer.WriteLine("#define SHADER_TYPE_MAX {0}", Shaders.Count);
-
-        writer.WriteLine("#endif");
     }
 
     private static void WriteHitGroupsHeaderFile(string solutionDirectoryPath)
@@ -811,8 +808,7 @@ public static class RaytracingShaderCompiler
                    Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "MaterialData.hlsli")))
         {
             writer.WriteLine("""
-                             #ifndef MATERIAL_DATA_HLSLI_INCLUDED
-                             #define MATERIAL_DATA_HLSLI_INCLUDED
+                             #pragma once
 
                              #include "ShaderType.h"
                              #include "Material.hlsli"
@@ -873,7 +869,6 @@ public static class RaytracingShaderCompiler
                                 }
                                 return material;
                              }
-                             #endif
                              """);
         }
     }

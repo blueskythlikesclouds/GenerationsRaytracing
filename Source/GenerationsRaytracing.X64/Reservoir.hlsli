@@ -1,5 +1,4 @@
-#ifndef RESERVOIR_HLSLI_INCLUDED
-#define RESERVOIR_HLSLI_INCLUDED
+#pragma once
 
 struct Reservoir
 {
@@ -48,5 +47,3 @@ uint4 StoreReservoir(Reservoir reservoir)
 
     return value;
 }
-
-#endif

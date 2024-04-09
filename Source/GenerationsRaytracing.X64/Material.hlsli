@@ -1,5 +1,4 @@
-#ifndef MATERIAL_HLSLI_INCLUDED
-#define MATERIAL_HLSLI_INCLUDED
+#pragma once
 
 #include "GeometryDesc.hlsli"
 
@@ -75,5 +74,3 @@ float4 SampleMaterialTexture2D(uint materialTexture, Vertex vertex, float2 offse
         return texture.SampleLevel(samplerState, (vertex.TexCoords[texCoordIndex] + offset) * scale, vertex.Flags & VERTEX_FLAG_MIPMAP_LOD ? 2 : 0);
     }
 }
-
-#endif

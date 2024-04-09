@@ -1,5 +1,4 @@
-#ifndef GEOMETRY_DESC_HLSLI_INCLUDED
-#define GEOMETRY_DESC_HLSLI_INCLUDED
+#pragma once
 
 #include "GeometryFlags.h"
 #include "PackedPrimitives.hlsli"
@@ -219,5 +218,3 @@ Vertex LoadVertex(
 
     return vertex;
 }
-
-#endif

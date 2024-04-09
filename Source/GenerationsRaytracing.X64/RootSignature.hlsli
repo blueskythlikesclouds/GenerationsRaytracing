@@ -1,5 +1,4 @@
-#ifndef ROOT_SIGNATURE_HLSLI_INCLUDED
-#define ROOT_SIGNATURE_HLSLI_INCLUDED
+#pragma once
 
 #include "GeometryDesc.hlsli"
 #include "MaterialData.hlsli"
@@ -178,5 +177,3 @@ DEFINE_TEXTURE(Texture2D<float>, g_SpecularHitDistance, 21);
 #undef DEFINE_TEXTURE
 
 SamplerState g_SamplerState : register(s0);
-
-#endif

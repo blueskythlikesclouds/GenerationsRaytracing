@@ -1,5 +1,4 @@
-#ifndef SHARED_DEFINITIONS_HLSLI_INCLUDED
-#define SHARED_DEFINITIONS_HLSLI_INCLUDED
+#pragma once
 
 #define PI 3.14159265358979323846
 #define FLT_MAX asfloat(0x7f7fffff)
@@ -70,5 +69,3 @@ float3 TangentToWorld(float3 normal, float3 value)
     float3 tangent = cross(binormal, normal);
     return NormalizeSafe(value.x * tangent + value.y * binormal + value.z * normal);
 }
-
-#endif

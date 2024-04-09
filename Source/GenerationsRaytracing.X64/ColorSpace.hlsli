@@ -1,5 +1,4 @@
-#ifndef COLOR_SPACE_HLSLI_INCLUDED
-#define COLOR_SPACE_HLSLI_INCLUDED
+#pragma once
 
 float SrgbToLinear(float value)
 {
@@ -33,5 +32,3 @@ float4 LinearToSrgb(float4 value)
 {
     return float4(LinearToSrgb(value.rgb), value.a);
 }
-
-#endif
