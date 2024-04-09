@@ -784,6 +784,7 @@ public static class RaytracingShaderCompiler
     {
         int textureNum = Shaders.Select(x => x.Textures.Length).Max();
         int parameterNum = Shaders.Select(x => x.Parameters.Sum(y => y.Size)).Max();
+        int padding = AlignmentHelper.GetAlignedDifference(1 + textureNum + parameterNum, 4);
 
         using (var writer = new StreamWriter(
                    Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "Material.h")))
@@ -798,10 +799,14 @@ public static class RaytracingShaderCompiler
                                  float texCoordOffsets[8];
                                  uint32_t textures[{0}];
                                  float parameters[{1}];
-                             }};
                              """,
                 textureNum,
                 parameterNum);
+
+            if (padding > 0)
+                writer.WriteLine("    uint32_t padding[{0}];", padding);
+
+            writer.WriteLine("};");
         }
 
         using (var writer = new StreamWriter(
@@ -820,18 +825,24 @@ public static class RaytracingShaderCompiler
                                  float4 TexCoordOffsets[2];
                                  uint Textures[{0}];
                                  float Parameters[{1}];
-                             }};
-                             
+                             """,
+                textureNum,
+                parameterNum);
+
+            if (padding > 0)
+                writer.WriteLine("    uint Padding[{0}];", padding);
+
+            writer.WriteLine("};");
+
+            writer.WriteLine("""
                              Material GetMaterial(uint shaderType, MaterialData materialData)
-                             {{
+                             {
                                 Material material = (Material) 0;
                                 material.Flags = materialData.Flags;
                                 
                                 switch (shaderType)
-                                {{
-                             """,
-                textureNum,
-                parameterNum);
+                                {
+                             """);
 
             foreach (var shader in Shaders)
             {
