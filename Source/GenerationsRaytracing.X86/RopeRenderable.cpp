@@ -79,6 +79,7 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
             createMsg.materialId = ropeRenderableEx->m_materialId;
             createMsg.shaderType = SHADER_TYPE_COMMON;
             createMsg.flags = MATERIAL_FLAG_CONST_TEX_COORD;
+            memset(createMsg.texCoordOffsets, 0, sizeof(createMsg.texCoordOffsets));
 
             createMsg.textureNum = 1;
             if (ropeRenderableEx->m_spDiffusePicture != nullptr &&

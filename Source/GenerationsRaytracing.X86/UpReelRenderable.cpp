@@ -78,6 +78,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
             createMsg.materialId = reelRendererEx->m_materialId;
             createMsg.shaderType = SHADER_TYPE_COMMON;
             createMsg.flags = MATERIAL_FLAG_CONST_TEX_COORD;
+            memset(createMsg.texCoordOffsets, 0, sizeof(createMsg.texCoordOffsets));
 
             createMsg.textureNum = 1;
             if (reelRendererEx->m_pObjUpReel->m_spDiffusePicture != nullptr &&
