@@ -605,6 +605,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         {
             m_colorTexture->GetResource(),
             m_exposureTexture->GetResource(),
+            m_gBufferTexture6->GetResource(),
             m_diffuseAlbedoTexture->GetResource(),
             m_specularAlbedoTexture->GetResource(),
             m_linearDepthTexture->GetResource(),
@@ -634,6 +635,7 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
             m_exposureTexture->GetResource(),
             m_colorBeforeTransparencyTexture->GetResource(),
             m_specularHitDistanceTexture->GetResource(),
+            m_gBufferTexture6->GetResource(),
             m_globalsRT.pixelJitterX,
             m_globalsRT.pixelJitterY,
             message.resetAccumulation
