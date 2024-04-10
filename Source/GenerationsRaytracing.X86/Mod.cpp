@@ -19,6 +19,7 @@
 #include "TriangleStrip.h"
 #include "Window.h"
 #include "FileBinder.h"
+#include "GroundSmokeParticle.h"
 #include "ModelReplacer.h"
 #include "QuickBoot.h"
 #include "RopeRenderable.h"
@@ -88,6 +89,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     RopeRenderable::init();
     SoundSystem::init();
     StageSelection::init(modInfo);
+    GroundSmokeParticle::init();
 
 #ifdef _DEBUG
 #if 0

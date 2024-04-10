@@ -123,6 +123,9 @@
     <ClCompile Include="StageSelection.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
+    <ClCompile Include="GroundSmokeParticle.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -254,6 +257,9 @@
     </ClInclude>
     <ClInclude Include="StageSelection.h">
       <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="GroundSmokeParticle.h">
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
