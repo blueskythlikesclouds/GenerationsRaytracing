@@ -2,8 +2,8 @@
 
 struct Selection
 {
+    bool rememberSelection = false;
     uint32_t stageIndex = 0;
-    bool rememberSelection = true;
 };
 
 static xxHashMap<Selection> s_selections;
@@ -16,8 +16,11 @@ HOOK(void, __cdecl, MakeTerrainData, 0x7346F0,
     Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)
 {
     auto& selection = s_selections[XXH32(data, dataSize, 0)];
-    StageSelection::s_stageIndex = &selection.stageIndex;
+    if (!selection.rememberSelection)
+        selection.stageIndex = NULL;
+
     StageSelection::s_rememberSelection = &selection.rememberSelection;
+    StageSelection::s_stageIndex = &selection.stageIndex;
 
     originalMakeTerrainData(name, data, dataSize, database, renderingInfrastructure);
 }
