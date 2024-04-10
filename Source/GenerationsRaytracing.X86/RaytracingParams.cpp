@@ -321,15 +321,15 @@ void RaytracingParams::imguiWindow()
             }
             if (ImGui::BeginTabItem("Stage"))
             {
+                if (StageSelection::s_rememberSelection != nullptr)
+                {
+                    bool rememberSelection = *StageSelection::s_rememberSelection;
+                    if (ImGui::Checkbox("Remember My Selection", &rememberSelection))
+                        *StageSelection::s_rememberSelection = rememberSelection;
+                }
+
                 if (ImGui::BeginChild("Child"))
                 {
-                    if (StageSelection::s_rememberSelection != nullptr)
-                    {
-                        bool rememberSelection = *StageSelection::s_rememberSelection;
-                        if (ImGui::Checkbox("Remember My Selection", &rememberSelection))
-                            *StageSelection::s_rememberSelection = rememberSelection;
-                    }
-
                     if (StageSelection::s_stageIndex != nullptr)
                     {
                         int stageIndex = static_cast<int>(*StageSelection::s_stageIndex);
