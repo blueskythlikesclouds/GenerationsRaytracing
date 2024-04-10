@@ -38,10 +38,8 @@ static void load()
         for (const auto& obj : json)
         {
             auto& selection = s_selections[obj["hash"].get<XXH32_hash_t>()];
-            obj["remember_selection"].get_to(selection.rememberSelection);
-
-            if (selection.rememberSelection)
-                obj["stage_index"].get_to(selection.stageIndex);
+            selection.rememberSelection = true;
+            obj["stage_index"].get_to(selection.stageIndex);
         }
     }
 }
@@ -52,8 +50,8 @@ static void save()
 
     for (auto& [hash, selection] : s_selections)
     {
-        json.push_back({ {"hash", hash}, 
-            {"remember_selection", selection.rememberSelection}, {"stage_index", selection.stageIndex} });
+        if (selection.rememberSelection)
+            json.push_back({ {"hash", hash}, {"stage_index", selection.stageIndex} });
     }
 
     std::ofstream stream(s_saveFilePath);
