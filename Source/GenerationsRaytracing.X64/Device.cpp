@@ -228,6 +228,13 @@ void Device::flushGraphicsState()
 
     if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
     {
+        if (m_depthStencilTexture != nullptr)
+        {
+            getGraphicsCommandList().transitionBarrier(m_depthStencilTexture, D3D12_RESOURCE_STATE_DEPTH_WRITE, 
+                m_pipelineDesc.DepthStencilState.DepthWriteMask == D3D12_DEPTH_WRITE_MASK_ALL ?
+                D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_DEPTH_READ);
+        }
+
         getUnderlyingGraphicsCommandList()->OMSetRenderTargets(
             m_renderTargetView.ptr != NULL ? 1 : 0,
             m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr,
@@ -259,6 +266,13 @@ void Device::flushGraphicsState()
 
     if (m_dirtyFlags & DIRTY_FLAG_PIPELINE_DESC)
     {
+        if (m_depthStencilTexture != nullptr)
+        {
+            getGraphicsCommandList().transitionBarrier(m_depthStencilTexture, D3D12_RESOURCE_STATE_DEPTH_WRITE,
+                m_pipelineDesc.DepthStencilState.DepthWriteMask == D3D12_DEPTH_WRITE_MASK_ALL ?
+                D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_DEPTH_READ);
+        }
+
         const bool isFVF = m_vertexDeclarationId != NULL &&
             m_vertexDeclarations[m_vertexDeclarationId].isFVF;
 
@@ -900,9 +914,6 @@ void Device::procMsgSetDepthStencilSurface()
     {
         auto& texture = m_textures[message.depthStencilSurfaceId];
 
-        getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
-            D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
         if (texture.dsvIndex == NULL)
         {
             texture.dsvIndex = m_dsvDescriptorHeap.allocate();
@@ -928,6 +939,7 @@ void Device::procMsgSetDepthStencilSurface()
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
         m_depthStencilView = depthStencilView;
+        m_depthStencilTexture = texture.allocation->GetResource();
         m_pipelineDesc.DSVFormat = texture.format;
     }
     else
@@ -939,6 +951,7 @@ void Device::procMsgSetDepthStencilSurface()
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
         m_depthStencilView.ptr = NULL;
+        m_depthStencilTexture = nullptr;
         m_pipelineDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
     }
 }
@@ -946,6 +959,12 @@ void Device::procMsgSetDepthStencilSurface()
 void Device::procMsgClear()
 {
     const auto& message = m_messageReceiver.getMessage<MsgClear>();
+
+    if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencilTexture != nullptr)
+    {
+        getGraphicsCommandList().transitionBarrier(m_depthStencilTexture,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    }
 
     getGraphicsCommandList().commitBarriers();
 

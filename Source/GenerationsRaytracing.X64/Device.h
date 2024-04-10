@@ -97,6 +97,7 @@ protected:
 
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
     D3D12_CPU_DESCRIPTOR_HANDLE m_depthStencilView{};
+    ID3D12Resource* m_depthStencilTexture = nullptr;
 
     xxHashMap<ComPtr<ID3D12PipelineState>> m_pipelines;
     ID3D12PipelineState* m_curPipeline = nullptr;
