@@ -35,3 +35,14 @@ using nlohmann::json;
 
 #define FUNCTION_STUB(RETURN_TYPE, RETURN_VALUE, FUNCTION_NAME, ...) \
     RETURN_TYPE FUNCTION_NAME(__VA_ARGS__) { assert(!#FUNCTION_NAME); return RETURN_VALUE; }
+
+struct xxHash
+{
+    std::size_t operator()(XXH32_hash_t value) const
+    {
+        return value;
+    }
+};
+
+template<typename T>
+using xxHashMap = std::unordered_map<XXH32_hash_t, T, xxHash>;

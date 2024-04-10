@@ -6,6 +6,7 @@
 #include "EnvironmentMode.h"
 #include "MessageSender.h"
 #include "QuickBoot.h"
+#include "StageSelection.h"
 
 struct Stage
 {
@@ -19,8 +20,6 @@ static const Stage s_stages[] =
 {
 #include "RaytracingStages.h"
 };
-
-static size_t s_stageIndex = 0;
 
 static boost::shared_ptr<Hedgehog::Database::CDatabase> s_database;
 static boost::shared_ptr<Hedgehog::Database::CRawData> s_sceneEffect;
@@ -136,16 +135,6 @@ static void createParameterFile()
 
     auto paramGroup = s_parameterFile->CreateParameterGroup("Default", "");
 
-    auto stageParam = paramGroup->CreateParameterCategory("Stage", "");
-    {
-        std::vector<Sonic::SParamEnumValue> enumValues = { { "None", 0 } };
-        for (size_t i = 0; i < _countof(s_stages); i++)
-            enumValues.push_back({ s_stages[i].name, i + 1 });
-
-        stageParam->CreateParamTypeList(&s_stageIndex, "Stage", "", enumValues);
-        paramGroup->Flush();
-    }
-
     auto giParam = paramGroup->CreateParameterCategory("GI", "");
     {
         giParam->CreateParamFloat(&RaytracingParams::s_diffusePower, "DiffusePower");
@@ -191,15 +180,17 @@ bool RaytracingParams::update()
 
     bool resetAccumulation = false;
 
-    if (Configuration::s_gachaLighting && s_stageIndex == NULL)
+    if (Configuration::s_gachaLighting && 
+        StageSelection::s_stageIndex != nullptr && *StageSelection::s_stageIndex == NULL)
     {
         static std::default_random_engine engine(std::random_device{}());
         static std::uniform_int_distribution<size_t> distribution(0, _countof(s_stages));
 
-        s_stageIndex = distribution(engine);
+        *StageSelection::s_stageIndex = distribution(engine);
     }
 
-    const size_t curStageIndex = s_enable ? s_stageIndex : NULL;
+    const size_t curStageIndex = s_enable && StageSelection::s_stageIndex != nullptr ? 
+        *StageSelection::s_stageIndex : NULL;
 
     if (s_prevStageIndex != curStageIndex)
     {
@@ -332,10 +323,23 @@ void RaytracingParams::imguiWindow()
             {
                 if (ImGui::BeginChild("Child"))
                 {
-                    ImGui::RadioButton("None", reinterpret_cast<int*>(&s_stageIndex), NULL);
+                    if (StageSelection::s_rememberSelection != nullptr)
+                    {
+                        bool rememberSelection = *StageSelection::s_rememberSelection;
+                        if (ImGui::Checkbox("Remember My Selection", &rememberSelection))
+                            *StageSelection::s_rememberSelection = rememberSelection;
+                    }
 
-                    for (int i = 0; i < _countof(s_stages); i++)
-                        ImGui::RadioButton(s_stages[i].name, reinterpret_cast<int*>(&s_stageIndex), i + 1);
+                    if (StageSelection::s_stageIndex != nullptr)
+                    {
+                        int stageIndex = static_cast<int>(*StageSelection::s_stageIndex);
+                        ImGui::RadioButton("None", &stageIndex, NULL);
+
+                        for (int i = 0; i < _countof(s_stages); i++)
+                            ImGui::RadioButton(s_stages[i].name, &stageIndex, i + 1);
+
+                        *StageSelection::s_stageIndex = static_cast<uint32_t>(stageIndex);
+                    }
                 }
                 ImGui::EndChild();
                 ImGui::EndTabItem();

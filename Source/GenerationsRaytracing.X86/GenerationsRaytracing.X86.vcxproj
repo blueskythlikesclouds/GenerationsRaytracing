@@ -141,6 +141,7 @@
     <ClCompile Include="ShareVertexBuffer.cpp" />
     <ClCompile Include="Sofdec.cpp" />
     <ClCompile Include="SoundSystem.cpp" />
+    <ClCompile Include="StageSelection.cpp" />
     <ClCompile Include="Surface.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="InstanceData.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="ShareVertexBuffer.h" />
     <ClInclude Include="Sofdec.h" />
     <ClInclude Include="SoundSystem.h" />
+    <ClInclude Include="StageSelection.h" />
     <ClInclude Include="Surface.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="InstanceData.h" />
