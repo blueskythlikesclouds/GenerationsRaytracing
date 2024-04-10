@@ -161,6 +161,8 @@ static void initRaytracingPatches(bool enable)
         WRITE_MEMORY(0x13DDC9C, void*, s_drawInstanceParams); // Override game scene children
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_drawInstanceParamCount); // Override game scene child count
 
+        WRITE_MEMORY(0x13DDCB8, uint32_t, 0x21); // Disable clear
+
         WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0xC2, 0x08, 0x00); // Disable culling
     }
@@ -173,6 +175,8 @@ static void initRaytracingPatches(bool enable)
 
         WRITE_MEMORY(0x13DDC9C, void*, s_gameSceneChildren.get()); // Restore game scene children
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_gameSceneChildCount); // Restore game scene child count
+
+        WRITE_MEMORY(0x13DDCB8, uint32_t, 0xE1); // Enable clear
 
         WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0x56, 0x8B, 0xF1); // Enable culling
@@ -383,7 +387,19 @@ void RaytracingRendering::init()
 {
     s_mainThreadId = GetCurrentThreadId();
 
-    WRITE_MEMORY(0x13DDB20, uint32_t, 0); // Disable sky render
+    // Disable sky render
+    WRITE_MEMORY(0x13DDB1C, uint32_t, 
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0x800,
+        0,
+        0,
+        0); 
 }
 
 void RaytracingRendering::postInit()
