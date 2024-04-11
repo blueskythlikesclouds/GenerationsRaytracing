@@ -180,17 +180,29 @@ struct [raypayload] SecondaryRayPayload
     float NormalZ : read(caller) : write(closesthit);
 };
 
-float3 TracePath(float3 position, float3 direction, float4 random, uint missShaderIndex, uint2 dispatchRaysIndex, bool storeHitDistance, float3 throughput)
+struct TracePathArgs
+{
+    float3 Position;
+    float3 Direction;
+    float4 Random;
+    uint MissShaderIndex;
+    uint2 DispatchRaysIndex;
+    bool StoreHitDistance;
+    float3 Throughput;
+    bool ApplyPower;
+};
+
+float3 TracePath(TracePathArgs args)
 {
     min16float3 halfRadiance = 0.0;
-    min16float3 halfThroughput = (min16float3) throughput;
+    min16float3 halfThroughput = (min16float3) args.Throughput;
 
     [unroll]
     for (uint i = 0; i < 2; i++)
     {
         RayDesc ray;
-        ray.Origin = position;
-        ray.Direction = direction;
+        ray.Origin = args.Position;
+        ray.Direction = args.Direction;
         ray.TMin = 0.0;
         ray.TMax = INF;
 
@@ -202,23 +214,33 @@ float3 TracePath(float3 position, float3 direction, float4 random, uint missShad
             INSTANCE_MASK_OPAQUE,
             HIT_GROUP_SECONDARY,
             HIT_GROUP_NUM,
-            i == 0 ? missShaderIndex : MISS_GI,
+            i == 0 ? args.MissShaderIndex : MISS_GI,
             ray,
             payload);
 
         float3 color = payload.Color;
+        float3 diffuse = payload.Diffuse;
         float3 normal = float3(payload.NormalX, payload.NormalY, payload.NormalZ);
 
         bool terminatePath = false;
 
-        if (any(payload.Diffuse != 0))
+        if (any(diffuse != 0))
         {
-            color += payload.Diffuse * mrgGlobalLight_Diffuse.rgb * g_LightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? random.xy : random.zw, i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
+            float lightPower = 1.0;
+
+            if (i > 0 || args.ApplyPower)
+            {
+                color *= g_EmissivePower;
+                diffuse *= g_DiffusePower;
+                lightPower = g_LightPower;
+            }
+
+            color += diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
+               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? args.Random.xy : args.Random.zw, i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
 
             if (g_LocalLightCount > 0)
             {
-                uint sample = min(floor((i == 0 ? random.x : random.z) * g_LocalLightCount), g_LocalLightCount - 1);
+                uint sample = min(floor((i == 0 ? args.Random.x : args.Random.z) * g_LocalLightCount), g_LocalLightCount - 1);
                 LocalLight localLight = g_LocalLights[sample];
 
                 float3 lightDirection = localLight.Position - payload.Position;
@@ -227,11 +249,11 @@ float3 TracePath(float3 position, float3 direction, float4 random, uint missShad
                 if (distance > 0.0)
                     lightDirection /= distance;
 
-                float3 localLighting = payload.Diffuse * localLight.Color * g_LightPower * g_LocalLightCount * saturate(dot(normal, lightDirection)) *
+                float3 localLighting = diffuse * localLight.Color * lightPower * g_LocalLightCount * saturate(dot(normal, lightDirection)) *
                     ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
 
                 if (any(localLighting != 0))
-                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, i == 0 ? random.xy : random.zw, 1.0 / localLight.OutRange, distance);
+                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, i == 0 ? args.Random.xy : args.Random.zw, 1.0 / localLight.OutRange, distance);
 
                 color += localLighting;
             }
@@ -241,14 +263,14 @@ float3 TracePath(float3 position, float3 direction, float4 random, uint missShad
             terminatePath = true;
         }
 
-        if (storeHitDistance && i == 0)
-            g_SpecularHitDistance[dispatchRaysIndex] = terminatePath ? 0.0 : distance(position, payload.Position);
+        if (args.StoreHitDistance && i == 0)
+            g_SpecularHitDistance[args.DispatchRaysIndex] = terminatePath ? 0.0 : distance(args.Position, payload.Position);
 
         float3 radiance = (float3) halfRadiance;
-        throughput = (float3) halfThroughput;
+        float3 throughput = (float3) halfThroughput;
 
         radiance += throughput * color;
-        throughput *= payload.Diffuse;
+        throughput *= diffuse;
 
         halfRadiance = (min16float3) radiance;
         halfThroughput = (min16float3) throughput;
@@ -256,8 +278,8 @@ float3 TracePath(float3 position, float3 direction, float4 random, uint missShad
         if (terminatePath)
             break;
 
-        position = payload.Position;
-        direction = TangentToWorld(normal, GetCosWeightedSample(random.zw));
+        args.Position = payload.Position;
+        args.Direction = TangentToWorld(normal, GetCosWeightedSample(args.Random.zw));
     }
 
     return (float3) halfRadiance;
@@ -273,8 +295,8 @@ void SecondaryClosestHit(uint shaderType,
 
     GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
 
-    payload.Color = gBufferData.Emission * g_EmissivePower;
-    payload.Diffuse = gBufferData.Diffuse * g_DiffusePower;
+    payload.Color = gBufferData.Emission;
+    payload.Diffuse = gBufferData.Diffuse;
     payload.Position = gBufferData.Position;
     payload.NormalX = gBufferData.Normal.x;
     payload.NormalY = gBufferData.Normal.y;

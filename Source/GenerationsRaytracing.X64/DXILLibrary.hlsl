@@ -206,16 +206,18 @@ void GIRayGeneration()
         DispatchRaysIndex().x) * sizeof(uint)));
 
     GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
-    float4 random = GetBlueNoise(dispatchRaysIndex.xy);
 
-    g_GlobalIllumination[dispatchRaysIndex] = TracePath(
-        gBufferData.Position, 
-        TangentToWorld(gBufferData.Normal, GetCosWeightedSample(random.xy)),
-        random,
-        MISS_GI,
-        dispatchRaysIndex.xy,
-        false,
-        1.0);
+    TracePathArgs args;
+    args.Position = gBufferData.Position;
+    args.Random = GetBlueNoise(dispatchRaysIndex.xy);
+    args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(args.Random.xy));
+    args.MissShaderIndex = MISS_GI;
+    args.DispatchRaysIndex = dispatchRaysIndex.xy;
+    args.StoreHitDistance = false;
+    args.Throughput = 1.0;
+    args.ApplyPower = true;
+
+    g_GlobalIllumination[dispatchRaysIndex] = TracePath(args);
 }
 
 [shader("miss")]
@@ -245,35 +247,34 @@ void ReflectionRayGeneration()
         DispatchRaysIndex().x) * sizeof(uint)));
 
     GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
-    float4 random = GetBlueNoise(dispatchRaysIndex.xy);
 
-    float3 rayDirection;
-    float pdf;
-    
+    TracePathArgs args;
+    args.Position = gBufferData.Position;
+    args.Random = GetBlueNoise(dispatchRaysIndex.xy);
+    args.DispatchRaysIndex = dispatchRaysIndex.xy;
+    args.StoreHitDistance = dispatchRaysIndex.z == 0;
+
     float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
     
     if (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION))
     {
-        rayDirection = reflect(-eyeDirection, gBufferData.Normal);
-        pdf = 1.0;
+        args.Direction = reflect(-eyeDirection, gBufferData.Normal);
+        args.MissShaderIndex = MISS_SECONDARY;
+        args.Throughput = 1.0;
+        args.ApplyPower = false;
     }
     else
     {
-        float4 sampleDirection = GetPowerCosWeightedSample(random.xy, gBufferData.SpecularGloss);
+        float4 sampleDirection = GetPowerCosWeightedSample(args.Random.xy, gBufferData.SpecularGloss);
         float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
     
-        rayDirection = reflect(-eyeDirection, halfwayDirection);
-        pdf = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+        args.Direction = reflect(-eyeDirection, halfwayDirection);
+        args.MissShaderIndex = MISS_GI;
+        args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+        args.ApplyPower = true;
     }
     
-    g_Reflection[dispatchRaysIndex] = TracePath(
-        gBufferData.Position,
-        rayDirection,
-        random,
-        MISS_SECONDARY,
-        dispatchRaysIndex.xy,
-        dispatchRaysIndex.z == 0,
-        pdf);
+    g_Reflection[dispatchRaysIndex] = TracePath(args);
 }
 
 [shader("miss")]
