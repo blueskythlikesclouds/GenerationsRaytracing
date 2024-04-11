@@ -12,6 +12,7 @@
 #include "SubAllocator.h"
 #include "Upscaler.h"
 
+struct MsgDispatchUpscaler;
 struct MsgTraceRays;
 
 struct alignas(0x10) GlobalsRT
@@ -155,6 +156,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_linearDepthTexture;
     ComPtr<D3D12MA::Allocation> m_colorBeforeTransparencyTexture;
     ComPtr<D3D12MA::Allocation> m_specularHitDistanceTexture;
+    ComPtr<D3D12MA::Allocation> m_transparencyLayerTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     uint32_t m_srvIds[DEBUG_VIEW_MAX]{};
@@ -204,8 +206,9 @@ protected:
     bool createTopLevelAccelStruct();
 
     void createRaytracingTextures();
-    void resolveAndDispatchUpscaler(const MsgTraceRays& message);
-    void copyToRenderTargetAndDepthStencil(const MsgTraceRays& message);
+    void dispatchResolver(const MsgTraceRays& message);
+    void copyToRenderTargetAndDepthStencil(const MsgDispatchUpscaler& message);
+    void prepareForDispatchUpscaler();
 
     void procMsgCreateBottomLevelAccelStruct();
     void procMsgReleaseRaytracingResource();
@@ -217,6 +220,7 @@ protected:
     void procMsgRenderSky();
     void procMsgCreateLocalLight();
     void procMsgComputeSmoothNormal();
+    void procMsgDispatchUpscaler();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

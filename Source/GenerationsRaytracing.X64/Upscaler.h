@@ -49,6 +49,7 @@ public:
         ID3D12Resource* colorBeforeTransparency = nullptr;
         ID3D12Resource* specularHitDistance = nullptr;
         ID3D12Resource* emissive = nullptr;
+        ID3D12Resource* transparencyLayer = nullptr;
         float jitterX = 0.0f;
         float jitterY = 0.0f;
         bool resetAccumulation = false;

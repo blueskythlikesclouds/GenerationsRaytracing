@@ -137,7 +137,7 @@ static void createLocalLight(Hedgehog::Mirage::CLightData& lightData, size_t loc
 }
 
 // 2 elements for post processing on particles
-static Hedgehog::FxRenderFramework::SDrawInstanceParam s_drawInstanceParams[5u];
+static Hedgehog::FxRenderFramework::SDrawInstanceParam s_drawInstanceParams[6u];
 static uint32_t s_drawInstanceParamCount;
 
 static bool s_prevRaytracingEnable;
@@ -161,8 +161,6 @@ static void initRaytracingPatches(bool enable)
         WRITE_MEMORY(0x13DDC9C, void*, s_drawInstanceParams); // Override game scene children
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_drawInstanceParamCount); // Override game scene child count
 
-        WRITE_MEMORY(0x13DDCB8, uint32_t, 0x21); // Disable clear
-
         WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0xC2, 0x08, 0x00); // Disable culling
     }
@@ -175,8 +173,6 @@ static void initRaytracingPatches(bool enable)
 
         WRITE_MEMORY(0x13DDC9C, void*, s_gameSceneChildren.get()); // Restore game scene children
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_gameSceneChildCount); // Restore game scene child count
-
-        WRITE_MEMORY(0x13DDCB8, uint32_t, 0xE1); // Enable clear
 
         WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0x56, 0x8B, 0xF1); // Enable culling
@@ -198,13 +194,15 @@ static uint32_t s_prevEnvMode;
 static Hedgehog::Math::CVector s_prevSkyColor;
 static Hedgehog::Math::CVector s_prevGroundColor;
 
+static bool s_resetAccumulation;
+
 // Deadlock workaround: Acquiring a handle to GameDocument hangs the loading
 // thread when rendering, so let's call our logic only in the main thread.
 static DWORD s_mainThreadId;
 
-static void __cdecl implOfSceneRender(void* a1)
+static void __cdecl implOfTraceRays(void* a1)
 {
-    bool resetAccumulation = RaytracingParams::update();
+    s_resetAccumulation = RaytracingParams::update();
     const bool shouldRender = s_prevRaytracingEnable;
     initRaytracingPatches(RaytracingParams::s_enable);
 
@@ -249,7 +247,7 @@ static void __cdecl implOfSceneRender(void* a1)
             if (s_curSky != nullptr)
                 ModelData::renderSky(*s_curSky);
 
-            resetAccumulation = true;
+            s_resetAccumulation = true;
         }
 
         MaterialData::createPendingMaterials();
@@ -293,7 +291,7 @@ static void __cdecl implOfSceneRender(void* a1)
                             }
                         }
 
-                        resetAccumulation = true;
+                        s_resetAccumulation = true;
                     }
                 }
 
@@ -315,7 +313,7 @@ static void __cdecl implOfSceneRender(void* a1)
             s_prevSkyColor != RaytracingParams::s_skyColor ||
             s_prevGroundColor != RaytracingParams::s_groundColor)
         {
-            resetAccumulation = true;
+            s_resetAccumulation = true;
         }
 
         s_prevDebugView = RaytracingParams::s_debugView;
@@ -332,7 +330,7 @@ static void __cdecl implOfSceneRender(void* a1)
             Hedgehog::Mirage::CMirageDatabaseWrapper(Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spApplicationDatabase.get())
             .GetPictureData("blue_noise")->m_pD3DTexture)->getId();
 
-        traceRaysMessage.resetAccumulation = resetAccumulation;
+        traceRaysMessage.resetAccumulation = s_resetAccumulation;
         traceRaysMessage.localLightCount = localLightCount;
 
         traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
@@ -383,6 +381,14 @@ static void __cdecl implOfSceneRender(void* a1)
     }
 }
 
+static void implOfDispatchUpscaler(void* A1)
+{
+    auto& message = s_messageSender.makeMessage<MsgDispatchUpscaler>();
+    message.resetAccumulation = s_resetAccumulation;
+    message.debugView = RaytracingParams::s_debugView;
+    s_messageSender.endMessage();
+}
+
 void RaytracingRendering::init()
 {
     s_mainThreadId = GetCurrentThreadId();
@@ -409,13 +415,13 @@ void RaytracingRendering::postInit()
     s_gameSceneChildren = std::make_unique<Hedgehog::FxRenderFramework::SDrawInstanceParam[]>(s_gameSceneChildCount);
 
     memcpy(s_gameSceneChildren.get(), *reinterpret_cast<void**>(0x13DDC9C), s_gameSceneChildCount * sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
-    s_gameSceneChildren[0].pCallback = implOfSceneRender;
+    s_gameSceneChildren[0].pCallback = implOfTraceRays;
 
     WRITE_MEMORY(0x13DDC9C, void*, s_gameSceneChildren.get());
 
     // Draw instance params for raytracing enabled
     memcpy(s_drawInstanceParams, reinterpret_cast<void*>(0x13DC2C8), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
-    s_drawInstanceParams[0].pCallback = implOfSceneRender;
+    s_drawInstanceParams[0].pCallback = implOfTraceRays;
     ++s_drawInstanceParamCount;
 
     memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC1A8), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
@@ -438,4 +444,8 @@ void RaytracingRendering::postInit()
 
         ++s_drawInstanceParamCount;
     }
+
+    memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC2C8), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
+    s_drawInstanceParams[s_drawInstanceParamCount].pCallback = implOfDispatchUpscaler;
+    ++s_drawInstanceParamCount;
 }

@@ -530,4 +530,11 @@ struct MsgShowCursor
     bool showCursor;
 };
 
+struct MsgDispatchUpscaler
+{
+    MSG_DEFINE_MESSAGE(MsgShowCursor);
+    uint32_t debugView;
+    bool resetAccumulation;
+};
+
 #pragma pack(pop)

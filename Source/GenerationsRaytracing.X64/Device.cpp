@@ -433,11 +433,15 @@ void Device::procMsgSetRenderTarget()
         {
             getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+            m_renderTargetTexture = texture.allocation->GetResource();
         }
         else
         {
             getGraphicsCommandList().transitionBarrier(m_swapChain.getResource(),
                 D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+            m_renderTargetTexture = nullptr;
         }
 
         if (texture.rtvIndex == NULL)
@@ -477,6 +481,7 @@ void Device::procMsgSetRenderTarget()
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
         m_renderTargetView.ptr = NULL;
+        m_renderTargetTexture = nullptr;
         m_pipelineDesc.NumRenderTargets = 0;
         m_pipelineDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
     }

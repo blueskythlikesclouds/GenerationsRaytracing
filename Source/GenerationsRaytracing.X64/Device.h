@@ -96,6 +96,7 @@ protected:
     std::vector<uint32_t> m_tempDescriptorIds[NUM_FRAMES];
 
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
+    ID3D12Resource* m_renderTargetTexture = nullptr;
     D3D12_CPU_DESCRIPTOR_HANDLE m_depthStencilView{};
     ID3D12Resource* m_depthStencilTexture = nullptr;
 

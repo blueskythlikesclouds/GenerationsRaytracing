@@ -72,6 +72,7 @@ void DLSSD::dispatch(const DispatchArgs& args)
     params.pInWorldToViewMatrix = const_cast<float*>(&args.device.getGlobalsVS().floatConstants[4][0]);
     params.pInViewToClipMatrix = const_cast<float*>(&args.device.getGlobalsVS().floatConstants[0][0]);
     params.InFrameTimeDeltaInMsec = args.device.getGlobalsPS().floatConstants[68][0] * 1000.0f;
+    params.pInTransparencyLayer = args.transparencyLayer;
 
     THROW_IF_FAILED(NGX_D3D12_EVALUATE_DLSSD_EXT(
         args.device.getUnderlyingGraphicsCommandList(),

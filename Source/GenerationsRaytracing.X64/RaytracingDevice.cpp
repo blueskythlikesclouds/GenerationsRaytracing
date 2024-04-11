@@ -520,10 +520,27 @@ void RaytracingDevice::createRaytracingTextures()
         srvHandle.ptr += m_descriptorHeap.getIncrementSize();
     }
 
+    resourceDesc.Width = m_upscaler->getWidth();
+    resourceDesc.Height = m_upscaler->getHeight();
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+    hr = m_allocator->CreateResource(
+        &allocDesc,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr,
+        m_transparencyLayerTexture.ReleaseAndGetAddressOf(),
+        IID_ID3D12Resource,
+        nullptr);
+
+    assert(SUCCEEDED(hr) && m_transparencyLayerTexture != nullptr);
+
     resourceDesc.Width = m_width;
     resourceDesc.Height = m_height;
     resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
     hr = m_allocator->CreateResource(
         &allocDesc,
@@ -571,7 +588,7 @@ void RaytracingDevice::createRaytracingTextures()
     }
 }
 
-void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
+void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
 {
     PIX_BEGIN_EVENT("Resolve");
 
@@ -601,53 +618,10 @@ void RaytracingDevice::resolveAndDispatchUpscaler(const MsgTraceRays& message)
         (m_upscaler->getHeight() + 7) / 8,
         1);
 
-    getGraphicsCommandList().transitionBarriers(
-        {
-            m_colorTexture->GetResource(),
-            m_exposureTexture->GetResource(),
-            m_gBufferTexture6->GetResource(),
-            m_diffuseAlbedoTexture->GetResource(),
-            m_specularAlbedoTexture->GetResource(),
-            m_linearDepthTexture->GetResource(),
-            m_specularHitDistanceTexture->GetResource(),
-        }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-    getGraphicsCommandList().commitBarriers();
-
     PIX_END_EVENT();
-
-    if (message.debugView != DEBUG_VIEW_NONE)
-        return;
-
-    PIX_BEGIN_EVENT("Upscale");
-
-    m_upscaler->dispatch(
-        {
-            *this,
-            m_diffuseAlbedoTexture->GetResource(),
-            m_specularAlbedoTexture->GetResource(),
-            m_gBufferTexture4->GetResource(),
-            m_colorTexture->GetResource(),
-            m_outputTexture->GetResource(),
-            m_depthTexture->GetResource(),
-            m_linearDepthTexture->GetResource(),
-            m_motionVectorsTexture->GetResource(),
-            m_exposureTexture->GetResource(),
-            m_colorBeforeTransparencyTexture->GetResource(),
-            m_specularHitDistanceTexture->GetResource(),
-            m_gBufferTexture6->GetResource(),
-            m_globalsRT.pixelJitterX,
-            m_globalsRT.pixelJitterY,
-            message.resetAccumulation
-        });
-
-    PIX_END_EVENT();
-
-    setDescriptorHeaps();
-    m_curRootSignature = nullptr;
 }
 
-void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgTraceRays& message)
+void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscaler& message)
 {
     PIX_EVENT();
 
@@ -668,6 +642,12 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgTraceRays& mes
 
     getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_renderTargetTexture,
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+    getGraphicsCommandList().transitionBarrier(m_depthStencilTexture,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
     getGraphicsCommandList().commitBarriers();
 
@@ -1118,8 +1098,126 @@ void RaytracingDevice::procMsgTraceRays()
 
     getGraphicsCommandList().commitBarriers();
 
-    resolveAndDispatchUpscaler(message);
+    dispatchResolver(message);
+    prepareForDispatchUpscaler();
+}
+
+void RaytracingDevice::prepareForDispatchUpscaler()
+{
+    PIX_BEGIN_EVENT("Prepare For Upscaler");
+
+    getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_depthStencilTexture,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
+
+    getGraphicsCommandList().commitBarriers();
+
+    const CD3DX12_TEXTURE_COPY_LOCATION srcLocation(m_depthTexture->GetResource());
+    const CD3DX12_TEXTURE_COPY_LOCATION dstLocation(m_depthStencilTexture);
+
+    getUnderlyingGraphicsCommandList()->CopyTextureRegion(
+        &dstLocation,
+        0,
+        0,
+        0,
+        &srcLocation,
+        nullptr);
+
+    PIX_END_EVENT();
+
+    m_viewport.Width = static_cast<FLOAT>(m_upscaler->getWidth());
+    m_viewport.Height = static_cast<FLOAT>(m_upscaler->getHeight());
+    m_dirtyFlags |= DIRTY_FLAG_VIEWPORT;
+
+    m_scissorRect.right = static_cast<LONG>(m_upscaler->getWidth());
+    m_scissorRect.bottom = static_cast<LONG>(m_upscaler->getHeight());
+    m_dirtyFlags |= DIRTY_FLAG_SCISSOR_RECT;
+}
+
+void RaytracingDevice::procMsgDispatchUpscaler()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgDispatchUpscaler>();
+
+    if (m_instanceDescs.empty())
+        return;
+
+    PIX_BEGIN_EVENT("Copy Transparency Layer");
+
+    getGraphicsCommandList().transitionBarrier(m_renderTargetTexture,
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_transparencyLayerTexture->GetResource(),
+        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COPY_DEST);
+
+    getGraphicsCommandList().commitBarriers();
+
+    const CD3DX12_TEXTURE_COPY_LOCATION srcLocation(m_renderTargetTexture);
+    const CD3DX12_BOX srcBox(0, 0, static_cast<LONG>(m_upscaler->getWidth()), static_cast<LONG>(m_upscaler->getHeight()));
+    const CD3DX12_TEXTURE_COPY_LOCATION dstLocation(m_transparencyLayerTexture->GetResource());
+
+    getUnderlyingGraphicsCommandList()->CopyTextureRegion(
+        &dstLocation,
+        0,
+        0,
+        0,
+        &srcLocation,
+        &srcBox);
+
+    PIX_END_EVENT();
+
+    PIX_BEGIN_EVENT("Upscale");
+
+    getGraphicsCommandList().transitionBarriers(
+        {
+            m_colorTexture->GetResource(),
+            m_exposureTexture->GetResource(),
+            m_gBufferTexture6->GetResource(),
+            m_diffuseAlbedoTexture->GetResource(),
+            m_specularAlbedoTexture->GetResource(),
+            m_linearDepthTexture->GetResource(),
+            m_specularHitDistanceTexture->GetResource(),
+        }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().transitionBarrier(m_transparencyLayerTexture->GetResource(),
+        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    getGraphicsCommandList().commitBarriers();
+
+    m_upscaler->dispatch(
+        {
+            *this,
+            m_diffuseAlbedoTexture->GetResource(),
+            m_specularAlbedoTexture->GetResource(),
+            m_gBufferTexture4->GetResource(),
+            m_colorTexture->GetResource(),
+            m_outputTexture->GetResource(),
+            m_depthTexture->GetResource(),
+            m_linearDepthTexture->GetResource(),
+            m_motionVectorsTexture->GetResource(),
+            m_exposureTexture->GetResource(),
+            m_colorBeforeTransparencyTexture->GetResource(),
+            m_specularHitDistanceTexture->GetResource(),
+            m_gBufferTexture6->GetResource(),
+            m_transparencyLayerTexture->GetResource(),
+            m_globalsRT.pixelJitterX,
+            m_globalsRT.pixelJitterY,
+            message.resetAccumulation
+        });
+
+    PIX_END_EVENT();
+
+    setDescriptorHeaps();
     copyToRenderTargetAndDepthStencil(message);
+
+    m_viewport.Width = static_cast<FLOAT>(m_width);
+    m_viewport.Height = static_cast<FLOAT>(m_height);
+    m_dirtyFlags |= DIRTY_FLAG_VIEWPORT;
+
+    m_scissorRect.right = static_cast<LONG>(m_width);
+    m_scissorRect.bottom = static_cast<LONG>(m_height);
+    m_dirtyFlags |= DIRTY_FLAG_SCISSOR_RECT;
 }
 
 void RaytracingDevice::procMsgCreateMaterial()
@@ -1482,6 +1580,7 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgRenderSky::s_id: procMsgRenderSky(); break;
     case MsgCreateLocalLight::s_id: procMsgCreateLocalLight(); break;
     case MsgComputeSmoothNormal::s_id: procMsgComputeSmoothNormal(); break;
+    case MsgDispatchUpscaler::s_id: procMsgDispatchUpscaler(); break;
     default: return false;
     }
 
@@ -1722,7 +1821,7 @@ RaytracingDevice::RaytracingDevice()
     copyPipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     copyPipelineDesc.NumRenderTargets = 1;
     copyPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    copyPipelineDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    copyPipelineDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     copyPipelineDesc.SampleDesc.Count = 1;
 
     m_pipelineLibrary.createGraphicsPipelineState(&copyPipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
