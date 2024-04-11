@@ -278,6 +278,10 @@ Material GetMaterial(uint shaderType, MaterialData materialData)
         material.Diffuse[2] = materialData.Parameters[2];
         material.Diffuse[3] = materialData.Parameters[3];
         material.Opacity = materialData.Parameters[4];
+        material.DistortionParam[0] = materialData.Parameters[5];
+        material.DistortionParam[1] = materialData.Parameters[6];
+        material.DistortionParam[2] = materialData.Parameters[7];
+        material.DistortionParam[3] = materialData.Parameters[8];
         break;
     case SHADER_TYPE_ENM_EMISSION:
         material.DiffuseTexture = materialData.Textures[0];

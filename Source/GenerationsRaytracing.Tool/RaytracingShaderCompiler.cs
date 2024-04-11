@@ -56,6 +56,7 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static RaytracingParameter ChrEyeFHL1 = new("ChrEyeFHL1", 0, 4, "ChrEyeFHL1");
     public static RaytracingParameter ChrEyeFHL2 = new("ChrEyeFHL2", 0, 4, "ChrEyeFHL2");
     public static RaytracingParameter ChrEyeFHL3 = new("ChrEyeFHL3", 0, 4, "ChrEyeFHL3");
+    public static RaytracingParameter DistortionParam = new("mrgDistortionParam", 0, 4, "DistortionParam");
 }
 
 public class RaytracingShader(string name, RaytracingTexture[] textures, RaytracingParameter[] parameters)
@@ -237,6 +238,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
         [
             RaytracingParameter.Diffuse,
             RaytracingParameter.Opacity,
+            RaytracingParameter.DistortionParam
         ]);
 
     public static RaytracingShader EnmEmission = new("ENM_EMISSION",

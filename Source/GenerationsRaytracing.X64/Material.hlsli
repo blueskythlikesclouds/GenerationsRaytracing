@@ -40,6 +40,7 @@ struct Material
     float4 ChrEyeFHL1;
     float4 ChrEyeFHL2;
     float4 ChrEyeFHL3;
+    float4 DistortionParam;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord, uint level)

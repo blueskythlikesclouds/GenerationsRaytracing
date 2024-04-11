@@ -36,6 +36,7 @@ struct GBufferData
     float Alpha;
 
     float Refraction;
+    float2 RefractionOffset;
 
     float3 Specular;
     float SpecularGloss;
@@ -123,9 +124,10 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
 
     float3 normal1 = DecodeNormalMap(SampleMaterialTexture2D(material.NormalTexture, vertex, float2(0.0, offset.x)));
     float3 normal2 = DecodeNormalMap(SampleMaterialTexture2D(material.NormalTexture2, vertex, float2(0.0, offset.y)));
-    float3 normal = (normal1 + normal2) * 0.5;
+    float3 normal = NormalizeSafe((normal1 + normal2) * 0.5);
     
-    gBufferData.Normal = NormalizeSafe(DecodeNormalMap(vertex, NormalizeSafe(normal)));
+    gBufferData.Normal = NormalizeSafe(DecodeNormalMap(vertex, normal));
+    gBufferData.RefractionOffset = normal.xy;
 }
 
 float4 ApplyFurParamTransform(float4 value, float furParam)
@@ -437,6 +439,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
                 gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 
+                float3 viewNormal = mul(float4(gBufferData.Normal, 0.0), g_MtxView).xyz;
+                gBufferData.RefractionOffset = viewNormal.xy * 0.05;
+
                 break;
             }
 
@@ -453,6 +458,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
                 if (material.NormalTexture2 != 0)
                     gBufferData.Normal = NormalizeSafe(gBufferData.Normal + DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex)));
+
+                float3 viewNormal = mul(float4(gBufferData.Normal, 0.0), g_MtxView).xyz;
+                gBufferData.RefractionOffset = viewNormal.xy * material.DistortionParam.w;
 
                 break;
             }
@@ -1086,6 +1094,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     gBufferData.Alpha *= saturate(viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]);
                 }
 
+                gBufferData.RefractionOffset *= 0.05;
                 break;
             }
 
@@ -1100,6 +1109,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     gBufferData.Alpha *= saturate(viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]);
                 }
 
+                gBufferData.RefractionOffset *= 0.05;
                 break;
             }
 
@@ -1115,6 +1125,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                     gBufferData.Alpha = saturate((viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]) / material.WaterParam.w);
                 }
 
+                gBufferData.RefractionOffset *= 0.05 + material.WaterParam.z;
                 break;
             }
 #ifndef ENABLE_SYS_ERROR_FALLBACK
@@ -1194,7 +1205,11 @@ GBufferData LoadGBufferData(uint3 index)
     gBufferData.Normal = gBuffer4.xyz;
     gBufferData.Falloff = gBuffer5.xyz;
     gBufferData.Emission = gBuffer6.xyz;
-    gBufferData.TransColor = float3(gBuffer2.w, gBuffer3.w, gBuffer5.w);
+
+    if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY))
+        gBufferData.RefractionOffset = float2(gBuffer2.w, gBuffer5.w);
+    else
+        gBufferData.TransColor = float3(gBuffer2.w, gBuffer3.w, gBuffer5.w);
 
     return gBufferData;
 }
@@ -1205,11 +1220,14 @@ void StoreGBufferData(uint3 index, GBufferData gBufferData)
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION)))
         roughness = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
 
+    bool storeRefractionOffset =
+        gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_OPACITY);
+
     g_GBuffer0[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
     g_GBuffer1[index] = float4(gBufferData.Diffuse, gBufferData.Alpha);
-    g_GBuffer2[index] = float4(gBufferData.Specular, gBufferData.TransColor.r);
+    g_GBuffer2[index] = float4(gBufferData.Specular, storeRefractionOffset ? gBufferData.RefractionOffset.x : gBufferData.TransColor.r);
     g_GBuffer3[index] = float4(gBufferData.SpecularGloss, gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.TransColor.g);
     g_GBuffer4[index] = float4(gBufferData.Normal, roughness);
-    g_GBuffer5[index] = float4(gBufferData.Falloff, gBufferData.TransColor.b);
+    g_GBuffer5[index] = float4(gBufferData.Falloff, storeRefractionOffset ? gBufferData.RefractionOffset.y : gBufferData.TransColor.b);
     g_GBuffer6[index] = float4(gBufferData.Emission, gBufferData.Refraction);
 }

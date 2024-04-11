@@ -68,9 +68,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_OPACITY))
             {
                 float2 texCoord = (dispatchThreadId + 0.5) / g_InternalResolution;
-                texCoord = texCoord * 2.0 - 1.0;
-                texCoord += gBufferData.Normal.xz * 0.05;
-                texCoord = texCoord * 0.5 + 0.5;
+                texCoord = texCoord * float2(2.0, -2.0) + float2(-1.0, 1.0);
+                texCoord += gBufferData.RefractionOffset;
+                texCoord = texCoord * float2(0.5, -0.5) + 0.5;
 
                 if (ComputeDepth(gBufferData.Position, g_MtxView, g_MtxProjection) < g_Depth_SRV[texCoord * g_InternalResolution])
                     shadingParams.Refraction = g_ColorBeforeTransparency_SRV.SampleLevel(g_SamplerState, texCoord, 0);

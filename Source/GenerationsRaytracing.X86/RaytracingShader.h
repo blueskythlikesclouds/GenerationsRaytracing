@@ -241,12 +241,13 @@ inline RaytracingTexture s_textures_DISTORTION_OVERLAY[3] =
 	{ "normal", 0, false, false },
 	{ "normal", 1, false, false },
 };
-inline RaytracingParameter s_parameters_DISTORTION_OVERLAY[2] =
+inline RaytracingParameter s_parameters_DISTORTION_OVERLAY[3] =
 {
 	{ "diffuse", 0, 4 },
 	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	{ "mrgDistortionParam", 0, 4 },
 };
-inline RaytracingShader s_shader_DISTORTION_OVERLAY = { SHADER_TYPE_DISTORTION_OVERLAY, s_textures_DISTORTION_OVERLAY, 3, s_parameters_DISTORTION_OVERLAY, 2 };
+inline RaytracingShader s_shader_DISTORTION_OVERLAY = { SHADER_TYPE_DISTORTION_OVERLAY, s_textures_DISTORTION_OVERLAY, 3, s_parameters_DISTORTION_OVERLAY, 3 };
 inline RaytracingTexture s_textures_ENM_EMISSION[4] =
 {
 	{ "diffuse", 0, false, false },
