@@ -22,7 +22,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         groupThreadId,
         groupId);
 
-    float3 colorComposite = g_ColorBeforeTransparency_SRV[dispatchThreadId];
+    float4 colorComposite = g_ColorBeforeTransparency_SRV[dispatchThreadId];
     float3 diffuseAlbedoComposite = g_DiffuseAlbedo[dispatchThreadId];
     float3 specularAlbedoComposite = g_SpecularAlbedo[dispatchThreadId];
 
@@ -73,9 +73,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                 texCoord = texCoord * float2(0.5, -0.5) + 0.5;
 
                 if (ComputeDepth(gBufferData.Position, g_MtxView, g_MtxProjection) < g_Depth_SRV[texCoord * g_InternalResolution])
-                    shadingParams.Refraction = g_ColorBeforeTransparency_SRV.SampleLevel(g_SamplerState, texCoord, 0);
+                    shadingParams.Refraction = g_ColorBeforeTransparency_SRV.SampleLevel(g_SamplerState, texCoord, 0).rgb;
                 else 
-                    shadingParams.Refraction = colorComposite;
+                    shadingParams.Refraction = colorComposite.rgb;
 
                 if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_OPACITY)
                 {
@@ -127,7 +127,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                 specularAlbedoComposite *= 1.0 - layer.Color.a;
             }
 
-            colorComposite += layer.Color.rgb * layer.Color.a;
+            colorComposite += layer.Color * layer.Color.a;
             diffuseAlbedoComposite += layer.DiffuseAlbedo * layer.Color.a;
             specularAlbedoComposite += layer.SpecularAlbedo * layer.Color.a;
         }
@@ -136,5 +136,5 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         g_SpecularAlbedo[dispatchThreadId] = specularAlbedoComposite;
     }
 
-    g_Color[dispatchThreadId] = float4(colorComposite, 1.0);
+    g_Color[dispatchThreadId] = colorComposite;
 }

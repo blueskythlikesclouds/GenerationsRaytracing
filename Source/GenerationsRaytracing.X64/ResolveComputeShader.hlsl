@@ -115,7 +115,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         color = gBufferData.Emission;
     }
 
-    g_ColorBeforeTransparency[dispatchThreadId] = color;
+    g_ColorBeforeTransparency[dispatchThreadId] = float4(color, 1.0);
     g_PrevReservoir[dispatchThreadId] = StoreReservoir(reservoir);
     g_DiffuseAlbedo[dispatchThreadId] = diffuseAlbedo;
     g_SpecularAlbedo[dispatchThreadId] = specularAlbedo;

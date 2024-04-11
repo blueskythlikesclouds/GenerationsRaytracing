@@ -171,7 +171,7 @@ DEFINE_TEXTURE(Texture2DArray<float3>, g_Reflection, 16);
 DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedo, 17);
 DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedo, 18);
 DEFINE_TEXTURE(Texture2D<float>, g_LinearDepth, 19);
-DEFINE_TEXTURE(Texture2D<float3>, g_ColorBeforeTransparency, 20);
+DEFINE_TEXTURE(Texture2D<float4>, g_ColorBeforeTransparency, 20);
 DEFINE_TEXTURE(Texture2D<float>, g_SpecularHitDistance, 21);
 
 #undef DEFINE_TEXTURE
