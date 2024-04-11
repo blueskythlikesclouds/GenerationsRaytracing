@@ -156,7 +156,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_linearDepthTexture;
     ComPtr<D3D12MA::Allocation> m_colorBeforeTransparencyTexture;
     ComPtr<D3D12MA::Allocation> m_specularHitDistanceTexture;
-    ComPtr<D3D12MA::Allocation> m_transparencyLayerTexture;
 
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     uint32_t m_srvIds[DEBUG_VIEW_MAX]{};
@@ -208,7 +207,7 @@ protected:
     void createRaytracingTextures();
     void dispatchResolver(const MsgTraceRays& message);
     void copyToRenderTargetAndDepthStencil(const MsgDispatchUpscaler& message);
-    void prepareForDispatchUpscaler();
+    void prepareForDispatchUpscaler(const MsgTraceRays& message);
 
     void procMsgCreateBottomLevelAccelStruct();
     void procMsgReleaseRaytracingResource();
