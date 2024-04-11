@@ -643,11 +643,6 @@ static constexpr size_t GLOBALS_VS_UNUSED_CONSTANT = 196;
 static constexpr size_t GLOBALS_VS_BOOLEANS = 0;
 static constexpr size_t GLOBALS_VS_ENABLE_10_BIT_NORMAL = 1;
 
-static constexpr size_t GLOBALS_PS_UNUSED_CONSTANT = 148;
-static constexpr size_t GLOBALS_PS_ENABLE_ALPHA_TEST = 0;
-static constexpr size_t GLOBALS_PS_ALPHA_THRESHOLD = 1;
-static constexpr size_t GLOBALS_PS_BOOLEANS = 2;
-
 void Device::procMsgSetRenderState()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetRenderState>();
@@ -672,13 +667,10 @@ void Device::procMsgSetRenderState()
 
     case D3DRS_ALPHATESTENABLE:
     {
-        auto& enableAlphaTest = reinterpret_cast<uint32_t&>(
-            m_globalsPS.floatConstants[GLOBALS_PS_UNUSED_CONSTANT][GLOBALS_PS_ENABLE_ALPHA_TEST]);
-
-        if (enableAlphaTest != message.value)
+        if (m_globalsPS.enableAlphaTest != message.value)
             m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
 
-        enableAlphaTest = message.value;
+        m_globalsPS.enableAlphaTest = message.value;
         break;
     }
 
@@ -700,13 +692,12 @@ void Device::procMsgSetRenderState()
 
     case D3DRS_ALPHAREF:
     {
-        auto& alphaThreshold = m_globalsPS.floatConstants[GLOBALS_PS_UNUSED_CONSTANT][GLOBALS_PS_ALPHA_THRESHOLD];
         const float value = static_cast<float>(message.value) / 255.0f;
 
-        if (std::abs(alphaThreshold - value) > 0.001f)
+        if (std::abs(m_globalsPS.alphaThreshold - value) > 0.001f)
             m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
 
-        alphaThreshold = value;
+        m_globalsPS.alphaThreshold = value;
 
         break;
     }
@@ -1784,13 +1775,11 @@ void Device::procMsgSetPixelShaderConstantB()
     const uint32_t mask = 1 << message.startRegister;
     const uint32_t value = *reinterpret_cast<const BOOL*>(message.data) << message.startRegister;
 
-    auto& booleans = reinterpret_cast<uint32_t&>(m_globalsPS.floatConstants[GLOBALS_PS_UNUSED_CONSTANT][GLOBALS_PS_BOOLEANS]);
-
-    if ((booleans & mask) != value)
+    if ((m_globalsPS.booleans & mask) != value)
         m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
 
-    booleans &= ~mask;
-    booleans |= value;
+    m_globalsPS.booleans &= ~mask;
+    m_globalsPS.booleans |= value;
 }
 
 void Device::procMsgSaveShaderCache()

@@ -128,6 +128,7 @@ protected:
 
     uint32_t m_uavId = 0;
     uint32_t m_srvId = 0;
+    uint32_t m_exposureTextureId = 0;
 
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;

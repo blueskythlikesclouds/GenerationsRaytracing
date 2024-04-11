@@ -21,4 +21,7 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE getCpuHandle(uint32_t index) const;
     D3D12_GPU_DESCRIPTOR_HANDLE getGpuHandle(uint32_t index) const;
     uint32_t getIncrementSize() const;
+
+    uint32_t getIndex(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle) const;
+    uint32_t getIndex(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) const;
 };

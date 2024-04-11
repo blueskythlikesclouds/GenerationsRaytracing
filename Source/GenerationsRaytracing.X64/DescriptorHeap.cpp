@@ -50,3 +50,13 @@ uint32_t DescriptorHeap::getIncrementSize() const
 {
     return m_incrementSize;
 }
+
+uint32_t DescriptorHeap::getIndex(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle) const
+{
+    return (cpuHandle.ptr - m_cpuDescriptorHandle.ptr) / m_incrementSize;
+}
+
+uint32_t DescriptorHeap::getIndex(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) const
+{
+    return (gpuHandle.ptr - m_gpuDescriptorHandle.ptr) / m_incrementSize;
+}

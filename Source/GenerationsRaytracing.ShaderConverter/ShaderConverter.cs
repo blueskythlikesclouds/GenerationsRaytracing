@@ -284,9 +284,10 @@ public class ShaderConverter
 
         if (isPixelShader)
         {
-            stringBuilder.AppendLine("\tbool g_EnableAlphaTest : packoffset(c148.x);");
-            stringBuilder.AppendLine("\tfloat g_AlphaThreshold : packoffset(c148.y);");
-            stringBuilder.AppendLine("\tuint g_Booleans : packoffset(c148.z);");
+            stringBuilder.AppendLine("\tbool g_EnableAlphaTest : packoffset(c232.x);");
+            stringBuilder.AppendLine("\tfloat g_AlphaThreshold : packoffset(c232.y);");
+            stringBuilder.AppendLine("\tuint g_Booleans : packoffset(c232.z);");
+            stringBuilder.AppendLine("\tuint g_ExposureTextureId : packoffset(c232.w);");
         }
         else
         {
@@ -437,6 +438,10 @@ public class ShaderConverter
         {
             stringBuilder.AppendLine("\n\tif (g_EnableAlphaTest) {");
             stringBuilder.AppendLine("\t\tclip(oC0.w - g_AlphaThreshold);");
+            stringBuilder.AppendLine("\t}");
+            stringBuilder.AppendLine("\n\tif (g_ExposureTextureId != 0) {");
+            stringBuilder.AppendLine("\t\tTexture2D<float> exposure = ResourceDescriptorHeap[g_ExposureTextureId];");
+            stringBuilder.AppendLine("\t\toC0.rgb /= max(0.0001, exposure[uint2(0, 0)] * 0.5);");
             stringBuilder.AppendLine("\t}");
         }
 

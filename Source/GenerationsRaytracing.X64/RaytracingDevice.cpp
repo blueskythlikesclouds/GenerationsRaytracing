@@ -515,6 +515,9 @@ void RaytracingDevice::createRaytracingTextures()
             resource,
             &srvDesc,
             srvHandle);
+
+        if (m_exposureTexture == textureDesc.allocation)
+            m_exposureTextureId = m_descriptorHeap.getIndex(srvHandle);
     
         uavHandle.ptr += m_descriptorHeap.getIncrementSize();
         srvHandle.ptr += m_descriptorHeap.getIncrementSize();
@@ -1135,6 +1138,10 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
 
     m_globalsVS.floatConstants[3][0] += 2.0f * m_globalsRT.pixelJitterX / static_cast<float>(m_upscaler->getWidth());
     m_globalsVS.floatConstants[3][1] += -2.0f * m_globalsRT.pixelJitterY / static_cast<float>(m_upscaler->getHeight());
+    m_dirtyFlags |= DIRTY_FLAG_GLOBALS_VS;
+
+    m_globalsPS.exposureTextureId = m_exposureTextureId;
+    m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
 
     m_viewport.Width = static_cast<FLOAT>(m_upscaler->getWidth());
     m_viewport.Height = static_cast<FLOAT>(m_upscaler->getHeight());
@@ -1197,6 +1204,13 @@ void RaytracingDevice::procMsgDispatchUpscaler()
     }
 
     copyToRenderTargetAndDepthStencil(message);
+
+    m_globalsVS.floatConstants[3][0] = 0.0f;
+    m_globalsVS.floatConstants[3][1] = 0.0f;
+    m_dirtyFlags |= DIRTY_FLAG_GLOBALS_VS;
+
+    m_globalsPS.exposureTextureId = NULL;
+    m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
 
     m_viewport.Width = static_cast<FLOAT>(m_width);
     m_viewport.Height = static_cast<FLOAT>(m_height);
@@ -1579,6 +1593,7 @@ void RaytracingDevice::releaseRaytracingResources()
     m_curRootSignature = nullptr;
     m_curPipeline = nullptr;
     m_scratchBufferOffset = 0;
+    m_globalsPS.exposureTextureId = NULL;
 
     for (auto& subAllocation : m_tempBottomLevelAccelStructs[m_frame])
         m_bottomLevelAccelStructAllocator.free(subAllocation);

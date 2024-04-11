@@ -21,12 +21,20 @@ struct alignas(0x10) GlobalsVS
     float floatConstants[256][4]{};
 };
 
+static_assert(sizeof(GlobalsVS) == 0x1000);
+
 struct alignas(0x10) GlobalsPS
 {
     float floatConstants[224][4]{};
     uint32_t textureIndices[16]{};
     uint32_t samplerIndices[16]{};
+    uint32_t enableAlphaTest{};
+    float alphaThreshold{};
+    uint32_t booleans{};
+    uint32_t exposureTextureId{};
 };
+
+static_assert(sizeof(GlobalsPS) <= 0x1000);
 
 enum DirtyFlags
 {
