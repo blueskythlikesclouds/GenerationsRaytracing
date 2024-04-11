@@ -166,6 +166,8 @@ static void initRaytracingPatches(bool enable)
         WRITE_MEMORY(0x13DDC9C, void*, s_drawInstanceParams); // Override game scene children
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_drawInstanceParamCount); // Override game scene child count
 
+        WRITE_MEMORY(0x13DDCB8, uint32_t, 0x21); // Disable clear
+
         WRITE_MEMORY(0x13DD790, uint32_t, 2); // Override particle child count
 
         WRITE_MEMORY(0x13DDDDC, uint32_t, 0x13DD678); // Override render before particle children
@@ -183,6 +185,8 @@ static void initRaytracingPatches(bool enable)
 
         WRITE_MEMORY(0x13DDC9C, void*, s_gameSceneChildren.get()); // Restore game scene children
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_gameSceneChildCount); // Restore game scene child count
+
+        WRITE_MEMORY(0x13DDCB8, uint32_t, 0xE1); // Enable clear
 
         WRITE_MEMORY(0x13DD790, uint32_t, s_particleChildCount); // Restore particle child count
 
