@@ -1152,46 +1152,50 @@ void RaytracingDevice::procMsgDispatchUpscaler()
     if (m_instanceDescs.empty())
         return;
 
-    PIX_BEGIN_EVENT("Upscale");
+    if (message.debugView == DEBUG_VIEW_NONE)
+    {
+        PIX_BEGIN_EVENT("Upscale");
 
-    getGraphicsCommandList().transitionBarriers(
-        {
-            m_exposureTexture->GetResource(),
-            m_gBufferTexture6->GetResource(),
-            m_diffuseAlbedoTexture->GetResource(),
-            m_specularAlbedoTexture->GetResource(),
-            m_linearDepthTexture->GetResource(),
-            m_specularHitDistanceTexture->GetResource(),
-        }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        getGraphicsCommandList().transitionBarriers(
+            {
+                m_exposureTexture->GetResource(),
+                m_gBufferTexture6->GetResource(),
+                m_diffuseAlbedoTexture->GetResource(),
+                m_specularAlbedoTexture->GetResource(),
+                m_linearDepthTexture->GetResource(),
+                m_specularHitDistanceTexture->GetResource(),
+            }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().transitionBarrier(m_renderTargetTexture,
-        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        getGraphicsCommandList().transitionBarrier(m_renderTargetTexture,
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().commitBarriers();
+        getGraphicsCommandList().commitBarriers();
 
-    m_upscaler->dispatch(
-        {
-            *this,
-            m_diffuseAlbedoTexture->GetResource(),
-            m_specularAlbedoTexture->GetResource(),
-            m_gBufferTexture4->GetResource(),
-            m_renderTargetTexture,
-            m_outputTexture->GetResource(),
-            m_depthTexture->GetResource(),
-            m_linearDepthTexture->GetResource(),
-            m_motionVectorsTexture->GetResource(),
-            m_exposureTexture->GetResource(),
-            m_colorBeforeTransparencyTexture->GetResource(),
-            m_specularHitDistanceTexture->GetResource(),
-            m_gBufferTexture6->GetResource(),
-            m_globalsRT.pixelJitterX,
-            m_globalsRT.pixelJitterY,
-            message.resetAccumulation
-        });
+        m_upscaler->dispatch(
+            {
+                *this,
+                m_diffuseAlbedoTexture->GetResource(),
+                m_specularAlbedoTexture->GetResource(),
+                m_gBufferTexture4->GetResource(),
+                m_renderTargetTexture,
+                m_outputTexture->GetResource(),
+                m_depthTexture->GetResource(),
+                m_linearDepthTexture->GetResource(),
+                m_motionVectorsTexture->GetResource(),
+                m_exposureTexture->GetResource(),
+                m_colorBeforeTransparencyTexture->GetResource(),
+                m_specularHitDistanceTexture->GetResource(),
+                m_gBufferTexture6->GetResource(),
+                m_globalsRT.pixelJitterX,
+                m_globalsRT.pixelJitterY,
+                message.resetAccumulation
+            });
 
-    PIX_END_EVENT();
+        PIX_END_EVENT();
 
-    setDescriptorHeaps();
+        setDescriptorHeaps();
+    }
+
     copyToRenderTargetAndDepthStencil(message);
 
     m_viewport.Width = static_cast<FLOAT>(m_width);

@@ -144,8 +144,12 @@ static bool s_prevRaytracingEnable;
 
 // Store for Better FxPipeline compatibility
 static std::unique_ptr<Hedgehog::FxRenderFramework::SDrawInstanceParam[]> s_gameSceneChildren;
+
 static uint32_t s_gameSceneChildCount;
 static uint32_t s_particleChildCount;
+
+static uint32_t s_renderBeforeParticleChildren;
+static uint32_t s_renderBeforeParticleChildCount;
 
 static void initRaytracingPatches(bool enable)
 {
@@ -154,8 +158,6 @@ static void initRaytracingPatches(bool enable)
 
     if (enable)
     {
-        s_particleChildCount = *reinterpret_cast<uint32_t*>(0x13DD790);
-
         WRITE_MEMORY(0x13DDFD8, uint32_t, 0); // Disable shadow map
 
         WRITE_MEMORY(0x13DDBA0, uint32_t, 0); // Disable reflection map 1
@@ -165,6 +167,9 @@ static void initRaytracingPatches(bool enable)
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_drawInstanceParamCount); // Override game scene child count
 
         WRITE_MEMORY(0x13DD790, uint32_t, 2); // Override particle child count
+
+        WRITE_MEMORY(0x13DDDDC, uint32_t, 0x13DD678); // Override render before particle children
+        WRITE_MEMORY(0x13DDDE0, uint32_t, 9); // Override render before particle child count
 
         WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0xC2, 0x08, 0x00); // Disable culling
@@ -180,6 +185,9 @@ static void initRaytracingPatches(bool enable)
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_gameSceneChildCount); // Restore game scene child count
 
         WRITE_MEMORY(0x13DD790, uint32_t, s_particleChildCount); // Restore particle child count
+
+        WRITE_MEMORY(0x13DDDDC, uint32_t, s_renderBeforeParticleChildren); // Restore render before particle children
+        WRITE_MEMORY(0x13DDDE0, uint32_t, s_renderBeforeParticleChildCount); // Restore render before particle child count
 
         WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0x56, 0x8B, 0xF1); // Enable culling
@@ -390,10 +398,13 @@ static void __cdecl implOfTraceRays(void* a1)
 
 static void implOfDispatchUpscaler(void* A1)
 {
-    auto& message = s_messageSender.makeMessage<MsgDispatchUpscaler>();
-    message.resetAccumulation = s_resetAccumulation;
-    message.debugView = RaytracingParams::s_debugView;
-    s_messageSender.endMessage();
+    if (GetCurrentThreadId() == s_mainThreadId)
+    {
+        auto& message = s_messageSender.makeMessage<MsgDispatchUpscaler>();
+        message.resetAccumulation = s_resetAccumulation;
+        message.debugView = RaytracingParams::s_debugView;
+        s_messageSender.endMessage();
+    }
 }
 
 void RaytracingRendering::init()
@@ -417,6 +428,10 @@ void RaytracingRendering::init()
 
 void RaytracingRendering::postInit()
 {
+    s_particleChildCount = *reinterpret_cast<uint32_t*>(0x13DD790);
+    s_renderBeforeParticleChildren = *reinterpret_cast<uint32_t*>(0x13DDDDC);
+    s_renderBeforeParticleChildCount = *reinterpret_cast<uint32_t*>(0x13DDDE0);
+
     // Draw instance params for raytracing disabled
     s_gameSceneChildCount = *reinterpret_cast<uint32_t*>(0x13DDCA0);
     s_gameSceneChildren = std::make_unique<Hedgehog::FxRenderFramework::SDrawInstanceParam[]>(s_gameSceneChildCount);
