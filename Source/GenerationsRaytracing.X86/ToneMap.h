@@ -2,5 +2,5 @@
 
 struct ToneMap
 {
-    static void init();
+    static void postInit();
 };

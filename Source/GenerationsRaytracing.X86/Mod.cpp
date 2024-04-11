@@ -80,7 +80,6 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     MotionData::init();
     MemoryAllocator::init();
     MeshData::init();
-    ToneMap::init();
     FileBinder::init(modInfo);
     QuickBoot::init();
     ModelReplacer::init();
@@ -154,5 +153,6 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
 extern "C" void __declspec(dllexport) PostInit()
 {
     RaytracingRendering::postInit();
+    ToneMap::postInit();
     MaterialData::postInit();
 }

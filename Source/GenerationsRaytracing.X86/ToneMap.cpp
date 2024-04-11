@@ -41,7 +41,7 @@ HOOK(void, __fastcall, MakeShaderList, 0x654590, void* This, void* _, Hedgehog::
 
 static uint32_t* s_shaderListByteSize = reinterpret_cast<uint32_t*>(0x6514E3);
 
-void ToneMap::init()
+void ToneMap::postInit()
 {
     s_screenRenderParam.ShaderIndex = *s_shaderListByteSize / sizeof(Hedgehog::Mirage::SShaderPair);
     WRITE_MEMORY(s_shaderListByteSize, uint32_t, *s_shaderListByteSize + sizeof(Hedgehog::Mirage::SShaderPair));
