@@ -145,6 +145,7 @@ static bool s_prevRaytracingEnable;
 // Store for Better FxPipeline compatibility
 static std::unique_ptr<Hedgehog::FxRenderFramework::SDrawInstanceParam[]> s_gameSceneChildren;
 static uint32_t s_gameSceneChildCount;
+static uint32_t s_particleChildCount;
 
 static void initRaytracingPatches(bool enable)
 {
@@ -153,6 +154,8 @@ static void initRaytracingPatches(bool enable)
 
     if (enable)
     {
+        s_particleChildCount = *reinterpret_cast<uint32_t*>(0x13DD790);
+
         WRITE_MEMORY(0x13DDFD8, uint32_t, 0); // Disable shadow map
 
         WRITE_MEMORY(0x13DDBA0, uint32_t, 0); // Disable reflection map 1
@@ -160,6 +163,8 @@ static void initRaytracingPatches(bool enable)
 
         WRITE_MEMORY(0x13DDC9C, void*, s_drawInstanceParams); // Override game scene children
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_drawInstanceParamCount); // Override game scene child count
+
+        WRITE_MEMORY(0x13DD790, uint32_t, 2); // Override particle child count
 
         WRITE_MEMORY(0x72ACD0, uint8_t, 0xC2, 0x08, 0x00); // Disable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0xC2, 0x08, 0x00); // Disable culling
@@ -173,6 +178,8 @@ static void initRaytracingPatches(bool enable)
 
         WRITE_MEMORY(0x13DDC9C, void*, s_gameSceneChildren.get()); // Restore game scene children
         WRITE_MEMORY(0x13DDCA0, uint32_t, s_gameSceneChildCount); // Restore game scene child count
+
+        WRITE_MEMORY(0x13DD790, uint32_t, s_particleChildCount); // Restore particle child count
 
         WRITE_MEMORY(0x72ACD0, uint8_t, 0x53, 0x56, 0x57); // Enable GI texture
         WRITE_MEMORY(0x72E5C0, uint8_t, 0x56, 0x8B, 0xF1); // Enable culling
@@ -437,13 +444,8 @@ void RaytracingRendering::postInit()
     memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC648), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
     ++s_drawInstanceParamCount;
 
-    if (*reinterpret_cast<uint32_t*>(0x13DD790) == 2)
-    {
-        memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC8C8), 
-            sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
-
-        ++s_drawInstanceParamCount;
-    }
+    memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC8C8), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
+    ++s_drawInstanceParamCount;
 
     memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC2C8), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
     s_drawInstanceParams[s_drawInstanceParamCount].pCallback = implOfDispatchUpscaler;
