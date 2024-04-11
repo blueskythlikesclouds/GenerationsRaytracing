@@ -1726,6 +1726,7 @@ RaytracingDevice::RaytracingDevice()
         L"PrimaryMiss",
         L"PrimaryTransparentMiss",
         L"GIMiss",
+        L"ReflectionMiss",
         L"SecondaryMiss"
     };
 

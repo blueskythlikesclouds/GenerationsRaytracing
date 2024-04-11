@@ -253,6 +253,7 @@ void ReflectionRayGeneration()
     args.Random = GetBlueNoise(dispatchRaysIndex.xy);
     args.DispatchRaysIndex = dispatchRaysIndex.xy;
     args.StoreHitDistance = dispatchRaysIndex.z == 0;
+    args.ApplyPower = false;
 
     float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
     
@@ -261,7 +262,6 @@ void ReflectionRayGeneration()
         args.Direction = reflect(-eyeDirection, gBufferData.Normal);
         args.MissShaderIndex = MISS_SECONDARY;
         args.Throughput = 1.0;
-        args.ApplyPower = false;
     }
     else
     {
@@ -269,12 +269,30 @@ void ReflectionRayGeneration()
         float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
     
         args.Direction = reflect(-eyeDirection, halfwayDirection);
-        args.MissShaderIndex = MISS_GI;
+        args.MissShaderIndex = MISS_REFLECTION;
         args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
-        args.ApplyPower = true;
     }
     
     g_Reflection[dispatchRaysIndex] = TracePath(args);
+}
+
+[shader("miss")]
+void ReflectionMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+{
+    float3 color = 0.0;
+
+    if (g_UseEnvironmentColor)
+    {
+        color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
+    }
+    else if (g_UseSkyTexture)
+    {
+        TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
+        color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+    }
+
+    payload.Color = color;
+    payload.Diffuse = 0.0;
 }
 
 [shader("miss")]
