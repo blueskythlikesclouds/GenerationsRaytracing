@@ -98,6 +98,7 @@ void MessageSender::commitMessages()
         m_cpuEvent.set();
     }
 
+    m_lastCommittedSize = m_offset;
     m_offset = sizeof(uint32_t);
 }
 
@@ -115,5 +116,10 @@ double MessageSender::getX86Duration() const
 double MessageSender::getX64Duration() const
 {
     return m_x64Duration;
+}
+
+uint32_t MessageSender::getLastCommittedSize() const
+{
+    return m_lastCommittedSize;
 }
 

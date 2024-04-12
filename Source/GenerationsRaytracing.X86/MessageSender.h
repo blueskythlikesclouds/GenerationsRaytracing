@@ -21,6 +21,7 @@ protected:
     std::chrono::high_resolution_clock::time_point m_time;
     double m_x86Duration{};
     double m_x64Duration{};
+    uint32_t m_lastCommittedSize{};
 
 public:
     static bool canMakeMessage(uint32_t byteSize, uint32_t alignment);
@@ -46,6 +47,7 @@ public:
 
     double getX86Duration() const;
     double getX64Duration() const;
+    uint32_t getLastCommittedSize() const;
 };
 
 inline MessageSender s_messageSender;

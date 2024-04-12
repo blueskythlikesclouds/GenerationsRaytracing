@@ -507,7 +507,7 @@ void RaytracingParams::imguiWindow()
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Profiling"))
+            if (ImGui::BeginTabItem("Profiler"))
             {
                 if (ImGui::BeginChild("Child"))
                 {
@@ -533,6 +533,7 @@ void RaytracingParams::imguiWindow()
 
                     ImGui::Text("Vertex Buffer Wasted Memory: %g MB", static_cast<double>(VertexBuffer::s_wastedMemory) / (1024.0 * 1024.0));
                     ImGui::Text("Index Buffer Wasted Memory: %g MB", static_cast<double>(IndexBuffer::s_wastedMemory) / (1024.0 * 1024.0));
+                    ImGui::Text("Memory Mapped File Committed Size: %g MB", static_cast<double>(s_messageSender.getLastCommittedSize()) / (1024.0 * 1024.0));
                 }
 
                 ImGui::EndChild();
