@@ -1620,6 +1620,7 @@ RaytracingDevice::RaytracingDevice()
     if (m_device == nullptr)
         return;
 
+#if 0
     NvAPI_Status status = NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_device.Get(), NV_EXTN_OP_HIT_OBJECT_REORDER_THREAD, &m_serSupported);
     if (status == NVAPI_OK && m_serSupported)
     {
@@ -1633,6 +1634,7 @@ RaytracingDevice::RaytracingDevice()
         if (status != NVAPI_OK || featureCaps == NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAP_NONE)
             m_serSupported = false;
     }
+#endif
 
     CD3DX12_DESCRIPTOR_RANGE1 uavDescriptorRanges[1];
     uavDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, s_textureNum, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
