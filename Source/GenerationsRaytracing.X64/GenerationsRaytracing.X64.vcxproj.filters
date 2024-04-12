@@ -287,5 +287,8 @@
     <FxCompile Include="ResolveTransparencyComputeShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="DXILLibrarySER.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

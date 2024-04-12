@@ -28,3 +28,5 @@ using Microsoft::WRL::ComPtr;
 #include <IniFile.h>
 #include <ankerl/unordered_dense.h>
 #include <lz4.h>
+#include <nvapi.h>
+#include <nvShaderExtnEnums.h>

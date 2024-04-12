@@ -9,3 +9,4 @@ ResolveTransparencyComputeShader.h
 SkyVertexShader.h
 SkyPixelShader.h
 SmoothNormalComputeShader.h
+DXILLibrarySER.h

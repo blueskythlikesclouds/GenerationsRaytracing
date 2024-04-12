@@ -1873,6 +1873,8 @@ Device::Device()
         return;
     }
 
+    NvAPI_Initialize();
+
 #ifdef _DEBUG
     ComPtr<ID3D12InfoQueue> infoQueue;
     m_device.As(&infoQueue);
@@ -1966,6 +1968,7 @@ Device::Device()
 Device::~Device()
 {
     m_pipelineLibrary.save();
+    NvAPI_Unload();
 }
 
 void Device::processMessages()

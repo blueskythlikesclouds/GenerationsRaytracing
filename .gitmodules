@@ -34,3 +34,6 @@
 [submodule "Dependencies/FidelityFX-SDK"]
 	path = Dependencies/FidelityFX-SDK
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK.git
+[submodule "Dependencies/nvapi"]
+	path = Dependencies/nvapi
+	url = https://github.com/NVIDIA/nvapi.git

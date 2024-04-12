@@ -24,6 +24,7 @@
 #include "SmoothNormalComputeShader.h"
 #include "ResolveTransparencyComputeShader.h"
 #include "ShaderType.h"
+#include "DXILLibrarySER.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
@@ -1610,10 +1611,26 @@ void RaytracingDevice::releaseRaytracingResources()
     }
 }
 
+static constexpr size_t s_serUavRegister = 2;
+
 RaytracingDevice::RaytracingDevice()
 {
     if (m_device == nullptr)
         return;
+
+    NvAPI_Status status = NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_device.Get(), NV_EXTN_OP_HIT_OBJECT_REORDER_THREAD, &m_serSupported);
+    if (status == NVAPI_OK && m_serSupported)
+    {
+        NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAPS featureCaps = NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAP_NONE;
+        status = NvAPI_D3D12_GetRaytracingCaps(
+            m_device.Get(),
+            NVAPI_D3D12_RAYTRACING_CAPS_TYPE_THREAD_REORDERING,
+            &featureCaps,
+            sizeof(featureCaps));
+
+        if (status != NVAPI_OK || featureCaps == NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAP_NONE)
+            m_serSupported = false;
+    }
 
     CD3DX12_DESCRIPTOR_RANGE1 uavDescriptorRanges[1];
     uavDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, s_textureNum, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
@@ -1621,7 +1638,10 @@ RaytracingDevice::RaytracingDevice()
     CD3DX12_DESCRIPTOR_RANGE1 srvDescriptorRanges[1];
     srvDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, s_textureNum, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
-    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[12];
+    CD3DX12_DESCRIPTOR_RANGE1 serDescriptorRanges[1];
+    serDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, s_serUavRegister, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+
+    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[13];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[2].InitAsConstantBufferView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1634,6 +1654,7 @@ RaytracingDevice::RaytracingDevice()
     raytracingRootParams[9].InitAsUnorderedAccessView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
     raytracingRootParams[10].InitAsDescriptorTable(_countof(uavDescriptorRanges), uavDescriptorRanges);
     raytracingRootParams[11].InitAsDescriptorTable(_countof(srvDescriptorRanges), srvDescriptorRanges);
+    raytracingRootParams[12].InitAsDescriptorTable(_countof(serDescriptorRanges), serDescriptorRanges);
 
     D3D12_STATIC_SAMPLER_DESC raytracingStaticSamplers[1]{};
     raytracingStaticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
@@ -1645,7 +1666,7 @@ RaytracingDevice::RaytracingDevice()
     RootSignature::create(
         m_device.Get(),
         raytracingRootParams,
-        _countof(raytracingRootParams),
+        m_serSupported ? _countof(raytracingRootParams) : (_countof(raytracingRootParams) - 1),
         raytracingStaticSamplers,
         _countof(raytracingStaticSamplers),
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
@@ -1684,7 +1705,14 @@ RaytracingDevice::RaytracingDevice()
     }
 
     CD3DX12_DXIL_LIBRARY_SUBOBJECT dxilLibrarySubobject(stateObject);
-    const CD3DX12_SHADER_BYTECODE dxilLibrary(DXILLibrary, sizeof(DXILLibrary));
+
+    CD3DX12_SHADER_BYTECODE dxilLibrary(DXILLibrary, sizeof(DXILLibrary));
+    if (m_serSupported)
+    {
+        dxilLibrary = CD3DX12_SHADER_BYTECODE{ DXILLibrarySER, sizeof(DXILLibrarySER) };
+        NvAPI_D3D12_SetNvShaderExtnSlotSpace(m_device.Get(), s_serUavRegister, 0);
+    }
+
     dxilLibrarySubobject.SetDXILLibrary(&dxilLibrary);
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);

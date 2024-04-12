@@ -86,6 +86,7 @@ protected:
     GlobalsRT m_globalsRT;
     ComPtr<ID3D12CommandSignature> m_commandSignature;
     ComPtr<D3D12MA::Allocation> m_dispatchRaysDescBuffers[NUM_FRAMES];
+    bool m_serSupported = false;
 
     // Accel Struct
     ComPtr<D3D12MA::Allocation> m_scratchBuffers[NUM_FRAMES];

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "GBufferData.h"
 #include "GBufferData.hlsli"
 #include "GeometryShading.hlsli"
@@ -208,7 +210,11 @@ float3 TracePath(TracePathArgs args)
 
         SecondaryRayPayload payload;
 
+#ifdef NV_SHADER_EXTN_SLOT
+        NvHitObject hitObject = NvTraceRayHitObject(
+#else
         TraceRay(
+#endif
             g_BVH,
             i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
             INSTANCE_MASK_OPAQUE,
@@ -217,6 +223,11 @@ float3 TracePath(TracePathArgs args)
             i == 0 ? args.MissShaderIndex : MISS_GI,
             ray,
             payload);
+
+#ifdef NV_SHADER_EXTN_SLOT
+        NvReorderThread(hitObject);
+        NvInvokeHitObject(g_BVH, hitObject, payload);
+#endif
 
         float3 color = payload.Color;
         float3 diffuse = payload.Diffuse;
