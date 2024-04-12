@@ -56,15 +56,18 @@ void Device::writeBuffer(
     }
     else
     {
-        if (m_uploadBufferOffset + dataSize <= UPLOAD_BUFFER_SIZE && m_uploadBuffers[m_frame].size() > m_uploadBufferIndex &&
-            m_uploadBuffers[m_frame][m_uploadBufferIndex].allocation != nullptr)
+        auto& commandList = getCopyCommandList();
+        const auto& uploadBuffers = m_uploadBuffers[m_frame];
+
+        if (m_uploadBufferOffset + dataSize <= UPLOAD_BUFFER_SIZE && uploadBuffers.size() > m_uploadBufferIndex &&
+            uploadBuffers[m_uploadBufferIndex].allocation != nullptr)
         {
-            const auto& uploadBuffer = m_uploadBuffers[m_frame][m_uploadBufferIndex];
+            const auto& uploadBuffer = uploadBuffers[m_uploadBufferIndex];
 
             memcpy(uploadBuffer.memory + m_uploadBufferOffset, memory, dataSize);
 
-            getCopyCommandList().open();
-            getUnderlyingCopyCommandList()->CopyBufferRegion(
+            commandList.open();
+            commandList.getUnderlyingCommandList()->CopyBufferRegion(
                 dstResource,
                 offset,
                 uploadBuffer.allocation->GetResource(),
@@ -89,8 +92,8 @@ void Device::writeBuffer(
             const D3D12_RANGE writtenRange{ 0, dataSize };
             uploadBuffer->GetResource()->Unmap(0, &writtenRange);
 
-            getCopyCommandList().open();
-            getUnderlyingCopyCommandList()->CopyBufferRegion(
+            commandList.open();
+            commandList.getUnderlyingCommandList()->CopyBufferRegion(
                 dstResource,
                 offset,
                 uploadBuffer->GetResource(),
@@ -112,10 +115,12 @@ D3D12_GPU_VIRTUAL_ADDRESS Device::createBuffer(const void* memory, uint32_t data
         ++m_uploadBufferIndex;
     }
 
-    if (m_uploadBuffers[m_frame].size() <= m_uploadBufferIndex)
-        m_uploadBuffers[m_frame].resize(m_uploadBufferIndex + 1);
+    auto& uploadBuffers = m_uploadBuffers[m_frame];
 
-    auto& uploadBuffer = m_uploadBuffers[m_frame][m_uploadBufferIndex];
+    if (uploadBuffers.size() <= m_uploadBufferIndex)
+        uploadBuffers.resize(m_uploadBufferIndex + 1);
+
+    auto& uploadBuffer = uploadBuffers[m_uploadBufferIndex];
     if (uploadBuffer.allocation == nullptr)
     {
         D3D12MA::ALLOCATION_DESC allocDesc{};
@@ -223,19 +228,22 @@ void Device::setDescriptorHeaps()
 
 void Device::flushGraphicsState()
 {
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
     if (m_dirtyFlags & DIRTY_FLAG_ROOT_SIGNATURE)
-        getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
+        underlyingCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
 
     if (m_dirtyFlags & DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL)
     {
         if (m_depthStencilTexture != nullptr)
         {
-            getGraphicsCommandList().transitionBarrier(m_depthStencilTexture, D3D12_RESOURCE_STATE_DEPTH_WRITE, 
+            commandList.transitionBarrier(m_depthStencilTexture, D3D12_RESOURCE_STATE_DEPTH_WRITE, 
                 m_pipelineDesc.DepthStencilState.DepthWriteMask == D3D12_DEPTH_WRITE_MASK_ALL ?
                 D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_DEPTH_READ);
         }
 
-        getUnderlyingGraphicsCommandList()->OMSetRenderTargets(
+        underlyingCommandList->OMSetRenderTargets(
             m_renderTargetView.ptr != NULL ? 1 : 0,
             m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr,
             FALSE,
@@ -268,7 +276,7 @@ void Device::flushGraphicsState()
     {
         if (m_depthStencilTexture != nullptr)
         {
-            getGraphicsCommandList().transitionBarrier(m_depthStencilTexture, D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            commandList.transitionBarrier(m_depthStencilTexture, D3D12_RESOURCE_STATE_DEPTH_WRITE,
                 m_pipelineDesc.DepthStencilState.DepthWriteMask == D3D12_DEPTH_WRITE_MASK_ALL ?
                 D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_DEPTH_READ);
         }
@@ -307,13 +315,13 @@ void Device::flushGraphicsState()
         if (!pipeline)
             m_pipelineLibrary.createGraphicsPipelineState(&m_pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
 
-        getUnderlyingGraphicsCommandList()->SetPipelineState(pipeline.Get());
+        underlyingCommandList->SetPipelineState(pipeline.Get());
         m_curPipeline = pipeline.Get();
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_VS)
     {
-        getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0,
+        underlyingCommandList->SetGraphicsRootConstantBufferView(0,
             createBuffer(&m_globalsVS, sizeof(m_globalsVS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
     }
 
@@ -355,15 +363,15 @@ void Device::flushGraphicsState()
 
     if (m_dirtyFlags & DIRTY_FLAG_GLOBALS_PS)
     {
-        getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(1,
+        underlyingCommandList->SetGraphicsRootConstantBufferView(1,
             createBuffer(&m_globalsPS, sizeof(m_globalsPS), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_VIEWPORT)
-        getUnderlyingGraphicsCommandList()->RSSetViewports(1, &m_viewport);
+        underlyingCommandList->RSSetViewports(1, &m_viewport);
 
     if (m_dirtyFlags & DIRTY_FLAG_SCISSOR_RECT)
-        getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &m_scissorRect);
+        underlyingCommandList->RSSetScissorRects(1, &m_scissorRect);
 
     if (m_dirtyFlags & DIRTY_FLAG_VERTEX_BUFFER_VIEWS)
     {
@@ -381,16 +389,16 @@ void Device::flushGraphicsState()
             numViews = m_vertexBufferViewsLast - m_vertexBufferViewsFirst + 1;
         }
 
-        getUnderlyingGraphicsCommandList()->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
+        underlyingCommandList->IASetVertexBuffers(startSlot, numViews, m_vertexBufferViews);
     }
 
     if (m_dirtyFlags & DIRTY_FLAG_INDEX_BUFFER_VIEW)
-        getUnderlyingGraphicsCommandList()->IASetIndexBuffer(&m_indexBufferView);
+        underlyingCommandList->IASetIndexBuffer(&m_indexBufferView);
 
     if (m_dirtyFlags & DIRTY_FLAG_PRIMITIVE_TOPOLOGY)
-        getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(m_primitiveTopology);
+        underlyingCommandList->IASetPrimitiveTopology(m_primitiveTopology);
 
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
     m_dirtyFlags = 0;
 
@@ -428,17 +436,18 @@ void Device::procMsgSetRenderTarget()
     if (message.textureId != NULL)
     {
         auto& texture = m_textures[message.textureId];
+        auto& commandList = getGraphicsCommandList();
 
         if (texture.allocation != nullptr)
         {
-            getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
+            commandList.transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
             m_renderTargetTexture = texture.allocation->GetResource();
         }
         else
         {
-            getGraphicsCommandList().transitionBarrier(m_swapChain.getResource(),
+            commandList.transitionBarrier(m_swapChain.getResource(),
                 D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
             m_renderTargetTexture = nullptr;
@@ -863,15 +872,16 @@ void Device::procMsgSetTexture()
         }
 
         assert(texture.allocation != nullptr);
+        auto& commandList = getGraphicsCommandList();
 
         if (texture.rtvIndex != NULL)
         {
-            getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(), 
+            commandList.transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
         else if (texture.dsvIndex != NULL)
         {
-            getGraphicsCommandList().transitionBarrier(texture.allocation->GetResource(),
+            commandList.transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
 
@@ -956,13 +966,16 @@ void Device::procMsgClear()
 {
     const auto& message = m_messageReceiver.getMessage<MsgClear>();
 
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
     if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencilTexture != nullptr)
     {
-        getGraphicsCommandList().transitionBarrier(m_depthStencilTexture,
+        commandList.transitionBarrier(m_depthStencilTexture,
             D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
     }
 
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
     if ((message.flags & D3DCLEAR_TARGET) && m_renderTargetView.ptr != NULL)
     {
@@ -972,7 +985,7 @@ void Device::procMsgClear()
         color[0] = static_cast<float>((message.color >> 16) & 0xFF) / 255.0f;
         color[3] = static_cast<float>((message.color >> 24) & 0xFF) / 255.0f;
 
-        getUnderlyingGraphicsCommandList()->ClearRenderTargetView(m_renderTargetView, color, 0, nullptr);
+        underlyingCommandList->ClearRenderTargetView(m_renderTargetView, color, 0, nullptr);
     }
 
     if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencilView.ptr != NULL)
@@ -985,7 +998,7 @@ void Device::procMsgClear()
         if (message.flags & D3DCLEAR_STENCIL)
             clearFlag |= D3D12_CLEAR_FLAG_STENCIL;
 
-        getUnderlyingGraphicsCommandList()->ClearDepthStencilView(m_depthStencilView, 
+        underlyingCommandList->ClearDepthStencilView(m_depthStencilView,
             static_cast<D3D12_CLEAR_FLAGS>(clearFlag), message.z, message.stencil, 0, nullptr);
     }
 }
@@ -1439,18 +1452,22 @@ void Device::procMsgWriteTexture()
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
     footprint.Footprint = CD3DX12_SUBRESOURCE_FOOTPRINT(texture.format, message.width, message.height, 1, message.pitch);
 
-    if (m_uploadBufferOffset + message.dataSize <= UPLOAD_BUFFER_SIZE && m_uploadBuffers[m_frame].size() > m_uploadBufferIndex &&
-        m_uploadBuffers[m_frame][m_uploadBufferIndex].allocation != nullptr)
+    auto& commandList = getCopyCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+    const auto& uploadBuffers = m_uploadBuffers[m_frame];
+
+    if (m_uploadBufferOffset + message.dataSize <= UPLOAD_BUFFER_SIZE && uploadBuffers.size() > m_uploadBufferIndex &&
+        uploadBuffers[m_uploadBufferIndex].allocation != nullptr)
     {
-        const auto& uploadBuffer = m_uploadBuffers[m_frame][m_uploadBufferIndex];
+        const auto& uploadBuffer = uploadBuffers[m_uploadBufferIndex];
 
         memcpy(uploadBuffer.memory + m_uploadBufferOffset, message.data, message.dataSize);
         footprint.Offset = m_uploadBufferOffset;
 
         const CD3DX12_TEXTURE_COPY_LOCATION srcLocation(uploadBuffer.allocation->GetResource(), footprint);
 
-        getCopyCommandList().open();
-        getUnderlyingCopyCommandList()->CopyTextureRegion(
+        commandList.open();
+        underlyingCommandList->CopyTextureRegion(
             &dstLocation,
             0,
             0,
@@ -1477,8 +1494,8 @@ void Device::procMsgWriteTexture()
 
         const CD3DX12_TEXTURE_COPY_LOCATION srcLocation(uploadBuffer->GetResource(), footprint);
 
-        getCopyCommandList().open();
-        getUnderlyingCopyCommandList()->CopyTextureRegion(
+        commandList.open();
+        underlyingCommandList->CopyTextureRegion(
             &dstLocation,
             0,
             0,
@@ -1550,10 +1567,11 @@ void Device::procMsgMakeTexture()
             D3D12_RESOURCE_STATE_GENERIC_READ,
             uploadBuffer);
 
-        getCopyCommandList().open();
+        auto& commandList = getCopyCommandList();
+        commandList.open();
 
         UpdateSubresources(
-            getUnderlyingCopyCommandList(),
+            commandList.getUnderlyingCommandList(),
             texture.allocation->GetResource(),
             uploadBuffer->GetResource(),
             0,
@@ -1759,8 +1777,10 @@ void Device::procMsgCopyVertexBuffer()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCopyVertexBuffer>();
 
-    getCopyCommandList().open();
-    getUnderlyingCopyCommandList()->CopyBufferRegion(
+    auto& commandList = getCopyCommandList();
+
+    commandList.open();
+    commandList.getUnderlyingCommandList()->CopyBufferRegion(
         m_vertexBuffers[message.dstVertexBufferId].allocation->GetResource(),
         message.dstOffset,
         m_vertexBuffers[message.srcVertexBufferId].allocation->GetResource(),
@@ -1980,7 +2000,8 @@ void Device::processMessages()
     m_messageReceiver.receiveMessages();
     m_gpuEvent.set();
 
-    getGraphicsCommandList().open();
+    auto& graphicsCommandList = getGraphicsCommandList();
+    graphicsCommandList.open();
 
     if (m_swapChainTextureId != 0)
         m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
@@ -2042,12 +2063,13 @@ void Device::processMessages()
     if (m_swapChain.getWindow().m_shouldExit)
         return;
 
+    auto& copyCommandList = getCopyCommandList();
     bool copyQueueShouldWaitForGraphicsQueue = false;
 
-    if (getCopyCommandList().isOpen())
+    if (copyCommandList.isOpen())
     {
-        getCopyCommandList().close();
-        m_copyQueue.executeCommandList(getCopyCommandList());
+        copyCommandList.close();
+        m_copyQueue.executeCommandList(copyCommandList);
 
         // Wait for copy command list to finish
         const uint64_t fenceValue = m_copyQueue.getNextFenceValue();
@@ -2057,8 +2079,8 @@ void Device::processMessages()
         copyQueueShouldWaitForGraphicsQueue = true;
     }
 
-    getGraphicsCommandList().close();
-    m_graphicsQueue.executeCommandList(getGraphicsCommandList());
+    graphicsCommandList.close();
+    m_graphicsQueue.executeCommandList(graphicsCommandList);
 
     m_fenceValues[m_frame] = m_graphicsQueue.getNextFenceValue();
 
@@ -2126,10 +2148,12 @@ void Device::processMessages()
 
 void Device::runLoop()
 {
-    while (!m_swapChain.getWindow().m_shouldExit)
+    const auto& window = m_swapChain.getWindow();
+
+    while (!window.m_shouldExit)
     {
         processMessages();
-        m_swapChain.getWindow().processMessages();
+        window.processMessages();
     }
 }
 

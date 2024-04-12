@@ -144,8 +144,10 @@ uint32_t RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
                 static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes), D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
         }
 
-        getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
-        getGraphicsCommandList().uavBarrier(allocation.blockAllocation->GetResource());
+        auto& commandList = getGraphicsCommandList();
+
+        commandList.getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
+        commandList.uavBarrier(allocation.blockAllocation->GetResource());
     }
 
     return static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
@@ -176,18 +178,22 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
     }
 
-    getUnderlyingGraphicsCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
-    getGraphicsCommandList().uavBarrier(bottomLevelAccelStruct.allocation.blockAllocation->GetResource());
+    auto& commandList = getGraphicsCommandList();
+
+    commandList.getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
+    commandList.uavBarrier(bottomLevelAccelStruct.allocation.blockAllocation->GetResource());
 }
 
 void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
 {
     PIX_EVENT();
 
-    for (const auto pendingPose : m_pendingPoses)
-        getGraphicsCommandList().uavBarrier(m_vertexBuffers[pendingPose].allocation->GetResource());
+    auto& commandList = getGraphicsCommandList();
 
-    getGraphicsCommandList().commitBarriers();
+    for (const auto pendingPose : m_pendingPoses)
+        commandList.uavBarrier(m_vertexBuffers[pendingPose].allocation->GetResource());
+
+    commandList.commitBarriers();
 
     for (const auto pendingBuild : m_pendingBuilds)
         buildBottomLevelAccelStruct(m_bottomLevelAccelStructs[pendingBuild]);
@@ -201,16 +207,19 @@ void RaytracingDevice::handlePendingSmoothNormalCommands()
     if (m_smoothNormalCommands.empty())
         return;
 
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
     PIX_EVENT();
 
     if (m_curRootSignature != m_smoothNormalRootSignature.Get())
     {
-        getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_smoothNormalRootSignature.Get());
+        underlyingCommandList->SetComputeRootSignature(m_smoothNormalRootSignature.Get());
         m_curRootSignature = m_smoothNormalRootSignature.Get();
     }
     if (m_curPipeline != m_smoothNormalPipeline.Get())
     {
-        getUnderlyingGraphicsCommandList()->SetPipelineState(m_smoothNormalPipeline.Get());
+        underlyingCommandList->SetPipelineState(m_smoothNormalPipeline.Get());
         m_curPipeline = m_smoothNormalPipeline.Get();
         m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
     }
@@ -233,20 +242,20 @@ void RaytracingDevice::handlePendingSmoothNormalCommands()
             cmd.normalOffset
         };
 
-        getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0,
+        underlyingCommandList->SetComputeRootConstantBufferView(0,
             createBuffer(&geometryDesc, sizeof(geometryDesc), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
         const auto& vertexBuffer = m_vertexBuffers[cmd.vertexBufferId];
 
-        getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(1,
+        underlyingCommandList->SetComputeRootUnorderedAccessView(1,
             vertexBuffer.allocation->GetResource()->GetGPUVirtualAddress() + cmd.vertexOffset);
 
-        getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2,
+        underlyingCommandList->SetComputeRootShaderResourceView(2,
             m_indexBuffers[cmd.adjacencyBufferId].allocation->GetResource()->GetGPUVirtualAddress());
 
-        getUnderlyingGraphicsCommandList()->Dispatch((cmd.vertexCount + 63) / 64, 1, 1);
+        underlyingCommandList->Dispatch((cmd.vertexCount + 63) / 64, 1, 1);
 
-        getGraphicsCommandList().uavBarrier(vertexBuffer.allocation->GetResource());
+        commandList.uavBarrier(vertexBuffer.allocation->GetResource());
     }
 
     m_smoothNormalCommands.clear();
@@ -577,30 +586,33 @@ void RaytracingDevice::createRaytracingTextures()
 
 void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
 {
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
     PIX_BEGIN_EVENT("Resolve");
 
-    getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolvePipeline.Get());
+    underlyingCommandList->SetPipelineState(m_resolvePipeline.Get());
 
-    getUnderlyingGraphicsCommandList()->Dispatch(
+    underlyingCommandList->Dispatch(
         (m_upscaler->getWidth() + 7) / 8,
         (m_upscaler->getHeight() + 7) / 8,
         1);
 
-    getGraphicsCommandList().transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
+    commandList.transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().uavBarrier(m_diffuseAlbedoTexture->GetResource());
-    getGraphicsCommandList().uavBarrier(m_specularAlbedoTexture->GetResource());
+    commandList.uavBarrier(m_diffuseAlbedoTexture->GetResource());
+    commandList.uavBarrier(m_specularAlbedoTexture->GetResource());
 
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
     PIX_END_EVENT();
 
     PIX_BEGIN_EVENT("Resolve Transparency");
 
-    getUnderlyingGraphicsCommandList()->SetPipelineState(m_resolveTransparencyPipeline.Get());
+    underlyingCommandList->SetPipelineState(m_resolveTransparencyPipeline.Get());
 
-    getUnderlyingGraphicsCommandList()->Dispatch(
+    underlyingCommandList->Dispatch(
         (m_upscaler->getWidth() + 7) / 8,
         (m_upscaler->getHeight() + 7) / 8,
         1);
@@ -610,35 +622,38 @@ void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
 
 void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscaler& message)
 {
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
     PIX_EVENT();
 
     const D3D12_VIEWPORT viewport = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 
-    getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvIds[message.debugView]));
-    getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
-    getUnderlyingGraphicsCommandList()->SetPipelineState(m_copyTexturePipeline.Get());
-    getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
-    getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &scissorRect);
-    getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    underlyingCommandList->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
+    underlyingCommandList->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
+    underlyingCommandList->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvIds[message.debugView]));
+    underlyingCommandList->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
+    underlyingCommandList->SetPipelineState(m_copyTexturePipeline.Get());
+    underlyingCommandList->RSSetViewports(1, &viewport);
+    underlyingCommandList->RSSetScissorRects(1, &scissorRect);
+    underlyingCommandList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    getGraphicsCommandList().transitionBarrier(m_debugViewTextures[message.debugView],
+    commandList.transitionBarrier(m_debugViewTextures[message.debugView],
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
+    commandList.transitionBarrier(m_depthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().transitionBarrier(m_renderTargetTexture,
+    commandList.transitionBarrier(m_renderTargetTexture,
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-    getGraphicsCommandList().transitionBarrier(m_depthStencilTexture,
+    commandList.transitionBarrier(m_depthStencilTexture,
         D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
-    getUnderlyingGraphicsCommandList()->DrawInstanced(6, 1, 0, 0);
+    underlyingCommandList->DrawInstanced(6, 1, 0, 0);
 
     m_dirtyFlags |=
         DIRTY_FLAG_ROOT_SIGNATURE |
@@ -947,27 +962,33 @@ void RaytracingDevice::procMsgTraceRays()
     const auto localLights = createBuffer(m_localLights.data(),
         message.localLightCount * sizeof(LocalLight), 0x10);
 
+    const auto& dispatchRaysDescBuffer = m_dispatchRaysDescBuffers[m_frame];
+
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
     if (m_curRootSignature != m_raytracingRootSignature.Get())
     {
-        getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_raytracingRootSignature.Get());
+        underlyingCommandList->SetComputeRootSignature(m_raytracingRootSignature.Get());
         m_curRootSignature = m_raytracingRootSignature.Get();
     }
-    getUnderlyingGraphicsCommandList()->SetPipelineState1(m_stateObject.Get());
+    underlyingCommandList->SetPipelineState1(m_stateObject.Get());
 
-    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(0, globalsVS);
-    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1, globalsPS);
-    getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(2, globalsRT);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(3, topLevelAccelStruct);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(4, geometryDescs);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(5, materials);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(6, instanceDescs);
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(7, localLights);
-    getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(8, m_dispatchRaysDescBuffers[m_frame]->GetResource()->GetGPUVirtualAddress());
-    getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(9, m_dispatchRaysIndexBuffer->GetResource()->GetGPUVirtualAddress());
-    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_uavId));
-    getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(11, m_descriptorHeap.getGpuHandle(m_srvId));
+    underlyingCommandList->SetComputeRootConstantBufferView(0, globalsVS);
+    underlyingCommandList->SetComputeRootConstantBufferView(1, globalsPS);
+    underlyingCommandList->SetComputeRootConstantBufferView(2, globalsRT);
+    underlyingCommandList->SetComputeRootShaderResourceView(3, topLevelAccelStruct);
+    underlyingCommandList->SetComputeRootShaderResourceView(4, geometryDescs);
+    underlyingCommandList->SetComputeRootShaderResourceView(5, materials);
+    underlyingCommandList->SetComputeRootShaderResourceView(6, instanceDescs);
+    underlyingCommandList->SetComputeRootShaderResourceView(7, localLights);
+    underlyingCommandList->SetComputeRootUnorderedAccessView(8, dispatchRaysDescBuffer->GetResource()->GetGPUVirtualAddress());
+    underlyingCommandList->SetComputeRootUnorderedAccessView(9, m_dispatchRaysIndexBuffer->GetResource()->GetGPUVirtualAddress());
+    underlyingCommandList->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_uavId));
+    underlyingCommandList->SetComputeRootDescriptorTable(11, m_descriptorHeap.getGpuHandle(m_srvId));
+
     if (m_serSupported)
-        getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(12, m_descriptorHeap.getGpuHandle(m_serUavId));
+        underlyingCommandList->SetComputeRootDescriptorTable(12, m_descriptorHeap.getGpuHandle(m_serUavId));
 
     const auto rayGenShaderTable = createBuffer(
         m_rayGenShaderTable.data(), static_cast<uint32_t>(m_rayGenShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -1004,16 +1025,16 @@ void RaytracingDevice::procMsgTraceRays()
         indirectDispatchRaysDescs, 
         0, 
         sizeof(indirectDispatchRaysDescs), 
-        m_dispatchRaysDescBuffers[m_frame]->GetResource(),
+        dispatchRaysDescBuffer->GetResource(),
         m_gpuUploadHeapSupported);
 
     PIX_BEGIN_EVENT("PrimaryRayGeneration");
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
     m_properties->SetPipelineStackSize(m_primaryStackSize);
-    getUnderlyingGraphicsCommandList()->DispatchRays(&dispatchRaysDesc);
+    underlyingCommandList->DispatchRays(&dispatchRaysDesc);
 
-    getGraphicsCommandList().transitionBarrier(m_dispatchRaysDescBuffers[m_frame]->GetResource(), 
+    commandList.transitionBarrier(dispatchRaysDescBuffer->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
     // There is currently a bug on NVIDIA where transitioning
@@ -1021,7 +1042,7 @@ void RaytracingDevice::procMsgTraceRays()
     // slice causes crash when calling ExecuteIndirect, so we
     // need to keep doing UAV loads for these geometry buffers in particular.
 
-    getGraphicsCommandList().uavBarriers(
+    commandList.uavBarriers(
         {
             m_dispatchRaysIndexBuffer->GetResource(),
             m_gBufferTexture1->GetResource(),
@@ -1031,7 +1052,7 @@ void RaytracingDevice::procMsgTraceRays()
             m_gBufferTexture6->GetResource()
         });
 
-    getGraphicsCommandList().transitionBarriers(
+    commandList.transitionBarriers(
         {
             m_motionVectorsTexture->GetResource(),
             m_layerNumTexture->GetResource(),
@@ -1039,16 +1060,16 @@ void RaytracingDevice::procMsgTraceRays()
             m_gBufferTexture4->GetResource(),
         }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
     PIX_END_EVENT();
 
     PIX_BEGIN_EVENT("ShadowRayGeneration");
     m_properties->SetPipelineStackSize(m_shadowStackSize);
-    getUnderlyingGraphicsCommandList()->ExecuteIndirect(
+    underlyingCommandList->ExecuteIndirect(
         m_commandSignature.Get(), 
         1, 
-        m_dispatchRaysDescBuffers[m_frame]->GetResource(),
+        dispatchRaysDescBuffer->GetResource(),
         sizeof(D3D12_DISPATCH_RAYS_DESC) * (RAY_GENERATION_SHADOW - 1),
         nullptr, 
         0);
@@ -1056,10 +1077,10 @@ void RaytracingDevice::procMsgTraceRays()
 
     PIX_BEGIN_EVENT("GIRayGeneration");
     m_properties->SetPipelineStackSize(m_giStackSize);
-    getUnderlyingGraphicsCommandList()->ExecuteIndirect(
+    underlyingCommandList->ExecuteIndirect(
         m_commandSignature.Get(),
         1,
-        m_dispatchRaysDescBuffers[m_frame]->GetResource(),
+        dispatchRaysDescBuffer->GetResource(),
         sizeof(D3D12_DISPATCH_RAYS_DESC) * (RAY_GENERATION_GI - 1),
         nullptr,
         0);
@@ -1067,16 +1088,16 @@ void RaytracingDevice::procMsgTraceRays()
 
     PIX_BEGIN_EVENT("ReflectionRayGeneration");
     m_properties->SetPipelineStackSize(m_reflectionStackSize);
-    getUnderlyingGraphicsCommandList()->ExecuteIndirect(
+    underlyingCommandList->ExecuteIndirect(
         m_commandSignature.Get(),
         1,
-        m_dispatchRaysDescBuffers[m_frame]->GetResource(),
+        dispatchRaysDescBuffer->GetResource(),
         sizeof(D3D12_DISPATCH_RAYS_DESC) * (RAY_GENERATION_REFLECTION - 1),
         nullptr,
         0);
     PIX_END_EVENT();
 
-    getGraphicsCommandList().transitionBarriers(
+    commandList.transitionBarriers(
         {
             m_depthTexture->GetResource(),
             m_shadowTexture->GetResource(),
@@ -1085,7 +1106,7 @@ void RaytracingDevice::procMsgTraceRays()
             m_reflectionTexture->GetResource()
         }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
     dispatchResolver(message);
     prepareForDispatchUpscaler(message);
@@ -1093,26 +1114,29 @@ void RaytracingDevice::procMsgTraceRays()
 
 void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
 {
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
     PIX_BEGIN_EVENT("Prepare For Upscaler");
 
-    getGraphicsCommandList().transitionBarrier(m_colorTexture->GetResource(),
+    commandList.transitionBarrier(m_colorTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-    getGraphicsCommandList().transitionBarrier(m_depthTexture->GetResource(),
+    commandList.transitionBarrier(m_depthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-    getGraphicsCommandList().transitionBarrier(m_renderTargetTexture,
+    commandList.transitionBarrier(m_renderTargetTexture,
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
 
-    getGraphicsCommandList().transitionBarrier(m_depthStencilTexture,
+    commandList.transitionBarrier(m_depthStencilTexture,
         D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
 
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
     const CD3DX12_TEXTURE_COPY_LOCATION colorSrcLocation(m_colorTexture->GetResource());
     const CD3DX12_TEXTURE_COPY_LOCATION colorDstLocation(m_renderTargetTexture);
 
-    getUnderlyingGraphicsCommandList()->CopyTextureRegion(
+    underlyingCommandList->CopyTextureRegion(
         &colorDstLocation,
         0,
         0,
@@ -1123,7 +1147,7 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
     const CD3DX12_TEXTURE_COPY_LOCATION depthSrcLocation(m_depthTexture->GetResource());
     const CD3DX12_TEXTURE_COPY_LOCATION depthDstLocation(m_depthStencilTexture);
 
-    getUnderlyingGraphicsCommandList()->CopyTextureRegion(
+    underlyingCommandList->CopyTextureRegion(
         &depthDstLocation,
         0,
         0,
@@ -1131,10 +1155,10 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
         &depthSrcLocation,
         nullptr);
 
-    getGraphicsCommandList().transitionBarrier(m_renderTargetTexture,
+    commandList.transitionBarrier(m_renderTargetTexture,
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-    getGraphicsCommandList().transitionBarrier(m_depthStencilTexture,
+    commandList.transitionBarrier(m_depthStencilTexture,
         D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ);
 
     PIX_END_EVENT();
@@ -1164,9 +1188,11 @@ void RaytracingDevice::procMsgDispatchUpscaler()
 
     if (message.debugView == DEBUG_VIEW_NONE)
     {
+        auto& commandList = getGraphicsCommandList();
+
         PIX_BEGIN_EVENT("Upscale");
 
-        getGraphicsCommandList().transitionBarriers(
+        commandList.transitionBarriers(
             {
                 m_exposureTexture->GetResource(),
                 m_gBufferTexture6->GetResource(),
@@ -1176,10 +1202,10 @@ void RaytracingDevice::procMsgDispatchUpscaler()
                 m_specularHitDistanceTexture->GetResource(),
             }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-        getGraphicsCommandList().transitionBarrier(m_renderTargetTexture,
+        commandList.transitionBarrier(m_renderTargetTexture,
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-        getGraphicsCommandList().commitBarriers();
+        commandList.commitBarriers();
 
         m_upscaler->dispatch(
             {
@@ -1295,21 +1321,23 @@ void RaytracingDevice::procMsgComputePose()
 {
     const auto& message = m_messageReceiver.getMessage<MsgComputePose>();
 
+    const auto underlyingCommandList = getUnderlyingGraphicsCommandList();
+
     PIX_EVENT();
 
     if (m_curRootSignature != m_poseRootSignature.Get())
     {
-        getUnderlyingGraphicsCommandList()->SetComputeRootSignature(m_poseRootSignature.Get());
+        underlyingCommandList->SetComputeRootSignature(m_poseRootSignature.Get());
         m_curRootSignature = m_poseRootSignature.Get();
     }
     if (m_curPipeline != m_posePipeline.Get())
     {
-        getUnderlyingGraphicsCommandList()->SetPipelineState(m_posePipeline.Get());
+        underlyingCommandList->SetPipelineState(m_posePipeline.Get());
         m_curPipeline = m_posePipeline.Get();
         m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
     }
 
-    getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(0,
+    underlyingCommandList->SetComputeRootShaderResourceView(0,
         createBuffer(message.data, message.nodeCount * sizeof(float[4][4]), 0x10));
 
     auto geometryDesc = reinterpret_cast<const MsgComputePose::GeometryDesc*>(
@@ -1344,18 +1372,18 @@ void RaytracingDevice::procMsgComputePose()
             geometryDesc->nodeCount
         };
 
-        getUnderlyingGraphicsCommandList()->SetComputeRootConstantBufferView(1,
+        underlyingCommandList->SetComputeRootConstantBufferView(1,
             createBuffer(&cbGeometryDesc, sizeof(cbGeometryDesc), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
-        getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(2,
+        underlyingCommandList->SetComputeRootShaderResourceView(2,
             createBuffer(nodePalette, geometryDesc->nodeCount * sizeof(uint32_t), alignof(uint32_t)));
 
-        getUnderlyingGraphicsCommandList()->SetComputeRootShaderResourceView(3,
+        underlyingCommandList->SetComputeRootShaderResourceView(3,
             m_vertexBuffers[geometryDesc->vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc->vertexOffset);
 
-        getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(4, destVirtualAddress);
+        underlyingCommandList->SetComputeRootUnorderedAccessView(4, destVirtualAddress);
 
-        getUnderlyingGraphicsCommandList()->Dispatch((geometryDesc->vertexCount + 63) / 64, 1, 1);
+        underlyingCommandList->Dispatch((geometryDesc->vertexCount + 63) / 64, 1, 1);
 
         destVirtualAddress += geometryDesc->vertexCount * (geometryDesc->vertexStride + 0xC); // Extra 12 bytes for previous position
         nodePalette += geometryDesc->nodeCount;
@@ -1368,12 +1396,15 @@ void RaytracingDevice::procMsgRenderSky()
 {
     const auto& message = m_messageReceiver.getMessage<MsgRenderSky>();
 
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
     PIX_EVENT();
 
-    getGraphicsCommandList().transitionBarrier(m_skyTexture.Get(), 
+    commandList.transitionBarrier(m_skyTexture.Get(),
         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-    getGraphicsCommandList().commitBarriers();
+    commandList.commitBarriers();
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
     pipelineDesc.pRootSignature = m_skyRootSignature.Get();
@@ -1418,12 +1449,12 @@ void RaytracingDevice::procMsgRenderSky()
     constexpr D3D12_VIEWPORT viewport = { 0, 0, CUBE_MAP_RESOLUTION, CUBE_MAP_RESOLUTION, 0.0f, 1.0f };
     constexpr D3D12_RECT scissorRect = { 0, 0, CUBE_MAP_RESOLUTION, CUBE_MAP_RESOLUTION };
 
-    getUnderlyingGraphicsCommandList()->SetGraphicsRootSignature(m_skyRootSignature.Get());
-    getUnderlyingGraphicsCommandList()->OMSetRenderTargets(1, &renderTarget, FALSE, nullptr);
-    getUnderlyingGraphicsCommandList()->ClearRenderTargetView(renderTarget, clearValue, 0, nullptr);
-    getUnderlyingGraphicsCommandList()->RSSetViewports(1, &viewport);
-    getUnderlyingGraphicsCommandList()->RSSetScissorRects(1, &scissorRect);
-    getUnderlyingGraphicsCommandList()->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    underlyingCommandList->SetGraphicsRootSignature(m_skyRootSignature.Get());
+    underlyingCommandList->OMSetRenderTargets(1, &renderTarget, FALSE, nullptr);
+    underlyingCommandList->ClearRenderTargetView(renderTarget, clearValue, 0, nullptr);
+    underlyingCommandList->RSSetViewports(1, &viewport);
+    underlyingCommandList->RSSetScissorRects(1, &scissorRect);
+    underlyingCommandList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
     GlobalsSB globalsSB;
     globalsSB.backgroundScale = message.backgroundScale;
@@ -1496,11 +1527,11 @@ void RaytracingDevice::procMsgRenderSky()
             if (!pipeline)
                 m_pipelineLibrary.createGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
 
-            getUnderlyingGraphicsCommandList()->SetPipelineState(pipeline.Get());
+            underlyingCommandList->SetPipelineState(pipeline.Get());
             m_curPipeline = pipeline.Get();
         }
 
-        getUnderlyingGraphicsCommandList()->SetGraphicsRootConstantBufferView(0,
+        underlyingCommandList->SetGraphicsRootConstantBufferView(0,
             createBuffer(&globalsSB, sizeof(GlobalsSB), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
@@ -1508,21 +1539,21 @@ void RaytracingDevice::procMsgRenderSky()
         vertexBufferView.StrideInBytes = geometryDesc->vertexStride;
         vertexBufferView.SizeInBytes = geometryDesc->vertexStride * geometryDesc->vertexCount;
 
-        getUnderlyingGraphicsCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
+        underlyingCommandList->IASetVertexBuffers(0, 1, &vertexBufferView);
 
         D3D12_INDEX_BUFFER_VIEW indexBufferView{};
         indexBufferView.BufferLocation = m_indexBuffers[geometryDesc->indexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc->indexOffset * 2;
         indexBufferView.SizeInBytes = geometryDesc->indexCount * 2;
         indexBufferView.Format = DXGI_FORMAT_R16_UINT;
             
-        getUnderlyingGraphicsCommandList()->IASetIndexBuffer(&indexBufferView);
+        underlyingCommandList->IASetIndexBuffer(&indexBufferView);
 
-        getUnderlyingGraphicsCommandList()->DrawIndexedInstanced(geometryDesc->indexCount, 6, 0, 0, 0);
+        underlyingCommandList->DrawIndexedInstanced(geometryDesc->indexCount, 6, 0, 0, 0);
 
         ++geometryDesc;
     }
 
-    getGraphicsCommandList().transitionBarrier(m_skyTexture.Get(), 
+    commandList.transitionBarrier(m_skyTexture.Get(),
         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     m_dirtyFlags |=
