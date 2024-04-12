@@ -966,6 +966,8 @@ void RaytracingDevice::procMsgTraceRays()
     getUnderlyingGraphicsCommandList()->SetComputeRootUnorderedAccessView(9, m_dispatchRaysIndexBuffer->GetResource()->GetGPUVirtualAddress());
     getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_uavId));
     getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(11, m_descriptorHeap.getGpuHandle(m_srvId));
+    if (m_serSupported)
+        getUnderlyingGraphicsCommandList()->SetComputeRootDescriptorTable(12, m_descriptorHeap.getGpuHandle(m_serUavId));
 
     const auto rayGenShaderTable = createBuffer(
         m_rayGenShaderTable.data(), static_cast<uint32_t>(m_rayGenShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -1711,6 +1713,13 @@ RaytracingDevice::RaytracingDevice()
     {
         dxilLibrary = CD3DX12_SHADER_BYTECODE{ DXILLibrarySER, sizeof(DXILLibrarySER) };
         NvAPI_D3D12_SetNvShaderExtnSlotSpace(m_device.Get(), s_serUavRegister, 0);
+
+        m_serUavId = m_descriptorHeap.allocate();
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+        uavDesc.Buffer.StructureByteStride = 0x100;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        m_device->CreateUnorderedAccessView(nullptr, nullptr, &uavDesc, m_descriptorHeap.getCpuHandle(m_serUavId));
     }
 
     dxilLibrarySubobject.SetDXILLibrary(&dxilLibrary);
@@ -1726,6 +1735,9 @@ RaytracingDevice::RaytracingDevice()
 
     HRESULT hr = m_device->CreateStateObject(stateObject, IID_PPV_ARGS(m_stateObject.GetAddressOf()));
     assert(SUCCEEDED(hr) && m_stateObject != nullptr);
+
+    if (m_serSupported)
+        NvAPI_D3D12_SetNvShaderExtnSlotSpace(m_device.Get(), 0xFFFFFFFF, 0);
 
     hr = m_stateObject.As(std::addressof(m_properties));
     assert(SUCCEEDED(hr) && m_properties != nullptr);

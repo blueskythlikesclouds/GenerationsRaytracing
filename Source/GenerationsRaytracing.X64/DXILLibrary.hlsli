@@ -225,7 +225,7 @@ float3 TracePath(TracePathArgs args)
             payload);
 
 #ifdef NV_SHADER_EXTN_SLOT
-        NvReorderThread(hitObject);
+        NvReorderThread(hitObject, 0, 0);
         NvInvokeHitObject(g_BVH, hitObject, payload);
 #endif
 
