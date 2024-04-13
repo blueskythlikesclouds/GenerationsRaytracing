@@ -8,6 +8,7 @@
 #include "MessageSender.h"
 #include "Texture.h"
 #include "InstanceData.h"
+#include "LightData.h"
 #include "RaytracingParams.h"
 #include "RopeRenderable.h"
 #include "ToneMap.h"
@@ -129,8 +130,8 @@ static void createLocalLight(Hedgehog::Mirage::CLightData& lightData, size_t loc
     
     message.localLightId = localLightId;
     memcpy(message.position, lightData.m_Position.data(), sizeof(message.position));
-    message.inRange = lightData.m_Range.z();
     memcpy(message.color, lightData.m_Color.data(), sizeof(message.color));
+    message.inRange = lightData.m_Range.z();
     message.outRange = lightData.m_Range.w();
     
     s_messageSender.endMessage();
@@ -296,7 +297,7 @@ static void __cdecl implOfTraceRays(void* a1)
                 {
                     const auto& lightListData = lightManager->m_pStaticLightContext->m_spLightListData;
 
-                    if (s_curLightList != lightListData.get())
+                    if (s_curLightList != lightListData.get() || LightData::s_dirty)
                     {
                         s_curLightList = lightListData.get();
                         s_localLightCount = 0;
@@ -310,7 +311,24 @@ static void __cdecl implOfTraceRays(void* a1)
                             }
                         }
 
-                        s_resetAccumulation = true;
+                        for (const auto& light : LightData::s_lights)
+                        {
+                            auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+                        
+                            message.localLightId = s_localLightCount;
+                            memcpy(message.position, light.position, sizeof(message.position));
+                            message.color[0] = light.color[0] * light.colorIntensity;
+                            message.color[1] = light.color[1] * light.colorIntensity;
+                            message.color[2] = light.color[2] * light.colorIntensity;
+                            message.inRange = light.inRange;
+                            message.outRange = light.outRange;
+                        
+                            s_messageSender.endMessage();
+                        
+                            ++s_localLightCount;
+                        }
+
+                        LightData::s_dirty = false;
                     }
                 }
 

@@ -126,6 +126,12 @@
     <ClCompile Include="GroundSmokeParticle.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
+    <ClCompile Include="TerrainData.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="LightData.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -260,6 +266,12 @@
     </ClInclude>
     <ClInclude Include="GroundSmokeParticle.h">
       <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainData.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="LightData.h">
+      <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

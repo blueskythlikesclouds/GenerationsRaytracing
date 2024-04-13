@@ -4,6 +4,7 @@
 #include "IndexBuffer.h"
 #include "Configuration.h"
 #include "EnvironmentMode.h"
+#include "LightData.h"
 #include "MessageSender.h"
 #include "QuickBoot.h"
 #include "StageSelection.h"
@@ -539,6 +540,9 @@ void RaytracingParams::imguiWindow()
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
+
+            if (ImGui::BeginTabItem("Light Editor"))
+                LightData::renderImgui();
 
             ImGui::EndTabBar();
         }

@@ -112,6 +112,7 @@
     <ClCompile Include="BaseTexture.cpp" />
     <ClCompile Include="FileBinder.cpp" />
     <ClCompile Include="GroundSmokeParticle.cpp" />
+    <ClCompile Include="LightData.cpp" />
     <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="ModelReplacer.cpp" />
@@ -144,6 +145,7 @@
     <ClCompile Include="SoundSystem.cpp" />
     <ClCompile Include="StageSelection.cpp" />
     <ClCompile Include="Surface.cpp" />
+    <ClCompile Include="TerrainData.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="InstanceData.cpp" />
     <ClCompile Include="ToneMap.cpp" />
@@ -160,6 +162,7 @@
     <ClInclude Include="FileBinder.h" />
     <ClInclude Include="GroundSmokeParticle.h" />
     <ClInclude Include="InstanceMask.h" />
+    <ClInclude Include="LightData.h" />
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="MeshOpt.h" />
@@ -191,6 +194,7 @@
     <ClInclude Include="SoundSystem.h" />
     <ClInclude Include="StageSelection.h" />
     <ClInclude Include="Surface.h" />
+    <ClInclude Include="TerrainData.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="InstanceData.h" />
     <ClInclude Include="ToneMap.h" />

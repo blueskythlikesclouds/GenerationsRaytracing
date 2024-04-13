@@ -25,6 +25,16 @@ HOOK(void, __cdecl, MakeTerrainData, 0x7346F0,
     originalMakeTerrainData(name, data, dataSize, database, renderingInfrastructure);
 }
 
+void StageSelection::update(XXH32_hash_t hash)
+{
+    auto& selection = s_selections[hash];
+    if (!selection.rememberSelection)
+        selection.stageIndex = NULL;
+
+    s_rememberSelection = &selection.rememberSelection;
+    s_stageIndex = &selection.stageIndex;
+}
+
 static std::string s_saveFilePath;
 
 static void load()
@@ -56,13 +66,11 @@ static void save()
 
     std::ofstream stream(s_saveFilePath);
     if (stream.is_open())
-        stream << json;
+        stream << std::setw(4) << json;
 }
 
 void StageSelection::init(ModInfo_t* modInfo)
 {
-    INSTALL_HOOK(MakeTerrainData);
-
     s_saveFilePath = modInfo->CurrentMod->Path;
     s_saveFilePath.erase(s_saveFilePath.find_last_of("\\/") + 1);
     s_saveFilePath += "stage_selections.json";

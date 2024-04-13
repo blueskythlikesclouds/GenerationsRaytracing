@@ -20,12 +20,14 @@
 #include "Window.h"
 #include "FileBinder.h"
 #include "GroundSmokeParticle.h"
+#include "LightData.h"
 #include "ModelReplacer.h"
 #include "QuickBoot.h"
 #include "RopeRenderable.h"
 #include "ShareVertexBuffer.h"
 #include "SoundSystem.h"
 #include "StageSelection.h"
+#include "TerrainData.h"
 #include "UpReelRenderable.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
@@ -89,6 +91,8 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     SoundSystem::init();
     StageSelection::init(modInfo);
     GroundSmokeParticle::init();
+    TerrainData::init();
+    LightData::init(modInfo);
 
 #ifdef _DEBUG
 #if 0
