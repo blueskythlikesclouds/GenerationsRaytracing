@@ -37,3 +37,6 @@
 [submodule "Dependencies/nvapi"]
 	path = Dependencies/nvapi
 	url = https://github.com/NVIDIA/nvapi.git
+[submodule "Dependencies/im3d"]
+	path = Dependencies/im3d
+	url = https://github.com/john-chapman/im3d.git

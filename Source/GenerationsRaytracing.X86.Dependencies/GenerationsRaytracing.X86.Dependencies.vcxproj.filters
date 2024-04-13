@@ -7,6 +7,9 @@
     <Filter Include="implot">
       <UniqueIdentifier>{f34bdde4-bb43-48b4-8cfa-728a8e752cd4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="im3d">
+      <UniqueIdentifier>{cc4a1803-879f-4e48-ab7d-81d31d709967}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Dependencies\imgui\imgui.cpp">
@@ -35,6 +38,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Dependencies\implot\implot_items.cpp">
       <Filter>implot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Dependencies\im3d\im3d.cpp">
+      <Filter>im3d</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

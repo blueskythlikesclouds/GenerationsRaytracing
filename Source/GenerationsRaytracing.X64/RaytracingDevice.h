@@ -191,6 +191,12 @@ protected:
     ComPtr<ID3D12PipelineState> m_smoothNormalPipeline;
     std::vector<SmoothNormalCmd> m_smoothNormalCommands;
 
+    // Im3d
+    ComPtr<ID3D12RootSignature> m_im3dRootSignature;
+    ComPtr<ID3D12PipelineState> m_im3dTrianglesPipeline;
+    ComPtr<ID3D12PipelineState> m_im3dLinesPipeline;
+    ComPtr<ID3D12PipelineState> m_im3dPointsPipeline;
+
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
@@ -224,6 +230,7 @@ protected:
     void procMsgCreateLocalLight();
     void procMsgComputeSmoothNormal();
     void procMsgDispatchUpscaler();
+    void procMsgDrawIm3d();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

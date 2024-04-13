@@ -67,7 +67,20 @@ protected:
     } m_imgui;
 
     void initImgui();
+    void beginImgui();
+    void endImgui();
     void renderImgui();
+
+    struct
+    {
+        bool render{};
+        float projection[4][4];
+        float view[4][4];
+    } m_im3d;
+
+    void beginIm3d();
+    void endIm3d();
+    void renderIm3d();
 
 public:
     Device(uint32_t width, uint32_t height, HWND hWnd);

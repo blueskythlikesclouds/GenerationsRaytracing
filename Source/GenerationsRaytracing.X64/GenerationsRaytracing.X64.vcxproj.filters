@@ -92,6 +92,36 @@
     <Filter Include="Cache">
       <UniqueIdentifier>{6b29ae4c-cf09-46c3-82a9-69b14b5b8efb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader\Copy">
+      <UniqueIdentifier>{b8adffde-f9e1-4e06-8362-baa5a352fffd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Sky">
+      <UniqueIdentifier>{d26ecc1e-515a-4488-a0fe-937f7d2de52b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Raytracing">
+      <UniqueIdentifier>{3a3de84e-593a-41bc-9944-4a1f31c06e1e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Geometry">
+      <UniqueIdentifier>{f0297654-988c-46a5-bbcd-8343e3d4de16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\FVF">
+      <UniqueIdentifier>{11f87704-4e40-4ed1-8c98-55e597968786}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Material">
+      <UniqueIdentifier>{b79dbcfe-a2a5-4e56-9971-630fd2d0eae0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Common">
+      <UniqueIdentifier>{f2c0aeaa-a0a9-455d-9529-a572a9aa8973}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Resolve">
+      <UniqueIdentifier>{49cefd52-7248-475a-af6a-f51512cb046b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Pose">
+      <UniqueIdentifier>{5f03ae30-7e51-4522-8350-accbbe0ae012}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Im3d">
+      <UniqueIdentifier>{30c07edf-848c-4460-a563-e7693c318d54}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MessageReceiver.h">
@@ -189,9 +219,6 @@
     <ClInclude Include="DLSSD.h">
       <Filter>Upscaler</Filter>
     </ClInclude>
-    <ClInclude Include="GBufferData.h">
-      <Filter>Shader</Filter>
-    </ClInclude>
     <ClInclude Include="NGX.h">
       <Filter>Upscaler</Filter>
     </ClInclude>
@@ -204,91 +231,115 @@
     <ClInclude Include="Material.h">
       <Filter>Resource</Filter>
     </ClInclude>
+    <ClInclude Include="GBufferData.h">
+      <Filter>Shader\Geometry</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
       <Filter>Message</Filter>
     </None>
-    <None Include="RootSignature.hlsli">
-      <Filter>Shader</Filter>
+    <None Include="packages.config" />
+    <None Include="SkySharedDefinitions.hlsli">
+      <Filter>Shader\Sky</Filter>
     </None>
-    <None Include="GeometryDesc.hlsli">
-      <Filter>Shader</Filter>
+    <None Include="DXILLibrary.hlsli">
+      <Filter>Shader\Raytracing</Filter>
     </None>
     <None Include="GeometryShading.hlsli">
-      <Filter>Shader</Filter>
+      <Filter>Shader\Geometry</Filter>
     </None>
     <None Include="GBufferData.hlsli">
-      <Filter>Shader</Filter>
+      <Filter>Shader\Geometry</Filter>
     </None>
-    <None Include="Material.hlsli">
-      <Filter>Shader</Filter>
-    </None>
-    <None Include="SharedDefinitions.hlsli">
-      <Filter>Shader</Filter>
-    </None>
-    <None Include="SkySharedDefinitions.hlsli">
-      <Filter>Shader</Filter>
-    </None>
-    <None Include="Reservoir.hlsli">
-      <Filter>Shader</Filter>
-    </None>
-    <None Include="RayDifferentials.hlsli">
-      <Filter>Shader</Filter>
-    </None>
-    <None Include="packages.config" />
-    <None Include="DXILLibrary.hlsli">
-      <Filter>Shader</Filter>
-    </None>
-    <None Include="PackedPrimitives.hlsli">
-      <Filter>Shader</Filter>
-    </None>
-    <None Include="ColorSpace.hlsli">
-      <Filter>Shader</Filter>
+    <None Include="GeometryDesc.hlsli">
+      <Filter>Shader\Geometry</Filter>
     </None>
     <None Include="MaterialData.hlsli">
-      <Filter>Shader</Filter>
+      <Filter>Shader\Material</Filter>
+    </None>
+    <None Include="Material.hlsli">
+      <Filter>Shader\Material</Filter>
+    </None>
+    <None Include="PackedPrimitives.hlsli">
+      <Filter>Shader\Geometry</Filter>
+    </None>
+    <None Include="ColorSpace.hlsli">
+      <Filter>Shader\Material</Filter>
+    </None>
+    <None Include="RootSignature.hlsli">
+      <Filter>Shader\Common</Filter>
+    </None>
+    <None Include="Reservoir.hlsli">
+      <Filter>Shader\Raytracing</Filter>
+    </None>
+    <None Include="RayDifferentials.hlsli">
+      <Filter>Shader\Raytracing</Filter>
+    </None>
+    <None Include="SharedDefinitions.hlsli">
+      <Filter>Shader\Common</Filter>
+    </None>
+    <None Include="Im3dShared.hlsli">
+      <Filter>Shader\Im3d</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="FVFPixelShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="FVFVertexShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="DXILLibrary.hlsl">
-      <Filter>Shader</Filter>
+    <FxCompile Include="CopyTextureVertexShader.hlsl">
+      <Filter>Shader\Copy</Filter>
     </FxCompile>
     <FxCompile Include="CopyTexturePixelShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="CopyTextureVertexShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="PoseComputeShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="ResolveComputeShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="SkyPixelShader.hlsl">
-      <Filter>Shader</Filter>
+      <Filter>Shader\Copy</Filter>
     </FxCompile>
     <FxCompile Include="SkyVertexShader.hlsl">
-      <Filter>Shader</Filter>
+      <Filter>Shader\Sky</Filter>
     </FxCompile>
-    <FxCompile Include="SmoothNormalComputeShader.hlsl">
-      <Filter>Shader</Filter>
+    <FxCompile Include="SkyPixelShader.hlsl">
+      <Filter>Shader\Sky</Filter>
     </FxCompile>
-    <FxCompile Include="ResolveTransparencyComputeShader.hlsl">
-      <Filter>Shader</Filter>
+    <FxCompile Include="DXILLibrary.hlsl">
+      <Filter>Shader\Raytracing</Filter>
     </FxCompile>
     <FxCompile Include="DXILLibrarySER.hlsl">
-      <Filter>Shader</Filter>
+      <Filter>Shader\Raytracing</Filter>
+    </FxCompile>
+    <FxCompile Include="FVFVertexShader.hlsl">
+      <Filter>Shader\FVF</Filter>
+    </FxCompile>
+    <FxCompile Include="FVFPixelShader.hlsl">
+      <Filter>Shader\FVF</Filter>
+    </FxCompile>
+    <FxCompile Include="ResolveTransparencyComputeShader.hlsl">
+      <Filter>Shader\Resolve</Filter>
+    </FxCompile>
+    <FxCompile Include="ResolveComputeShader.hlsl">
+      <Filter>Shader\Resolve</Filter>
+    </FxCompile>
+    <FxCompile Include="SmoothNormalComputeShader.hlsl">
+      <Filter>Shader\Pose</Filter>
+    </FxCompile>
+    <FxCompile Include="PoseComputeShader.hlsl">
+      <Filter>Shader\Pose</Filter>
+    </FxCompile>
+    <FxCompile Include="Im3dPointsPixelShader.hlsl">
+      <Filter>Shader\Im3d</Filter>
+    </FxCompile>
+    <FxCompile Include="Im3dLinesPixelShader.hlsl">
+      <Filter>Shader\Im3d</Filter>
+    </FxCompile>
+    <FxCompile Include="Im3dTrianglesPixelShader.hlsl">
+      <Filter>Shader\Im3d</Filter>
+    </FxCompile>
+    <FxCompile Include="Im3dLinesVertexShader.hlsl">
+      <Filter>Shader\Im3d</Filter>
+    </FxCompile>
+    <FxCompile Include="Im3dPointsVertexShader.hlsl">
+      <Filter>Shader\Im3d</Filter>
+    </FxCompile>
+    <FxCompile Include="Im3dTrianglesVertexShader.hlsl">
+      <Filter>Shader\Im3d</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

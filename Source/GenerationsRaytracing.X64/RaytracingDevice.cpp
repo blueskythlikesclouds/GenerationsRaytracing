@@ -25,6 +25,12 @@
 #include "ResolveTransparencyComputeShader.h"
 #include "ShaderType.h"
 #include "DXILLibrarySER.h"
+#include "Im3dLinesVertexShader.h"
+#include "Im3dLinesPixelShader.h"
+#include "Im3dPointsVertexShader.h"
+#include "Im3dPointsPixelShader.h"
+#include "Im3dTrianglesVertexShader.h"
+#include "Im3dTrianglesPixelShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
@@ -1601,6 +1607,109 @@ void RaytracingDevice::procMsgComputeSmoothNormal()
     });
 }
 
+void RaytracingDevice::procMsgDrawIm3d()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgDrawIm3d>();
+
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
+    PIX_EVENT();
+
+    struct
+    {
+        float projection[4][4];
+        float view[4][4];
+        float viewportSize[2];
+    } globals;
+
+    memcpy(globals.projection, message.projection, sizeof(globals.projection));
+    memcpy(globals.view, message.view, sizeof(globals.view));
+    memcpy(globals.viewportSize, message.viewportSize, sizeof(globals.viewportSize));
+
+    const D3D12_VIEWPORT viewport = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f};
+    const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
+
+    underlyingCommandList->SetGraphicsRootSignature(m_im3dRootSignature.Get());
+    underlyingCommandList->SetGraphicsRootConstantBufferView(0, 
+        createBuffer(&globals, sizeof(globals), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+    underlyingCommandList->RSSetViewports(1, &viewport);
+    underlyingCommandList->RSSetScissorRects(1, &scissorRect);
+
+    commandList.commitBarriers();
+
+    const auto vertexData = createBuffer(message.data, message.vertexSize, alignof(float));
+    auto drawList = reinterpret_cast<const MsgDrawIm3d::DrawList*>(message.data + message.vertexSize);
+
+    for (size_t i = 0; i < message.drawListCount; i++)
+    {
+        enum
+        {
+            DrawPrimitive_Triangles,
+            DrawPrimitive_Lines,
+            DrawPrimitive_Points,
+        };
+
+        D3D_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+        ID3D12PipelineState* pipelineState = nullptr;
+        uint32_t primitiveCount = 0;
+
+        switch (drawList->primitiveType)
+        {
+        case DrawPrimitive_Triangles:
+            primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            pipelineState = m_im3dTrianglesPipeline.Get();
+            primitiveCount = drawList->vertexCount / 3;
+            break;
+
+        case DrawPrimitive_Lines:
+            primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+            pipelineState = m_im3dLinesPipeline.Get();
+            primitiveCount = drawList->vertexCount / 2;
+            break;
+
+        case DrawPrimitive_Points:
+            primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+            pipelineState = m_im3dPointsPipeline.Get();
+            primitiveCount = drawList->vertexCount;
+            break;
+
+        default:
+            assert(false);
+            break;
+        }
+
+        underlyingCommandList->SetGraphicsRootShaderResourceView(1, vertexData + drawList->vertexOffset);
+
+        if (m_curPipeline != pipelineState)
+        {
+            underlyingCommandList->SetPipelineState(pipelineState);
+            m_curPipeline = pipelineState;
+        }
+
+        if (m_primitiveTopology != primitiveTopology)
+        {
+            underlyingCommandList->IASetPrimitiveTopology(primitiveTopology);
+            m_primitiveTopology = primitiveTopology;
+        }
+
+        underlyingCommandList->DrawInstanced(
+            drawList->primitiveType == DrawPrimitive_Triangles ? 3 : 4,
+            primitiveCount,
+            0,
+            0);
+
+        ++drawList;
+    }
+
+    m_dirtyFlags |=
+        DIRTY_FLAG_ROOT_SIGNATURE |
+        DIRTY_FLAG_PIPELINE_DESC |
+        DIRTY_FLAG_PRIMITIVE_TOPOLOGY |
+        DIRTY_FLAG_SCISSOR_RECT |
+        DIRTY_FLAG_VIEWPORT;
+}
+
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -1616,6 +1725,7 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgCreateLocalLight::s_id: procMsgCreateLocalLight(); break;
     case MsgComputeSmoothNormal::s_id: procMsgComputeSmoothNormal(); break;
     case MsgDispatchUpscaler::s_id: procMsgDispatchUpscaler(); break;
+    case MsgDrawIm3d::s_id: procMsgDrawIm3d(); break;
     default: return false;
     }
 
@@ -2064,6 +2174,54 @@ RaytracingDevice::RaytracingDevice()
 
     m_pipelineLibrary.createComputePipelineState(&smoothNormalPipelineDesc, 
         IID_PPV_ARGS(m_smoothNormalPipeline.GetAddressOf()));
+
+    CD3DX12_ROOT_PARAMETER1 im3dRootParams[2];
+    im3dRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_VERTEX);
+    im3dRootParams[1].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_VERTEX);
+
+    RootSignature::create(
+        m_device.Get(),
+        im3dRootParams,
+        _countof(im3dRootParams),
+        nullptr,
+        0,
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS,
+        m_im3dRootSignature,
+        "im3d");
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC im3dPipelineDesc{};
+    im3dPipelineDesc.pRootSignature = m_im3dRootSignature.Get();
+    im3dPipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    im3dPipelineDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
+    im3dPipelineDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    im3dPipelineDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    im3dPipelineDesc.SampleMask = ~0;
+    im3dPipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    im3dPipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    im3dPipelineDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    im3dPipelineDesc.DepthStencilState.DepthEnable = FALSE;
+    im3dPipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    im3dPipelineDesc.NumRenderTargets = 1;
+    im3dPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    im3dPipelineDesc.SampleDesc.Count = 1;
+
+    im3dPipelineDesc.VS.pShaderBytecode = Im3dTrianglesVertexShader;
+    im3dPipelineDesc.VS.BytecodeLength = sizeof(Im3dTrianglesVertexShader);
+    im3dPipelineDesc.PS.pShaderBytecode = Im3dTrianglesPixelShader;
+    im3dPipelineDesc.PS.BytecodeLength = sizeof(Im3dTrianglesPixelShader);
+    m_pipelineLibrary.createGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dTrianglesPipeline.GetAddressOf()));
+
+    im3dPipelineDesc.VS.pShaderBytecode = Im3dLinesVertexShader;
+    im3dPipelineDesc.VS.BytecodeLength = sizeof(Im3dLinesVertexShader);
+    im3dPipelineDesc.PS.pShaderBytecode = Im3dLinesPixelShader;
+    im3dPipelineDesc.PS.BytecodeLength = sizeof(Im3dLinesPixelShader);
+    m_pipelineLibrary.createGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dLinesPipeline.GetAddressOf()));
+
+    im3dPipelineDesc.VS.pShaderBytecode = Im3dPointsVertexShader;
+    im3dPipelineDesc.VS.BytecodeLength = sizeof(Im3dPointsVertexShader);
+    im3dPipelineDesc.PS.pShaderBytecode = Im3dPointsPixelShader;
+    im3dPipelineDesc.PS.BytecodeLength = sizeof(Im3dPointsPixelShader);
+    m_pipelineLibrary.createGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dPointsPipeline.GetAddressOf()));
 }
 
 static void waitForQueueOnExit(CommandQueue& queue)

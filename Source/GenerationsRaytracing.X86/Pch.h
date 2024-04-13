@@ -29,6 +29,7 @@ using Microsoft::WRL::ComPtr;
 #include <imgui.h>
 #include <backends/imgui_impl_win32.h>
 #include <implot.h>
+#include <im3d.h>
 
 #include <json/json.hpp>
 using nlohmann::json;

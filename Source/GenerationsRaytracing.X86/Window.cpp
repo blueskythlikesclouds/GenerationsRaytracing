@@ -31,6 +31,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
             break;
         }
         break;
+
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP:
+        Im3d::GetAppData().m_keyDown[Im3d::Mouse_Left] = (Msg == WM_LBUTTONDOWN);
+        break;
     }
 
     if (Configuration::s_enableImgui)

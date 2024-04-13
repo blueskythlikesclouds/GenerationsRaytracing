@@ -102,6 +102,34 @@ void Device::initImgui()
     io.Fonts->SetTexID(m_imgui.fontTexture.Get());
 }
 
+void Device::beginImgui()
+{
+    if (!m_imgui.init)
+    {
+        initImgui();
+        m_imgui.init = true;
+    }
+
+    m_imgui.render = true;
+
+    ImGui_ImplWin32_NewFrame();
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = { static_cast<float>(m_backBuffer->getWidth()),
+        static_cast<float>(m_backBuffer->getHeight()) };
+
+    ImGui::NewFrame();
+}
+
+void Device::endImgui()
+{
+    if (m_imgui.render)
+    {
+        ImGui::Render();
+        m_imgui.render = false;
+    }
+}
+
 void Device::renderImgui()
 {
     ImDrawData* drawData = ImGui::GetDrawData();
@@ -250,6 +278,95 @@ void Device::renderImgui()
     }
 }
 
+void Device::beginIm3d()
+{
+    auto& appData = Im3d::GetAppData();
+    m_im3d.render = true;
+
+    appData.m_viewportSize.x = static_cast<float>(m_backBuffer->getWidth());
+    appData.m_viewportSize.y = static_cast<float>(m_backBuffer->getHeight());
+
+    if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
+    {
+        const auto camera = gameDocument->GetWorld()->GetCamera();
+
+        memcpy(m_im3d.projection, camera->m_MyCamera.m_Projection.data(), sizeof(m_im3d.projection));
+        memcpy(m_im3d.view, camera->m_MyCamera.m_View.data(), sizeof(m_im3d.view));
+
+        Sonic::CNoAlignVector direction;
+        direction.x() = (ImGui::GetMousePos().x / appData.m_viewportSize.x * 2.0f - 1.0f) / camera->m_MyCamera.m_Projection(0, 0);
+        direction.y() = (ImGui::GetMousePos().y / appData.m_viewportSize.y * 2.0f - 1.0f) / -camera->m_MyCamera.m_Projection(1, 1);
+        direction.z() = -1.0f;
+        direction = (camera->m_MyCamera.m_View.rotation().inverse() * direction).normalized();
+
+        appData.m_cursorRayOrigin.x = camera->m_MyCamera.m_Position.x();
+        appData.m_cursorRayOrigin.y = camera->m_MyCamera.m_Position.y();
+        appData.m_cursorRayOrigin.z = camera->m_MyCamera.m_Position.z();
+        appData.m_cursorRayDirection.x = direction.x();
+        appData.m_cursorRayDirection.y = direction.y();
+        appData.m_cursorRayDirection.z = direction.z();
+        appData.m_viewOrigin.x = camera->m_MyCamera.m_Position.x();
+        appData.m_viewOrigin.y = camera->m_MyCamera.m_Position.y();
+        appData.m_viewOrigin.z = camera->m_MyCamera.m_Position.z();
+        appData.m_viewDirection.x = camera->m_MyCamera.m_Direction.x();
+        appData.m_viewDirection.y = camera->m_MyCamera.m_Direction.y();
+        appData.m_viewDirection.z = camera->m_MyCamera.m_Direction.z();
+        appData.m_projScaleY = 4.0f * (1.0f / camera->m_MyCamera.m_Projection(1, 1));
+    }
+
+    Im3d::NewFrame();
+}
+
+void Device::endIm3d()
+{
+    if (m_im3d.render)
+    {
+        Im3d::EndFrame();
+        m_im3d.render = false;
+    }
+}
+
+void Device::renderIm3d()
+{
+    const uint32_t drawListCount = Im3d::GetDrawListCount();
+    if (drawListCount == 0)
+        return;
+
+    uint32_t vertexSize = 0;
+    for (size_t i = 0; i < drawListCount; i++)
+        vertexSize += Im3d::GetDrawLists()[i].m_vertexCount * sizeof(Im3d::VertexData);
+
+    auto& message = s_messageSender.makeMessage<MsgDrawIm3d>(
+        vertexSize + sizeof(MsgDrawIm3d::DrawList) * drawListCount);
+
+    memcpy(message.projection, m_im3d.projection, sizeof(message.projection));
+    memcpy(message.view, m_im3d.view, sizeof(message.view));
+    message.viewportSize[0] = Im3d::GetAppData().m_viewportSize.x;
+    message.viewportSize[1] = Im3d::GetAppData().m_viewportSize.y;
+    message.vertexSize = vertexSize;
+    message.drawListCount = drawListCount;
+
+    auto dstDrawList = reinterpret_cast<MsgDrawIm3d::DrawList*>(message.data + vertexSize);
+    uint32_t vertexOffset = 0;
+
+    for (size_t i = 0; i < drawListCount; i++)
+    {
+        auto& drawList = Im3d::GetDrawLists()[i];
+
+        dstDrawList->primitiveType = static_cast<uint8_t>(drawList.m_primType);
+        dstDrawList->vertexOffset = vertexOffset;
+        dstDrawList->vertexCount = drawList.m_vertexCount;
+
+        memcpy(message.data + vertexOffset, drawList.m_vertexData,
+            sizeof(Im3d::VertexData) * drawList.m_vertexCount);
+
+        ++dstDrawList;
+        vertexOffset += sizeof(Im3d::VertexData) * drawList.m_vertexCount;
+    }
+
+    s_messageSender.endMessage();
+}
+
 Device::Device(uint32_t width, uint32_t height, HWND hWnd)
     : m_hWnd(hWnd)
 {
@@ -292,7 +409,10 @@ FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::Reset, D3DPRESENT_PARAMETERS* pPresent
 HRESULT Device::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion)
 {
     if (Configuration::s_enableImgui)
+    {
+        renderIm3d();
         renderImgui();
+    }
 
     s_messageSender.makeMessage<MsgPresent>();
     s_messageSender.endMessage();
@@ -464,21 +584,8 @@ HRESULT Device::BeginScene()
 
     if (Configuration::s_enableImgui)
     {
-        if (!m_imgui.init)
-        {
-            initImgui();
-            m_imgui.init = true;
-        }
-
-        m_imgui.render = true;
-
-        ImGui_ImplWin32_NewFrame();
-
-        ImGuiIO& io = ImGui::GetIO();
-        io.DisplaySize = { static_cast<float>(m_backBuffer->getWidth()),
-            static_cast<float>(m_backBuffer->getHeight()) };
-
-        ImGui::NewFrame();
+        beginImgui();
+        beginIm3d();
 
         RaytracingParams::imguiWindow();
     }
@@ -488,11 +595,8 @@ HRESULT Device::BeginScene()
 
 HRESULT Device::EndScene()
 {
-    if (m_imgui.render)
-    {
-        ImGui::Render();
-        m_imgui.render = false;
-    }
+    endImgui();
+    endIm3d();
 
     return S_OK;
 }

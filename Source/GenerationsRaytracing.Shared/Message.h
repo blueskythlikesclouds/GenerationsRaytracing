@@ -537,4 +537,24 @@ struct MsgDispatchUpscaler
     bool resetAccumulation;
 };
 
+struct MsgDrawIm3d
+{
+    MSG_DEFINE_MESSAGE(MsgDispatchUpscaler);
+
+    struct DrawList
+    {
+        uint8_t primitiveType;
+        uint32_t vertexOffset;
+        uint32_t vertexCount;
+    };
+
+    float projection[4][4];
+    float view[4][4];
+    float viewportSize[2];
+    uint32_t vertexSize;
+    uint32_t drawListCount;
+    uint32_t dataSize;
+    uint8_t data[1u];
+};
+
 #pragma pack(pop)
