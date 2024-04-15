@@ -281,14 +281,17 @@ void ReflectionMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     float3 color = 0.0;
 
-    if (g_UseEnvironmentColor)
+    if (g_SkyInRoughReflection)
     {
-        color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
-    }
-    else if (g_UseSkyTexture)
-    {
-        TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
-        color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+        if (g_UseEnvironmentColor)
+        {
+            color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
+        }
+        else if (g_UseSkyTexture)
+        {
+            TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
+            color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+        }
     }
 
     payload.Color = color;

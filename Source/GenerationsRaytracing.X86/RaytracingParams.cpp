@@ -158,6 +158,7 @@ static void createParameterFile()
         envParam->CreateParamFloat(&RaytracingParams::s_groundColor.x(), "GroundColorR");
         envParam->CreateParamFloat(&RaytracingParams::s_groundColor.y(), "GroundColorG");
         envParam->CreateParamFloat(&RaytracingParams::s_groundColor.z(), "GroundColorB");
+        envParam->CreateParamBool(&RaytracingParams::s_skyInRoughReflection, "SkyInRoughReflection");
         paramGroup->Flush();
     }
 
@@ -258,6 +259,7 @@ void RaytracingParams::imguiWindow()
                         fprintf(file, "          <GroundColorR>%g</GroundColorR>\n", s_groundColor.x());
                         fprintf(file, "          <GroundColorG>%g</GroundColorG>\n", s_groundColor.y());
                         fprintf(file, "          <GroundColorB>%g</GroundColorB>\n", s_groundColor.z());
+                        fprintf(file, "          <SkyInRoughReflection>%s</SkyInRoughReflection>\n", s_skyInRoughReflection ? "true" : "false");
                         fputs("        </Param>\n", file);
                         fputs("      </Environment>\n", file);
 
@@ -396,7 +398,6 @@ void RaytracingParams::imguiWindow()
                         ImGui::RadioButton("Auto", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_AUTO);
                         ImGui::RadioButton("Sky", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_SKY);
                         ImGui::RadioButton("Color", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_COLOR);
-                        ImGui::SameLine();
 
                         ImGui::TableNextColumn();
                         ImGui::TextUnformatted("Sky Color");
@@ -409,6 +410,11 @@ void RaytracingParams::imguiWindow()
                         ImGui::TableNextColumn();
                         ImGui::SetNextItemWidth(-FLT_MIN);
                         ImGui::ColorEdit3("##Ground Color", s_groundColor.data());
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Sky in Rough Reflection");
+                        ImGui::TableNextColumn();
+                        ImGui::Checkbox("##Sky in Rough Reflection", &RaytracingParams::s_skyInRoughReflection);
 
                         ImGui::EndTable();
                     }

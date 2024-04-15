@@ -407,6 +407,7 @@ static void __cdecl implOfTraceRays(void* a1)
             *reinterpret_cast<uint8_t**>(static_cast<uint8_t*>(a1) + 20) + 0x658))->getId();
 
         traceRaysMessage.middleGray = *reinterpret_cast<float*>(0x1A572D0);
+        traceRaysMessage.skyInRoughReflection = RaytracingParams::s_skyInRoughReflection;
 
         s_messageSender.endMessage();
 

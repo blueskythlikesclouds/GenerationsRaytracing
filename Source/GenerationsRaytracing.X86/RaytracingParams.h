@@ -25,6 +25,7 @@ struct RaytracingParams
     static inline uint32_t s_envMode;
     static inline Hedgehog::Math::CVector s_skyColor;
     static inline Hedgehog::Math::CVector s_groundColor;
+    static inline bool s_skyInRoughReflection = true;
 
     static inline uint32_t s_upscaler;
     static inline uint32_t s_qualityMode;

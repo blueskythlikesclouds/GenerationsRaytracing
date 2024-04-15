@@ -41,6 +41,7 @@ struct alignas(0x10) GlobalsRT
     float skyPower;
     uint32_t adaptionLuminanceTextureId;
     float middleGray;
+    uint32_t skyInRoughReflection;
 };
 
 struct GlobalsSB
