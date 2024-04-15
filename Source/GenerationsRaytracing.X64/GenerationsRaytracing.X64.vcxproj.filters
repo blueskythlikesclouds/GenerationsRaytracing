@@ -232,7 +232,7 @@
       <Filter>Resource</Filter>
     </ClInclude>
     <ClInclude Include="GBufferData.h">
-      <Filter>Shader\Geometry</Filter>
+      <Filter>Shader\Material</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -247,9 +247,6 @@
       <Filter>Shader\Raytracing</Filter>
     </None>
     <None Include="GeometryShading.hlsli">
-      <Filter>Shader\Geometry</Filter>
-    </None>
-    <None Include="GBufferData.hlsli">
       <Filter>Shader\Geometry</Filter>
     </None>
     <None Include="GeometryDesc.hlsli">
@@ -281,6 +278,9 @@
     </None>
     <None Include="Im3dShared.hlsli">
       <Filter>Shader\Im3d</Filter>
+    </None>
+    <None Include="GBufferData.hlsli">
+      <Filter>Shader\Material</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

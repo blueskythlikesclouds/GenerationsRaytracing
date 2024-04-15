@@ -170,8 +170,8 @@ float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 
     else
     {
-        float specularIntensity = 1.0 - exp2(-gBufferData.SpecularLevel * gBufferData.SpecularFresnel);
-        reflection *= gBufferData.Specular * specularIntensity;
+        float specularIntensity = 1.0 - exp2(-gBufferData.SpecularLevel);
+        reflection *= gBufferData.Specular * specularIntensity * gBufferData.SpecularFresnel;
     }
 
     return reflection;
