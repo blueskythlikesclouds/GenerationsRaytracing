@@ -229,6 +229,47 @@ static const xxHashMap<std::array<uint8_t, 6>> s_environmentColors =
 
     // Sonic Adventure Gameplay + Emerald Coast
     { 0xf9f45fa953e30919, { 96, 143, 246 } }, // ghz200
+
+    // Sonic2006 Project Demo 3
+    { 0x5f3668bfe1dafce8, { 255, 255, 255 } }, // ghz200
+    { 0x2e925c8079b46f60, { 255, 255, 255 } }, // cpz200
+    { 0xdfcf9cd055cd471e, { 255, 255, 255 } }, // bsl
+    { 0x10a74c0e5cd7b496, { 255, 255, 255 } }, // ssz200
+    { 0x55af9e558826e513, { 255, 255, 255 } }, // pam000
+    { 0x2b8755c09b0619cf, { 255, 255, 255 } }, // sph200
+    { 0x2ecbf8a366695e36, { 65, 101, 132 } }, // bpc
+    { 0x932263442d8a97f3, { 255, 255, 255 } }, // cte200
+    { 0x862eddf1e727389c, { 255, 255, 255 } }, // ssh200
+
+    // Airship Heights
+    { 0x9abdca7d29f70486, { 0, 0, 0 } }, // ssz200
+
+    // Asteroid Coaster Act 1
+    { 0x94d6e82db39e36ef, { 255, 255, 255 } }, // pla200
+
+    // Colors Project - Tropical Restort Demo 1
+    { 0xd1a50660af057b29, { 255, 255, 255 } }, // ghz100
+    { 0xac771e884c38c535, { 255, 255, 255 } }, // ghz200
+
+    // Frozen Hill
+    { 0x5453a0e8d32ce2db, { 172, 196, 243 } }, // pam000
+    { 0x755eeb313f40126e, { 83, 125, 225 } }, // ghz200
+
+    // Gamecube Galaxy
+    { 0x1fcb3660f8af392c, { 68, 51, 140 } }, // euc200
+
+    // Planet Wisp All in One
+    { 0xe0976bdb94a9451e, { 93, 126, 150 } }, // pla200, cpz200, ssz200, sph200
+    { 0x395ffae82211446b, { 114, 136, 154 } }, // ssh200, cte200
+
+    // Tropical Resort All in One
+    { 0xfb44ee25987394ab, { 255, 255, 255 } }, // pam000
+    { 0x1cc9bc9fc2d03ab9, { 255, 255, 255 } }, // ghz200
+    { 0x6f145f3ca530a12, { 255, 255, 255 } }, // cpz200
+    { 0x188778cf716e0de8, { 255, 255, 255 } }, // ssz200, ssh200
+
+    // Wii Dragon Road Act 1
+    { 0xd189988894e5faf5, { 255, 255, 255 } }, // sph200
 };
 
 bool EnvironmentColor::get(const GlobalsPS& globalsPS, float* skyColor, float* groundColor)
