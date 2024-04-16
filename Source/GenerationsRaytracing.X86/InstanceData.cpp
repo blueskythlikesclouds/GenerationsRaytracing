@@ -186,4 +186,7 @@ void InstanceData::init()
 
     INSTALL_HOOK(InstanceInfoConstructor);
     INSTALL_HOOK(InstanceInfoDestructor);
+
+    // Make terrain visibility act the same as load/unload.
+    WRITE_JUMP(0x71A280, 0x71A220);
 }
