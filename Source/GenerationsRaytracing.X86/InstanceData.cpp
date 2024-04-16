@@ -10,13 +10,16 @@ class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoD
 {
 public:
     uint32_t m_instanceIds[_countof(s_instanceMasks)];
+    std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*>::iterator m_subsetIterator;
+    bool m_hasValidIterator;
 };
 
 static std::unordered_set<TerrainInstanceInfoDataEx*> s_instancesToCreate;
-static Mutex s_instanceCreateMutex;
+static std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*> s_instanceSubsets;
+static Mutex s_terrainInstanceMutex;
 
 static std::unordered_set<InstanceInfoEx*> s_trackedInstances;
-static Mutex s_instanceTrackMutex;
+static Mutex s_instanceMutex;
 
 HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor, 0x717350, TerrainInstanceInfoDataEx* This)
 {
@@ -25,27 +28,24 @@ HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor,
     for (auto& instanceId : This->m_instanceIds)
         instanceId = NULL;
 
+    new (&This->m_subsetIterator) decltype(This->m_subsetIterator) ();
+    This->m_hasValidIterator = false;
+
     return result;
 }
 
 HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInstanceInfoDataEx* This)
 {
-    s_instanceCreateMutex.lock();
+    LockGuard lock(s_terrainInstanceMutex);
+
     s_instancesToCreate.erase(This);
-    s_instanceCreateMutex.unlock();
+    if (This->m_hasValidIterator)
+        s_instanceSubsets.erase(This->m_subsetIterator);
 
     for (auto& instanceId : This->m_instanceIds)
         RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
 
     originalTerrainInstanceInfoDataDestructor(This);
-}
-
-static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoDataEx* This)
-{
-    LockGuard lock(s_instanceCreateMutex);
-    s_instancesToCreate.insert(This);
-
-    This->SetMadeOne();
 }
 
 HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInfoEx* This)
@@ -70,9 +70,9 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 
 HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
 {
-    s_instanceTrackMutex.lock();
+    s_instanceMutex.lock();
     s_trackedInstances.erase(This);
-    s_instanceTrackMutex.unlock();
+    s_instanceMutex.unlock();
 
     for (auto& instanceId : This->m_instanceIds)
         RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
@@ -87,7 +87,7 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
 
 void InstanceData::createPendingInstances()
 {
-    LockGuard lock(s_instanceCreateMutex);
+    LockGuard lock(s_terrainInstanceMutex);
 
     for (auto it = s_instancesToCreate.begin(); it != s_instancesToCreate.end();)
     {
@@ -141,13 +141,13 @@ void InstanceData::createPendingInstances()
 
 void InstanceData::trackInstance(InstanceInfoEx* instanceInfoEx)
 {
-    LockGuard lock(s_instanceTrackMutex);
+    LockGuard lock(s_instanceMutex);
     s_trackedInstances.emplace(instanceInfoEx);
 }
 
 void InstanceData::releaseUnusedInstances()
 {
-    LockGuard lock(s_instanceTrackMutex);
+    LockGuard lock(s_instanceMutex);
 
     for (auto it = s_trackedInstances.begin(); it != s_trackedInstances.end();)
     {
@@ -165,6 +165,110 @@ void InstanceData::releaseUnusedInstances()
     }
 }
 
+static uint32_t* __stdcall instanceSubsetMidAsmHook(uint32_t* status, TerrainInstanceInfoDataEx* terrainInstanceInfoDataEx)
+{
+    LockGuard lock(s_terrainInstanceMutex);
+
+    if (status != reinterpret_cast<uint32_t*>(0x1B2449C))
+    {
+        if (terrainInstanceInfoDataEx->m_hasValidIterator)
+            s_instanceSubsets.erase(terrainInstanceInfoDataEx->m_subsetIterator);
+        else
+            terrainInstanceInfoDataEx->m_hasValidIterator = true;
+
+        terrainInstanceInfoDataEx->m_subsetIterator = s_instanceSubsets.emplace(*(status - 1), terrainInstanceInfoDataEx);
+
+        if (*status != 1)
+            s_instancesToCreate.emplace(terrainInstanceInfoDataEx);
+    }
+    else
+    {
+        s_instancesToCreate.emplace(terrainInstanceInfoDataEx);
+    }
+
+    return status;
+}
+
+static uint32_t instanceSubsetTrampolineReturnAddr = 0x712709;
+
+static void __declspec(naked) instanceSubsetTrampoline()
+{
+    __asm
+    {
+        push [edi]
+        push eax
+        call instanceSubsetMidAsmHook
+
+        mov ebp, [esp + 0x30]
+        mov [esi + 0x30], eax
+        jmp [instanceSubsetTrampolineReturnAddr]
+    }
+}
+
+static void showTerrainInstanceSubsets(uint32_t subsetId)
+{
+    LockGuard lock(s_terrainInstanceMutex);
+
+    auto [begin, end] = s_instanceSubsets.equal_range(subsetId);
+    for (auto it = begin; it != end; ++it)
+    {
+        bool alreadyCreated = false;
+
+        for (const auto& instanceId : it->second->m_instanceIds)
+            alreadyCreated |= (instanceId != NULL);
+
+        if (!alreadyCreated)
+            s_instancesToCreate.emplace(it->second);
+    }
+}
+
+static void hideTerrainInstanceSubsets(uint32_t subsetId)
+{
+    LockGuard lock(s_terrainInstanceMutex);
+
+    auto [begin, end] = s_instanceSubsets.equal_range(subsetId);
+    for (auto it = begin; it != end; ++it)
+    {
+        for (auto& instanceId : it->second->m_instanceIds)
+            RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
+    }
+}
+
+HOOK(void, __fastcall, ProcMsgShowTerrainInstanceSubset, 0xD50870, Sonic::CTerrainManager2nd* This, void* _, uint32_t* message)
+{
+    showTerrainInstanceSubsets(*(message + 4));
+    originalProcMsgShowTerrainInstanceSubset(This, _, message);
+}
+
+HOOK(void, __fastcall, ProcMsgHideTerrainInstanceSubset, 0xD50F90, Sonic::CTerrainManager2nd* This, void* _, uint32_t* message)
+{
+    hideTerrainInstanceSubsets(*(message + 4));
+    originalProcMsgHideTerrainInstanceSubset(This, _, message);
+}
+
+HOOK(void, __fastcall, ProcMsgChangeTerrainInstanceSubsetVisibilityState, 0xD50F20, Sonic::CTerrainManager2nd* This, void* _, uint32_t* message)
+{
+    if (*(message + 5) == 1)
+        hideTerrainInstanceSubsets(*(message + 4));
+    else
+        showTerrainInstanceSubsets(*(message + 4));
+
+    originalProcMsgChangeTerrainInstanceSubsetVisibilityState(This, _, message);
+}
+
+HOOK(void, __fastcall, ProcMsgRestartStage, 0xD50E30, Sonic::CTerrainManager2nd* This, void* _, uint32_t* message)
+{
+    originalProcMsgRestartStage(This, _, message);
+
+    for (auto& [subsetId, subset] : This->m_pTerrainInitializeInfo->TerrainGroupSubsetVisibilityStates)
+    {
+        if (subset->m_CurrentState == 1)
+            hideTerrainInstanceSubsets(subsetId);
+        else
+            showTerrainInstanceSubsets(subsetId);
+    }
+}
+
 void InstanceData::init()
 {
     WRITE_MEMORY(0x7176AC, uint32_t, sizeof(TerrainInstanceInfoDataEx));
@@ -174,19 +278,15 @@ void InstanceData::init()
     INSTALL_HOOK(TerrainInstanceInfoDataConstructor);
     INSTALL_HOOK(TerrainInstanceInfoDataDestructor);
 
-    WRITE_JUMP(0x73A382, terrainInstanceInfoDataSetMadeOne);
-    WRITE_JUMP(0x738221, terrainInstanceInfoDataSetMadeOne);
-    WRITE_JUMP(0x738891, terrainInstanceInfoDataSetMadeOne);
-    WRITE_JUMP(0x738AA5, terrainInstanceInfoDataSetMadeOne);
-    WRITE_JUMP(0x736990, terrainInstanceInfoDataSetMadeOne);
-    WRITE_JUMP(0x738F6B, terrainInstanceInfoDataSetMadeOne);
-
     WRITE_MEMORY(0x701D4E, uint32_t, sizeof(InstanceInfoEx));
     WRITE_MEMORY(0x713089, uint32_t, sizeof(InstanceInfoEx));
 
     INSTALL_HOOK(InstanceInfoConstructor);
     INSTALL_HOOK(InstanceInfoDestructor);
 
-    // Make terrain visibility act the same as load/unload.
-    WRITE_JUMP(0x71A280, 0x71A220);
+    WRITE_JUMP(0x712702, instanceSubsetTrampoline);
+    INSTALL_HOOK(ProcMsgShowTerrainInstanceSubset);
+    INSTALL_HOOK(ProcMsgHideTerrainInstanceSubset);
+    INSTALL_HOOK(ProcMsgChangeTerrainInstanceSubsetVisibilityState);
+    INSTALL_HOOK(ProcMsgRestartStage);
 }
