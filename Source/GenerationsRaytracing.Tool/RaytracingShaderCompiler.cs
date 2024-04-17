@@ -728,7 +728,6 @@ public static class RaytracingShaderCompiler
                             const char* name;
                             uint32_t index; 
                             bool isOpacity;
-                            bool isReflection;
                             Hedgehog::Base::CStringSymbol nameSymbol;
                          };
                          
@@ -757,8 +756,8 @@ public static class RaytracingShaderCompiler
 
             foreach (var texture in shader.Textures)
             {
-                writer.WriteLine("\t{{ \"{0}\", {1}, {2}, {3} }},", texture.Name, texture.Index,
-                    texture.Name == "opacity" ? "true" : "false", texture.Name == "reflection" ? "true" : "false");
+                writer.WriteLine("\t{{ \"{0}\", {1}, {2} }},", texture.Name, texture.Index,
+                    texture.Name == "opacity" ? "true" : "false");
             }
 
             writer.WriteLine("};");

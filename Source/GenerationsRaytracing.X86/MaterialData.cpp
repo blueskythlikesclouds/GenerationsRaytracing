@@ -107,6 +107,19 @@ static void createMaterial(MaterialDataEx& materialDataEx)
             message.flags |= MATERIAL_FLAG_VIEW_Z_ALPHA_FADE;
     }
 
+    if (materialDataEx.m_spTexsetData != nullptr)
+    {
+        static Hedgehog::Base::CStringSymbol s_reflectionSymbol("reflection");
+        for (const auto& texture : materialDataEx.m_spTexsetData->m_TextureList)
+        {
+            if (texture->m_Type == s_reflectionSymbol && texture->m_spPictureData->m_TypeAndName == "Mirage.picture sph_st1_envmap_cube")
+            {
+                message.flags |= MATERIAL_FLAG_REFLECTION;
+                break;
+            }
+        }
+    }
+
     bool constTexCoord = true;
     message.textureNum = shader->textureNum;
 
@@ -148,9 +161,6 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                         {
                             dstTexture.id = reinterpret_cast<const Texture*>(
                                 srcTexture->m_spPictureData->m_pD3DTexture)->getId();
-
-                            if (texture.isReflection && srcTexture->m_spPictureData->m_TypeAndName == "Mirage.picture sph_st1_envmap_cube")
-                                message.flags |= MATERIAL_FLAG_REFLECTION;
                         }
                         dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
                         dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
