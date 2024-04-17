@@ -8,6 +8,7 @@
 #include "Message.h"
 #include "MessageSender.h"
 #include "ModelData.h"
+#include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
 #include "ShaderType.h"
 #include "Texture.h"
@@ -21,6 +22,7 @@ public:
     uint32_t m_instanceId;
     XXH32_hash_t m_vertexHash;
     ComPtr<VertexBuffer> m_vertexBuffer;
+    uint32_t m_frame;
 };
 
 static uint16_t s_indices[] =
@@ -44,6 +46,8 @@ static ComPtr<IndexBuffer> s_indexBuffer;
 void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel::CReelRenderer* reelRenderer)
 {
     const auto reelRendererEx = reinterpret_cast<ReelRendererEx*>(reelRenderer);
+    if (reelRendererEx->m_frame == RaytracingRendering::s_frame)
+        return;
 
     const XXH32_hash_t vertexHash = XXH32(reelRendererEx->m_aVertexData, 
         sizeof(reelRendererEx->m_aVertexData), 0);
@@ -175,6 +179,8 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         s_messageSender.endMessage();
     }
 
+    reelRendererEx->m_frame = RaytracingRendering::s_frame;
+
     const bool storePrevTransform = reelRendererEx->m_instanceId != NULL;
 
     if (reelRendererEx->m_instanceId == NULL)
@@ -206,6 +212,7 @@ HOOK(void*, __stdcall, ReelRendererConstructor, 0x102EC00, ReelRendererEx* This,
     This->m_instanceId = NULL;
     This->m_vertexHash = 0;
     new (std::addressof(This->m_vertexBuffer)) ComPtr<VertexBuffer>();
+    This->m_frame = 0;
 
     return result;
 }

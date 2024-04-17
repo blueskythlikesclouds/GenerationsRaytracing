@@ -7,6 +7,7 @@
 #include "MeshOpt.h"
 #include "MessageSender.h"
 #include "ModelData.h"
+#include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
 #include "ShaderType.h"
 #include "Texture.h"
@@ -30,11 +31,15 @@ public:
     uint32_t m_instanceId;
     uint32_t m_vertexBufferId;
     ComPtr<IndexBuffer> m_indexBuffer;
+    uint32_t m_frame;
 };
 
 void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRenderable* ropeRenderable)
 {
     const auto ropeRenderableEx = reinterpret_cast<RopeRenderableEx*>(ropeRenderable);
+    if (ropeRenderableEx->m_frame == RaytracingRendering::s_frame)
+        return;
+
     if (!ropeRenderableEx->m_Enabled || ropeRenderableEx->m_VertexNum == 0 || ropeRenderableEx->m_pD3DVertexBuffer == nullptr)
     {
         RaytracingUtil::releaseResource(RaytracingResourceType::Instance, ropeRenderableEx->m_instanceId);
@@ -128,6 +133,8 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
         s_messageSender.endMessage();
     }
 
+    ropeRenderableEx->m_frame = RaytracingRendering::s_frame;
+
     if (ropeRenderableEx->m_instanceId == NULL)
         ropeRenderableEx->m_instanceId = InstanceData::s_idAllocator.allocate();
 
@@ -157,6 +164,7 @@ void __fastcall ropeRenderableConstructor(RopeRenderableEx* This)
     This->m_instanceId = NULL;
     This->m_vertexBufferId = 0;
     new (std::addressof(This->m_indexBuffer)) ComPtr<IndexBuffer>();
+    This->m_frame = 0;
 }
 
 HOOK(void*, __fastcall, RopeRenderableDestructor, 0x5007A0, RopeRenderableEx* This, void* _, uint8_t flags)

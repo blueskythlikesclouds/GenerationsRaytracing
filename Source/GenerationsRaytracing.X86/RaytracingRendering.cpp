@@ -21,7 +21,10 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
 
     if (auto element = dynamic_cast<Hedgehog::Mirage::CSingleElement*>(renderable))
     {
-        if (element->m_spModel != nullptr && element->m_spModel->IsMadeOne() &&
+        const auto instanceInfoEx = reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get());
+
+        if (instanceInfoEx->m_hashFrame != RaytracingRendering::s_frame && 
+            element->m_spModel != nullptr && element->m_spModel->IsMadeOne() &&
             (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
         {
             auto modelDataEx = reinterpret_cast<ModelDataEx*>(element->m_spModel.get());
@@ -30,8 +33,6 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
 
             if (modelDataEx->IsMadeAll())
             {
-                const auto instanceInfoEx = reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get());
-
                 ModelData::processEyeMaterials(
                     *modelDataEx,
                     *instanceInfoEx,
@@ -273,9 +274,17 @@ static void __cdecl implOfTraceRays(void* a1)
         MaterialData::createPendingMaterials();
         InstanceData::createPendingInstances(renderingDevice);
 
-        const Hedgehog::Base::CStringSymbol symbols[] = { "Object", "Object_Overlay", "Player" };
+        static Hedgehog::Base::CStringSymbol s_renderCategories[] = 
+        {
+            "Object",
+            "Object_PreZPass",
+            "Object_ZPass",
+            "Object_OverlayZPass",
+            "Object_Overlay",
+            "Player"
+        };
 
-        for (const auto& symbol : symbols)
+        for (const auto& symbol : s_renderCategories)
         {
             const auto categoryFindResult = renderScene->m_BundleMap.find(symbol);
             if (categoryFindResult != renderScene->m_BundleMap.end())
