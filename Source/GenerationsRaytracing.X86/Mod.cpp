@@ -64,6 +64,11 @@ extern "C" void __declspec(dllexport) FilterMod(FilterModArguments_t& args)
     args.handled = strcmp(args.mod->Name, "Direct3D 9 Ex") == 0 || strcmp(args.mod->ID, "bsthlc.generationsd3d11") == 0;
 }
 
+extern "C" void __declspec(dllexport) PreInit()
+{
+    ToneMap::preInit();
+}
+
 extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
 {
     Configuration::init();
