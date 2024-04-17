@@ -23,6 +23,7 @@ public:
     XXH32_hash_t m_modelHash;
     uint32_t m_visibilityBits;
     uint32_t m_hashFrame;
+    float m_chrPlayableMenuParam;
 };
 
 struct InstanceData

@@ -525,7 +525,7 @@ static void processTexpatternMotion(MaterialMap& materialMap, const Hedgehog::Mo
     }
 }
 
-void ModelData::processSingleElementEffect(MaterialMap& materialMap, Hedgehog::Mirage::CSingleElementEffect* singleElementEffect)
+void ModelData::processSingleElementEffect(InstanceInfoEx& instanceInfoEx, MaterialMap& materialMap, Hedgehog::Mirage::CSingleElementEffect* singleElementEffect)
 {
     if (const auto singleElementEffectMotionAll = dynamic_cast<Hedgehog::Motion::CSingleElementEffectMotionAll*>(singleElementEffect))
     {
@@ -537,6 +537,12 @@ void ModelData::processSingleElementEffect(MaterialMap& materialMap, Hedgehog::M
 
         for (const auto& texpatternMotion : singleElementEffectMotionAll->m_TexpatternMotionList)
             processTexpatternMotion(materialMap, texpatternMotion);
+
+        if (const auto npcSingleElementEffectMotionAll = dynamic_cast<Sonic::CNPCSingleElementEffectMotionAll*>(singleElementEffect))
+        {
+            if (npcSingleElementEffectMotionAll->m_EnableChrPlayableMenuParam)
+                instanceInfoEx.m_chrPlayableMenuParam = npcSingleElementEffectMotionAll->m_ChrPlayableMenuParam.x();
+        }
 
         s_tmpMaterialCnt.clear();
     }
@@ -850,6 +856,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             message.bottomLevelAccelStructId = bottomLevelAccelStructId;
             message.isMirrored = false;
             message.instanceMask = s_instanceMasks[i].instanceMask;
+            message.chrPlayableMenuParam = instanceInfoEx.m_chrPlayableMenuParam;
 
             auto materialIds = reinterpret_cast<uint32_t*>(message.data);
 

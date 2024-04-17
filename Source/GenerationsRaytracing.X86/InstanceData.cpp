@@ -59,6 +59,7 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     This->m_modelHash = 0;
     This->m_visibilityBits = 0;
     This->m_hashFrame = 0;
+    This->m_chrPlayableMenuParam = 10000.0f;
 
     return result;
 }
@@ -120,6 +121,7 @@ void InstanceData::createPendingInstances(Hedgehog::Mirage::CRenderingDevice* re
                         message.storePrevTransform = false;
                         message.isMirrored = isMirrored;
                         message.instanceMask = s_instanceMasks[i].instanceMask;
+                        message.chrPlayableMenuParam = 10000.0f;
 
                         s_messageSender.endMessage();
                     }

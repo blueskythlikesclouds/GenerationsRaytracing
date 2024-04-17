@@ -146,7 +146,7 @@ float ConvertSpecularGlossToRoughness(float specularGloss)
     return 1.0 - pow(specularGloss, 0.2) * 0.25;
 }
 
-GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
+GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType, InstanceDesc instanceDesc)
 {
     GBufferData gBufferData = (GBufferData) 0;
 
@@ -1147,6 +1147,11 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
 
     if (material.Flags & MATERIAL_FLAG_REFLECTION)
         gBufferData.Flags |= GBUFFER_FLAG_IS_MIRROR_REFLECTION;
+
+    float playableParam = saturate(64.0 * (ComputeNdcPosition(vertex.Position, g_MtxView, g_MtxProjection).y - instanceDesc.PlayableParam));
+    playableParam *= saturate((instanceDesc.ChrPlayableMenuParam - vertex.Position.y + 0.05) * 10);
+    gBufferData.Diffuse = lerp(1.0, gBufferData.Diffuse, playableParam);
+    gBufferData.Emission *= playableParam;
 
     if (material.Flags & MATERIAL_FLAG_VIEW_Z_ALPHA_FADE)
         gBufferData.Alpha *= 1.0 - saturate((RayTCurrent() - g_ViewZAlphaFade.y) * g_ViewZAlphaFade.x);

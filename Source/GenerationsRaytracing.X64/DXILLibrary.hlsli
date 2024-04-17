@@ -22,7 +22,7 @@ void PrimaryAnyHit(uint shaderType,
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
 
     if (gBufferData.Alpha < 0.5)
         IgnoreHit();
@@ -36,12 +36,8 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
-
-    float playableParam = saturate(64.0 * ((DispatchRaysIndex().y + 0.5) / DispatchRaysDimensions().y - instanceDesc.PlayableParam));
-    gBufferData.Diffuse = lerp(1.0, gBufferData.Diffuse, playableParam);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
     gBufferData.Alpha = 1.0;
-
     StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
 
     g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
@@ -82,7 +78,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
 
     if (gBufferData.Alpha > 0.0)
     {
@@ -318,7 +314,7 @@ void SecondaryClosestHit(uint shaderType,
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_MIPMAP_LOD);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
 
     payload.Color = gBufferData.Emission;
     payload.Diffuse = gBufferData.Diffuse;

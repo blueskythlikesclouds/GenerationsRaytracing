@@ -199,6 +199,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
     message.storePrevTransform = storePrevTransform;
     message.isMirrored = false;
     message.instanceMask = INSTANCE_MASK_OPAQUE;
+    message.chrPlayableMenuParam = 10000.0f;
 
     s_messageSender.endMessage();
 }

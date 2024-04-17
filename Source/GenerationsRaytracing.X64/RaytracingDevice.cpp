@@ -820,6 +820,7 @@ void RaytracingDevice::procMsgCreateInstance()
         message.storePrevTransform ? instanceDesc.Transform : message.transform, sizeof(message.transform));
 
     instanceDescEx.playableParam = -10001.0f;
+    instanceDescEx.chrPlayableMenuParam = message.chrPlayableMenuParam;
 
     memcpy(instanceDesc.Transform, message.transform, sizeof(message.transform));
 

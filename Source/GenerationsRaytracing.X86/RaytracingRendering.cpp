@@ -38,11 +38,14 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                     *instanceInfoEx,
                     element->m_MaterialMap);
 
+                instanceInfoEx->m_chrPlayableMenuParam = 10000.0f;
+
                 if (RaytracingParams::s_enable)
                 {
                     if (element->m_spSingleElementEffect != nullptr)
                     {
                         ModelData::processSingleElementEffect(
+                            *instanceInfoEx,
                             element->m_MaterialMap,
                             element->m_spSingleElementEffect.get());
                     }

@@ -354,6 +354,7 @@ struct MsgCreateInstance
     bool storePrevTransform;
     bool isMirrored;
     uint8_t instanceMask;
+    float chrPlayableMenuParam;
     uint32_t dataSize;
     uint8_t data[1u];
 };

@@ -33,7 +33,7 @@ struct InstanceDesc
 {
     row_major float3x4 PrevTransform;
     float PlayableParam;
-    uint Padding0;
+    float ChrPlayableMenuParam;
     uint Padding1;
     uint Padding2;
 };
