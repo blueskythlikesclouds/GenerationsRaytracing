@@ -77,8 +77,23 @@ static void save()
         stream << std::setw(4) << hashesObj;
 }
 
+HOOK(void, __cdecl, LightDataMake, 0x740920, Hedgehog::Mirage::CLightData* lightData, const uint8_t* data)
+{
+    // Ignore corrupted omni lights saved by old GLvl
+    if (*(data + 3) == 1 && *(data - 13) == 28)
+    {
+        lightData->SetMadeOne();
+    }
+    else
+    {
+        originalLightDataMake(lightData, data);
+    }
+}
+
 void LightData::init(ModInfo_t* modInfo)
 {
+    INSTALL_HOOK(LightDataMake);
+
     s_saveFilePath = modInfo->CurrentMod->Path;
     s_saveFilePath.erase(s_saveFilePath.find_last_of("\\/") + 1);
     s_saveFilePath += "lights.json";
