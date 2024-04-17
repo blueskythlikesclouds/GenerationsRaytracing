@@ -3,16 +3,9 @@
 #include "ModelData.h"
 #include "Message.h"
 #include "MessageSender.h"
+#include "PlayableParam.h"
 #include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
-
-class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoData
-{
-public:
-    uint32_t m_instanceIds[_countof(s_instanceMasks)];
-    std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*>::iterator m_subsetIterator;
-    bool m_hasValidIterator;
-};
 
 static std::unordered_set<TerrainInstanceInfoDataEx*> s_instancesToCreate;
 static std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*> s_instanceSubsets;
@@ -41,6 +34,8 @@ HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInsta
     s_instancesToCreate.erase(This);
     if (This->m_hasValidIterator)
         s_instanceSubsets.erase(This->m_subsetIterator);
+
+    PlayableParam::removeInstance(This);
 
     for (auto& instanceId : This->m_instanceIds)
         RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
@@ -85,7 +80,7 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     originalInstanceInfoDestructor(This);
 }
 
-void InstanceData::createPendingInstances()
+void InstanceData::createPendingInstances(Hedgehog::Mirage::CRenderingDevice* renderingDevice)
 {
     LockGuard lock(s_terrainInstanceMutex);
 
@@ -137,6 +132,8 @@ void InstanceData::createPendingInstances()
             ++it;
         }
     }
+
+    PlayableParam::updatePlayableParams(renderingDevice);
 }
 
 void InstanceData::trackInstance(InstanceInfoEx* instanceInfoEx)
@@ -169,21 +166,31 @@ static uint32_t* __stdcall instanceSubsetMidAsmHook(uint32_t* status, TerrainIns
 {
     LockGuard lock(s_terrainInstanceMutex);
 
-    if (status != reinterpret_cast<uint32_t*>(0x1B2449C))
+    bool alreadyCreated = false;
+
+    for (const auto& instanceId : terrainInstanceInfoDataEx->m_instanceIds)
+        alreadyCreated |= (instanceId != NULL);
+
+    if (!alreadyCreated)
     {
-        if (terrainInstanceInfoDataEx->m_hasValidIterator)
-            s_instanceSubsets.erase(terrainInstanceInfoDataEx->m_subsetIterator);
+        if (status != reinterpret_cast<uint32_t*>(0x1B2449C))
+        {
+            if (terrainInstanceInfoDataEx->m_hasValidIterator)
+                s_instanceSubsets.erase(terrainInstanceInfoDataEx->m_subsetIterator);
+            else
+                terrainInstanceInfoDataEx->m_hasValidIterator = true;
+
+            terrainInstanceInfoDataEx->m_subsetIterator = s_instanceSubsets.emplace(*(status - 1), terrainInstanceInfoDataEx);
+
+            if (*status != 1)
+                s_instancesToCreate.emplace(terrainInstanceInfoDataEx);
+        }
         else
-            terrainInstanceInfoDataEx->m_hasValidIterator = true;
-
-        terrainInstanceInfoDataEx->m_subsetIterator = s_instanceSubsets.emplace(*(status - 1), terrainInstanceInfoDataEx);
-
-        if (*status != 1)
+        {
             s_instancesToCreate.emplace(terrainInstanceInfoDataEx);
-    }
-    else
-    {
-        s_instancesToCreate.emplace(terrainInstanceInfoDataEx);
+        }
+
+        PlayableParam::trackInstance(terrainInstanceInfoDataEx);
     }
 
     return status;

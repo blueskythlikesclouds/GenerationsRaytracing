@@ -117,6 +117,7 @@
     <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="ModelReplacer.cpp" />
     <ClCompile Include="MotionData.cpp" />
+    <ClCompile Include="PlayableParam.cpp" />
     <ClCompile Include="QuickBoot.cpp" />
     <ClCompile Include="RaytracingUtil.cpp" />
     <ClCompile Include="ModelData.cpp" />
@@ -168,6 +169,7 @@
     <ClInclude Include="MeshOpt.h" />
     <ClInclude Include="ModelReplacer.h" />
     <ClInclude Include="MotionData.h" />
+    <ClInclude Include="PlayableParam.h" />
     <ClInclude Include="QuickBoot.h" />
     <ClInclude Include="RaytracingShader.h" />
     <ClInclude Include="RaytracingStages.h" />

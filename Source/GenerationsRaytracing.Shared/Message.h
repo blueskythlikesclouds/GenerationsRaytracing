@@ -558,4 +558,18 @@ struct MsgDrawIm3d
     uint8_t data[1u];
 };
 
+struct MsgUpdatePlayableParam
+{
+    MSG_DEFINE_MESSAGE(MsgDrawIm3d);
+
+    struct InstanceData
+    {
+        uint32_t instanceId;
+        float playableParam;
+    };
+
+    uint32_t dataSize;
+    uint8_t data[1u];
+};
+
 #pragma pack(pop)

@@ -32,6 +32,10 @@ struct GeometryDesc
 struct InstanceDesc
 {
     row_major float3x4 PrevTransform;
+    float PlayableParam;
+    uint Padding0;
+    uint Padding1;
+    uint Padding2;
 };
 
 #define VERTEX_FLAG_NONE                  (0 << 0)

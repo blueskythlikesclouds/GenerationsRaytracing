@@ -271,7 +271,7 @@ static void __cdecl implOfTraceRays(void* a1)
         }
 
         MaterialData::createPendingMaterials();
-        InstanceData::createPendingInstances();
+        InstanceData::createPendingInstances(renderingDevice);
 
         const Hedgehog::Base::CStringSymbol symbols[] = { "Object", "Object_Overlay", "Player" };
 

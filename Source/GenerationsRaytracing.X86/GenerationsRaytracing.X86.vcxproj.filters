@@ -132,6 +132,9 @@
     <ClCompile Include="LightData.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
+    <ClCompile Include="PlayableParam.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -271,6 +274,9 @@
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="LightData.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayableParam.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>

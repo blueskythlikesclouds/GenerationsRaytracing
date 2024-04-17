@@ -4,6 +4,14 @@
 #include "InstanceMask.h"
 #include "VertexBuffer.h"
 
+class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoData
+{
+public:
+    uint32_t m_instanceIds[_countof(s_instanceMasks)];
+    std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*>::iterator m_subsetIterator;
+    bool m_hasValidIterator;
+};
+
 class InstanceInfoEx : public Hedgehog::Mirage::CInstanceInfo
 {
 public:
@@ -21,7 +29,7 @@ struct InstanceData
 {
     static inline FreeListAllocator s_idAllocator;
 
-    static void createPendingInstances();
+    static void createPendingInstances(Hedgehog::Mirage::CRenderingDevice* renderingDevice);
 
     static void trackInstance(InstanceInfoEx* instanceInfoEx);
     static void releaseUnusedInstances();

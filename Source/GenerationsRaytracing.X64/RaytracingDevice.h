@@ -232,6 +232,7 @@ protected:
     void procMsgComputeSmoothNormal();
     void procMsgDispatchUpscaler();
     void procMsgDrawIm3d();
+    void procMsgUpdatePlayableParam();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

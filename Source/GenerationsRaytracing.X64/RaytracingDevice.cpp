@@ -814,9 +814,12 @@ void RaytracingDevice::procMsgCreateInstance()
         m_instanceDescsEx.resize(message.instanceId + 1);
 
     auto& instanceDesc = m_instanceDescs[message.instanceId];
+    auto& instanceDescEx = m_instanceDescsEx[message.instanceId];
 
-    memcpy(m_instanceDescsEx[message.instanceId].prevTransform, 
+    memcpy(instanceDescEx.prevTransform,
         message.storePrevTransform ? instanceDesc.Transform : message.transform, sizeof(message.transform));
+
+    instanceDescEx.playableParam = -10001.0f;
 
     memcpy(instanceDesc.Transform, message.transform, sizeof(message.transform));
 
@@ -1711,6 +1714,25 @@ void RaytracingDevice::procMsgDrawIm3d()
         DIRTY_FLAG_VIEWPORT;
 }
 
+void RaytracingDevice::procMsgUpdatePlayableParam()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgUpdatePlayableParam>();
+
+    auto instanceData = reinterpret_cast<const MsgUpdatePlayableParam::InstanceData*>(message.data);
+    for (size_t i = 0; i < message.dataSize / sizeof(MsgUpdatePlayableParam::InstanceData); i++)
+    {
+        if (instanceData->instanceId != NULL)
+        {
+            if (m_instanceDescsEx.size() <= instanceData->instanceId)
+                m_instanceDescsEx.resize(instanceData->instanceId + 1);
+
+            m_instanceDescsEx[instanceData->instanceId].playableParam = instanceData->playableParam;
+        }
+
+        ++instanceData;
+    }
+}
+
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -1727,6 +1749,7 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgComputeSmoothNormal::s_id: procMsgComputeSmoothNormal(); break;
     case MsgDispatchUpscaler::s_id: procMsgDispatchUpscaler(); break;
     case MsgDrawIm3d::s_id: procMsgDrawIm3d(); break;
+    case MsgUpdatePlayableParam::s_id: procMsgUpdatePlayableParam(); break;
     default: return false;
     }
 
