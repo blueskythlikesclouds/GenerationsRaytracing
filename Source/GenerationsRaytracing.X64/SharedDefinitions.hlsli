@@ -69,3 +69,21 @@ float3 TangentToWorld(float3 normal, float3 value)
     float3 tangent = cross(binormal, normal);
     return NormalizeSafe(value.x * tangent + value.y * binormal + value.z * normal);
 }
+
+float2 ComputePixelPosition(float3 position, float4x4 view, float4x4 projection)
+{
+    float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);
+    return (projectedPosition.xy / projectedPosition.w * float2(0.5, -0.5) + 0.5) * DispatchRaysDimensions().xy;
+}
+
+float ComputeDepth(float3 position, float4x4 view, float4x4 projection)
+{
+    float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);
+    return projectedPosition.z / projectedPosition.w;
+}
+
+float LinearizeDepth(float depth, float4x4 invProjection)
+{
+    float4 position = mul(float4(0, 0, depth, 1), invProjection);
+    return position.z / position.w;
+}

@@ -1091,7 +1091,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
                 {
                     float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
-                    gBufferData.Alpha *= saturate(viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]);
+                    gBufferData.Alpha *= saturate(viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection));
                 }
 
                 gBufferData.RefractionOffset *= 0.05;
@@ -1106,7 +1106,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
                 {
                     float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
-                    gBufferData.Alpha *= saturate(viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]);
+                    gBufferData.Alpha *= saturate(viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection));
                 }
 
                 gBufferData.RefractionOffset *= 0.05;
@@ -1118,11 +1118,11 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType)
                 CreateWaterGBufferData(vertex, material, gBufferData);
                 gBufferData.Flags |= GBUFFER_FLAG_REFRACTION_OPACITY;
                 gBufferData.Refraction = gBufferData.Alpha;
-
+            
                 if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
                 {
                     float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
-                    gBufferData.Alpha = saturate((viewPosition.z + g_LinearDepth[DispatchRaysIndex().xy]) / material.WaterParam.w);
+                    gBufferData.Alpha = saturate((viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection)) / material.WaterParam.w);
                 }
 
                 gBufferData.RefractionOffset *= 0.05 + material.WaterParam.z;

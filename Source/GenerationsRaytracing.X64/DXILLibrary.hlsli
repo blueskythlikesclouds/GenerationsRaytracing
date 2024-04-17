@@ -10,6 +10,7 @@ struct [raypayload] PrimaryRayPayload
 {
     float3 dDdx : read(closesthit) : write(caller);
     float3 dDdy : read(closesthit) : write(caller);
+    float2 MotionVectors : read(caller) : write(closesthit, miss);
     float T : read(caller) : write(closesthit, miss);
     uint RayGenerationFlags : read(caller) : write(closesthit, miss);
 };
@@ -45,11 +46,9 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
 
     g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
 
-    g_MotionVectors[DispatchRaysIndex().xy] =
+    payload.MotionVectors =
         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
-
-    g_LinearDepth[DispatchRaysIndex().xy] = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
 
     payload.T = RayTCurrent();
     
@@ -70,6 +69,8 @@ struct [raypayload] PrimaryTransparentRayPayload
 {
     float3 dDdx : read(anyhit) : write(caller);
     float3 dDdy : read(anyhit) : write(caller);
+    float2 MotionVectors : read(caller, anyhit) : write(caller, anyhit);
+    float T : read(caller, anyhit) : write(caller, anyhit);
     uint LayerIndex : read(caller, anyhit) : write(caller, anyhit);
     uint RayGenerationFlags : read(caller, anyhit) : write(caller, anyhit);
 };
@@ -86,6 +87,15 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     if (gBufferData.Alpha > 0.0)
     {
         StoreGBufferData(uint3(DispatchRaysIndex().xy, payload.LayerIndex), gBufferData);
+
+        if (!(gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_IS_ADDITIVE)) && gBufferData.Alpha > 0.5 && RayTCurrent() < payload.T)
+        {
+            payload.MotionVectors =
+                ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
+                ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
+            
+            payload.T = RayTCurrent();
+        }
 
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
             payload.RayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_SHADOW - 1) + payload.LayerIndex);

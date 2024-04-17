@@ -101,9 +101,6 @@
     <Filter Include="Shader\Raytracing">
       <UniqueIdentifier>{3a3de84e-593a-41bc-9944-4a1f31c06e1e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shader\Geometry">
-      <UniqueIdentifier>{f0297654-988c-46a5-bbcd-8343e3d4de16}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shader\FVF">
       <UniqueIdentifier>{11f87704-4e40-4ed1-8c98-55e597968786}</UniqueIdentifier>
     </Filter>
@@ -121,6 +118,9 @@
     </Filter>
     <Filter Include="Shader\Im3d">
       <UniqueIdentifier>{30c07edf-848c-4460-a563-e7693c318d54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Geometry">
+      <UniqueIdentifier>{f0297654-988c-46a5-bbcd-8343e3d4de16}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

@@ -51,6 +51,8 @@ void PrimaryRayGeneration()
     PrimaryTransparentRayPayload payload1;
     payload1.dDdx = dDdx;
     payload1.dDdy = dDdy;
+    payload1.MotionVectors = payload.MotionVectors;
+    payload1.T = payload.T;
     payload1.LayerIndex = 1;
     payload1.RayGenerationFlags = payload.RayGenerationFlags;
 
@@ -65,6 +67,8 @@ void PrimaryRayGeneration()
         payload1);
 
     g_LayerNum[DispatchRaysIndex().xy] = payload1.LayerIndex;
+    g_MotionVectors[DispatchRaysIndex().xy] = payload1.MotionVectors;
+    g_LinearDepth[DispatchRaysIndex().xy] = payload1.T == INF ? g_CameraNearFarAspect.y : -mul(float4(ray.Origin + ray.Direction * payload1.T, 1.0), g_MtxView).z;
 
     [unroll]
     for (uint i = 0; i < RAY_GENERATION_NUM - 1; i++)
@@ -119,11 +123,9 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
 
     g_Depth[DispatchRaysIndex().xy] = 1.0;
 
-    g_MotionVectors[DispatchRaysIndex().xy] =
+    payload.MotionVectors =
         ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
-
-    g_LinearDepth[DispatchRaysIndex().xy] = g_CameraNearFarAspect.y;
 
     payload.T = INF;
     payload.RayGenerationFlags = 0;
