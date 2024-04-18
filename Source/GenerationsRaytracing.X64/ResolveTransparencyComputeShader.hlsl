@@ -77,13 +77,11 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                 else 
                     shadingParams.Refraction = colorComposite.rgb;
 
-                if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_OPACITY)
+                if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_ADD)
                 {
-                    layers[i].DiffuseAlbedo *= gBufferData.Refraction;
-                    layers[i].SpecularAlbedo *= gBufferData.Refraction;
+                    layers[i].DiffuseAlbedo += ComputeRefraction(gBufferData, diffuseAlbedoComposite);
+                    layers[i].SpecularAlbedo += ComputeRefraction(gBufferData, specularAlbedoComposite);
                 }
-                layers[i].DiffuseAlbedo += ComputeRefraction(gBufferData, diffuseAlbedoComposite);
-                layers[i].SpecularAlbedo += ComputeRefraction(gBufferData, specularAlbedoComposite);
             }
 
             if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
