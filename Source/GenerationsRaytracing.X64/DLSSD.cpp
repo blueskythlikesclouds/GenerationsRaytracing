@@ -36,12 +36,12 @@ void DLSSD::init(const InitArgs& args)
     const uint32_t widthAlignedDown = m_width & ~31;
     const uint32_t heightAlignedDown = m_height & ~31;
 
-    if (widthAlignedUp > args.width || (args.width - widthAlignedDown) < (widthAlignedUp - args.width))
+    if (widthAlignedUp > args.width || (m_width - widthAlignedDown) < (widthAlignedUp - m_width))
         m_width = widthAlignedDown;
     else
         m_width = widthAlignedUp;
 
-    if (heightAlignedUp > args.height || (args.height - heightAlignedDown) < (heightAlignedUp - args.height))
+    if (heightAlignedUp > args.height || (m_height - heightAlignedDown) < (heightAlignedUp - m_height))
         m_height = heightAlignedDown;
     else
         m_height = heightAlignedUp;
