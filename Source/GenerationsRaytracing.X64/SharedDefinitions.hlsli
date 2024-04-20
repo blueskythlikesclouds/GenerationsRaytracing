@@ -4,35 +4,30 @@
 #define FLT_MAX asfloat(0x7f7fffff)
 #define INF asfloat(0x7f800000)
 
-float4 GetBlueNoise(uint2 index)
-{
-    Texture2DArray texture = ResourceDescriptorHeap[g_BlueNoiseTextureId];
-    return texture.Load(int4((index + g_BlueNoiseOffset.xy) % 64, g_BlueNoiseOffset.z, 0));
-}
-
 float GetExposure()
 {
     Texture2D texture = ResourceDescriptorHeap[g_AdaptionLuminanceTextureId];
     return g_MiddleGray / (texture.Load(0).x + 0.001);
 }
 
-uint InitRand(uint val0, uint val1, uint backoff = 16)
+uint InitRandom(uint2 index)
 {
-    uint v0 = val0, v1 = val1, s0 = 0;
-
-    for (uint n = 0; n < backoff; n++)
-    {
-        s0 += 0x9e3779b9;
-        v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
-        v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + s0) ^ ((v0 >> 5) + 0x7e95761e);
-    }
-    return v0;
+    return g_RandomSeed + index.y * g_InternalResolution.x + index.x;
 }
 
-float NextRand(inout uint s)
+uint NextRandomUint(inout uint x)
 {
-    s = (1664525u * s + 1013904223u);
-    return float(s & 0x00FFFFFF) / float(0x01000000);
+    x ^= x >> 16;
+    x *= 0x7feb352dU;
+    x ^= x >> 15;
+    x *= 0x846ca68bU;
+    x ^= x >> 16;
+    return x;
+}
+
+float NextRandomFloat(inout uint x)
+{
+    return 2.0 - asfloat((NextRandomUint(x) >> 9) | 0x3F800000);
 }
 
 float3 GetCosWeightedSample(float2 random)

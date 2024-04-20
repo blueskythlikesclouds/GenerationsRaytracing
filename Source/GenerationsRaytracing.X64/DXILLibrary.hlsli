@@ -196,7 +196,7 @@ struct TracePathArgs
 {
     float3 Position;
     float3 Direction;
-    float4 Random;
+    uint Random;
     uint MissShaderIndex;
     uint2 DispatchRaysIndex;
     bool StoreHitDistance;
@@ -257,11 +257,11 @@ float3 TracePath(TracePathArgs args)
             }
 
             color += diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, i == 0 ? args.Random.xy : args.Random.zw, i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
+               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(args.Random), NextRandomFloat(args.Random)), i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
 
             if (g_LocalLightCount > 0)
             {
-                uint sample = min(floor((i == 0 ? args.Random.x : args.Random.z) * g_LocalLightCount), g_LocalLightCount - 1);
+                uint sample = NextRandomUint(args.Random) % g_LocalLightCount;
                 LocalLight localLight = g_LocalLights[sample];
 
                 float3 lightDirection = localLight.Position - payload.Position;
@@ -274,7 +274,7 @@ float3 TracePath(TracePathArgs args)
                     ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
 
                 if (any(localLighting != 0))
-                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, i == 0 ? args.Random.xy : args.Random.zw, 1.0 / localLight.OutRange, distance);
+                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, float2(NextRandomFloat(args.Random), NextRandomFloat(args.Random)), 1.0 / localLight.OutRange, distance);
 
                 color += localLighting;
             }
@@ -300,7 +300,7 @@ float3 TracePath(TracePathArgs args)
             break;
 
         args.Position = payload.Position;
-        args.Direction = TangentToWorld(normal, GetCosWeightedSample(args.Random.zw));
+        args.Direction = TangentToWorld(normal, GetCosWeightedSample(float2(NextRandomFloat(args.Random), NextRandomFloat(args.Random))));
     }
 
     return (float3) halfRadiance;

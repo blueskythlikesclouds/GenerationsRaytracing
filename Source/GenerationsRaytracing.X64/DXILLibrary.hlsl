@@ -145,20 +145,18 @@ void ShadowRayGeneration()
         DispatchRaysIndex().x) * sizeof(uint)));
 
     GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
+    uint randSeed = InitRandom(dispatchRaysIndex.xy);
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
     {
         g_Shadow[dispatchRaysIndex] = TraceShadow(gBufferData.Position,
-            -mrgGlobalLight_Direction.xyz, GetBlueNoise(dispatchRaysIndex.xy).xy, RAY_FLAG_NONE, 0);
+            -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), RAY_FLAG_NONE, 0);
     }
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT) && dispatchRaysIndex.z == 0 && g_LocalLightCount > 0)
     {
         float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
-    
-        uint randSeed = InitRand(g_CurrentFrame,
-            dispatchRaysIndex.y * g_InternalResolution.x + dispatchRaysIndex.x);
-    
+        
         // Generate initial candidates
         Reservoir reservoir = (Reservoir) 0;
         uint localLightCount = min(32, g_LocalLightCount);
@@ -166,9 +164,9 @@ void ShadowRayGeneration()
         [loop]
         for (uint j = 0; j < localLightCount; j++)
         {
-            uint sample = min(floor(NextRand(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
+            uint sample = NextRandomUint(randSeed) % g_LocalLightCount;
             float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
-            UpdateReservoir(reservoir, sample, weight, 1, NextRand(randSeed));
+            UpdateReservoir(reservoir, sample, weight, 1, NextRandomFloat(randSeed));
         }
     
         ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
@@ -186,10 +184,10 @@ void ShadowRayGeneration()
             Reservoir temporalReservoir = (Reservoir) 0;
             
             UpdateReservoir(temporalReservoir, reservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
-                g_LocalLights[reservoir.Y]) * reservoir.W * reservoir.M, reservoir.M, NextRand(randSeed));
+                g_LocalLights[reservoir.Y]) * reservoir.W * reservoir.M, reservoir.M, NextRandomFloat(randSeed));
             
             UpdateReservoir(temporalReservoir, prevReservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
-                g_LocalLights[prevReservoir.Y]) * prevReservoir.W * prevReservoir.M, prevReservoir.M, NextRand(randSeed));
+                g_LocalLights[prevReservoir.Y]) * prevReservoir.W * prevReservoir.M, prevReservoir.M, NextRandomFloat(randSeed));
             
             ComputeReservoirWeight(temporalReservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[temporalReservoir.Y]));
             
@@ -211,8 +209,8 @@ void GIRayGeneration()
 
     TracePathArgs args;
     args.Position = gBufferData.Position;
-    args.Random = GetBlueNoise(dispatchRaysIndex.xy);
-    args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(args.Random.xy));
+    args.Random = InitRandom(dispatchRaysIndex.xy);
+    args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(args.Random), NextRandomFloat(args.Random))));
     args.MissShaderIndex = MISS_GI;
     args.DispatchRaysIndex = dispatchRaysIndex.xy;
     args.StoreHitDistance = false;
@@ -252,7 +250,7 @@ void ReflectionRayGeneration()
 
     TracePathArgs args;
     args.Position = gBufferData.Position;
-    args.Random = GetBlueNoise(dispatchRaysIndex.xy);
+    args.Random = InitRandom(dispatchRaysIndex.xy);
     args.DispatchRaysIndex = dispatchRaysIndex.xy;
     args.StoreHitDistance = dispatchRaysIndex.z == 0;
     args.ApplyPower = false;
@@ -267,7 +265,7 @@ void ReflectionRayGeneration()
     }
     else
     {
-        float4 sampleDirection = GetPowerCosWeightedSample(args.Random.xy, gBufferData.SpecularGloss);
+        float4 sampleDirection = GetPowerCosWeightedSample(float2(NextRandomFloat(args.Random), NextRandomFloat(args.Random)), gBufferData.SpecularGloss);
         float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
     
         args.Direction = reflect(-eyeDirection, halfwayDirection);

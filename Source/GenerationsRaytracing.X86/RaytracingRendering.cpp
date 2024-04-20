@@ -374,14 +374,8 @@ static void __cdecl implOfTraceRays(void* a1)
 
         traceRaysMessage.width = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 4);
         traceRaysMessage.height = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 6);
-
-        traceRaysMessage.blueNoiseTextureId = reinterpret_cast<const Texture*>(
-            Hedgehog::Mirage::CMirageDatabaseWrapper(Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spApplicationDatabase.get())
-            .GetPictureData("blue_noise")->m_pD3DTexture)->getId();
-
         traceRaysMessage.resetAccumulation = s_resetAccumulation;
         traceRaysMessage.localLightCount = localLightCount;
-
         traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
         traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
         traceRaysMessage.emissivePower = RaytracingParams::s_emissivePower;

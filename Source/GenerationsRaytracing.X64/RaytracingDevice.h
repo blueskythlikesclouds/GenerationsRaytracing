@@ -29,12 +29,9 @@ struct alignas(0x10) GlobalsRT
     float pixelJitterY;
     uint32_t internalResolutionWidth;
     uint32_t internalResolutionHeight;
-    uint32_t blueNoiseOffsetX;
-    uint32_t blueNoiseOffsetY;
-    uint32_t blueNoiseOffsetZ;
-    uint32_t blueNoiseTextureId;
-    uint32_t localLightCount;
     uint32_t currentFrame = 0;
+    uint32_t randomSeed;
+    uint32_t localLightCount;
     float diffusePower;
     float lightPower;
     float emissivePower;

@@ -21,7 +21,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
     {
         float depth = g_Depth_SRV[dispatchThreadId];
-        float2 random = GetBlueNoise(dispatchThreadId).xy;
+        uint randSeed = InitRandom(dispatchThreadId.xy);
     
         ShadingParams shadingParams = (ShadingParams) 0;
     
@@ -35,16 +35,15 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     
         if (g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
         {
-            uint randSeed = InitRand(g_CurrentFrame, dispatchThreadId.y * g_InternalResolution.x + dispatchThreadId.x);
             Reservoir prevReservoir = LoadReservoir(g_Reservoir_SRV[dispatchThreadId]);
     
             UpdateReservoir(reservoir, prevReservoir.Y, ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection,
-                g_LocalLights[prevReservoir.Y]) * prevReservoir.W * prevReservoir.M, prevReservoir.M, NextRand(randSeed));
+                g_LocalLights[prevReservoir.Y]) * prevReservoir.W * prevReservoir.M, prevReservoir.M, NextRandomFloat(randSeed));
     
             for (uint j = 0; j < 5; j++)
             {
-                float radius = 30.0 * NextRand(randSeed);
-                float angle = 2.0 * PI * NextRand(randSeed);
+                float radius = 30.0 * NextRandomFloat(randSeed);
+                float angle = 2.0 * PI * NextRandomFloat(randSeed);
     
                 int2 neighborIndex = round((float2) dispatchThreadId + float2(cos(angle), sin(angle)) * radius);
     
@@ -59,7 +58,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                         Reservoir neighborReservoir = LoadReservoir(g_Reservoir_SRV[neighborIndex]);
 
                         UpdateReservoir(reservoir, neighborReservoir.Y, ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection,
-                            g_LocalLights[neighborReservoir.Y]) * neighborReservoir.W * neighborReservoir.M, neighborReservoir.M, NextRand(randSeed));
+                            g_LocalLights[neighborReservoir.Y]) * neighborReservoir.W * neighborReservoir.M, neighborReservoir.M, NextRandomFloat(randSeed));
                     }
                 }
             }
@@ -79,7 +78,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                 reservoir.W *= TraceLocalLightShadow(
                     gBufferData.Position,
                     direction,
-                    random,
+                    float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)),
                     1.0 / localLight.OutRange,
                     distance);
             }
