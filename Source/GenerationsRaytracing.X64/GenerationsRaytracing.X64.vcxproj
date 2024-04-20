@@ -118,6 +118,10 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <FxCompile Include="ToneMapPixelShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
     <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\FreeListAllocator.inl">
       <FileType>Document</FileType>
     </None>

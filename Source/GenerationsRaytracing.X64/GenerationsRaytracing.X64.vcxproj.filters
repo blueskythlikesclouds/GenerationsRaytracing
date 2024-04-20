@@ -122,6 +122,9 @@
     <Filter Include="Shader\Geometry">
       <UniqueIdentifier>{f0297654-988c-46a5-bbcd-8343e3d4de16}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader\ToneMap">
+      <UniqueIdentifier>{29259ad5-10f1-45b5-a431-c18773d87b1c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MessageReceiver.h">
@@ -340,6 +343,9 @@
     </FxCompile>
     <FxCompile Include="Im3dTrianglesVertexShader.hlsl">
       <Filter>Shader\Im3d</Filter>
+    </FxCompile>
+    <FxCompile Include="ToneMapPixelShader.hlsl">
+      <Filter>Shader\ToneMap</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

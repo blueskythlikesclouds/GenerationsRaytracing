@@ -7,6 +7,7 @@
 #include "FVFPixelShader.h"
 #include "AlignmentUtil.h"
 #include "RootSignature.h"
+#include "ToneMapPixelShader.h"
 
 void Device::createBuffer(
     D3D12_HEAP_TYPE type,
@@ -626,6 +627,9 @@ void Device::procMsgCreateVertexDeclaration()
     }
 }
 
+static uint8_t s_toneMapPixelShaderGuid[] = { 
+    0xB7, 0xEF, 0x90, 0xCC, 0x2F, 0xF4, 0x36, 0x9D, 0x4C, 0x94, 0xFB, 0x97, 0x07, 0xB6, 0x5A, 0x8C };
+
 void Device::procMsgCreatePixelShader()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCreatePixelShader>();
@@ -634,7 +638,18 @@ void Device::procMsgCreatePixelShader()
         m_pixelShaders.resize(message.pixelShaderId + 1);
 
     auto& pixelShader = m_pixelShaders[message.pixelShaderId];
-    pixelShader.byteCode = m_shaderCache->getShader(message.data, message.dataSize, pixelShader.byteSize);
+
+    // Look for tone map placeholder GUID and replace with actual shader if detected.
+    if (message.dataSize == sizeof(s_toneMapPixelShaderGuid) && memcmp(message.data, s_toneMapPixelShaderGuid, message.dataSize) == 0)
+    {
+        pixelShader.byteCode = std::make_unique<uint8_t[]>(sizeof(ToneMapPixelShader));
+        memcpy(pixelShader.byteCode.get(), ToneMapPixelShader, sizeof(ToneMapPixelShader));
+        pixelShader.byteSize = sizeof(ToneMapPixelShader);
+    }
+    else
+    {
+        pixelShader.byteCode = m_shaderCache->getShader(message.data, message.dataSize, pixelShader.byteSize);
+    }
 }
 
 void Device::procMsgCreateVertexShader()
