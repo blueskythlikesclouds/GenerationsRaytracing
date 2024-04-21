@@ -7,10 +7,10 @@ cbuffer Globals : register(b1)
 float4 main(float4 position : SV_Position, float4 texCoord : TEXCOORD) : SV_Target
 {
     Texture2D texture = ResourceDescriptorHeap[g_TextureIndex];
-    SamplerState sampler = SamplerDescriptorHeap[g_SamplerIndex];
+    SamplerState samplerState = SamplerDescriptorHeap[g_SamplerIndex];
     
-    float3 hdr = texture.SampleLevel(sampler, texCoord.xy, 0).rgb;
-    float3 sdr = 1.0 - exp2(1.76112 - 5.0 * hdr);
+    float3 rgb = texture.SampleLevel(samplerState, texCoord.xy, 0).rgb;
+    float3 crgb = 1.0 - exp2(1.76112 - 5.0 * rgb);
 
-    return float4(select(hdr >= 0.72974005284, sdr, hdr), 1.0);
+    return float4(select(rgb >= 0.72974005284, crgb, rgb), 1.0);
 }
