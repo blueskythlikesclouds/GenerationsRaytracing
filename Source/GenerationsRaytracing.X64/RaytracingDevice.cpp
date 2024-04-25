@@ -987,8 +987,6 @@ void RaytracingDevice::procMsgTraceRays()
     const auto localLights = createBuffer(m_localLights.data(),
         message.localLightCount * sizeof(LocalLight), 0x10);
 
-    const auto& dispatchRaysDescBuffer = m_dispatchRaysDescBuffers[m_frame];
-
     auto& commandList = getGraphicsCommandList();
     const auto underlyingCommandList = commandList.getUnderlyingCommandList();
 
@@ -1007,13 +1005,11 @@ void RaytracingDevice::procMsgTraceRays()
     underlyingCommandList->SetComputeRootShaderResourceView(5, materials);
     underlyingCommandList->SetComputeRootShaderResourceView(6, instanceDescs);
     underlyingCommandList->SetComputeRootShaderResourceView(7, localLights);
-    underlyingCommandList->SetComputeRootUnorderedAccessView(8, dispatchRaysDescBuffer->GetResource()->GetGPUVirtualAddress());
-    underlyingCommandList->SetComputeRootUnorderedAccessView(9, m_dispatchRaysIndexBuffer->GetResource()->GetGPUVirtualAddress());
-    underlyingCommandList->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_uavId));
-    underlyingCommandList->SetComputeRootDescriptorTable(11, m_descriptorHeap.getGpuHandle(m_srvId));
+    underlyingCommandList->SetComputeRootDescriptorTable(8, m_descriptorHeap.getGpuHandle(m_uavId));
+    underlyingCommandList->SetComputeRootDescriptorTable(9, m_descriptorHeap.getGpuHandle(m_srvId));
 
     if (m_serSupported)
-        underlyingCommandList->SetComputeRootDescriptorTable(12, m_descriptorHeap.getGpuHandle(m_serUavId));
+        underlyingCommandList->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_serUavId));
 
     const auto rayGenShaderTable = createBuffer(
         m_rayGenShaderTable.data(), static_cast<uint32_t>(m_rayGenShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -1037,52 +1033,23 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.Height = m_upscaler->getHeight();
     dispatchRaysDesc.Depth = 1;
 
-    D3D12_DISPATCH_RAYS_DESC indirectDispatchRaysDescs[RAY_GENERATION_NUM - 1];
-    for (size_t i = 0; i < _countof(indirectDispatchRaysDescs); i++)
-    {
-        indirectDispatchRaysDescs[i] = dispatchRaysDesc;
-        indirectDispatchRaysDescs[i].RayGenerationShaderRecord.StartAddress += (i + 1) * D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-        indirectDispatchRaysDescs[i].Width = 0;
-        indirectDispatchRaysDescs[i].Height = 1;
-    }
-
-    writeBuffer(
-        indirectDispatchRaysDescs, 
-        0, 
-        sizeof(indirectDispatchRaysDescs), 
-        dispatchRaysDescBuffer->GetResource(),
-        m_gpuUploadHeapSupported);
-
     PIX_BEGIN_EVENT("PrimaryRayGeneration");
     commandList.commitBarriers();
 
     m_properties->SetPipelineStackSize(m_primaryStackSize);
     underlyingCommandList->DispatchRays(&dispatchRaysDesc);
 
-    commandList.transitionBarrier(dispatchRaysDescBuffer->GetResource(),
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-
-    // There is currently a bug on NVIDIA where transitioning
-    // RGBA16_FLOAT textures with more than 512x512 pixels in one
-    // slice causes crash when calling ExecuteIndirect, so we
-    // need to keep doing UAV loads for these geometry buffers in particular.
-
-    commandList.uavBarriers(
-        {
-            m_dispatchRaysIndexBuffer->GetResource(),
-            m_gBufferTexture1->GetResource(),
-            m_gBufferTexture2->GetResource(),
-            m_gBufferTexture3->GetResource(),
-            m_gBufferTexture5->GetResource(),
-            m_gBufferTexture6->GetResource()
-        });
-
     commandList.transitionBarriers(
         {
             m_motionVectorsTexture->GetResource(),
             m_layerNumTexture->GetResource(),
             m_gBufferTexture0->GetResource(),
+            m_gBufferTexture1->GetResource(),
+            m_gBufferTexture2->GetResource(),
+            m_gBufferTexture3->GetResource(),
             m_gBufferTexture4->GetResource(),
+            m_gBufferTexture5->GetResource(),
+            m_gBufferTexture6->GetResource()
         }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     commandList.commitBarriers();
@@ -1091,35 +1058,20 @@ void RaytracingDevice::procMsgTraceRays()
 
     PIX_BEGIN_EVENT("ShadowRayGeneration");
     m_properties->SetPipelineStackSize(m_shadowStackSize);
-    underlyingCommandList->ExecuteIndirect(
-        m_commandSignature.Get(), 
-        1, 
-        dispatchRaysDescBuffer->GetResource(),
-        sizeof(D3D12_DISPATCH_RAYS_DESC) * (RAY_GENERATION_SHADOW - 1),
-        nullptr, 
-        0);
+    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+    underlyingCommandList->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
 
     PIX_BEGIN_EVENT("GIRayGeneration");
     m_properties->SetPipelineStackSize(m_giStackSize);
-    underlyingCommandList->ExecuteIndirect(
-        m_commandSignature.Get(),
-        1,
-        dispatchRaysDescBuffer->GetResource(),
-        sizeof(D3D12_DISPATCH_RAYS_DESC) * (RAY_GENERATION_GI - 1),
-        nullptr,
-        0);
+    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+    underlyingCommandList->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
 
     PIX_BEGIN_EVENT("ReflectionRayGeneration");
     m_properties->SetPipelineStackSize(m_reflectionStackSize);
-    underlyingCommandList->ExecuteIndirect(
-        m_commandSignature.Get(),
-        1,
-        dispatchRaysDescBuffer->GetResource(),
-        sizeof(D3D12_DISPATCH_RAYS_DESC) * (RAY_GENERATION_REFLECTION - 1),
-        nullptr,
-        0);
+    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+    underlyingCommandList->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
 
     commandList.transitionBarriers(
@@ -1799,7 +1751,7 @@ void RaytracingDevice::releaseRaytracingResources()
     }
 }
 
-static constexpr size_t s_serUavRegister = 2;
+static constexpr size_t s_serUavRegister = 0;
 
 RaytracingDevice::RaytracingDevice()
 {
@@ -1831,7 +1783,7 @@ RaytracingDevice::RaytracingDevice()
     CD3DX12_DESCRIPTOR_RANGE1 serDescriptorRanges[1];
     serDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, s_serUavRegister, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
-    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[13];
+    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[11];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[2].InitAsConstantBufferView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1840,11 +1792,9 @@ RaytracingDevice::RaytracingDevice()
     raytracingRootParams[5].InitAsShaderResourceView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[6].InitAsShaderResourceView(3, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[7].InitAsShaderResourceView(4, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    raytracingRootParams[8].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
-    raytracingRootParams[9].InitAsUnorderedAccessView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
-    raytracingRootParams[10].InitAsDescriptorTable(_countof(uavDescriptorRanges), uavDescriptorRanges);
-    raytracingRootParams[11].InitAsDescriptorTable(_countof(srvDescriptorRanges), srvDescriptorRanges);
-    raytracingRootParams[12].InitAsDescriptorTable(_countof(serDescriptorRanges), serDescriptorRanges);
+    raytracingRootParams[8].InitAsDescriptorTable(_countof(uavDescriptorRanges), uavDescriptorRanges);
+    raytracingRootParams[9].InitAsDescriptorTable(_countof(srvDescriptorRanges), srvDescriptorRanges);
+    raytracingRootParams[10].InitAsDescriptorTable(_countof(serDescriptorRanges), serDescriptorRanges);
 
     D3D12_STATIC_SAMPLER_DESC raytracingStaticSamplers[1]{};
     raytracingStaticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
@@ -1966,35 +1916,6 @@ RaytracingDevice::RaytracingDevice()
 
     for (size_t i = 0; i < _countof(m_hitGroups); i++)
         m_hitGroups[i] = m_properties->GetShaderIdentifier(s_shaderHitGroups[i]);
-
-    D3D12_INDIRECT_ARGUMENT_DESC indirectArgumentDescs[1]{};
-    indirectArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS;
-
-    D3D12_COMMAND_SIGNATURE_DESC commandSignatureDesc{};
-    commandSignatureDesc.ByteStride = sizeof(D3D12_DISPATCH_RAYS_DESC);
-    commandSignatureDesc.NumArgumentDescs = _countof(indirectArgumentDescs);
-    commandSignatureDesc.pArgumentDescs = indirectArgumentDescs;
-
-    hr = m_device->CreateCommandSignature(
-        &commandSignatureDesc,
-        nullptr,
-        IID_PPV_ARGS(m_commandSignature.GetAddressOf()));
-
-    assert(SUCCEEDED(hr) && m_commandSignature != nullptr);
-
-    for (auto& dispatchRaysDescBuffer : m_dispatchRaysDescBuffers)
-    {
-        createBuffer(
-            m_gpuUploadHeapSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_DEFAULT,
-            sizeof(D3D12_DISPATCH_RAYS_DESC) * (RAY_GENERATION_NUM - 1),
-            D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            dispatchRaysDescBuffer);
-
-#ifdef _DEBUG
-        dispatchRaysDescBuffer->GetResource()->SetName(L"Dispatch Rays Desc Buffer");
-#endif
-    }
 
     for (auto& scratchBuffer : m_scratchBuffers)
     {

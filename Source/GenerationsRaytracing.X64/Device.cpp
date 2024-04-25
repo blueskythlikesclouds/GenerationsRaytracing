@@ -1908,6 +1908,10 @@ Device::Device()
         return;
     }
 
+#if 0
+    m_device->SetStablePowerState(TRUE);
+#endif
+
     NvAPI_Initialize();
 
 #ifdef _DEBUG

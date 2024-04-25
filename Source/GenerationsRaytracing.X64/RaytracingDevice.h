@@ -82,8 +82,6 @@ protected:
     std::vector<uint8_t> m_missShaderTable;
     std::vector<uint8_t> m_hitGroupShaderTable;
     GlobalsRT m_globalsRT;
-    ComPtr<ID3D12CommandSignature> m_commandSignature;
-    ComPtr<D3D12MA::Allocation> m_dispatchRaysDescBuffers[NUM_FRAMES];
 
     bool m_serSupported = false;
     uint32_t m_serUavId = 0;

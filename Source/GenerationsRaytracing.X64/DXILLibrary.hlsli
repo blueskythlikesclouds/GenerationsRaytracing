@@ -12,7 +12,6 @@ struct [raypayload] PrimaryRayPayload
     float3 dDdy : read(closesthit) : write(caller);
     float2 MotionVectors : read(caller) : write(closesthit, miss);
     float T : read(caller) : write(closesthit, miss);
-    uint RayGenerationFlags : read(caller) : write(closesthit, miss);
 };
 
 void PrimaryAnyHit(uint shaderType,
@@ -47,18 +46,6 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 
     payload.T = RayTCurrent();
-    
-    uint rayGenerationFlags = 0;
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW) || !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
-        rayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_SHADOW - 1));
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
-        rayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_GI - 1));
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
-        rayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_REFLECTION - 1));
-
-    payload.RayGenerationFlags = rayGenerationFlags;
 }
 
 struct [raypayload] PrimaryTransparentRayPayload
@@ -68,7 +55,6 @@ struct [raypayload] PrimaryTransparentRayPayload
     float2 MotionVectors : read(caller, anyhit) : write(caller, anyhit);
     float T : read(caller, anyhit) : write(caller, anyhit);
     uint LayerIndex : read(caller, anyhit) : write(caller, anyhit);
-    uint RayGenerationFlags : read(caller, anyhit) : write(caller, anyhit);
 };
 
 void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
@@ -92,15 +78,6 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
             
             payload.T = RayTCurrent();
         }
-
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW))
-            payload.RayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_SHADOW - 1) + payload.LayerIndex);
-
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
-            payload.RayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_GI - 1) + payload.LayerIndex);
-
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
-            payload.RayGenerationFlags |= 1u << (GBUFFER_LAYER_NUM * (RAY_GENERATION_REFLECTION - 1) + payload.LayerIndex);
 
         ++payload.LayerIndex;
         if (payload.LayerIndex == GBUFFER_LAYER_NUM)
@@ -185,26 +162,22 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
 struct [raypayload] SecondaryRayPayload
 {
     float3 Color : read(caller) : write(closesthit, miss);
-    float NormalX : read(caller) : write(closesthit);
     float3 Diffuse : read(caller) : write(closesthit, miss);
-    float NormalY : read(caller) : write(closesthit);
     float3 Position : read(caller) : write(closesthit);
-    float NormalZ : read(caller) : write(closesthit);
+    float3 Normal : read(caller) : write(closesthit);
 };
 
 struct TracePathArgs
 {
     float3 Position;
     float3 Direction;
-    uint Random;
     uint MissShaderIndex;
-    uint2 DispatchRaysIndex;
     bool StoreHitDistance;
     float3 Throughput;
     bool ApplyPower;
 };
 
-float3 TracePath(TracePathArgs args)
+float3 TracePath(TracePathArgs args, inout uint randSeed)
 {
     min16float3 halfRadiance = 0.0;
     min16float3 halfThroughput = (min16float3) args.Throughput;
@@ -241,7 +214,6 @@ float3 TracePath(TracePathArgs args)
 
         float3 color = payload.Color;
         float3 diffuse = payload.Diffuse;
-        float3 normal = float3(payload.NormalX, payload.NormalY, payload.NormalZ);
 
         bool terminatePath = false;
 
@@ -256,12 +228,12 @@ float3 TracePath(TracePathArgs args)
                 lightPower = g_LightPower;
             }
 
-            color += diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(args.Random), NextRandomFloat(args.Random)), i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
+            color += diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal)) *
+               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
 
             if (g_LocalLightCount > 0)
             {
-                uint sample = NextRandomUint(args.Random) % g_LocalLightCount;
+                uint sample = NextRandomUint(randSeed) % g_LocalLightCount;
                 LocalLight localLight = g_LocalLights[sample];
 
                 float3 lightDirection = localLight.Position - payload.Position;
@@ -270,11 +242,11 @@ float3 TracePath(TracePathArgs args)
                 if (distance > 0.0)
                     lightDirection /= distance;
 
-                float3 localLighting = diffuse * localLight.Color * lightPower * g_LocalLightCount * saturate(dot(normal, lightDirection)) *
+                float3 localLighting = diffuse * localLight.Color * lightPower * g_LocalLightCount * saturate(dot(payload.Normal, lightDirection)) *
                     ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
 
                 if (any(localLighting != 0))
-                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, float2(NextRandomFloat(args.Random), NextRandomFloat(args.Random)), 1.0 / localLight.OutRange, distance);
+                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 1.0 / localLight.OutRange, distance);
 
                 color += localLighting;
             }
@@ -285,7 +257,7 @@ float3 TracePath(TracePathArgs args)
         }
 
         if (args.StoreHitDistance && i == 0)
-            g_SpecularHitDistance[args.DispatchRaysIndex] = terminatePath ? 0.0 : distance(args.Position, payload.Position);
+            g_SpecularHitDistance[DispatchRaysIndex().xy] = terminatePath ? 0.0 : distance(args.Position, payload.Position);
 
         float3 radiance = (float3) halfRadiance;
         float3 throughput = (float3) halfThroughput;
@@ -300,7 +272,7 @@ float3 TracePath(TracePathArgs args)
             break;
 
         args.Position = payload.Position;
-        args.Direction = TangentToWorld(normal, GetCosWeightedSample(float2(NextRandomFloat(args.Random), NextRandomFloat(args.Random))));
+        args.Direction = TangentToWorld(payload.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
     }
 
     return (float3) halfRadiance;
@@ -319,8 +291,6 @@ void SecondaryClosestHit(uint shaderType,
     payload.Color = gBufferData.Emission;
     payload.Diffuse = gBufferData.Diffuse;
     payload.Position = gBufferData.Position;
-    payload.NormalX = gBufferData.Normal.x;
-    payload.NormalY = gBufferData.Normal.y;
-    payload.NormalZ = gBufferData.Normal.z;
+    payload.Normal = gBufferData.Normal;
 }
 
