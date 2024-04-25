@@ -107,7 +107,7 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
     }
 }
 
-uint32_t RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate)
 {
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
@@ -156,19 +156,34 @@ uint32_t RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
         commandList.uavBarrier(allocation.blockAllocation->GetResource());
     }
 
-    return static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
+    return preBuildInfo;
 }
 
 void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& bottomLevelAccelStruct)
 {
+    uint32_t scratchBufferSize;
+
+    if (bottomLevelAccelStruct.desc.Inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE)
+    {
+        bottomLevelAccelStruct.desc.SourceAccelerationStructureData = 
+            bottomLevelAccelStruct.allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + bottomLevelAccelStruct.allocation.byteOffset;
+
+        scratchBufferSize = bottomLevelAccelStruct.updateScratchBufferSize;
+    }
+    else
+    {
+        bottomLevelAccelStruct.desc.SourceAccelerationStructureData = NULL;
+        scratchBufferSize = bottomLevelAccelStruct.scratchBufferSize;
+    }
+
     // Create separate resource if it does not fit to the pool
-    if (m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize > SCRATCH_BUFFER_SIZE)
+    if (m_scratchBufferOffset + scratchBufferSize > SCRATCH_BUFFER_SIZE)
     {
         auto& scratchBuffer = m_tempBuffers[m_frame].emplace_back();
 
         createBuffer(
             D3D12_HEAP_TYPE_DEFAULT,
-            bottomLevelAccelStruct.scratchBufferSize,
+            scratchBufferSize,
             D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
             D3D12_RESOURCE_STATE_COMMON,
             scratchBuffer);
@@ -180,7 +195,7 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
         bottomLevelAccelStruct.desc.ScratchAccelerationStructureData =
             m_scratchBuffers[m_frame]->GetResource()->GetGPUVirtualAddress() + m_scratchBufferOffset;
 
-        m_scratchBufferOffset = alignUp<uint32_t>(m_scratchBufferOffset + bottomLevelAccelStruct.scratchBufferSize,
+        m_scratchBufferOffset = alignUp<uint32_t>(m_scratchBufferOffset + scratchBufferSize,
             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
     }
 
@@ -742,11 +757,18 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     }
 
     bottomLevelAccelStruct.desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-    bottomLevelAccelStruct.desc.Inputs.Flags = message.preferFastBuild ? D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD : D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+    bottomLevelAccelStruct.desc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+
+    if (message.allowUpdate)
+        bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+
     bottomLevelAccelStruct.desc.Inputs.NumDescs = static_cast<UINT>(bottomLevelAccelStruct.geometryDescs.size());
     bottomLevelAccelStruct.desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
     bottomLevelAccelStruct.desc.Inputs.pGeometryDescs = bottomLevelAccelStruct.geometryDescs.data();
-    bottomLevelAccelStruct.scratchBufferSize = buildAccelStruct(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
+
+    auto preBuildInfo = buildAccelStruct(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
+    bottomLevelAccelStruct.scratchBufferSize = static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
+    bottomLevelAccelStruct.updateScratchBufferSize = static_cast<uint32_t>(preBuildInfo.UpdateScratchDataSizeInBytes);
     
     m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
 }
@@ -1318,6 +1340,12 @@ void RaytracingDevice::procMsgBuildBottomLevelAccelStruct()
     const auto& message = m_messageReceiver.getMessage<MsgBuildBottomLevelAccelStruct>();
 
     m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
+
+    auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
+    if (message.performUpdate)
+        bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+    else 
+        bottomLevelAccelStruct.desc.Inputs.Flags &= ~D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
 }
 
 void RaytracingDevice::procMsgComputePose()

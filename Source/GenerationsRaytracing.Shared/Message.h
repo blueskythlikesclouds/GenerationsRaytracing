@@ -324,7 +324,7 @@ struct MsgCreateBottomLevelAccelStruct
     };
 
     uint32_t bottomLevelAccelStructId;
-    bool preferFastBuild;
+    bool allowUpdate;
     uint32_t dataSize;
     uint8_t data[1u];
 };
@@ -435,6 +435,7 @@ struct MsgBuildBottomLevelAccelStruct
 {
     MSG_DEFINE_MESSAGE(MsgComputePose);
     uint32_t bottomLevelAccelStructId;
+    bool performUpdate;
 };
 
 struct MsgCopyVertexBuffer

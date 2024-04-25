@@ -87,7 +87,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     message.bottomLevelAccelStructId = (bottomLevelAccelStructId = ModelData::s_idAllocator.allocate());
-    message.preferFastBuild = poseVertexBufferId != NULL;
+    message.allowUpdate = poseVertexBufferId != NULL;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
@@ -793,6 +793,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             {
                 auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
                 buildMessage.bottomLevelAccelStructId = bottomLevelAccelStructId;
+                buildMessage.performUpdate = true;
                 s_messageSender.endMessage();
             }
 

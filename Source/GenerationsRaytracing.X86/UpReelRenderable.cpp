@@ -161,7 +161,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
             sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
         createMsg.bottomLevelAccelStructId = reelRendererEx->m_bottomLevelAccelStructId;
-        createMsg.preferFastBuild = true;
+        createMsg.allowUpdate = false;
 
         const auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(createMsg.data);
 
