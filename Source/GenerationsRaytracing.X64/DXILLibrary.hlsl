@@ -177,7 +177,7 @@ void SecondaryRayGeneration()
             else
                 giProbability = 1.0 - saturate(dot(ComputeReflection(gBufferData, 1.0), float3(0.299, 0.587, 0.114)));
         
-            bool shouldTraceReflection = traceReflection && NextRandomFloat(randSeed) > giProbability;
+            bool shouldTraceReflection = NextRandomFloat(randSeed) > giProbability;
         
             TracePathArgs args;
             args.Position = gBufferData.Position;
@@ -207,7 +207,7 @@ void SecondaryRayGeneration()
             
                 args.Throughput /= 1.0 - giProbability;
             }
-            else if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
+            else
             {
                 args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
                 args.MissShaderIndex = MISS_GI;
