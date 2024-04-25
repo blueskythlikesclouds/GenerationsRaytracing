@@ -74,9 +74,8 @@ protected:
     ComPtr<ID3D12StateObject> m_stateObject;
     ComPtr<ID3D12StateObjectProperties> m_properties;
     size_t m_primaryStackSize = 0;
+    size_t m_secondaryStackSize = 0;
     size_t m_shadowStackSize = 0;
-    size_t m_giStackSize = 0;
-    size_t m_reflectionStackSize = 0;
     void* m_hitGroups[_countof(s_shaderHitGroups)]{};
     std::vector<uint8_t> m_rayGenShaderTable;
     std::vector<uint8_t> m_missShaderTable;

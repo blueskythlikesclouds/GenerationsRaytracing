@@ -156,7 +156,7 @@ void ShadowRayGeneration()
 }
 
 [shader("raygeneration")]
-void GIRayGeneration()
+void SecondaryRayGeneration()
 {
     uint randSeed = InitRandom(DispatchRaysIndex().xy);
     uint layerNum = g_LayerNum_SRV[DispatchRaysIndex().xy];
@@ -165,18 +165,64 @@ void GIRayGeneration()
     {
         uint3 dispatchRaysIndex = uint3(DispatchRaysIndex().xy, i);
         GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
-
-        if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
+        
+        bool traceGlobalIllumination = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION));
+        bool traceReflection = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION));
+        
+        if (traceGlobalIllumination || traceReflection)
         {
+            float giProbability;
+            if (traceGlobalIllumination ^ traceReflection)
+                giProbability = traceGlobalIllumination ? 1.0 : 0.0;
+            else
+                giProbability = 1.0 - saturate(dot(ComputeReflection(gBufferData, 1.0), float3(0.299, 0.587, 0.114)));
+        
+            bool shouldTraceReflection = traceReflection && NextRandomFloat(randSeed) > giProbability;
+        
             TracePathArgs args;
             args.Position = gBufferData.Position;
-            args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
-            args.MissShaderIndex = MISS_GI;
-            args.StoreHitDistance = false;
-            args.Throughput = 1.0;
-            args.ApplyPower = true;
+        
+            if (shouldTraceReflection)
+            {
+                args.StoreHitDistance = i == 0;
+                args.ApplyPower = false;
 
-            g_GlobalIllumination[dispatchRaysIndex] = TracePath(args, randSeed);
+                float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+    
+                if (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION))
+                {
+                    args.Direction = reflect(-eyeDirection, gBufferData.Normal);
+                    args.MissShaderIndex = MISS_SECONDARY;
+                    args.Throughput = 1.0;
+                }
+                else
+                {
+                    float4 sampleDirection = GetPowerCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), gBufferData.SpecularGloss);
+                    float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
+    
+                    args.Direction = reflect(-eyeDirection, halfwayDirection);
+                    args.MissShaderIndex = MISS_REFLECTION;
+                    args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                }
+            
+                args.Throughput /= 1.0 - giProbability;
+            }
+            else if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)))
+            {
+                args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
+                args.MissShaderIndex = MISS_GI;
+                args.StoreHitDistance = false;
+                args.Throughput = 1.0 / giProbability;
+                args.ApplyPower = true;
+            }
+        
+            float3 color = TracePath(args, randSeed);
+        
+            if (traceGlobalIllumination)
+                g_GlobalIllumination[dispatchRaysIndex] = shouldTraceReflection ? 0.0 : color;
+        
+            if (traceReflection)
+                g_Reflection[dispatchRaysIndex] = shouldTraceReflection ? color : 0.0;
         }
     }
 }
@@ -198,47 +244,6 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 
     payload.Color = color;
     payload.Diffuse = 0.0;
-}
-
-[shader("raygeneration")]
-void ReflectionRayGeneration()
-{
-    uint randSeed = InitRandom(DispatchRaysIndex().xy);
-    uint layerNum = g_LayerNum_SRV[DispatchRaysIndex().xy];
-    
-    for (uint i = 0; i < layerNum; i++)
-    {
-        uint3 dispatchRaysIndex = uint3(DispatchRaysIndex().xy, i);
-        GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
-
-        if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)))
-        {
-            TracePathArgs args;
-            args.Position = gBufferData.Position;
-            args.StoreHitDistance = i == 0;
-            args.ApplyPower = false;
-
-            float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
-    
-            if (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION))
-            {
-                args.Direction = reflect(-eyeDirection, gBufferData.Normal);
-                args.MissShaderIndex = MISS_SECONDARY;
-                args.Throughput = 1.0;
-            }
-            else
-            {
-                float4 sampleDirection = GetPowerCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), gBufferData.SpecularGloss);
-                float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
-    
-                args.Direction = reflect(-eyeDirection, halfwayDirection);
-                args.MissShaderIndex = MISS_REFLECTION;
-                args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
-            }
-    
-            g_Reflection[dispatchRaysIndex] = TracePath(args, randSeed);
-        }
-    }
 }
 
 [shader("miss")]

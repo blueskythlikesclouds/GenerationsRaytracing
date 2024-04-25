@@ -1,10 +1,9 @@
 #pragma once
 
 #define RAY_GENERATION_PRIMARY        0
-#define RAY_GENERATION_SHADOW         1
-#define RAY_GENERATION_GI             2
-#define RAY_GENERATION_REFLECTION     3
-#define RAY_GENERATION_NUM            4
+#define RAY_GENERATION_SECONDARY      1
+#define RAY_GENERATION_SHADOW         2
+#define RAY_GENERATION_NUM            3
 
 #define HIT_GROUP_PRIMARY             0
 #define HIT_GROUP_PRIMARY_TRANSPARENT 1

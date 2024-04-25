@@ -218,17 +218,13 @@ float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
     float3 specularLight = mrgGlobalLight_Specular.rgb * cosTheta * gBufferData.Specular * gBufferData.SpecularGloss * gBufferData.SpecularLevel;
     resultShading += specularLight * shadingParams.Shadow;
 
-    float specularFresnel = 1.0 - abs(dot(gBufferData.Normal, shadingParams.EyeDirection));
-    specularFresnel *= specularFresnel;
-    specularFresnel *= specularFresnel;
-
-    float diffuseFresnel = (1.0 - specularFresnel) * 
+    float diffuseFresnel = (1.0 - gBufferData.SpecularFresnel) * 
         pow(abs(dot(gBufferData.Normal, g_EyeDirection.xyz)), gBufferData.SpecularGloss);
 
     resultShading += shadingParams.GlobalIllumination * diffuseFresnel;
 
     float luminance = dot(resultShading, float3(0.2126, 0.7152, 0.0722));
-    resultShading += shadingParams.Reflection * specularFresnel * (1.0 - saturate(luminance));
+    resultShading += shadingParams.Reflection * gBufferData.SpecularFresnel * (1.0 - saturate(luminance));
 
     float3 diffuseLight = 0.0;
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
