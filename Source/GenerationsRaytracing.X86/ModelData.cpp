@@ -12,6 +12,7 @@
 #include "Texture.h"
 #include "VertexBuffer.h"
 #include "VertexDeclaration.h"
+#include "RaytracingParams.h"
 
 template<typename T>
 static void traverseMeshGroup(const hh::vector<boost::shared_ptr<Hedgehog::Mirage::CMeshData>>& meshGroup, uint32_t flags, const T& function)
@@ -793,7 +794,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             {
                 auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
                 buildMessage.bottomLevelAccelStructId = bottomLevelAccelStructId;
-                buildMessage.performUpdate = true;
+                buildMessage.performUpdate = RaytracingParams::s_allowAccelStructUpdate;
                 s_messageSender.endMessage();
             }
 

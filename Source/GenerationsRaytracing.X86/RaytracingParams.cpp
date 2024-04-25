@@ -442,6 +442,11 @@ void RaytracingParams::imguiWindow()
                         ImGui::Checkbox("##No AO Model", &RaytracingParams::s_enableNoAoModels);
 
                         ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Allow BVH Update");
+                        ImGui::TableNextColumn();
+                        ImGui::Checkbox("##Allow BVH Update", &RaytracingParams::s_allowAccelStructUpdate);
+
+                        ImGui::TableNextColumn();
                         ImGui::TextUnformatted("View");
                         ImGui::TableNextColumn();
                         ImGui::RadioButton("None", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_NONE);
