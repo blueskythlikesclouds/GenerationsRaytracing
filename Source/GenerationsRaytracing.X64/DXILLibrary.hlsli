@@ -179,8 +179,7 @@ struct TracePathArgs
 
 float3 TracePath(TracePathArgs args, inout uint randSeed)
 {
-    min16float3 halfRadiance = 0.0;
-    min16float3 halfThroughput = (min16float3) args.Throughput;
+    float3 radiance = 0.0;
 
     [unroll]
     for (uint i = 0; i < 2; i++)
@@ -259,14 +258,8 @@ float3 TracePath(TracePathArgs args, inout uint randSeed)
         if (args.StoreHitDistance && i == 0)
             g_SpecularHitDistance[DispatchRaysIndex().xy] = terminatePath ? 0.0 : distance(args.Position, payload.Position);
 
-        float3 radiance = (float3) halfRadiance;
-        float3 throughput = (float3) halfThroughput;
-
-        radiance += throughput * color;
-        throughput *= diffuse;
-
-        halfRadiance = (min16float3) radiance;
-        halfThroughput = (min16float3) throughput;
+        radiance += args.Throughput * color;
+        args.Throughput *= diffuse;
 
         if (terminatePath)
             break;
@@ -275,7 +268,7 @@ float3 TracePath(TracePathArgs args, inout uint randSeed)
         args.Direction = TangentToWorld(payload.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
     }
 
-    return (float3) halfRadiance;
+    return radiance;
 }
 
 void SecondaryClosestHit(uint shaderType,
