@@ -1056,14 +1056,14 @@ void RaytracingDevice::procMsgTraceRays()
 
     PIX_END_EVENT();
 
-    PIX_BEGIN_EVENT("SecondaryRayGeneration");
-    m_properties->SetPipelineStackSize(m_secondaryStackSize);
+    PIX_BEGIN_EVENT("ShadowRayGeneration");
+    m_properties->SetPipelineStackSize(m_shadowStackSize);
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
     underlyingCommandList->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
 
-    PIX_BEGIN_EVENT("ShadowRayGeneration");
-    m_properties->SetPipelineStackSize(m_shadowStackSize);
+    PIX_BEGIN_EVENT("SecondaryRayGeneration");
+    m_properties->SetPipelineStackSize(m_secondaryStackSize);
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
     underlyingCommandList->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
@@ -1875,14 +1875,14 @@ RaytracingDevice::RaytracingDevice()
     assert(SUCCEEDED(hr) && m_properties != nullptr);
 
     m_primaryStackSize = m_properties->GetShaderStackSize(L"PrimaryRayGeneration");
-    m_secondaryStackSize = m_properties->GetShaderStackSize(L"SecondaryRayGeneration");
     m_shadowStackSize = m_properties->GetShaderStackSize(L"ShadowRayGeneration");
+    m_secondaryStackSize = m_properties->GetShaderStackSize(L"SecondaryRayGeneration");
 
     const wchar_t* rayGenShaderTable[] =
     {
         L"PrimaryRayGeneration",
-        L"SecondaryRayGeneration",
         L"ShadowRayGeneration",
+        L"SecondaryRayGeneration",
     };
 
     static_assert(_countof(rayGenShaderTable) == RAY_GENERATION_NUM);

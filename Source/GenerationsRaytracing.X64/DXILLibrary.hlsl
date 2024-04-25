@@ -184,9 +184,6 @@ void SecondaryRayGeneration()
         
             if (shouldTraceReflection)
             {
-                args.StoreHitDistance = i == 0;
-                args.ApplyPower = false;
-
                 float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
     
                 if (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION))
@@ -205,7 +202,9 @@ void SecondaryRayGeneration()
                     args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
                 }
             
+                args.StoreHitDistance = i == 0;
                 args.Throughput /= 1.0 - giProbability;
+                args.ApplyPower = false;
             }
             else
             {
