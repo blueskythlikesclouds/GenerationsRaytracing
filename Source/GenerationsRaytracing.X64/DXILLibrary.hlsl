@@ -202,7 +202,6 @@ void SecondaryRayGeneration()
                     args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
                 }
             
-                args.StoreHitDistance = i == 0;
                 args.Throughput /= 1.0 - giProbability;
                 args.ApplyPower = false;
             }
@@ -210,18 +209,17 @@ void SecondaryRayGeneration()
             {
                 args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
                 args.MissShaderIndex = MISS_GI;
-                args.StoreHitDistance = false;
                 args.Throughput = 1.0 / giProbability;
                 args.ApplyPower = true;
             }
         
-            float3 color = TracePath(args, randSeed);
+            float4 radianceAndHitDistance = TracePath(args, randSeed);
         
             if (traceGlobalIllumination)
-                g_GlobalIllumination[dispatchRaysIndex] = shouldTraceReflection ? 0.0 : color;
+                g_GlobalIllumination[dispatchRaysIndex] = shouldTraceReflection ? 0.0 : radianceAndHitDistance;
         
             if (traceReflection)
-                g_Reflection[dispatchRaysIndex] = shouldTraceReflection ? color : 0.0;
+                g_Reflection[dispatchRaysIndex] = shouldTraceReflection ? radianceAndHitDistance : 0.0;
         }
     }
 }

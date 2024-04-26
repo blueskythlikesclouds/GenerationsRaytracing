@@ -16,6 +16,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     Reservoir reservoir = (Reservoir) 0;
     float3 diffuseAlbedo = 0.0;
     float3 specularAlbedo = 0.0;
+    float4 normalsRoughness = 0.0;
+    float specularHitDistance = 0.0;
 
     GBufferData gBufferData = LoadGBufferData(uint3(dispatchThreadId, 0));
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
@@ -88,15 +90,21 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
         {
-            shadingParams.GlobalIllumination = g_GlobalIllumination_SRV[uint3(dispatchThreadId, 0)];
+            shadingParams.GlobalIllumination = g_GlobalIllumination_SRV[uint3(dispatchThreadId, 0)].rgb;
             diffuseAlbedo = ComputeGI(gBufferData, 1.0);
         }
     
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
         {
-            shadingParams.Reflection = g_Reflection_SRV[uint3(dispatchThreadId, 0)];
+            float4 reflectionAndHitDistance = g_Reflection_SRV[uint3(dispatchThreadId, 0)];
+            shadingParams.Reflection = reflectionAndHitDistance.rgb;
             specularAlbedo = ComputeReflection(gBufferData, 1.0);
+            specularHitDistance = reflectionAndHitDistance.w;
         }
+        
+        normalsRoughness = float4(gBufferData.Normal, 0.0);
+        if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION)))
+            normalsRoughness.w = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
     
         color = ComputeGeometryShading(gBufferData, shadingParams);
         float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
@@ -118,6 +126,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     g_PrevReservoir[dispatchThreadId] = StoreReservoir(reservoir);
     g_DiffuseAlbedo[dispatchThreadId] = diffuseAlbedo;
     g_SpecularAlbedo[dispatchThreadId] = specularAlbedo;
+    g_NormalsRoughness[dispatchThreadId] = normalsRoughness;
+    g_SpecularHitDistance[dispatchThreadId] = specularHitDistance;
 
     if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0)
         g_Exposure[dispatchThreadId] = GetExposure() * 2.0;

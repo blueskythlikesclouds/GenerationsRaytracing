@@ -395,7 +395,7 @@ bool RaytracingDevice::createTopLevelAccelStruct()
     return true;
 }
 
-static constexpr size_t s_textureNum = 22;
+static constexpr size_t s_textureNum = 23;
 
 void RaytracingDevice::createRaytracingTextures()
 {
@@ -454,7 +454,7 @@ void RaytracingDevice::createRaytracingTextures()
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1, L"Geometry Buffer Texture 1" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2, L"Geometry Buffer Texture 2" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3, L"Geometry Buffer Texture 3" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R10G10B10A2_UNORM, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5, L"Geometry Buffer Texture 5" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6, L"Geometry Buffer Texture 6" },
 
@@ -466,6 +466,7 @@ void RaytracingDevice::createRaytracingTextures()
 
         { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoTexture, L"Diffuse Albedo Texture" },
         { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture, L"Specular Albedo Texture" },
+        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_normalsRoughnessTexture, L"Normals Roughness Texture" },
         { 1, DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture, L"Linear Depth Texture" },
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
         { 1, DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture, L"Specular Hit Distance Texture" },
@@ -612,11 +613,12 @@ void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
         (m_upscaler->getHeight() + 7) / 8,
         1);
 
-    commandList.transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
     commandList.uavBarrier(m_diffuseAlbedoTexture->GetResource());
     commandList.uavBarrier(m_specularAlbedoTexture->GetResource());
+    commandList.uavBarrier(m_normalsRoughnessTexture->GetResource());
+
+    commandList.transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     commandList.commitBarriers();
 
@@ -1169,6 +1171,7 @@ void RaytracingDevice::procMsgDispatchUpscaler()
                 m_gBufferTexture6->GetResource(),
                 m_diffuseAlbedoTexture->GetResource(),
                 m_specularAlbedoTexture->GetResource(),
+                m_normalsRoughnessTexture->GetResource(),
                 m_linearDepthTexture->GetResource(),
                 m_specularHitDistanceTexture->GetResource(),
             }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -1183,7 +1186,7 @@ void RaytracingDevice::procMsgDispatchUpscaler()
                 *this,
                 m_diffuseAlbedoTexture->GetResource(),
                 m_specularAlbedoTexture->GetResource(),
-                m_gBufferTexture4->GetResource(),
+                m_normalsRoughnessTexture->GetResource(),
                 m_renderTargetTexture,
                 m_outputTexture->GetResource(),
                 m_depthTexture->GetResource(),
