@@ -1874,9 +1874,53 @@ RaytracingDevice::RaytracingDevice()
     hr = m_stateObject.As(std::addressof(m_properties));
     assert(SUCCEEDED(hr) && m_properties != nullptr);
 
-    m_primaryStackSize = m_properties->GetShaderStackSize(L"PrimaryRayGeneration");
+    const size_t primaryStackSize = m_properties->GetShaderStackSize(L"PrimaryRayGeneration");
+    const size_t secondaryStackSize = m_properties->GetShaderStackSize(L"SecondaryRayGeneration");
+    constexpr size_t s_hitGroupStride = _countof(m_hitGroups) / SHADER_TYPE_MAX;
+    constexpr const wchar_t* s_shaderTypes[] = { L"::anyhit", L"::closesthit" };
+
+    for (size_t i = 0; i < _countof(s_shaderTypes); i++)
+    {
+        const wchar_t* shaderTypes = s_shaderTypes[i];
+
+        for (size_t j = 0; j < SHADER_TYPE_MAX; j++)
+        {
+            // opaq/punch have closesthit and anyhit, transparent hit groups only have anyhit
+            for (size_t k = 0; k < (i == 1 ? 2 : 4); k++)
+            {
+                wchar_t exportName[0x100]{};
+                wcscat_s(exportName, s_shaderHitGroups[j * s_hitGroupStride + k]);
+                wcscat_s(exportName, shaderTypes);
+
+                m_primaryStackSize = std::max(m_primaryStackSize, 
+                    primaryStackSize + m_properties->GetShaderStackSize(exportName));
+            }
+
+            wchar_t exportName[0x100]{};
+            wcscat_s(exportName, s_shaderHitGroups[j * s_hitGroupStride + 4]);
+            wcscat_s(exportName, shaderTypes);
+
+            m_secondaryStackSize = std::max(m_secondaryStackSize, 
+                secondaryStackSize + m_properties->GetShaderStackSize(exportName));
+        }
+    }
+
+    m_primaryStackSize = std::max(m_primaryStackSize, 
+        primaryStackSize + m_properties->GetShaderStackSize(L"PrimaryMiss"));
+
+    m_primaryStackSize = std::max(m_primaryStackSize, 
+        primaryStackSize + m_properties->GetShaderStackSize(L"PrimaryTransparentMiss"));
+
+    m_secondaryStackSize = std::max(m_secondaryStackSize, 
+        secondaryStackSize + m_properties->GetShaderStackSize(L"GIMiss"));  
+    
+    m_secondaryStackSize = std::max(m_secondaryStackSize, 
+        secondaryStackSize + m_properties->GetShaderStackSize(L"ReflectionMiss"));
+
+    m_secondaryStackSize = std::max(m_secondaryStackSize, 
+        secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryMiss"));
+
     m_shadowStackSize = m_properties->GetShaderStackSize(L"ShadowRayGeneration");
-    m_secondaryStackSize = m_properties->GetShaderStackSize(L"SecondaryRayGeneration");
 
     const wchar_t* rayGenShaderTable[] =
     {
