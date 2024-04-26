@@ -85,9 +85,7 @@ void DLSSD::dispatch(const DispatchArgs& args)
     params.InRenderSubrectDimensions.Height = m_height;
     params.InReset = args.resetAccumulation;
     params.pInExposureTexture = args.exposure;
-    params.pInColorBeforeTransparency = args.colorBeforeTransparency;
     params.pInSpecularHitDistance = args.specularHitDistance;
-    params.GBufferSurface.pInAttrib[NVSDK_NGX_GBUFFER_EMISSIVE] = args.emissive;
     params.pInWorldToViewMatrix = const_cast<float*>(&args.device.getGlobalsVS().floatConstants[4][0]);
     params.pInViewToClipMatrix = const_cast<float*>(&args.device.getGlobalsVS().floatConstants[0][0]);
     params.InFrameTimeDeltaInMsec = args.device.getGlobalsPS().floatConstants[68][0] * 1000.0f;

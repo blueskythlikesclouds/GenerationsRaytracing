@@ -1169,7 +1169,6 @@ void RaytracingDevice::procMsgDispatchUpscaler()
         commandList.transitionBarriers(
             {
                 m_exposureTexture->GetResource(),
-                m_gBufferTexture6->GetResource(),
                 m_diffuseAlbedoTexture->GetResource(),
                 m_specularAlbedoTexture->GetResource(),
                 m_normalsRoughnessTexture->GetResource(),
@@ -1194,9 +1193,7 @@ void RaytracingDevice::procMsgDispatchUpscaler()
                 m_linearDepthTexture->GetResource(),
                 m_motionVectorsTexture->GetResource(),
                 m_exposureTexture->GetResource(),
-                m_colorBeforeTransparencyTexture->GetResource(),
                 m_specularHitDistanceTexture->GetResource(),
-                m_gBufferTexture6->GetResource(),
                 m_globalsRT.pixelJitterX,
                 m_globalsRT.pixelJitterY,
                 message.resetAccumulation
