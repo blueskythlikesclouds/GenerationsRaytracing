@@ -616,6 +616,7 @@ void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
     commandList.uavBarrier(m_diffuseAlbedoTexture->GetResource());
     commandList.uavBarrier(m_specularAlbedoTexture->GetResource());
     commandList.uavBarrier(m_normalsRoughnessTexture->GetResource());
+    commandList.uavBarrier(m_specularHitDistanceTexture->GetResource());
 
     commandList.transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

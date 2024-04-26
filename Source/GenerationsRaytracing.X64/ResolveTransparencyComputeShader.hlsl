@@ -9,6 +9,7 @@ struct Layer
     float3 DiffuseAlbedo;
     float3 SpecularAlbedo;
     float4 NormalsRoughness;
+    float SpecularHitDistance;
     float Distance;
     bool Additive;
 };
@@ -27,6 +28,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     float3 diffuseAlbedoComposite = g_DiffuseAlbedo[dispatchThreadId];
     float3 specularAlbedoComposite = g_SpecularAlbedo[dispatchThreadId];
     float4 normalsRoughnessComposite = g_NormalsRoughness[dispatchThreadId];
+    float specularHitDistanceComposite = g_SpecularHitDistance[dispatchThreadId];
 
     uint layerNum = min(GBUFFER_LAYER_NUM, g_LayerNum_SRV[dispatchThreadId]);
     if (layerNum > 1)
@@ -61,8 +63,10 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
 
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
             {
-                shadingParams.Reflection = g_Reflection_SRV[uint3(dispatchThreadId, i + 1)].rgb;
+                float4 reflectionAndHitDistance = g_Reflection_SRV[uint3(dispatchThreadId, i + 1)];
+                shadingParams.Reflection = reflectionAndHitDistance.rgb;
                 layers[i].SpecularAlbedo = ComputeReflection(gBufferData, 1.0);
+                layers[i].SpecularHitDistance = reflectionAndHitDistance.w;
             }
             
             layers[i].NormalsRoughness = float4(gBufferData.Normal, 0.0);
@@ -82,12 +86,6 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                     shadingParams.Refraction = g_ColorBeforeTransparency_SRV.SampleLevel(g_SamplerState, texCoord, 0).rgb;
                 else 
                     shadingParams.Refraction = colorComposite.rgb;
-
-                if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_ADD)
-                {
-                    layers[i].DiffuseAlbedo += ComputeRefraction(gBufferData, diffuseAlbedoComposite);
-                    layers[i].SpecularAlbedo += ComputeRefraction(gBufferData, specularAlbedoComposite);
-                }
             }
 
             if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
@@ -130,6 +128,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                 diffuseAlbedoComposite *= 1.0 - layer.Color.a;
                 specularAlbedoComposite *= 1.0 - layer.Color.a;
                 normalsRoughnessComposite *= 1.0 - layer.Color.a;
+                specularHitDistanceComposite *= 1.0 - layer.Color.a;
             }
 
             colorComposite += layer.Color * layer.Color.a;
@@ -137,13 +136,18 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             specularAlbedoComposite += layer.SpecularAlbedo * layer.Color.a;
             
             if (!layer.Additive)
+            {
                 normalsRoughnessComposite += layer.NormalsRoughness * layer.Color.a;
+                specularHitDistanceComposite += layer.SpecularHitDistance * layer.Color.a;
+            }
         }
+        
         normalsRoughnessComposite.rgb = NormalizeSafe(normalsRoughnessComposite.rgb);
 
         g_DiffuseAlbedo[dispatchThreadId] = diffuseAlbedoComposite;
         g_SpecularAlbedo[dispatchThreadId] = specularAlbedoComposite;
         g_NormalsRoughness[dispatchThreadId] = normalsRoughnessComposite;
+        g_SpecularHitDistance[dispatchThreadId] = specularHitDistanceComposite;
     }
 
     g_Color[dispatchThreadId] = colorComposite;

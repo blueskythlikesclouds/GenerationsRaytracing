@@ -70,7 +70,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     {
         StoreGBufferData(uint3(DispatchRaysIndex().xy, payload.LayerIndex), gBufferData);
 
-        if (!(gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_IS_ADDITIVE)) && gBufferData.Alpha > 0.5 && RayTCurrent() < payload.T)
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE) && gBufferData.Alpha > 0.5 && RayTCurrent() < payload.T)
         {
             payload.MotionVectors =
                 ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
