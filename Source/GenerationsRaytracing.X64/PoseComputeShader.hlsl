@@ -12,6 +12,7 @@ cbuffer GeometryDesc : register(b0)
     uint g_BlendWeightOffset;
     uint g_BlendIndicesOffset;
     uint g_NodeCount;
+    bool g_Visible;
 }
 
 StructuredBuffer<uint> g_Palette : register(t1);
@@ -29,41 +30,47 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     g_Dest.Store3(prevVertexOffset, g_Dest.Load3(vertexOffset));
 
-    uint2 blendIndicesAndWeight = g_Src.Load2(vertexOffset + g_BlendIndicesOffset);
+    float3 position = 0.0;
+    
+    if (g_Visible)
+    {
+        uint2 blendIndicesAndWeight = g_Src.Load2(vertexOffset + g_BlendIndicesOffset);
 
-    uint4 blendIndices = uint4(
-        (blendIndicesAndWeight.x >> 0) & 0xFF,
-        (blendIndicesAndWeight.x >> 8) & 0xFF,
-        (blendIndicesAndWeight.x >> 16) & 0xFF,
-        (blendIndicesAndWeight.x >> 24) & 0xFF);
+        uint4 blendIndices = uint4(
+            (blendIndicesAndWeight.x >> 0) & 0xFF,
+            (blendIndicesAndWeight.x >> 8) & 0xFF,
+            (blendIndicesAndWeight.x >> 16) & 0xFF,
+            (blendIndicesAndWeight.x >> 24) & 0xFF);
 
-    blendIndices = min(g_NodeCount - 1, blendIndices);
+        blendIndices = min(g_NodeCount - 1, blendIndices);
 
-    float4 blendWeight = float4(
-        ((blendIndicesAndWeight.y >> 0) & 0xFF) / 255.0,
-        ((blendIndicesAndWeight.y >> 8) & 0xFF) / 255.0,
-        ((blendIndicesAndWeight.y >> 16) & 0xFF) / 255.0,
-        ((blendIndicesAndWeight.y >> 24) & 0xFF) / 255.0);
+        float4 blendWeight = float4(
+            ((blendIndicesAndWeight.y >> 0) & 0xFF) / 255.0,
+            ((blendIndicesAndWeight.y >> 8) & 0xFF) / 255.0,
+            ((blendIndicesAndWeight.y >> 16) & 0xFF) / 255.0,
+            ((blendIndicesAndWeight.y >> 24) & 0xFF) / 255.0);
 
-    blendWeight.w = 1.0 - blendWeight.x - blendWeight.y - blendWeight.z;
+        blendWeight.w = 1.0 - blendWeight.x - blendWeight.y - blendWeight.z;
 
-    float4x4 nodeMatrix =
-        g_Pose[g_Palette[blendIndices.x]] * blendWeight.x +
-        g_Pose[g_Palette[blendIndices.y]] * blendWeight.y +
-        g_Pose[g_Palette[blendIndices.z]] * blendWeight.z +
-        g_Pose[g_Palette[blendIndices.w]] * blendWeight.w;
+        float4x4 nodeMatrix =
+            g_Pose[g_Palette[blendIndices.x]] * blendWeight.x +
+            g_Pose[g_Palette[blendIndices.y]] * blendWeight.y +
+            g_Pose[g_Palette[blendIndices.z]] * blendWeight.z +
+            g_Pose[g_Palette[blendIndices.w]] * blendWeight.w;
 
-    float3 position = g_Src.Load<float3>(vertexOffset);
-    uint3 nrmTgnBin = g_Src.Load3(vertexOffset + g_NormalOffset);
-    float3 normal = DecodeSnorm10(nrmTgnBin.x);
-    float3 tangent = DecodeSnorm10(nrmTgnBin.y);
-    float3 binormal = DecodeSnorm10(nrmTgnBin.z);
+        position = g_Src.Load<float3>(vertexOffset);
+        uint3 nrmTgnBin = g_Src.Load3(vertexOffset + g_NormalOffset);
+        float3 normal = DecodeSnorm10(nrmTgnBin.x);
+        float3 tangent = DecodeSnorm10(nrmTgnBin.y);
+        float3 binormal = DecodeSnorm10(nrmTgnBin.z);
 
-    position = mul(nodeMatrix, float4(position, 1.0)).xyz;
-    normal = normalize(mul(nodeMatrix, float4(normal, 0.0)).xyz);
-    tangent = normalize(mul(nodeMatrix, float4(tangent, 0.0)).xyz);
-    binormal = normalize(mul(nodeMatrix, float4(binormal, 0.0)).xyz);
+        position = mul(nodeMatrix, float4(position, 1.0)).xyz;
+        normal = normalize(mul(nodeMatrix, float4(normal, 0.0)).xyz);
+        tangent = normalize(mul(nodeMatrix, float4(tangent, 0.0)).xyz);
+        binormal = normalize(mul(nodeMatrix, float4(binormal, 0.0)).xyz);
 
+        g_Dest.Store3(vertexOffset + g_NormalOffset, uint3(EncodeSnorm10(normal), EncodeSnorm10(tangent), EncodeSnorm10(binormal)));
+    }
+    
     g_Dest.Store<float3>(vertexOffset, position);
-    g_Dest.Store3(vertexOffset + g_NormalOffset, uint3(EncodeSnorm10(normal), EncodeSnorm10(tangent), EncodeSnorm10(binormal)));
 }

@@ -422,6 +422,7 @@ struct MsgComputePose
         uint8_t blendWeightOffset;
         uint8_t blendIndicesOffset;
         uint8_t nodeCount;
+        bool visible;
     };
 
     uint32_t vertexBufferId;

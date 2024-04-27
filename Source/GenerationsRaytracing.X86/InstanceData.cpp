@@ -57,7 +57,6 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     This->m_headNodeIndex = 0;
     This->m_handledEyeMaterials = false;
     This->m_modelHash = 0;
-    This->m_visibilityBits = 0;
     This->m_hashFrame = 0;
     This->m_chrPlayableMenuParam = 10000.0f;
 
