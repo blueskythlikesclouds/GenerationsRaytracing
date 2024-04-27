@@ -22,12 +22,17 @@ static const Stage s_stages[] =
 #include "RaytracingStages.h"
 };
 
-static boost::shared_ptr<Hedgehog::Database::CDatabase> s_database;
-static boost::shared_ptr<Hedgehog::Database::CRawData> s_sceneEffect;
+static struct
+{
+    boost::shared_ptr<Hedgehog::Database::CDatabase> database;
+    boost::shared_ptr<Hedgehog::Mirage::CLightData> light;
+    boost::shared_ptr<Hedgehog::Mirage::CModelData> sky;
+    boost::shared_ptr<Hedgehog::Database::CRawData> sceneEffect;
+} s_stage;
 
 static void loadArchiveDatabase(const Stage& stage)
 {
-    s_database = Hedgehog::Database::CDatabase::CreateDatabase();
+    s_stage.database = Hedgehog::Database::CDatabase::CreateDatabase();
     auto& loader = Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spDatabaseLoader;
 
     static Hedgehog::Base::CSharedString s_ar(".ar");
@@ -42,20 +47,16 @@ static void loadArchiveDatabase(const Stage& stage)
     }
 
     for (const auto archiveName : stage.archiveNames)
-        loader->LoadArchiveList(s_database, archiveName + s_arl);
+        loader->LoadArchiveList(s_stage.database, archiveName + s_arl);
 
     for (const auto archiveName : stage.archiveNames)
-        loader->LoadArchive(s_database, archiveName + s_ar, { -10, 5 }, false, false);
+        loader->LoadArchive(s_stage.database, archiveName + s_ar, { -10, 5 }, false, false);
 
-    Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(s_database.get());
+    Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(s_stage.database.get());
 
-    if (stage.light)
-        RaytracingParams::s_light = wrapper.GetLightData(stage.light);
-
-    if (stage.sky)
-        RaytracingParams::s_sky = wrapper.GetModelData(stage.sky);
-
-    s_sceneEffect = s_database->GetRawData("SceneEffect.prm.xml");
+    s_stage.light = wrapper.GetLightData(stage.light);
+    s_stage.sky = wrapper.GetModelData(stage.sky);
+    s_stage.sceneEffect = s_stage.database->GetRawData("SceneEffect.prm.xml");
 }
 
 static inline FUNCTION_PTR(void, __stdcall, createXmlDocument, 0x1101570,
@@ -77,11 +78,8 @@ static void parseXmlDocument(const Hedgehog::Base::CSharedString* name, void* pa
 
 static inline FUNCTION_PTR(void, __cdecl, refreshGlobalParameters, 0xD64710);
 
-static bool loadSceneEffect()
+static void loadSceneEffect()
 {
-    if (!s_sceneEffect || !s_sceneEffect->IsMadeAll())
-        return false;
-
     typedef void* __fastcall Function(size_t);
     const auto& parameterEditor = Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spParameterEditor;
 
@@ -101,7 +99,7 @@ static bool loadSceneEffect()
     Hedgehog::Base::CSharedString str("SceneEffect.prm.xml");
     boost::anonymous_shared_ptr xmlDocument;
 
-    createXmlDocument(str, xmlDocument, s_database);
+    createXmlDocument(str, xmlDocument, s_stage.database);
 
     if (xmlDocument)
     {
@@ -116,9 +114,6 @@ static bool loadSceneEffect()
             &xmlElement,
             0);
     }
-
-    s_sceneEffect = nullptr;
-    return true;
 }
 
 static boost::shared_ptr<Sonic::CParameterFile> s_parameterFile;
@@ -196,25 +191,34 @@ bool RaytracingParams::update()
 
     if (s_prevStageIndex != curStageIndex)
     {
-        s_database = nullptr;
-        s_light = nullptr;
-        s_sky = nullptr;
-        s_sceneEffect = nullptr;
-
         if (curStageIndex != 0)
         {
             loadArchiveDatabase(s_stages[curStageIndex - 1]);
         }
         else
         {
+            s_light = nullptr;
+            s_sky = nullptr;
             refreshGlobalParameters();
+            s_stage = {};
+            resetAccumulation = true;
         }
 
         s_prevStageIndex = curStageIndex;
+    }
+
+    if (s_stage.database != nullptr &&
+        s_stage.light->IsMadeAll() &&
+        s_stage.sky->IsMadeAll() &&
+        s_stage.sceneEffect->IsMadeAll())
+    {
+        s_light = s_stage.light;
+        s_sky = s_stage.sky;
+        loadSceneEffect();
+        s_stage = {};
         resetAccumulation = true;
     }
 
-    resetAccumulation |= loadSceneEffect();
     return resetAccumulation;
 }
 
