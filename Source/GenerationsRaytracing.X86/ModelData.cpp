@@ -676,110 +676,111 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                 s_messageSender.endMessage();
 
                 offset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
-
             });
         }
-
-        uint32_t geometryCount = 0;
-        uint32_t nodeCount = 0;
-        traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
+        else 
         {
-            ++geometryCount;
-            nodeCount += meshDataEx.m_NodeNum;
-        });
-
-        auto& message = s_messageSender.makeMessage<MsgComputePose>(
-            instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix) +
-            geometryCount * sizeof(MsgComputePose::GeometryDesc) +
-            nodeCount * sizeof(uint32_t));
-
-        message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
-        message.nodeCount = static_cast<uint8_t>(instanceInfoEx.m_spPose->GetMatrixNum());
-        message.geometryCount = geometryCount;
-
-        memcpy(message.data, instanceInfoEx.m_spPose->GetMatrixList(),
-            instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix));
-
-        auto geometryDesc = reinterpret_cast<MsgComputePose::GeometryDesc*>(message.data +
-            instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix));
-
-        memset(geometryDesc, 0, geometryCount * sizeof(MsgComputePose::GeometryDesc));
-
-        auto nodePalette = reinterpret_cast<uint32_t*>(geometryDesc + geometryCount);
-
-        uint32_t vertexOffset = 0;
-        traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
-        {
-            geometryDesc->vertexCount = meshDataEx.m_VertexNum;
-            geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
-            geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
-            geometryDesc->vertexOffset = meshDataEx.m_VertexOffset;
-
-            const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
-                meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
-
-            auto vertexElement = vertexDeclaration->getVertexElements();
-
-            while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
+            uint32_t geometryCount = 0;
+            uint32_t nodeCount = 0;
+            traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
             {
-                const uint8_t offset = static_cast<uint8_t>(vertexElement->Offset);
+                ++geometryCount;
+                nodeCount += meshDataEx.m_NodeNum;
+            });
 
-                switch (vertexElement->Usage)
+            auto& message = s_messageSender.makeMessage<MsgComputePose>(
+                instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix) +
+                geometryCount * sizeof(MsgComputePose::GeometryDesc) +
+                nodeCount * sizeof(uint32_t));
+
+            message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
+            message.nodeCount = static_cast<uint8_t>(instanceInfoEx.m_spPose->GetMatrixNum());
+            message.geometryCount = geometryCount;
+
+            memcpy(message.data, instanceInfoEx.m_spPose->GetMatrixList(),
+                instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix));
+
+            auto geometryDesc = reinterpret_cast<MsgComputePose::GeometryDesc*>(message.data +
+                instanceInfoEx.m_spPose->GetMatrixNum() * sizeof(Hedgehog::Math::CMatrix));
+
+            memset(geometryDesc, 0, geometryCount * sizeof(MsgComputePose::GeometryDesc));
+
+            auto nodePalette = reinterpret_cast<uint32_t*>(geometryDesc + geometryCount);
+
+            uint32_t vertexOffset = 0;
+            traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t)
+            {
+                geometryDesc->vertexCount = meshDataEx.m_VertexNum;
+                geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
+                geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
+                geometryDesc->vertexOffset = meshDataEx.m_VertexOffset;
+
+                const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
+                    meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
+
+                auto vertexElement = vertexDeclaration->getVertexElements();
+
+                while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
                 {
-                case D3DDECLUSAGE_NORMAL:
-                    geometryDesc->normalOffset = offset;
-                    break;
+                    const uint8_t offset = static_cast<uint8_t>(vertexElement->Offset);
 
-                case D3DDECLUSAGE_TANGENT:
-                    geometryDesc->tangentOffset = offset;
-                    break;
+                    switch (vertexElement->Usage)
+                    {
+                    case D3DDECLUSAGE_NORMAL:
+                        geometryDesc->normalOffset = offset;
+                        break;
 
-                case D3DDECLUSAGE_BINORMAL:
-                    geometryDesc->binormalOffset = offset;
-                    break;
+                    case D3DDECLUSAGE_TANGENT:
+                        geometryDesc->tangentOffset = offset;
+                        break;
 
-                case D3DDECLUSAGE_BLENDWEIGHT:
-                    geometryDesc->blendWeightOffset = offset;
-                    break;
+                    case D3DDECLUSAGE_BINORMAL:
+                        geometryDesc->binormalOffset = offset;
+                        break;
 
-                case D3DDECLUSAGE_BLENDINDICES:
-                    geometryDesc->blendIndicesOffset = offset;
-                    break;
+                    case D3DDECLUSAGE_BLENDWEIGHT:
+                        geometryDesc->blendWeightOffset = offset;
+                        break;
+
+                    case D3DDECLUSAGE_BLENDINDICES:
+                        geometryDesc->blendIndicesOffset = offset;
+                        break;
+                    }
+
+                    ++vertexElement;
                 }
 
-                ++vertexElement;
-            }
+                geometryDesc->nodeCount = static_cast<uint8_t>(meshDataEx.m_NodeNum);
 
-            geometryDesc->nodeCount = static_cast<uint8_t>(meshDataEx.m_NodeNum);
+                for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
+                    nodePalette[i] = meshDataEx.m_pNodeIndices[i] >= message.nodeCount ? 0 : static_cast<uint32_t>(meshDataEx.m_pNodeIndices[i]);
 
-            for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
-                nodePalette[i] = meshDataEx.m_pNodeIndices[i] >= message.nodeCount ? 0 : static_cast<uint32_t>(meshDataEx.m_pNodeIndices[i]);
+                if (shouldCheckForHash)
+                    MaterialData::create(*meshDataEx.m_spMaterial, true);
 
-            if (shouldCheckForHash)
-                MaterialData::create(*meshDataEx.m_spMaterial, true);
+                if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals)
+                {
+                    auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
 
-            if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals)
-            {
-                auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
+                    smoothNormalMsg.indexBufferId = meshDataEx.m_indices->getId();
+                    smoothNormalMsg.indexOffset = meshDataEx.m_indexOffset;
+                    smoothNormalMsg.vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
+                    smoothNormalMsg.vertexCount = meshDataEx.m_VertexNum;
+                    smoothNormalMsg.vertexOffset = vertexOffset;
+                    smoothNormalMsg.normalOffset = geometryDesc->normalOffset;
+                    smoothNormalMsg.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
+                    smoothNormalMsg.adjacencyBufferId = meshDataEx.m_adjacency->getId();
 
-                smoothNormalMsg.indexBufferId = meshDataEx.m_indices->getId();
-                smoothNormalMsg.indexOffset = meshDataEx.m_indexOffset;
-                smoothNormalMsg.vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
-                smoothNormalMsg.vertexCount = meshDataEx.m_VertexNum;
-                smoothNormalMsg.vertexOffset = vertexOffset;
-                smoothNormalMsg.normalOffset = geometryDesc->normalOffset;
-                smoothNormalMsg.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
-                smoothNormalMsg.adjacencyBufferId = meshDataEx.m_adjacency->getId();
+                    s_messageSender.endMessage();
+                }
 
-                s_messageSender.endMessage();
-            }
+                vertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
+                ++geometryDesc;
+                nodePalette += meshDataEx.m_NodeNum;
+            });
 
-            vertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
-            ++geometryDesc;
-            nodePalette += meshDataEx.m_NodeNum;
-        });
-
-        s_messageSender.endMessage();
+            s_messageSender.endMessage();
+        }
 
         for (size_t i = 0; i < _countof(s_instanceMasks); i++)
         {
@@ -796,9 +797,9 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                 buildMessage.bottomLevelAccelStructId = bottomLevelAccelStructId;
                 buildMessage.performUpdate = RaytracingParams::s_allowAccelStructUpdate;
                 s_messageSender.endMessage();
-            }
 
-            bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;
+                bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;
+            }
         }
     }
     else
