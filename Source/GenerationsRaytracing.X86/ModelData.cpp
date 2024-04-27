@@ -758,7 +758,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             if (shouldCheckForHash)
                 MaterialData::create(*meshDataEx.m_spMaterial, true);
 
-            if (meshDataEx.m_adjacency != nullptr)
+            if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals)
             {
                 auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
 

@@ -442,9 +442,14 @@ void RaytracingParams::imguiWindow()
                         ImGui::Checkbox("##No AO Model", &RaytracingParams::s_enableNoAoModels);
 
                         ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Allow BVH Update");
+                        ImGui::TextUnformatted("BVH Update");
                         ImGui::TableNextColumn();
-                        ImGui::Checkbox("##Allow BVH Update", &RaytracingParams::s_allowAccelStructUpdate);
+                        ImGui::Checkbox("##BVH Update", &RaytracingParams::s_allowAccelStructUpdate);
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Smooth Normal");
+                        ImGui::TableNextColumn();
+                        ImGui::Checkbox("##Smooth Normal", &RaytracingParams::s_computeSmoothNormals);
 
                         ImGui::TableNextColumn();
                         ImGui::TextUnformatted("View");
