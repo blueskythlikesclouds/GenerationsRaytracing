@@ -93,60 +93,108 @@ void PrimaryTransparentMiss(inout PrimaryTransparentRayPayload payload : SV_RayP
     
 }
 
-[shader("raygeneration")]
-void ShadowRayGeneration()
+struct TracePathArgs
 {
-    uint randSeed = InitRandom(DispatchRaysIndex().xy);
-    uint layerNum = g_LayerNum_SRV[DispatchRaysIndex().xy];
-    
-    for (uint i = 0; i < layerNum; i++)
-    {
-        uint3 dispatchRaysIndex = uint3(DispatchRaysIndex().xy, i);
-        GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
+    float3 Position;
+    float3 Direction;
+    uint MissShaderIndex;
+    float3 Throughput;
+    bool ApplyPower;
+};
 
-        if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)) && i == 0 && g_LocalLightCount > 0)
+float4 TracePath(TracePathArgs args, inout uint randSeed)
+{
+    float3 radiance = 0.0;
+    float hitDistance = 0.0;
+
+    [unroll]
+    for (uint i = 0; i < 2; i++)
+    {
+        RayDesc ray;
+        ray.Origin = args.Position;
+        ray.Direction = args.Direction;
+        ray.TMin = 0.0;
+        ray.TMax = INF;
+
+        SecondaryRayPayload payload;
+
+#ifdef NV_SHADER_EXTN_SLOT
+        NvHitObject hitObject = NvTraceRayHitObject(
+#else
+        TraceRay(
+#endif
+            g_BVH,
+            i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
+            INSTANCE_MASK_OPAQUE,
+            HIT_GROUP_SECONDARY,
+            HIT_GROUP_NUM,
+            i == 0 ? args.MissShaderIndex : MISS_GI,
+            ray,
+            payload);
+
+#ifdef NV_SHADER_EXTN_SLOT
+        NvReorderThread(hitObject, 0, 0);
+        NvInvokeHitObject(g_BVH, hitObject, payload);
+#endif
+
+        float3 color = payload.Color;
+        float3 diffuse = payload.Diffuse;
+
+        bool terminatePath = false;
+
+        if (any(diffuse != 0))
         {
-            float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
-        
-            // Generate initial candidates
-            Reservoir reservoir = (Reservoir) 0;
-            uint localLightCount = min(32, g_LocalLightCount);
-    
-            for (uint j = 0; j < localLightCount; j++)
+            float lightPower = 1.0;
+
+            if (i > 0 || args.ApplyPower)
+            {
+                color *= g_EmissivePower;
+                diffuse *= g_DiffusePower;
+                lightPower = g_LightPower;
+            }
+
+            color += diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal)) *
+               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
+
+            if (g_LocalLightCount > 0)
             {
                 uint sample = NextRandomUint(randSeed) % g_LocalLightCount;
-                float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
-                UpdateReservoir(reservoir, sample, weight, 1, NextRandomFloat(randSeed));
+                LocalLight localLight = g_LocalLights[sample];
+
+                float3 lightDirection = localLight.Position - payload.Position;
+                float distance = length(lightDirection);
+
+                if (distance > 0.0)
+                    lightDirection /= distance;
+
+                float3 localLighting = diffuse * localLight.Color * lightPower * g_LocalLightCount * saturate(dot(payload.Normal, lightDirection)) *
+                    ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
+
+                if (any(localLighting != 0))
+                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 1.0 / localLight.OutRange, distance);
+
+                color += localLighting;
             }
-    
-            ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
-    
-            // Temporal reuse
-            if (g_CurrentFrame > 0)
-            {
-                int2 prevIndex = (float2) dispatchRaysIndex.xy - g_PixelJitter + 0.5 + g_MotionVectors_SRV[dispatchRaysIndex.xy];
-    
-                // TODO: Check for previous normal and depth
-    
-                Reservoir prevReservoir = LoadReservoir(g_PrevReservoir[prevIndex]);
-                prevReservoir.M = min(reservoir.M * 20, prevReservoir.M);
-            
-                Reservoir temporalReservoir = (Reservoir) 0;
-            
-                UpdateReservoir(temporalReservoir, reservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
-                    g_LocalLights[reservoir.Y]) * reservoir.W * reservoir.M, reservoir.M, NextRandomFloat(randSeed));
-            
-                UpdateReservoir(temporalReservoir, prevReservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
-                    g_LocalLights[prevReservoir.Y]) * prevReservoir.W * prevReservoir.M, prevReservoir.M, NextRandomFloat(randSeed));
-            
-                ComputeReservoirWeight(temporalReservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[temporalReservoir.Y]));
-            
-                reservoir = temporalReservoir;
-            }
-    
-            g_Reservoir[dispatchRaysIndex.xy] = StoreReservoir(reservoir);
         }
+        else
+        {
+            terminatePath = true;
+        }
+
+        if (i == 0 && !terminatePath)
+            hitDistance = distance(args.Position, payload.Position);
+
+        radiance += args.Throughput * color;
+        args.Throughput *= diffuse;
+
+        if (terminatePath)
+            break;
+
+        args.Position = payload.Position;
+        args.Direction = TangentToWorld(payload.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
     }
+
+    return float4(radiance, hitDistance);
 }
 
 [shader("raygeneration")]
