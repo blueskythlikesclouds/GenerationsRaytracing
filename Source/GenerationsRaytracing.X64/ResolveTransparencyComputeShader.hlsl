@@ -75,7 +75,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
 
             float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
 
-            if (gBufferData.Flags & (GBUFFER_FLAG_REFRACTION_MUL | GBUFFER_FLAG_REFRACTION_ADD | GBUFFER_FLAG_REFRACTION_OPACITY))
+            if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_ALL)
             {
                 float2 texCoord = (dispatchThreadId + 0.5) / g_InternalResolution;
                 texCoord = texCoord * float2(2.0, -2.0) + float2(-1.0, 1.0);

@@ -180,12 +180,24 @@ float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)
 {
     if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_MUL)
+    {
         return refraction * gBufferData.Diffuse;
+    }
 
     if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_OPACITY)
+    {
         return refraction * (1.0 - gBufferData.Refraction);
+    }
+    
+    if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_OVERLAY)
+    {
+        refraction = select(refraction <= gBufferData.RefractionOverlay, 
+            2.0 * gBufferData.Diffuse * refraction, 1.0 - 2.0 * (1.0 - gBufferData.Diffuse) * (1.0 - refraction));
+        
+        return lerp(refraction, gBufferData.Specular, gBufferData.Refraction);
+    }
 
-    return refraction;
+    return refraction + gBufferData.Diffuse * gBufferData.Refraction;
 }
 
 float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingParams)
