@@ -1871,18 +1871,15 @@ RaytracingDevice::RaytracingDevice()
         primaryStackSize + m_properties->GetShaderStackSize(L"PrimaryTransparentMiss"));
 
     m_secondaryStackSize = std::max(m_secondaryStackSize, 
-        secondaryStackSize + m_properties->GetShaderStackSize(L"GIMiss"));  
-    
-    m_secondaryStackSize = std::max(m_secondaryStackSize, 
-        secondaryStackSize + m_properties->GetShaderStackSize(L"ReflectionMiss"));
+        secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryMiss"));
 
     m_secondaryStackSize = std::max(m_secondaryStackSize, 
-        secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryMiss"));
+        secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryEnvironmentColorMiss"));
 
     const wchar_t* rayGenShaderTable[] =
     {
         L"PrimaryRayGeneration",
-        L"SecondaryRayGeneration",
+        L"SecondaryRayGeneration"
     };
 
     static_assert(_countof(rayGenShaderTable) == RAY_GENERATION_NUM);
@@ -1895,9 +1892,8 @@ RaytracingDevice::RaytracingDevice()
     {
         L"PrimaryMiss",
         L"PrimaryTransparentMiss",
-        L"GIMiss",
-        L"ReflectionMiss",
-        L"SecondaryMiss"
+        L"SecondaryMiss",
+        L"SecondaryEnvironmentColorMiss"
     };
 
     static_assert(_countof(missShaderTable) == MISS_NUM);

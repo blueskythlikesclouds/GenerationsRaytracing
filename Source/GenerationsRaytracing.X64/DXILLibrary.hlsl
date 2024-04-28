@@ -128,7 +128,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
             INSTANCE_MASK_OPAQUE,
             HIT_GROUP_SECONDARY,
             HIT_GROUP_NUM,
-            bounceIndex == 0 ? args.MissShaderIndex : MISS_GI,
+            bounceIndex == 0 ? args.MissShaderIndex : MISS_SECONDARY_ENVIRONMENT_COLOR,
             ray,
             payload);
 
@@ -141,12 +141,13 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
         float3 diffuse = payload.Diffuse;
 
         bool terminatePath = false;
+        bool applyPower = bounceIndex != 0 || args.ApplyPower;
 
         if (any(diffuse != 0))
         {
             float lightPower = 1.0;
 
-            if (bounceIndex != 0 || args.ApplyPower)
+            if (applyPower)
             {
                 color *= g_EmissivePower;
                 diffuse *= g_DiffusePower;
@@ -190,6 +191,9 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
         else
         {
             terminatePath = true;
+            
+            if (applyPower && !g_UseEnvironmentColor)
+                color *= g_SkyPower;
         }
 
         if (bounceIndex == 0 && !terminatePath)
@@ -251,7 +255,7 @@ void SecondaryRayGeneration()
                     float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
     
                     args.Direction = reflect(-eyeDirection, halfwayDirection);
-                    args.MissShaderIndex = MISS_REFLECTION;
+                    args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
                     args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
                 }
             
@@ -261,7 +265,7 @@ void SecondaryRayGeneration()
             else
             {
                 args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
-                args.MissShaderIndex = MISS_GI;
+                args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
                 args.Throughput = 1.0 / giProbability;
                 args.ApplyPower = true;
             }
@@ -278,7 +282,22 @@ void SecondaryRayGeneration()
 }
 
 [shader("miss")]
-void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+{
+    float3 color = 0.0;
+
+    if (g_UseSkyTexture)
+    {
+        TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
+        color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
+    }
+
+    payload.Color = color;
+    payload.Diffuse = 0.0;
+}
+
+[shader("miss")]
+void SecondaryEnvironmentColorMiss(inout SecondaryRayPayload payload : SV_RayPayload)
 {
     float3 color = 0.0;
 
@@ -287,43 +306,6 @@ void GIMiss(inout SecondaryRayPayload payload : SV_RayPayload)
         color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
     }
     else if (g_UseSkyTexture)
-    {
-        TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
-        color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb * g_SkyPower;
-    }
-
-    payload.Color = color;
-    payload.Diffuse = 0.0;
-}
-
-[shader("miss")]
-void ReflectionMiss(inout SecondaryRayPayload payload : SV_RayPayload)
-{
-    float3 color = 0.0;
-
-    if (g_SkyInRoughReflection)
-    {
-        if (g_UseEnvironmentColor)
-        {
-            color = WorldRayDirection().y > 0.0 ? g_SkyColor : g_GroundColor;
-        }
-        else if (g_UseSkyTexture)
-        {
-            TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
-            color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
-        }
-    }
-
-    payload.Color = color;
-    payload.Diffuse = 0.0;
-}
-
-[shader("miss")]
-void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
-{
-    float3 color = 0.0;
-
-    if (g_UseSkyTexture)
     {
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
         color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
