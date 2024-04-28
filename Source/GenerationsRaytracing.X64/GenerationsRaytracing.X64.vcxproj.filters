@@ -125,6 +125,9 @@
     <Filter Include="Shader\ToneMap">
       <UniqueIdentifier>{29259ad5-10f1-45b5-a431-c18773d87b1c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader\Reservoir">
+      <UniqueIdentifier>{61ef9b3a-832f-484a-b6f2-659629ce794a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MessageReceiver.h">
@@ -270,9 +273,6 @@
     <None Include="RootSignature.hlsli">
       <Filter>Shader\Common</Filter>
     </None>
-    <None Include="Reservoir.hlsli">
-      <Filter>Shader\Raytracing</Filter>
-    </None>
     <None Include="RayDifferentials.hlsli">
       <Filter>Shader\Raytracing</Filter>
     </None>
@@ -284,6 +284,9 @@
     </None>
     <None Include="GBufferData.hlsli">
       <Filter>Shader\Material</Filter>
+    </None>
+    <None Include="Reservoir.hlsli">
+      <Filter>Shader\Reservoir</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -346,6 +349,9 @@
     </FxCompile>
     <FxCompile Include="ToneMapPixelShader.hlsl">
       <Filter>Shader\ToneMap</Filter>
+    </FxCompile>
+    <FxCompile Include="ReservoirComputeShader.hlsl">
+      <Filter>Shader\Reservoir</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

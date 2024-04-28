@@ -473,7 +473,6 @@ void RaytracingParams::imguiWindow()
                         ImGui::RadioButton("Refraction", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION);
                         ImGui::RadioButton("Refraction Overlay", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION_OVERLAY);
                         ImGui::RadioButton("Refraction Offset", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION_OFFSET);
-                        ImGui::RadioButton("Shadow", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SHADOW);
                         ImGui::RadioButton("GI", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_GI);
                         ImGui::RadioButton("Reflection", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFLECTION);
 

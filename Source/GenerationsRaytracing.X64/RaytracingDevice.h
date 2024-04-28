@@ -74,7 +74,6 @@ protected:
     ComPtr<ID3D12StateObject> m_stateObject;
     ComPtr<ID3D12StateObjectProperties> m_properties;
     size_t m_primaryStackSize = 0;
-    size_t m_shadowStackSize = 0;
     size_t m_secondaryStackSize = 0;
     void* m_hitGroups[_countof(s_shaderHitGroups)]{};
     std::vector<uint8_t> m_rayGenShaderTable;
@@ -144,7 +143,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_gBufferTexture7;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture8;
 
-    ComPtr<D3D12MA::Allocation> m_shadowTexture;
     ComPtr<D3D12MA::Allocation> m_reservoirTexture;
     ComPtr<D3D12MA::Allocation> m_prevReservoirTexture;
 
@@ -189,6 +187,9 @@ protected:
     ComPtr<ID3D12PipelineState> m_im3dTrianglesPipeline;
     ComPtr<ID3D12PipelineState> m_im3dLinesPipeline;
     ComPtr<ID3D12PipelineState> m_im3dPointsPipeline;
+
+    // Reservoir
+    ComPtr<ID3D12PipelineState> m_reservoirPipeline;
 
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);

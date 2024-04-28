@@ -51,9 +51,16 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             layers[i].Additive = (gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE) != 0;
 
             if (!(gBufferData.Flags & (GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
-                shadingParams.Shadow = g_Shadow_SRV[uint3(dispatchThreadId, i + 1)];
+            {
+                uint randSeed = InitRandom(dispatchThreadId.xy);
+                
+                shadingParams.Shadow = TraceShadow(gBufferData.Position,
+                    -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), RAY_FLAG_NONE, 0);
+            }
             else
+            {
                 shadingParams.Shadow = 1.0;
+            }
 
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
             {

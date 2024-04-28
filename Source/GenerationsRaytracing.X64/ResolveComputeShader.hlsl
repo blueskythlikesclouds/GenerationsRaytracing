@@ -31,9 +31,14 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         shadingParams.EyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
     
         if (!(gBufferData.Flags & (GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
-            shadingParams.Shadow = g_Shadow_SRV[uint3(dispatchThreadId, 0)];
+        {
+            shadingParams.Shadow = TraceShadow(gBufferData.Position,
+                -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), RAY_FLAG_NONE, 0);
+        }
         else
+        {
             shadingParams.Shadow = 1.0;
+        }
     
         if (g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
         {

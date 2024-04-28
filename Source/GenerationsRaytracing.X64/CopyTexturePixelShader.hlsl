@@ -74,11 +74,7 @@ void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD,
         case DEBUG_VIEW_REFRACTION_OFFSET:
             color.rgb = float3(LoadGBufferData(index).RefractionOffset * 0.5 + 0.5, 0.0);
             break;
-        
-        case DEBUG_VIEW_SHADOW:
-            color.rgb = !(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_SHADOW)) ? g_Shadow_SRV[index].xxx : 0.0;
-            break;
-        
+
         case DEBUG_VIEW_GI:
             color.rgb = !(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)) ? g_GlobalIllumination_SRV[index].rgb : 0.0;
             break;

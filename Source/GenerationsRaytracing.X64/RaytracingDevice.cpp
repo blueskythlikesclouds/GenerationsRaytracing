@@ -31,6 +31,7 @@
 #include "Im3dPointsPixelShader.h"
 #include "Im3dTrianglesVertexShader.h"
 #include "Im3dTrianglesPixelShader.h"
+#include "ReservoirComputeShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
@@ -395,7 +396,7 @@ bool RaytracingDevice::createTopLevelAccelStruct()
     return true;
 }
 
-static constexpr size_t s_textureNum = 26;
+static constexpr size_t s_textureNum = 25;
 
 void RaytracingDevice::createRaytracingTextures()
 {
@@ -442,7 +443,6 @@ void RaytracingDevice::createRaytracingTextures()
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7, L"Geometry Buffer Texture 7" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16_FLOAT, m_gBufferTexture8, L"Geometry Buffer Texture 8" },
 
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R8_UNORM, m_shadowTexture, L"Shadow Texture" },
         { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture, L"Reservoir Texture" },
         { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_prevReservoirTexture, L"Previous Reservoir Texture" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, L"GI Texture" },
@@ -1008,22 +1008,29 @@ void RaytracingDevice::procMsgTraceRays()
 
     PIX_END_EVENT();
 
-    PIX_BEGIN_EVENT("ShadowRayGeneration");
-    m_properties->SetPipelineStackSize(m_shadowStackSize);
-    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-    underlyingCommandList->DispatchRays(&dispatchRaysDesc);
-    PIX_END_EVENT();
-
     PIX_BEGIN_EVENT("SecondaryRayGeneration");
     m_properties->SetPipelineStackSize(m_secondaryStackSize);
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
     underlyingCommandList->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
 
+    if (message.localLightCount > 0)
+    {
+        PIX_BEGIN_EVENT("Reservoir");
+
+        underlyingCommandList->SetPipelineState(m_reservoirPipeline.Get());
+
+        underlyingCommandList->Dispatch(
+            (m_upscaler->getWidth() + 7) / 8,
+            (m_upscaler->getHeight() + 7) / 8,
+            1);
+
+        PIX_END_EVENT();
+    }
+
     commandList.transitionBarriers(
         {
             m_depthTexture->GetResource(),
-            m_shadowTexture->GetResource(),
             m_reservoirTexture->GetResource(),
             m_giTexture->GetResource(),
             m_reflectionTexture->GetResource()
@@ -1872,12 +1879,9 @@ RaytracingDevice::RaytracingDevice()
     m_secondaryStackSize = std::max(m_secondaryStackSize, 
         secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryMiss"));
 
-    m_shadowStackSize = m_properties->GetShaderStackSize(L"ShadowRayGeneration");
-
     const wchar_t* rayGenShaderTable[] =
     {
         L"PrimaryRayGeneration",
-        L"ShadowRayGeneration",
         L"SecondaryRayGeneration",
     };
 
@@ -2171,6 +2175,12 @@ RaytracingDevice::RaytracingDevice()
     im3dPipelineDesc.PS.pShaderBytecode = Im3dPointsPixelShader;
     im3dPipelineDesc.PS.BytecodeLength = sizeof(Im3dPointsPixelShader);
     m_pipelineLibrary.createGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dPointsPipeline.GetAddressOf()));
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC reservoirPipelineDesc{};
+    reservoirPipelineDesc.pRootSignature = m_raytracingRootSignature.Get();
+    reservoirPipelineDesc.CS.pShaderBytecode = ReservoirComputeShader;
+    reservoirPipelineDesc.CS.BytecodeLength = sizeof(ReservoirComputeShader);
+    m_pipelineLibrary.createComputePipelineState(&reservoirPipelineDesc, IID_PPV_ARGS(m_reservoirPipeline.GetAddressOf()));
 }
 
 static void waitForQueueOnExit(CommandQueue& queue)
