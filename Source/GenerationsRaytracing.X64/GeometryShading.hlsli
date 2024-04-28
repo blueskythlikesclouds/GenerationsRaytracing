@@ -10,7 +10,6 @@ struct ShadingParams
 {
     float3 EyePosition;
     float3 EyeDirection;
-    float3 Shadow;
     Reservoir Reservoir;
     float3 GlobalIllumination;
     float3 Reflection;
@@ -260,14 +259,22 @@ float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)
     return refraction + gBufferData.Diffuse * gBufferData.Refraction;
 }
 
-float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingParams)
+float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingParams, inout uint randSeed)
 {
     float3 resultShading = 0.0;
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
     {
-        resultShading += ComputeDirectLighting(gBufferData, shadingParams.EyeDirection, 
-            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb) * shadingParams.Shadow;
+        float3 directLighting = ComputeDirectLighting(gBufferData, shadingParams.EyeDirection, 
+            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+        
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW) && any(directLighting > 0.0001))
+        {
+            directLighting *= TraceShadow(gBufferData.Position,
+                -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 0);
+        }
+        
+        resultShading += directLighting;
     }
 
     if (g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
@@ -281,14 +288,15 @@ float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingPara
     return resultShading;
 }
 
-float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
+float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams, inout uint randSeed)
 {
     float3 resultShading = 0.0;
 
     float3 halfwayDirection = NormalizeSafe(shadingParams.EyeDirection - mrgGlobalLight_Direction.xyz);
     float cosTheta = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss);
     float3 specularLight = mrgGlobalLight_Specular.rgb * cosTheta * gBufferData.Specular * gBufferData.SpecularGloss * gBufferData.SpecularLevel;
-    resultShading += specularLight * shadingParams.Shadow;
+    float shadow = TraceShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 0);
+    resultShading += specularLight * shadow;
 
     float diffuseFresnel = (1.0 - gBufferData.SpecularFresnel) * 
         pow(abs(dot(gBufferData.Normal, g_EyeDirection.xyz)), gBufferData.SpecularGloss);
@@ -301,7 +309,7 @@ float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams)
     float3 diffuseLight = 0.0;
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
     {
-        diffuseLight = mrgGlobalLight_Diffuse.rgb * saturate(dot(gBufferData.Normal, -mrgGlobalLight_Direction.xyz)) * shadingParams.Shadow;
+        diffuseLight = mrgGlobalLight_Diffuse.rgb * saturate(dot(gBufferData.Normal, -mrgGlobalLight_Direction.xyz)) * shadow;
         diffuseLight += shadingParams.GlobalIllumination;
         diffuseLight *= gBufferData.Diffuse;
         diffuseLight *= gBufferData.Refraction;

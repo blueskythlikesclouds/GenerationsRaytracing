@@ -156,7 +156,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
 
             float3 directLighting = diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal));
             
-            if (any(directLighting != 0))
+            if (any(directLighting > 0.0001))
             {
                 float2 random = float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed));
                 
@@ -182,7 +182,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
                 float3 localLighting = diffuse * localLight.Color * lightPower * g_LocalLightCount * saturate(dot(payload.Normal, lightDirection)) *
                     ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
 
-                if (any(localLighting != 0))
+                if (any(localLighting > 0.0001))
                     localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 1.0 / localLight.OutRange, distance);
 
                 color += localLighting;

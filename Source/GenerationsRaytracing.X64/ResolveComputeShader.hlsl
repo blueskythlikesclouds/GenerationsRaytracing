@@ -30,16 +30,6 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         shadingParams.EyePosition = g_EyePosition.xyz;
         shadingParams.EyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
     
-        if (!(gBufferData.Flags & (GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
-        {
-            shadingParams.Shadow = TraceShadow(gBufferData.Position,
-                -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 0);
-        }
-        else
-        {
-            shadingParams.Shadow = 1.0;
-        }
-    
         if (g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
         {
             Reservoir prevReservoir = LoadReservoir(g_Reservoir_SRV[dispatchThreadId]);
@@ -75,7 +65,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             ComputeReservoirWeight(reservoir,
                 ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection, localLight));
     
-            if (reservoir.W > 0.0f)
+            if (reservoir.W > 0.0001)
             {
                 float3 direction = localLight.Position - gBufferData.Position;
                 float distance = length(direction);
@@ -111,7 +101,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
             normalsRoughness.w = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
     
-        color = ComputeGeometryShading(gBufferData, shadingParams);
+        color = ComputeGeometryShading(gBufferData, shadingParams, randSeed);
         float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
         float2 lightScattering = ComputeLightScattering(gBufferData.Position, viewPosition);
     

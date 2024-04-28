@@ -23,6 +23,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         8,
         groupThreadId,
         groupId);
+    
+    uint randSeed = InitRandom(dispatchThreadId.xy);
 
     float4 colorComposite = g_ColorBeforeTransparency_SRV[dispatchThreadId];
     float3 diffuseAlbedoComposite = g_DiffuseAlbedo[dispatchThreadId];
@@ -49,18 +51,6 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             shadingParams.EyeDirection /= layers[i].Distance;
 
             layers[i].Additive = (gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE) != 0;
-
-            if (!(gBufferData.Flags & (GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_SHADOW)))
-            {
-                uint randSeed = InitRandom(dispatchThreadId.xy);
-                
-                shadingParams.Shadow = TraceShadow(gBufferData.Position,
-                    -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 0);
-            }
-            else
-            {
-                shadingParams.Shadow = 1.0;
-            }
 
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
             {
@@ -96,9 +86,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             }
 
             if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
-                layers[i].Color.rgb = ComputeWaterShading(gBufferData, shadingParams);
+                layers[i].Color.rgb = ComputeWaterShading(gBufferData, shadingParams, randSeed);
             else
-                layers[i].Color.rgb = ComputeGeometryShading(gBufferData, shadingParams);
+                layers[i].Color.rgb = ComputeGeometryShading(gBufferData, shadingParams, randSeed);
 
             float2 lightScattering = ComputeLightScattering(gBufferData.Position, viewPosition);
 
