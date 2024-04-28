@@ -223,7 +223,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
     gBufferData.Alpha = material.Diffuse.a * material.Opacity.x;
     gBufferData.Specular = material.Specular.rgb;
     gBufferData.SpecularTint = 1.0;
-    gBufferData.SpecularEnvironment = 1.0;
+    gBufferData.SpecularEnvironment = material.LuminanceRange + 1.0;
     gBufferData.SpecularGloss = material.GlossLevel.x * 500.0;
     gBufferData.SpecularLevel = material.GlossLevel.y * 5.0;
     gBufferData.Normal = vertex.Normal;
@@ -299,6 +299,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
                 gBufferData.Alpha *= diffuse.a;
 
                 gBufferData.Specular *= gloss.y * vertex.Color.a;
+                gBufferData.SpecularEnvironment *= gloss.y * vertex.Color.a;
                 gBufferData.SpecularGloss *= gloss.y;    
                 gBufferData.SpecularFresnel = ComputeFresnel(DecodeNormalMap(vertex, float4(normalMap.zw, 0.0, 1.0))) * 0.7 + 0.3;
                 gBufferData.Emission = highlightSpecular * material.SonicEyeHighLightColor.rgb;
