@@ -80,20 +80,12 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     return diffuseColor + specularColor + transColor;
 }
 
-float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG rayFlag, uint level)
+float TraceShadow(float3 position, float3 direction, float2 random, uint level)
 {
-    float radius = sqrt(random.x) * 0.01;
-    float angle = random.y * 2.0 * PI;
-
-    float3 sample;
-    sample.x = cos(angle) * radius;
-    sample.y = sin(angle) * radius;
-    sample.z = sqrt(1.0 - saturate(dot(sample.xy, sample.xy)));
-
     RayDesc ray;
 
     ray.Origin = position;
-    ray.Direction = TangentToWorld(direction, sample);
+    ray.Direction = TangentToWorld(direction, GetShadowSample(random, 0.01));
     ray.TMin = 0.0;
     ray.TMax = INF;
 
@@ -101,54 +93,67 @@ float TraceShadow(float3 position, float3 direction, float2 random, RAY_FLAG ray
 
     query.TraceRayInline(
         g_BVH,
-        rayFlag,
+        RAY_FLAG_NONE,
         INSTANCE_MASK_OPAQUE,
         ray);
 
-    if (rayFlag & RAY_FLAG_CULL_NON_OPAQUE)
+    while (query.Proceed())
     {
-        query.Proceed();
-    }
-    else
-    {
-        while (query.Proceed())
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
         {
-            if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+            GeometryDesc geometryDesc = g_GeometryDescs[query.CandidateInstanceID() + query.CandidateGeometryIndex()];
+            MaterialData material = g_Materials[geometryDesc.MaterialId];
+    
+            if (material.Textures[0] != 0)
             {
-                GeometryDesc geometryDesc = g_GeometryDescs[query.CandidateInstanceID() + query.CandidateGeometryIndex()];
-                MaterialData material = g_Materials[geometryDesc.MaterialId];
-
-                if (material.Textures[0] != 0)
-                {
-                    ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
-                    Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
-                
-                    uint3 indices;
-                    indices.x = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 0];
-                    indices.y = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 1];
-                    indices.z = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 2];
-                
-                    uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
-                
-                    float2 texCoord0 = DecodeHalf2(vertexBuffer.Load(offsets.x));
-                    float2 texCoord1 = DecodeHalf2(vertexBuffer.Load(offsets.y));
-                    float2 texCoord2 = DecodeHalf2(vertexBuffer.Load(offsets.z));
-                
-                    float3 uv = float3(
-                        1.0 - query.CandidateTriangleBarycentrics().x - query.CandidateTriangleBarycentrics().y,
-                        query.CandidateTriangleBarycentrics().x,
-                        query.CandidateTriangleBarycentrics().y);
-                
-                    float2 texCoord = texCoord0 * uv.x + texCoord1 * uv.y + texCoord2 * uv.z;
-                    texCoord += material.TexCoordOffsets[0].xy;
-                
-                    if (SampleMaterialTexture2D(material.Textures[0], texCoord, level).a > 0.5)
-                        query.CommitNonOpaqueTriangleHit();
-                }
+                ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
+                Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
+            
+                uint3 indices;
+                indices.x = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 0];
+                indices.y = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 1];
+                indices.z = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 2];
+            
+                uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
+            
+                float2 texCoord0 = DecodeHalf2(vertexBuffer.Load(offsets.x));
+                float2 texCoord1 = DecodeHalf2(vertexBuffer.Load(offsets.y));
+                float2 texCoord2 = DecodeHalf2(vertexBuffer.Load(offsets.z));
+            
+                float3 uv = float3(
+                    1.0 - query.CandidateTriangleBarycentrics().x - query.CandidateTriangleBarycentrics().y,
+                    query.CandidateTriangleBarycentrics().x,
+                    query.CandidateTriangleBarycentrics().y);
+            
+                float2 texCoord = texCoord0 * uv.x + texCoord1 * uv.y + texCoord2 * uv.z;
+                texCoord += material.TexCoordOffsets[0].xy;
+            
+                if (SampleMaterialTexture2D(material.Textures[0], texCoord, level).a > 0.5)
+                    query.CommitNonOpaqueTriangleHit();
             }
         }
     }
+    
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
+}
 
+float TraceShadowCullNonOpaque(float3 position, float3 direction, float2 random)
+{
+    RayDesc ray;
+
+    ray.Origin = position;
+    ray.Direction = TangentToWorld(direction, GetShadowSample(random, 0.01));
+    ray.TMin = 0.0;
+    ray.TMax = INF;
+
+    RayQuery<RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
+
+    query.TraceRayInline(
+        g_BVH,
+        RAY_FLAG_NONE,
+        INSTANCE_MASK_OPAQUE,
+        ray);
+    
     return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
 }
 
@@ -174,18 +179,10 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
 
 float TraceLocalLightShadow(float3 position, float3 direction, float2 random, float radius, float distance)
 {
-    radius *= sqrt(random.x);
-    float angle = random.y * 2.0 * PI;
-
-    float3 sample;
-    sample.x = cos(angle) * radius;
-    sample.y = sin(angle) * radius;
-    sample.z = 1.0;
-
     RayDesc ray;
 
     ray.Origin = position;
-    ray.Direction = TangentToWorld(direction, sample);
+    ray.Direction = TangentToWorld(direction, GetShadowSample(random, radius));
     ray.TMin = 0.0;
     ray.TMax = distance;
 

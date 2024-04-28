@@ -49,6 +49,19 @@ float4 GetPowerCosWeightedSample(float2 random, float specularGloss)
     return float4(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta, pdf);
 }
 
+float3 GetShadowSample(float2 random, float radius)
+{
+    radius *= sqrt(random.x);
+    float angle = random.y * 2.0 * PI;
+
+    float3 sample;
+    sample.x = cos(angle) * radius;
+    sample.y = sin(angle) * radius;
+    sample.z = sqrt(1.0 - saturate(dot(sample.xy, sample.xy)));
+    
+    return sample;
+}
+
 float3 GetPerpendicularVector(float3 u)
 {
     float3 a = abs(u);

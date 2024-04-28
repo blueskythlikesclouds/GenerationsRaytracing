@@ -108,7 +108,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
     float hitDistance = 0.0;
 
     [unroll]
-    for (uint i = 0; i < 2; i++)
+    for (uint bounceIndex = 0; bounceIndex < 2; bounceIndex++)
     {
         RayDesc ray;
         ray.Origin = args.Position;
@@ -124,11 +124,11 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
         TraceRay(
 #endif
             g_BVH,
-            i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
+            bounceIndex != 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
             INSTANCE_MASK_OPAQUE,
             HIT_GROUP_SECONDARY,
             HIT_GROUP_NUM,
-            i == 0 ? args.MissShaderIndex : MISS_GI,
+            bounceIndex == 0 ? args.MissShaderIndex : MISS_GI,
             ray,
             payload);
 
@@ -146,17 +146,28 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
         {
             float lightPower = 1.0;
 
-            if (i > 0 || args.ApplyPower)
+            if (bounceIndex != 0 || args.ApplyPower)
             {
                 color *= g_EmissivePower;
                 diffuse *= g_DiffusePower;
                 lightPower = g_LightPower;
             }
 
-            color += diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal)) *
-               TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), i > 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE, 2);
+            float3 directLighting = diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal));
+            
+            if (any(directLighting != 0))
+            {
+                float2 random = float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed));
+                
+                if (bounceIndex != 0)
+                    directLighting *= TraceShadowCullNonOpaque(payload.Position, -mrgGlobalLight_Direction.xyz, random);
+                else
+                    directLighting *= TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, random, 2);
+            }
+            
+            color += directLighting;
 
-            if (g_LocalLightCount > 0)
+            if (bounceIndex == 0 && g_LocalLightCount > 0)
             {
                 uint sample = NextRandomUint(randSeed) % g_LocalLightCount;
                 LocalLight localLight = g_LocalLights[sample];
@@ -181,7 +192,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
             terminatePath = true;
         }
 
-        if (i == 0 && !terminatePath)
+        if (bounceIndex == 0 && !terminatePath)
             hitDistance = distance(args.Position, payload.Position);
 
         radiance += args.Throughput * color;
