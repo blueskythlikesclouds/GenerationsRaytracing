@@ -154,6 +154,8 @@ float TraceShadowCullNonOpaque(float3 position, float3 direction, float2 random)
         INSTANCE_MASK_OPAQUE,
         ray);
     
+    query.Proceed();
+    
     return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
 }
 
