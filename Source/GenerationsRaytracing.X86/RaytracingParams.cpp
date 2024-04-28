@@ -461,9 +461,18 @@ void RaytracingParams::imguiWindow()
                         ImGui::RadioButton("None", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_NONE);
                         ImGui::RadioButton("Diffuse", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_DIFFUSE);
                         ImGui::RadioButton("Specular", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR);
+                        ImGui::RadioButton("Specular Tint", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR_TINT);
+                        ImGui::RadioButton("Specular Environment", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR_ENVIRONMENT);
+                        ImGui::RadioButton("Specular Gloss", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR_GLOSS);
+                        ImGui::RadioButton("Specular Level", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR_LEVEL);
+                        ImGui::RadioButton("Specular Fresnel", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR_FRESNEL);
                         ImGui::RadioButton("Normal", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_NORMAL);
                         ImGui::RadioButton("Falloff", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_FALLOFF);
                         ImGui::RadioButton("Emission", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_EMISSION);
+                        ImGui::RadioButton("Trans Color", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_TRANS_COLOR);
+                        ImGui::RadioButton("Refraction", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION);
+                        ImGui::RadioButton("Refraction Overlay", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION_OVERLAY);
+                        ImGui::RadioButton("Refraction Offset", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION_OFFSET);
                         ImGui::RadioButton("Shadow", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SHADOW);
                         ImGui::RadioButton("GI", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_GI);
                         ImGui::RadioButton("Reflection", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFLECTION);

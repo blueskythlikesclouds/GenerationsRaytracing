@@ -1,5 +1,7 @@
 #pragma once
 
+#ifndef EXCLUDE_RAYTRACING_DEFINITIONS
+
 #include "GeometryDesc.hlsli"
 #include "MaterialData.hlsli"
 
@@ -137,38 +139,43 @@ StructuredBuffer<MaterialData> g_Materials : register(t2);
 StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t3);
 StructuredBuffer<LocalLight> g_LocalLights : register(t4);
 
+#endif
+
+SamplerState g_SamplerState : register(s0);
+
 #define DEFINE_TEXTURE(type, name, reg) \
     RW##type name : register(u##reg, space1); \
     type name##_SRV : register(t##reg, space1)
 
 DEFINE_TEXTURE(Texture2D<float4>, g_Color, 0);
-DEFINE_TEXTURE(Texture2D<float>, g_Depth, 1);
-DEFINE_TEXTURE(Texture2D<float2>, g_MotionVectors, 2);
-DEFINE_TEXTURE(Texture2D<float>, g_Exposure, 3);
+DEFINE_TEXTURE(Texture2D<float4>, g_Output, 1);
+DEFINE_TEXTURE(Texture2D<float>, g_Depth, 2);
+DEFINE_TEXTURE(Texture2D<float2>, g_MotionVectors, 3);
+DEFINE_TEXTURE(Texture2D<float>, g_Exposure, 4);
 
-DEFINE_TEXTURE(Texture2D<uint>, g_LayerNum, 4);
+DEFINE_TEXTURE(Texture2D<uint>, g_LayerNum, 5);
 
-DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer0, 5);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer1, 6);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer2, 7);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer3, 8);
-DEFINE_TEXTURE(Texture2DArray<unorm float4>, g_GBuffer4, 9);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer5, 10);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer6, 11);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer0, 6);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer1, 7);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer2, 8);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer3, 9);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer4, 10);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer5, 11);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer6, 12);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer7, 13);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer8, 14);
 
-DEFINE_TEXTURE(Texture2DArray<unorm float>, g_Shadow, 12);
-DEFINE_TEXTURE(Texture2D<uint4>, g_Reservoir, 13);
-DEFINE_TEXTURE(Texture2D<uint4>, g_PrevReservoir, 14);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_GlobalIllumination, 15);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_Reflection, 16);
+DEFINE_TEXTURE(Texture2DArray<unorm float>, g_Shadow, 15);
+DEFINE_TEXTURE(Texture2D<uint4>, g_Reservoir, 16);
+DEFINE_TEXTURE(Texture2D<uint4>, g_PrevReservoir, 17);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_GlobalIllumination, 18);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_Reflection, 19);
 
-DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedo, 17);
-DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedo, 18);
-DEFINE_TEXTURE(Texture2D<float4>, g_NormalsRoughness, 19);
-DEFINE_TEXTURE(Texture2D<float>, g_LinearDepth, 20);
-DEFINE_TEXTURE(Texture2D<float4>, g_ColorBeforeTransparency, 21);
-DEFINE_TEXTURE(Texture2D<float>, g_SpecularHitDistance, 22);
+DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedo, 20);
+DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedo, 21);
+DEFINE_TEXTURE(Texture2D<float4>, g_NormalsRoughness, 22);
+DEFINE_TEXTURE(Texture2D<float>, g_LinearDepth, 23);
+DEFINE_TEXTURE(Texture2D<float4>, g_ColorBeforeTransparency, 24);
+DEFINE_TEXTURE(Texture2D<float>, g_SpecularHitDistance, 25);
 
 #undef DEFINE_TEXTURE
-
-SamplerState g_SamplerState : register(s0);

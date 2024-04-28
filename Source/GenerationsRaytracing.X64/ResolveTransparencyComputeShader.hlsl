@@ -70,7 +70,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             }
             
             layers[i].NormalsRoughness = float4(gBufferData.Normal, 0.0);
-            if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION)))
+            if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
                 layers[i].NormalsRoughness.w = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
 
             float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;

@@ -84,7 +84,12 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
         const char* underscore = strstr(shaderName, "_");
         if (underscore != nullptr)
+        {
             hasOpacityTexture = strstr(underscore + 1, "a") != nullptr;
+
+            if (strstr(underscore + 1, "e2") != nullptr)
+                message.flags |= MATERIAL_FLAG_REFLECTION;
+        }
 
         for (const auto& [name, alsoShader] : s_shaders)
         {
@@ -105,21 +110,6 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
         if (strstr(shaderName, "Blb") != nullptr)
             message.flags |= MATERIAL_FLAG_VIEW_Z_ALPHA_FADE;
-    }
-
-    if (materialDataEx.m_spTexsetData != nullptr)
-    {
-        static Hedgehog::Base::CStringSymbol s_reflectionSymbol("reflection");
-        for (const auto& texture : materialDataEx.m_spTexsetData->m_TextureList)
-        {
-            if (texture->m_Type == s_reflectionSymbol && (texture->m_spPictureData->m_TypeAndName == "Mirage.picture sph_st1_envmap_cube" ||
-                texture->m_spPictureData->m_TypeAndName == "Mirage.picture ghz_water_km1_puddle_cubemap" ||
-                texture->m_spPictureData->m_TypeAndName == "Mirage.picture cpz_uni_tn1_cubemap"))
-            {
-                message.flags |= MATERIAL_FLAG_REFLECTION;
-                break;
-            }
-        }
     }
 
     bool constTexCoord = true;

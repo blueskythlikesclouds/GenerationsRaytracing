@@ -54,20 +54,16 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     {
         if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
         {
-            float3 fresnel = gBufferData.Specular;
-            fresnel += (1.0 - fresnel) * gBufferData.SpecularFresnel;
-
-            specularColor *= fresnel;
+            specularColor *= lerp(gBufferData.Specular * gBufferData.SpecularTint, 1.0, gBufferData.SpecularFresnel);
         }
         else
         {
-            specularColor *= gBufferData.Specular;
+            specularColor *= gBufferData.Specular * gBufferData.SpecularTint;
 
             if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_SPEC_GLOSS)
                 specularColor *= gBufferData.SpecularGloss;
 
-            specularColor *= gBufferData.SpecularLevel;
-            specularColor *= gBufferData.SpecularFresnel;
+            specularColor *= gBufferData.SpecularLevel * gBufferData.SpecularFresnel;
         }
 
         float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
@@ -153,25 +149,18 @@ float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 {
     if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
     {
-        reflection *= gBufferData.SpecularFresnel;
-    }
-
-    else if (gBufferData.Flags & GBUFFER_FLAG_IS_GLASS_REFLECTION)
-    {
-        reflection *= gBufferData.Specular * gBufferData.SpecularFresnel;
+        reflection *= gBufferData.SpecularTint * gBufferData.SpecularEnvironment * gBufferData.SpecularFresnel;
     }
 
     else if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
     {
-        float3 fresnel = gBufferData.Specular;
-        fresnel += (1.0 - fresnel) * gBufferData.SpecularFresnel;
-        reflection *= fresnel;
+        reflection *= lerp(gBufferData.Specular * gBufferData.SpecularTint, 1.0, gBufferData.SpecularFresnel);
     }
 
     else
     {
         float specularIntensity = 1.0 - exp2(-gBufferData.SpecularLevel);
-        reflection *= gBufferData.Specular * specularIntensity * gBufferData.SpecularFresnel;
+        reflection *= gBufferData.Specular * gBufferData.SpecularTint * specularIntensity * gBufferData.SpecularFresnel;
     }
 
     return reflection;

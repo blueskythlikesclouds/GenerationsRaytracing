@@ -395,7 +395,7 @@ bool RaytracingDevice::createTopLevelAccelStruct()
     return true;
 }
 
-static constexpr size_t s_textureNum = 23;
+static constexpr size_t s_textureNum = 26;
 
 void RaytracingDevice::createRaytracingTextures()
 {
@@ -407,25 +407,6 @@ void RaytracingDevice::createRaytracingTextures()
 
     D3D12MA::ALLOCATION_DESC allocDesc{};
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-
-    const auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
-        m_upscaler->getWidth() * m_upscaler->getHeight() * GBUFFER_LAYER_NUM * (RAY_GENERATION_NUM - 1) * sizeof(uint32_t), 
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-
-    HRESULT hr = m_allocator->CreateResource(
-        &allocDesc,
-        &bufferDesc,
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-        nullptr,
-        m_dispatchRaysIndexBuffer.ReleaseAndGetAddressOf(),
-        IID_ID3D12Resource,
-        nullptr);
-
-    assert(SUCCEEDED(hr) && m_dispatchRaysIndexBuffer != nullptr);
-
-#ifdef _DEBUG
-    m_dispatchRaysIndexBuffer->GetResource()->SetName(L"Dispatch Rays Index Buffer");
-#endif
 
     auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_UNKNOWN,
@@ -444,6 +425,7 @@ void RaytracingDevice::createRaytracingTextures()
     const textureDescs[] =
     {
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture, L"Color Texture" },
+        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_outputTexture, L"Output Texture", m_width, m_height },
         { 1, DXGI_FORMAT_R32_FLOAT, m_depthTexture, L"Depth Texture" },
         { 1, DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture, L"Motion Vectors Texture" },
         { 1, DXGI_FORMAT_R32_FLOAT, m_exposureTexture, L"Exposure Texture", 1, 1 },
@@ -454,9 +436,11 @@ void RaytracingDevice::createRaytracingTextures()
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1, L"Geometry Buffer Texture 1" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2, L"Geometry Buffer Texture 2" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3, L"Geometry Buffer Texture 3" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R10G10B10A2_UNORM, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5, L"Geometry Buffer Texture 5" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6, L"Geometry Buffer Texture 6" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7, L"Geometry Buffer Texture 7" },
+        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16_FLOAT, m_gBufferTexture8, L"Geometry Buffer Texture 8" },
 
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R8_UNORM, m_shadowTexture, L"Shadow Texture" },
         { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture, L"Reservoir Texture" },
@@ -481,7 +465,7 @@ void RaytracingDevice::createRaytracingTextures()
         resourceDesc.DepthOrArraySize = textureDesc.depthOrArraySize;
         resourceDesc.Format = textureDesc.format;
 
-        hr = m_allocator->CreateResource(
+        const HRESULT hr = m_allocator->CreateResource(
             &allocDesc,
             &resourceDesc,
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
@@ -547,56 +531,6 @@ void RaytracingDevice::createRaytracingTextures()
         uavHandle.ptr += m_descriptorHeap.getIncrementSize();
         srvHandle.ptr += m_descriptorHeap.getIncrementSize();
     }
-
-    resourceDesc.Width = m_width;
-    resourceDesc.Height = m_height;
-    resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-
-    hr = m_allocator->CreateResource(
-        &allocDesc,
-        &resourceDesc,
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-        nullptr,
-        m_outputTexture.ReleaseAndGetAddressOf(),
-        IID_ID3D12Resource,
-        nullptr);
-
-    assert(SUCCEEDED(hr) && m_outputTexture != nullptr);
-
-#ifdef _DEBUG
-    m_outputTexture->GetResource()->SetName(L"Output Texture");
-#endif
-
-    m_debugViewTextures[DEBUG_VIEW_NONE] = m_outputTexture->GetResource();
-    m_debugViewTextures[DEBUG_VIEW_DIFFUSE] = m_gBufferTexture1->GetResource();
-    m_debugViewTextures[DEBUG_VIEW_SPECULAR] = m_gBufferTexture2->GetResource();
-    m_debugViewTextures[DEBUG_VIEW_NORMAL] = m_gBufferTexture4->GetResource();
-    m_debugViewTextures[DEBUG_VIEW_FALLOFF] = m_gBufferTexture5->GetResource();
-    m_debugViewTextures[DEBUG_VIEW_EMISSION] = m_gBufferTexture6->GetResource();
-    m_debugViewTextures[DEBUG_VIEW_SHADOW] = m_shadowTexture->GetResource();
-    m_debugViewTextures[DEBUG_VIEW_GI] = m_giTexture->GetResource();
-    m_debugViewTextures[DEBUG_VIEW_REFLECTION] = m_reflectionTexture->GetResource();
-
-    static_assert(_countof(m_debugViewTextures) == DEBUG_VIEW_MAX);
-
-    for (size_t i = 0; i < DEBUG_VIEW_MAX; i++)
-    {
-        auto& srvId = m_srvIds[i];
-        assert(srvId != NULL);
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = m_debugViewTextures[i]->GetDesc().Format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 1;
-
-        srvHandle = m_descriptorHeap.getCpuHandle(srvId);
-        m_device->CreateShaderResourceView(m_debugViewTextures[i], &srvDesc, srvHandle);
-
-        srvHandle.ptr += m_descriptorHeap.getIncrementSize();
-        m_device->CreateShaderResourceView(m_depthTexture->GetResource(), nullptr, srvHandle);
-    }
 }
 
 void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
@@ -647,16 +581,29 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscal
     const D3D12_VIEWPORT viewport = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 
+    struct
+    {
+        uint32_t width;
+        uint32_t height;
+        uint32_t debugView;
+    } globals =
+    {
+        m_upscaler->getWidth(),
+        m_upscaler->getHeight(),
+        message.debugView
+    };
+
     underlyingCommandList->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     underlyingCommandList->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
-    underlyingCommandList->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_srvIds[message.debugView]));
+    underlyingCommandList->SetGraphicsRoot32BitConstants(0, 3, &globals, 0);
+    underlyingCommandList->SetGraphicsRootDescriptorTable(1, m_descriptorHeap.getGpuHandle(m_srvId));
     underlyingCommandList->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     underlyingCommandList->SetPipelineState(m_copyTexturePipeline.Get());
     underlyingCommandList->RSSetViewports(1, &viewport);
     underlyingCommandList->RSSetScissorRects(1, &scissorRect);
     underlyingCommandList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    commandList.transitionBarrier(m_debugViewTextures[message.debugView],
+    commandList.transitionBarrier(m_outputTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     commandList.transitionBarrier(m_depthTexture->GetResource(),
@@ -1052,7 +999,9 @@ void RaytracingDevice::procMsgTraceRays()
             m_gBufferTexture3->GetResource(),
             m_gBufferTexture4->GetResource(),
             m_gBufferTexture5->GetResource(),
-            m_gBufferTexture6->GetResource()
+            m_gBufferTexture6->GetResource(),
+            m_gBufferTexture7->GetResource(),
+            m_gBufferTexture8->GetResource(),
         }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     commandList.commitBarriers();
@@ -1973,14 +1922,9 @@ RaytracingDevice::RaytracingDevice()
     m_uavId = m_descriptorHeap.allocateMany(s_textureNum);
     m_srvId = m_descriptorHeap.allocateMany(s_textureNum);
 
-    for (auto& srvId : m_srvIds)
-        srvId = m_descriptorHeap.allocateMany(2);
-
-    CD3DX12_DESCRIPTOR_RANGE1 copyDescriptorRanges[1];
-    copyDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
-
-    CD3DX12_ROOT_PARAMETER1 copyRootParams[1];
-    copyRootParams[0].InitAsDescriptorTable(_countof(copyDescriptorRanges), copyDescriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+    CD3DX12_ROOT_PARAMETER1 copyRootParams[2];
+    copyRootParams[0].InitAsConstants(3, 0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    copyRootParams[1].InitAsDescriptorTable(_countof(srvDescriptorRanges), srvDescriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
 
     D3D12_STATIC_SAMPLER_DESC copyStaticSamplers[1]{};
     copyStaticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;

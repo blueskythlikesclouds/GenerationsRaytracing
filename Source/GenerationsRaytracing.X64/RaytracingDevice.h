@@ -122,13 +122,12 @@ protected:
     uint32_t m_width = 0;
     uint32_t m_height = 0;
 
-    ComPtr<D3D12MA::Allocation> m_dispatchRaysIndexBuffer;
-
     uint32_t m_uavId = 0;
     uint32_t m_srvId = 0;
     uint32_t m_exposureTextureId = 0;
 
     ComPtr<D3D12MA::Allocation> m_colorTexture;
+    ComPtr<D3D12MA::Allocation> m_outputTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
     ComPtr<D3D12MA::Allocation> m_motionVectorsTexture;
     ComPtr<D3D12MA::Allocation> m_exposureTexture;
@@ -142,6 +141,8 @@ protected:
     ComPtr<D3D12MA::Allocation> m_gBufferTexture4;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture5;
     ComPtr<D3D12MA::Allocation> m_gBufferTexture6;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture7;
+    ComPtr<D3D12MA::Allocation> m_gBufferTexture8;
 
     ComPtr<D3D12MA::Allocation> m_shadowTexture;
     ComPtr<D3D12MA::Allocation> m_reservoirTexture;
@@ -156,10 +157,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_linearDepthTexture;
     ComPtr<D3D12MA::Allocation> m_colorBeforeTransparencyTexture;
     ComPtr<D3D12MA::Allocation> m_specularHitDistanceTexture;
-
-    ComPtr<D3D12MA::Allocation> m_outputTexture;
-    uint32_t m_srvIds[DEBUG_VIEW_MAX]{};
-    ID3D12Resource* m_debugViewTextures[DEBUG_VIEW_MAX]{};
 
     // Resolve
     ComPtr<ID3D12PipelineState> m_resolvePipeline;

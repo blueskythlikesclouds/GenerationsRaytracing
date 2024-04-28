@@ -103,7 +103,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         }
         
         normalsRoughness = float4(gBufferData.Normal, 0.0);
-        if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION)))
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
             normalsRoughness.w = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
     
         color = ComputeGeometryShading(gBufferData, shadingParams);

@@ -186,7 +186,7 @@ void SecondaryRayGeneration()
             {
                 float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
     
-                if (gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_GLASS_REFLECTION))
+                if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
                 {
                     args.Direction = reflect(-eyeDirection, gBufferData.Normal);
                     args.MissShaderIndex = MISS_SECONDARY;
