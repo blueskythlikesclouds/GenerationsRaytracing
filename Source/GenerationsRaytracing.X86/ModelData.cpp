@@ -189,6 +189,10 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
 
+    This->m_modelHash = 0;
+    This->m_hashFrame = 0;
+    This->m_enableSkinning = false;
+
     new (&This->m_noAoModel) boost::shared_ptr<Hedgehog::Mirage::CModelData>();
 
     return result;
@@ -599,6 +603,16 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             for (auto& bottomLevelAccelStructId : modelDataEx.m_bottomLevelAccelStructIds)
                 RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
+            modelDataEx.m_enableSkinning = false;
+
+            if (modelDataEx.m_NodeNum != 0)
+            {
+                traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool)
+                {
+                    if (meshDataEx.m_NodeNum != 0)
+                        modelDataEx.m_enableSkinning = true;
+                });
+            }
         }
 
         modelDataEx.m_modelHash = modelHash;
@@ -622,7 +636,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
     auto transform = instanceInfoEx.m_Transform;
     uint32_t bottomLevelAccelStructIds[_countof(s_instanceMasks)]{};
 
-    if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > 1)
+    if (modelDataEx.m_enableSkinning && instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > 1)
     {
         if (instanceInfoEx.m_poseVertexBuffer == nullptr)
         {
@@ -663,8 +677,11 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             uint32_t nodeCount = 0;
             traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool)
             {
-                ++geometryCount;
-                nodeCount += meshDataEx.m_NodeNum;
+                if (meshDataEx.m_NodeNum != 0)
+                {
+                    ++geometryCount;
+                    nodeCount += meshDataEx.m_NodeNum;
+                }
             });
 
             auto& message = s_messageSender.makeMessage<MsgComputePose>(
@@ -689,57 +706,54 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             uint32_t vertexOffset = 0;
             traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool visible)
             {
-                geometryDesc->vertexCount = meshDataEx.m_VertexNum;
-                geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
-                geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
-                geometryDesc->vertexOffset = meshDataEx.m_VertexOffset;
-
-                const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
-                    meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
-
-                auto vertexElement = vertexDeclaration->getVertexElements();
-
-                while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
+                if (meshDataEx.m_NodeNum != 0)
                 {
-                    const uint8_t offset = static_cast<uint8_t>(vertexElement->Offset);
+                    geometryDesc->vertexCount = meshDataEx.m_VertexNum;
+                    geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
+                    geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
+                    geometryDesc->vertexOffset = meshDataEx.m_VertexOffset;
 
-                    switch (vertexElement->Usage)
+                    const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
+                        meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
+
+                    auto vertexElement = vertexDeclaration->getVertexElements();
+
+                    while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
                     {
-                    case D3DDECLUSAGE_NORMAL:
-                        geometryDesc->normalOffset = offset;
-                        break;
+                        const uint8_t offset = static_cast<uint8_t>(vertexElement->Offset);
 
-                    case D3DDECLUSAGE_TANGENT:
-                        geometryDesc->tangentOffset = offset;
-                        break;
+                        switch (vertexElement->Usage)
+                        {
+                        case D3DDECLUSAGE_NORMAL:
+                            geometryDesc->normalOffset = offset;
+                            break;
 
-                    case D3DDECLUSAGE_BINORMAL:
-                        geometryDesc->binormalOffset = offset;
-                        break;
+                        case D3DDECLUSAGE_TANGENT:
+                            geometryDesc->tangentOffset = offset;
+                            break;
 
-                    case D3DDECLUSAGE_BLENDWEIGHT:
-                        geometryDesc->blendWeightOffset = offset;
-                        break;
+                        case D3DDECLUSAGE_BINORMAL:
+                            geometryDesc->binormalOffset = offset;
+                            break;
 
-                    case D3DDECLUSAGE_BLENDINDICES:
-                        geometryDesc->blendIndicesOffset = offset;
-                        break;
+                        case D3DDECLUSAGE_BLENDWEIGHT:
+                            geometryDesc->blendWeightOffset = offset;
+                            break;
+
+                        case D3DDECLUSAGE_BLENDINDICES:
+                            geometryDesc->blendIndicesOffset = offset;
+                            break;
+                        }
+
+                        ++vertexElement;
                     }
 
-                    ++vertexElement;
-                }
+                    geometryDesc->nodeCount = static_cast<uint8_t>(meshDataEx.m_NodeNum);
 
-                geometryDesc->nodeCount = static_cast<uint8_t>(meshDataEx.m_NodeNum);
+                    for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
+                        nodePalette[i] = meshDataEx.m_pNodeIndices[i] >= message.nodeCount ? 0 : static_cast<uint32_t>(meshDataEx.m_pNodeIndices[i]);
 
-                for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
-                    nodePalette[i] = meshDataEx.m_pNodeIndices[i] >= message.nodeCount ? 0 : static_cast<uint32_t>(meshDataEx.m_pNodeIndices[i]);
-
-                geometryDesc->visible = visible;
-
-                if (visible)
-                {
-                    if (shouldCheckForHash)
-                        MaterialData::create(*meshDataEx.m_spMaterial, true);
+                    geometryDesc->visible = visible;
 
                     if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals)
                     {
@@ -756,11 +770,15 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
                         s_messageSender.endMessage();
                     }
+
+                    ++geometryDesc;
+                    nodePalette += meshDataEx.m_NodeNum;
                 }
 
+                if (visible && shouldCheckForHash)
+                    MaterialData::create(*meshDataEx.m_spMaterial, true);
+
                 vertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
-                ++geometryDesc;
-                nodePalette += meshDataEx.m_NodeNum;
             });
 
             s_messageSender.endMessage();
