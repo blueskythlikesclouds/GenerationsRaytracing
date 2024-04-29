@@ -248,6 +248,7 @@ void SecondaryRayGeneration()
                     args.Direction = reflect(-eyeDirection, gBufferData.Normal);
                     args.MissShaderIndex = MISS_SECONDARY;
                     args.Throughput = 1.0;
+                    args.ApplyPower = false;
                 }
                 else
                 {
@@ -257,10 +258,10 @@ void SecondaryRayGeneration()
                     args.Direction = reflect(-eyeDirection, halfwayDirection);
                     args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
                     args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                    args.ApplyPower = true;
                 }
             
                 args.Throughput /= 1.0 - giProbability;
-                args.ApplyPower = false;
             }
             else
             {
