@@ -1,4 +1,5 @@
 #pragma once
+
 #define SHADER_TYPE_SYS_ERROR 0
 #define SHADER_TYPE_BLEND 1
 #define SHADER_TYPE_COMMON 2

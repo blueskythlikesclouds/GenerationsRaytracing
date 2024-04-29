@@ -11,6 +11,7 @@ struct MaterialData
     uint Textures[9];
     float Parameters[22];
 };
+
 Material GetMaterial(uint shaderType, MaterialData materialData)
 {
    Material material = (Material) 0;

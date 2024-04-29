@@ -1,4 +1,5 @@
-﻿using Vortice.Dxc;
+﻿using System.Reflection.Metadata;
+using Vortice.Dxc;
 
 public class RaytracingTexture(string name, int index, string fieldName)
 {
@@ -6,57 +7,100 @@ public class RaytracingTexture(string name, int index, string fieldName)
     public int Index { get; set; } = index;
     public string FieldName { get; set; } = fieldName;
 
-    public static RaytracingTexture Diffuse = new("diffuse", 0, "DiffuseTexture");
-    public static RaytracingTexture Diffuse2 = new("diffuse", 1, "DiffuseTexture2");
+    public static readonly RaytracingTexture Diffuse = new("diffuse", 0, "DiffuseTexture");
+    public static readonly RaytracingTexture Diffuse2 = new("diffuse", 1, "DiffuseTexture2");
 
-    public static RaytracingTexture Specular = new("specular", 0, "SpecularTexture");
-    public static RaytracingTexture Specular2 = new("specular", 1, "SpecularTexture2");
+    public static readonly RaytracingTexture Specular = new("specular", 0, "SpecularTexture");
+    public static readonly RaytracingTexture Specular2 = new("specular", 1, "SpecularTexture2");
 
-    public static RaytracingTexture Gloss = new("gloss", 0, "GlossTexture");
-    public static RaytracingTexture Gloss2 = new("gloss", 1, "GlossTexture2");
+    public static readonly RaytracingTexture Gloss = new("gloss", 0, "GlossTexture");
+    public static readonly RaytracingTexture Gloss2 = new("gloss", 1, "GlossTexture2");
 
-    public static RaytracingTexture Normal = new("normal", 0, "NormalTexture");
-    public static RaytracingTexture Normal2 = new("normal", 1, "NormalTexture2");
+    public static readonly RaytracingTexture Normal = new("normal", 0, "NormalTexture");
+    public static readonly RaytracingTexture Normal2 = new("normal", 1, "NormalTexture2");
 
-    public static RaytracingTexture Reflection = new("reflection", 0, "ReflectionTexture");
+    public static readonly RaytracingTexture Reflection = new("reflection", 0, "ReflectionTexture");
 
-    public static RaytracingTexture Opacity = new("opacity", 0, "OpacityTexture");
+    public static readonly RaytracingTexture Opacity = new("opacity", 0, "OpacityTexture");
 
-    public static RaytracingTexture Displacement = new("displacement", 0, "DisplacementTexture");
-    public static RaytracingTexture Displacement2 = new("displacement", 1, "DisplacementTexture2");
+    public static readonly RaytracingTexture Displacement = new("displacement", 0, "DisplacementTexture");
+    public static readonly RaytracingTexture Displacement2 = new("displacement", 1, "DisplacementTexture2");
 
-    public static RaytracingTexture Level = new("level", 0, "LevelTexture");
+    public static readonly RaytracingTexture Level = new("level", 0, "LevelTexture");
+
+    public static readonly RaytracingTexture[] AllTextures = [
+        Diffuse,
+        Diffuse2,
+        Specular,
+        Specular2,
+        Gloss,
+        Gloss2,
+        Normal,
+        Normal2,
+        Reflection,
+        Opacity,
+        Displacement,
+        Displacement2,
+        Level];
 }
 
-public class RaytracingParameter(string name, int index, int size, string fieldName)
+public class RaytracingParameter(string name, int index, int size, string fieldName, float x, float y, float z, float w)
 {
     public string Name { get; set; } = name;
     public int Index { get; set; } = index;
     public int Size { get; set; } = size;
     public string FieldName { get; set; } = fieldName;
+    public float X { get; set; } = x;
+    public float Y { get; set; } = y;
+    public float Z { get; set; } = z;
+    public float W { get; set; } = w;
 
-    public static RaytracingParameter Diffuse = new("diffuse", 0, 4, "Diffuse");
-    public static RaytracingParameter Ambient = new("ambient", 0, 3, "Ambient");
-    public static RaytracingParameter Specular = new("specular", 0, 3, "Specular");
-    public static RaytracingParameter Emissive = new("emissive", 0, 3, "Emissive");
-    public static RaytracingParameter GlossLevel = new("power_gloss_level", 1, 2, "GlossLevel");
-    public static RaytracingParameter Opacity = new("opacity_reflection_refraction_spectype", 0, 1, "Opacity");
-    public static RaytracingParameter LuminanceRange = new("mrgLuminancerange", 0, 1, "LuminanceRange");
-    public static RaytracingParameter FresnelParam = new("mrgFresnelParam", 0, 2, "FresnelParam");
-    public static RaytracingParameter SonicEyeHighLightPosition = new("g_SonicEyeHighLightPositionRaytracing", 0, 3, "SonicEyeHighLightPosition");
-    public static RaytracingParameter SonicEyeHighLightColor = new("g_SonicEyeHighLightColor", 0, 3, "SonicEyeHighLightColor");
-    public static RaytracingParameter SonicSkinFalloffParam = new("g_SonicSkinFalloffParam", 0, 3, "SonicSkinFalloffParam");
-    public static RaytracingParameter ChrEmissionParam = new("mrgChrEmissionParam", 0, 4, "ChrEmissionParam");
-    public static RaytracingParameter TransColorMask = new("g_TransColorMask", 0, 3, "TransColorMask");
-    public static RaytracingParameter EmissionParam = new("g_EmissionParam", 0, 4, "EmissionParam");
-    public static RaytracingParameter OffsetParam = new("g_OffsetParam", 0, 2, "OffsetParam");
-    public static RaytracingParameter WaterParam = new("g_WaterParam", 0, 4, "WaterParam");
-    public static RaytracingParameter FurParam = new("FurParam", 0, 4, "FurParam");
-    public static RaytracingParameter FurParam2 = new("FurParam2", 0, 4, "FurParam2");
-    public static RaytracingParameter ChrEyeFHL1 = new("ChrEyeFHL1", 0, 4, "ChrEyeFHL1");
-    public static RaytracingParameter ChrEyeFHL2 = new("ChrEyeFHL2", 0, 4, "ChrEyeFHL2");
-    public static RaytracingParameter ChrEyeFHL3 = new("ChrEyeFHL3", 0, 4, "ChrEyeFHL3");
-    public static RaytracingParameter DistortionParam = new("mrgDistortionParam", 0, 4, "DistortionParam");
+    public static readonly RaytracingParameter Diffuse = new("diffuse", 0, 4, "Diffuse", 1.0f, 1.0f, 1.0f, 1.0f);
+    public static readonly RaytracingParameter Ambient = new("ambient", 0, 3, "Ambient", 1.0f, 1.0f, 1.0f, 0.0f);
+    public static readonly RaytracingParameter Specular = new("specular", 0, 3, "Specular", 0.9f, 0.9f, 0.9f, 0.0f);
+    public static readonly RaytracingParameter Emissive = new("emissive", 0, 3, "Emissive", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter GlossLevel = new("power_gloss_level", 1, 2, "GlossLevel", 50.0f, 0.1f, 0.01f, 0.0f);
+    public static readonly RaytracingParameter Opacity = new("opacity_reflection_refraction_spectype", 0, 1, "Opacity", 1.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter LuminanceRange = new("mrgLuminancerange", 0, 1, "LuminanceRange", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter FresnelParam = new("mrgFresnelParam", 0, 2, "FresnelParam", 1.0f, 1.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter SonicEyeHighLightPosition = new("g_SonicEyeHighLightPositionRaytracing", 0, 3, "SonicEyeHighLightPosition", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter SonicEyeHighLightColor = new("g_SonicEyeHighLightColor", 0, 3, "SonicEyeHighLightColor", 1.0f, 1.0f, 1.0f, 0.0f);
+    public static readonly RaytracingParameter SonicSkinFalloffParam = new("g_SonicSkinFalloffParam", 0, 3, "SonicSkinFalloffParam", 0.15f, 2.0f, 3.0f, 0.0f);
+    public static readonly RaytracingParameter ChrEmissionParam = new("mrgChrEmissionParam", 0, 4, "ChrEmissionParam", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter TransColorMask = new("g_TransColorMask", 0, 3, "TransColorMask", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter EmissionParam = new("g_EmissionParam", 0, 4, "EmissionParam", 0.0f, 0.0f, 0.0f, 1.0f);
+    public static readonly RaytracingParameter OffsetParam = new("g_OffsetParam", 0, 2, "OffsetParam", 0.1f, 0.1f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter WaterParam = new("g_WaterParam", 0, 4, "WaterParam", 1.0f, 0.5f, 0.0f, 8.0f);
+    public static readonly RaytracingParameter FurParam = new("FurParam", 0, 4, "FurParam", 0.1f, 8.0f, 8.0f, 1.0f);
+    public static readonly RaytracingParameter FurParam2 = new("FurParam2", 0, 4, "FurParam2", 0.0f, 0.6f, 0.5f, 1.0f);
+    public static readonly RaytracingParameter ChrEyeFHL1 = new("ChrEyeFHL1", 0, 4, "ChrEyeFHL1", 0.03f, -0.05f, 0.01f, 0.01f);
+    public static readonly RaytracingParameter ChrEyeFHL2 = new("ChrEyeFHL2", 0, 4, "ChrEyeFHL2", 0.02f, 0.09f, 0.12f, 0.07f);
+    public static readonly RaytracingParameter ChrEyeFHL3 = new("ChrEyeFHL3", 0, 4, "ChrEyeFHL3", 0.0f, 0.0f, 0.1f, 0.1f);
+    public static readonly RaytracingParameter DistortionParam = new("mrgDistortionParam", 0, 4, "DistortionParam", 30.0f, 1.0f, 1.0f, 0.03f);
+
+    public static readonly RaytracingParameter[] AllParameters = [
+        Diffuse,
+        Ambient,
+        Specular,
+        Emissive,
+        GlossLevel,
+        Opacity,
+        LuminanceRange,
+        FresnelParam,
+        SonicEyeHighLightPosition,
+        SonicEyeHighLightColor,
+        SonicSkinFalloffParam,
+        ChrEmissionParam,
+        TransColorMask,
+        EmissionParam,
+        OffsetParam,
+        WaterParam,
+        FurParam,
+        FurParam2,
+        ChrEyeFHL1,
+        ChrEyeFHL2,
+        ChrEyeFHL3,
+        DistortionParam];
 }
 
 public class RaytracingShader(string name, RaytracingTexture[] textures, RaytracingParameter[] parameters)
@@ -65,7 +109,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
     public RaytracingTexture[] Textures { get; set; } = textures;
     public RaytracingParameter[] Parameters { get; set; } = parameters;
 
-    public static RaytracingShader SysError = new("SYS_ERROR",
+    public static readonly RaytracingShader SysError = new("SYS_ERROR",
         [
             RaytracingTexture.Diffuse
         ],
@@ -74,7 +118,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity
         ]);
 
-    public static RaytracingShader Blend = new("BLEND",
+    public static readonly RaytracingShader Blend = new("BLEND",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular, 
@@ -93,7 +137,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader ChrEye = new("CHR_EYE",
+    public static readonly RaytracingShader ChrEye = new("CHR_EYE",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Gloss,
@@ -108,7 +152,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.SonicEyeHighLightColor
         ]);
 
-    public static RaytracingShader ChrEyeFHL = new("CHR_EYE_FHL",
+    public static readonly RaytracingShader ChrEyeFHL = new("CHR_EYE_FHL",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Level,
@@ -124,7 +168,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.ChrEyeFHL3
         ]);
 
-    public static RaytracingShader ChrSkin = new("CHR_SKIN",
+    public static readonly RaytracingShader ChrSkin = new("CHR_SKIN",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -140,7 +184,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.SonicSkinFalloffParam
         ]);
 
-    public static RaytracingShader ChrSkinHalf = new("CHR_SKIN_HALF",
+    public static readonly RaytracingShader ChrSkinHalf = new("CHR_SKIN_HALF",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -154,7 +198,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.SonicSkinFalloffParam,
         ]);
 
-    public static RaytracingShader ChrSkinIgnore = new("CHR_SKIN_IGNORE",
+    public static readonly RaytracingShader ChrSkinIgnore = new("CHR_SKIN_IGNORE",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -171,7 +215,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.ChrEmissionParam,
         ]);
 
-    public static RaytracingShader Cloud = new("CLOUD",
+    public static readonly RaytracingShader Cloud = new("CLOUD",
         [
             RaytracingTexture.Normal,
             RaytracingTexture.Displacement,
@@ -185,7 +229,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.SonicSkinFalloffParam,
         ]);
 
-    public static RaytracingShader Common = new("COMMON",
+    public static readonly RaytracingShader Common = new("COMMON",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Opacity,
@@ -200,7 +244,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader Dim = new("DIM",
+    public static readonly RaytracingShader Dim = new("DIM",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Gloss,
@@ -215,7 +259,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader Distortion = new("DISTORTION",
+    public static readonly RaytracingShader Distortion = new("DISTORTION",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -229,7 +273,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader DistortionOverlay = new("DISTORTION_OVERLAY",
+    public static readonly RaytracingShader DistortionOverlay = new("DISTORTION_OVERLAY",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Normal,
@@ -241,7 +285,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.DistortionParam
         ]);
 
-    public static RaytracingShader EnmEmission = new("ENM_EMISSION",
+    public static readonly RaytracingShader EnmEmission = new("ENM_EMISSION",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Normal,
@@ -257,7 +301,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.ChrEmissionParam,
         ]);
 
-    public static RaytracingShader EnmGlass = new("ENM_GLASS",
+    public static readonly RaytracingShader EnmGlass = new("ENM_GLASS",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -274,7 +318,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.ChrEmissionParam,
         ]);
 
-    public static RaytracingShader EnmIgnore = new("ENM_IGNORE",
+    public static readonly RaytracingShader EnmIgnore = new("ENM_IGNORE",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -289,7 +333,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.ChrEmissionParam,
         ]);
 
-    public static RaytracingShader FadeOutNormal = new("FADE_OUT_NORMAL",
+    public static readonly RaytracingShader FadeOutNormal = new("FADE_OUT_NORMAL",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Normal,
@@ -301,7 +345,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader FallOff = new("FALLOFF",
+    public static readonly RaytracingShader FallOff = new("FALLOFF",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Normal,
@@ -315,7 +359,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader FallOffV = new("FALLOFF_V",
+    public static readonly RaytracingShader FallOffV = new("FALLOFF_V",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Gloss,
@@ -329,7 +373,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader Fur = new("FUR",
+    public static readonly RaytracingShader Fur = new("FUR",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Diffuse2,
@@ -348,7 +392,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.FurParam2,
         ]);
 
-    public static RaytracingShader Glass = new("GLASS",
+    public static readonly RaytracingShader Glass = new("GLASS",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -363,7 +407,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.FresnelParam,
         ]);
 
-    public static RaytracingShader Ice = new("ICE",
+    public static readonly RaytracingShader Ice = new("ICE",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Gloss,
@@ -376,7 +420,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader IgnoreLight = new("IGNORE_LIGHT",
+    public static readonly RaytracingShader IgnoreLight = new("IGNORE_LIGHT",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Opacity,
@@ -389,7 +433,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.EmissionParam,
         ]);
 
-    public static RaytracingShader IgnoreLightTwice = new("IGNORE_LIGHT_TWICE",
+    public static readonly RaytracingShader IgnoreLightTwice = new("IGNORE_LIGHT_TWICE",
         [
             RaytracingTexture.Diffuse,
         ],
@@ -398,7 +442,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader Indirect = new("INDIRECT",
+    public static readonly RaytracingShader Indirect = new("INDIRECT",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Gloss,
@@ -413,7 +457,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.OffsetParam,
         ]);
 
-    public static RaytracingShader IndirectNoLight = new("INDIRECT_NO_LIGHT",
+    public static readonly RaytracingShader IndirectNoLight = new("INDIRECT_NO_LIGHT",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Displacement,
@@ -425,7 +469,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.OffsetParam,
         ]);
 
-    public static RaytracingShader IndirectV = new("INDIRECT_V",
+    public static readonly RaytracingShader IndirectV = new("INDIRECT_V",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Opacity,
@@ -441,7 +485,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.OffsetParam,
         ]);
 
-    public static RaytracingShader Luminescence = new("LUMINESCENCE",
+    public static readonly RaytracingShader Luminescence = new("LUMINESCENCE",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Gloss,
@@ -457,7 +501,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Ambient,
         ]);
 
-    public static RaytracingShader LuminescenceV = new("LUMINESCENCE_V",
+    public static readonly RaytracingShader LuminescenceV = new("LUMINESCENCE_V",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Gloss,
@@ -474,7 +518,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader Metal = new("METAL",
+    public static readonly RaytracingShader Metal = new("METAL",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -488,7 +532,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader Mirror = new("MIRROR",
+    public static readonly RaytracingShader Mirror = new("MIRROR",
         [
             RaytracingTexture.Diffuse
         ],
@@ -498,7 +542,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.FresnelParam
         ]);
 
-    public static RaytracingShader Ring = new("RING",
+    public static readonly RaytracingShader Ring = new("RING",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -512,7 +556,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.LuminanceRange,
         ]);
 
-    public static RaytracingShader Shoe = new("SHOE",
+    public static readonly RaytracingShader Shoe = new("SHOE",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -526,7 +570,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
         ]);
 
-    public static RaytracingShader TimeEater = new("TIME_EATER",
+    public static readonly RaytracingShader TimeEater = new("TIME_EATER",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Specular,
@@ -542,7 +586,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.SonicSkinFalloffParam,
         ]);
 
-    public static RaytracingShader TransThin = new("TRANS_THIN",
+    public static readonly RaytracingShader TransThin = new("TRANS_THIN",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Gloss,
@@ -556,7 +600,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.TransColorMask,
         ]);
 
-    public static RaytracingShader WaterAdd = new("WATER_ADD",
+    public static readonly RaytracingShader WaterAdd = new("WATER_ADD",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Normal,
@@ -570,7 +614,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.WaterParam,
         ]);
 
-    public static RaytracingShader WaterMul = new("WATER_MUL",
+    public static readonly RaytracingShader WaterMul = new("WATER_MUL",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Normal,
@@ -584,7 +628,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.WaterParam,
         ]);
 
-    public static RaytracingShader WaterOpacity = new("WATER_OPACITY",
+    public static readonly RaytracingShader WaterOpacity = new("WATER_OPACITY",
         [
             RaytracingTexture.Diffuse,
             RaytracingTexture.Normal,
@@ -683,7 +727,7 @@ public static class RaytracingShaderCompiler
         using var writer = new StreamWriter(
             Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.Shared", "ShaderType.h"));
 
-        writer.WriteLine("#pragma once");
+        writer.WriteLine("#pragma once\n");
 
         for (int i = 0; i < Shaders.Count; i++)
             writer.WriteLine("#define SHADER_TYPE_{0} {1}", Shaders[i].Name, i);
@@ -698,7 +742,7 @@ public static class RaytracingShaderCompiler
 
         writer.WriteLine("#pragma once");
 
-        writer.WriteLine("inline const wchar_t* s_shaderHitGroups[] =");
+        writer.WriteLine("\ninline const wchar_t* s_shaderHitGroups[] =");
         writer.WriteLine("{");
 
         foreach (var shader in Shaders)
@@ -736,43 +780,59 @@ public static class RaytracingShaderCompiler
                             const char* name;
                             uint32_t index;
                             uint32_t size;
+                            float x;
+                            float y;
+                            float z;
+                            float w;
                             Hedgehog::Base::CStringSymbol nameSymbol;
                          };
                          
                          struct RaytracingShader
                          {
                             uint32_t type;
-                            RaytracingTexture* textures;
+                            RaytracingTexture** textures;
                             uint32_t textureNum;
-                            RaytracingParameter* parameters;
+                            RaytracingParameter** parameters;
                             uint32_t parameterNum;
                          };
+
                          """);
+
+        foreach (var texture in RaytracingTexture.AllTextures)
+        {
+            writer.WriteLine("inline RaytracingTexture s_texture_{0} = {{ \"{1}\", {2}, {3} }};", 
+                texture.FieldName, texture.Name, texture.Index, texture.Name == "opacity" ? "true" : "false");
+        }
+
+        writer.WriteLine();
+
+        foreach (var parameter in RaytracingParameter.AllParameters)
+        { 
+            writer.WriteLine("inline RaytracingParameter s_parameter_{0} = {{ \"{1}\", {2}, {3}, {4:0.0##}f, {5:0.0##}f, {6:0.0##}f, {7:0.0##}f }};", 
+                parameter.FieldName, parameter.Name, parameter.Index, parameter.Size, parameter.X, parameter.Y, parameter.Z, parameter.W);
+        }
 
         foreach (var shader in Shaders)
         {
-            writer.WriteLine("inline RaytracingTexture s_textures_{0}[{1}] =", shader.Name, shader.Textures.Length);
+            writer.WriteLine("\ninline RaytracingTexture* s_textures_{0}[{1}] =", shader.Name, shader.Textures.Length);
             writer.WriteLine("{");
 
             foreach (var texture in shader.Textures)
-            {
-                writer.WriteLine("\t{{ \"{0}\", {1}, {2} }},", texture.Name, texture.Index,
-                    texture.Name == "opacity" ? "true" : "false");
-            }
+                writer.WriteLine("\t&s_texture_{0},", texture.FieldName);
 
             writer.WriteLine("};");
-            writer.WriteLine("inline RaytracingParameter s_parameters_{0}[{1}] =", shader.Name, shader.Parameters.Length);
+            writer.WriteLine("\ninline RaytracingParameter* s_parameters_{0}[{1}] =", shader.Name, shader.Parameters.Length);
             writer.WriteLine("{");
 
             foreach (var parameter in shader.Parameters)
-                writer.WriteLine("\t{{ \"{0}\", {1}, {2} }},", parameter.Name, parameter.Index, parameter.Size);
+                writer.WriteLine("\t&s_parameter_{0},", parameter.FieldName);
 
             writer.WriteLine("};");
-            writer.WriteLine("inline RaytracingShader s_shader_{0} = {{ SHADER_TYPE_{0}, s_textures_{0}, {1}, s_parameters_{0}, {2} }};",
+            writer.WriteLine("\ninline RaytracingShader s_shader_{0} = {{ SHADER_TYPE_{0}, s_textures_{0}, {1}, s_parameters_{0}, {2} }};",
                 shader.Name, shader.Textures.Length, shader.Parameters.Length);
         }
 
-        writer.WriteLine("inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =");
+        writer.WriteLine("\ninline std::pair<std::string_view, RaytracingShader*> s_shaders[] =");
         writer.WriteLine("{");
 
         foreach (var (shaderName, shader) in ShaderPairs)
@@ -833,7 +893,7 @@ public static class RaytracingShaderCompiler
             if (padding > 0)
                 writer.WriteLine("    uint Padding[{0}];", padding);
 
-            writer.WriteLine("};");
+            writer.WriteLine("};\n");
 
             writer.WriteLine("""
                              Material GetMaterial(uint shaderType, MaterialData materialData)

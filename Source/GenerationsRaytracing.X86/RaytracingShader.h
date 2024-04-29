@@ -15,587 +15,740 @@ struct RaytracingParameter
    const char* name;
    uint32_t index;
    uint32_t size;
+   float x;
+   float y;
+   float z;
+   float w;
    Hedgehog::Base::CStringSymbol nameSymbol;
 };
 
 struct RaytracingShader
 {
    uint32_t type;
-   RaytracingTexture* textures;
+   RaytracingTexture** textures;
    uint32_t textureNum;
-   RaytracingParameter* parameters;
+   RaytracingParameter** parameters;
    uint32_t parameterNum;
 };
-inline RaytracingTexture s_textures_SYS_ERROR[1] =
+
+inline RaytracingTexture s_texture_DiffuseTexture = { "diffuse", 0, false };
+inline RaytracingTexture s_texture_DiffuseTexture2 = { "diffuse", 1, false };
+inline RaytracingTexture s_texture_SpecularTexture = { "specular", 0, false };
+inline RaytracingTexture s_texture_SpecularTexture2 = { "specular", 1, false };
+inline RaytracingTexture s_texture_GlossTexture = { "gloss", 0, false };
+inline RaytracingTexture s_texture_GlossTexture2 = { "gloss", 1, false };
+inline RaytracingTexture s_texture_NormalTexture = { "normal", 0, false };
+inline RaytracingTexture s_texture_NormalTexture2 = { "normal", 1, false };
+inline RaytracingTexture s_texture_ReflectionTexture = { "reflection", 0, false };
+inline RaytracingTexture s_texture_OpacityTexture = { "opacity", 0, true };
+inline RaytracingTexture s_texture_DisplacementTexture = { "displacement", 0, false };
+inline RaytracingTexture s_texture_DisplacementTexture2 = { "displacement", 1, false };
+inline RaytracingTexture s_texture_LevelTexture = { "level", 0, false };
+
+inline RaytracingParameter s_parameter_Diffuse = { "diffuse", 0, 4, 1.0f, 1.0f, 1.0f, 1.0f };
+inline RaytracingParameter s_parameter_Ambient = { "ambient", 0, 3, 1.0f, 1.0f, 1.0f, 0.0f };
+inline RaytracingParameter s_parameter_Specular = { "specular", 0, 3, 0.9f, 0.9f, 0.9f, 0.0f };
+inline RaytracingParameter s_parameter_Emissive = { "emissive", 0, 3, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_GlossLevel = { "power_gloss_level", 1, 2, 50.0f, 0.1f, 0.01f, 0.0f };
+inline RaytracingParameter s_parameter_Opacity = { "opacity_reflection_refraction_spectype", 0, 1, 1.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_LuminanceRange = { "mrgLuminancerange", 0, 1, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_FresnelParam = { "mrgFresnelParam", 0, 2, 1.0f, 1.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_SonicEyeHighLightPosition = { "g_SonicEyeHighLightPositionRaytracing", 0, 3, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_SonicEyeHighLightColor = { "g_SonicEyeHighLightColor", 0, 3, 1.0f, 1.0f, 1.0f, 0.0f };
+inline RaytracingParameter s_parameter_SonicSkinFalloffParam = { "g_SonicSkinFalloffParam", 0, 3, 0.15f, 2.0f, 3.0f, 0.0f };
+inline RaytracingParameter s_parameter_ChrEmissionParam = { "mrgChrEmissionParam", 0, 4, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_TransColorMask = { "g_TransColorMask", 0, 3, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_EmissionParam = { "g_EmissionParam", 0, 4, 0.0f, 0.0f, 0.0f, 1.0f };
+inline RaytracingParameter s_parameter_OffsetParam = { "g_OffsetParam", 0, 2, 0.1f, 0.1f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_WaterParam = { "g_WaterParam", 0, 4, 1.0f, 0.5f, 0.0f, 8.0f };
+inline RaytracingParameter s_parameter_FurParam = { "FurParam", 0, 4, 0.1f, 8.0f, 8.0f, 1.0f };
+inline RaytracingParameter s_parameter_FurParam2 = { "FurParam2", 0, 4, 0.0f, 0.6f, 0.5f, 1.0f };
+inline RaytracingParameter s_parameter_ChrEyeFHL1 = { "ChrEyeFHL1", 0, 4, 0.03f, -0.05f, 0.01f, 0.01f };
+inline RaytracingParameter s_parameter_ChrEyeFHL2 = { "ChrEyeFHL2", 0, 4, 0.02f, 0.09f, 0.12f, 0.07f };
+inline RaytracingParameter s_parameter_ChrEyeFHL3 = { "ChrEyeFHL3", 0, 4, 0.0f, 0.0f, 0.1f, 0.1f };
+inline RaytracingParameter s_parameter_DistortionParam = { "mrgDistortionParam", 0, 4, 30.0f, 1.0f, 1.0f, 0.03f };
+
+inline RaytracingTexture* s_textures_SYS_ERROR[1] =
 {
-	{ "diffuse", 0, false },
+	&s_texture_DiffuseTexture,
 };
-inline RaytracingParameter s_parameters_SYS_ERROR[2] =
+
+inline RaytracingParameter* s_parameters_SYS_ERROR[2] =
 {
-	{ "diffuse", 0, 4 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_SYS_ERROR = { SHADER_TYPE_SYS_ERROR, s_textures_SYS_ERROR, 1, s_parameters_SYS_ERROR, 2 };
-inline RaytracingTexture s_textures_BLEND[9] =
+
+inline RaytracingTexture* s_textures_BLEND[9] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
-	{ "opacity", 0, true },
-	{ "diffuse", 1, false },
-	{ "specular", 1, false },
-	{ "gloss", 1, false },
-	{ "normal", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
+	&s_texture_OpacityTexture,
+	&s_texture_DiffuseTexture2,
+	&s_texture_SpecularTexture2,
+	&s_texture_GlossTexture2,
+	&s_texture_NormalTexture2,
 };
-inline RaytracingParameter s_parameters_BLEND[4] =
+
+inline RaytracingParameter* s_parameters_BLEND[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_BLEND = { SHADER_TYPE_BLEND, s_textures_BLEND, 9, s_parameters_BLEND, 4 };
-inline RaytracingTexture s_textures_COMMON[5] =
+
+inline RaytracingTexture* s_textures_COMMON[5] =
 {
-	{ "diffuse", 0, false },
-	{ "opacity", 0, true },
-	{ "specular", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_OpacityTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
 };
-inline RaytracingParameter s_parameters_COMMON[4] =
+
+inline RaytracingParameter* s_parameters_COMMON[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_COMMON = { SHADER_TYPE_COMMON, s_textures_COMMON, 5, s_parameters_COMMON, 4 };
-inline RaytracingTexture s_textures_INDIRECT[4] =
+
+inline RaytracingTexture* s_textures_INDIRECT[4] =
 {
-	{ "diffuse", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_INDIRECT[5] =
+
+inline RaytracingParameter* s_parameters_INDIRECT[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_OffsetParam", 0, 2 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_OffsetParam,
 };
+
 inline RaytracingShader s_shader_INDIRECT = { SHADER_TYPE_INDIRECT, s_textures_INDIRECT, 4, s_parameters_INDIRECT, 5 };
-inline RaytracingTexture s_textures_LUMINESCENCE[4] =
+
+inline RaytracingTexture* s_textures_LUMINESCENCE[4] =
 {
-	{ "diffuse", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_LUMINESCENCE[6] =
+
+inline RaytracingParameter* s_parameters_LUMINESCENCE[6] =
 {
-	{ "diffuse", 0, 4 },
-	{ "emissive", 0, 3 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "ambient", 0, 3 },
+	&s_parameter_Diffuse,
+	&s_parameter_Emissive,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_Ambient,
 };
+
 inline RaytracingShader s_shader_LUMINESCENCE = { SHADER_TYPE_LUMINESCENCE, s_textures_LUMINESCENCE, 4, s_parameters_LUMINESCENCE, 6 };
-inline RaytracingTexture s_textures_CHR_EYE[3] =
+
+inline RaytracingTexture* s_textures_CHR_EYE[3] =
 {
-	{ "diffuse", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
 };
-inline RaytracingParameter s_parameters_CHR_EYE[6] =
+
+inline RaytracingParameter* s_parameters_CHR_EYE[6] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_SonicEyeHighLightPositionRaytracing", 0, 3 },
-	{ "g_SonicEyeHighLightColor", 0, 3 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_SonicEyeHighLightPosition,
+	&s_parameter_SonicEyeHighLightColor,
 };
+
 inline RaytracingShader s_shader_CHR_EYE = { SHADER_TYPE_CHR_EYE, s_textures_CHR_EYE, 3, s_parameters_CHR_EYE, 6 };
-inline RaytracingTexture s_textures_CHR_EYE_FHL[3] =
+
+inline RaytracingTexture* s_textures_CHR_EYE_FHL[3] =
 {
-	{ "diffuse", 0, false },
-	{ "level", 0, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_LevelTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_CHR_EYE_FHL[7] =
+
+inline RaytracingParameter* s_parameters_CHR_EYE_FHL[7] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "ChrEyeFHL1", 0, 4 },
-	{ "ChrEyeFHL2", 0, 4 },
-	{ "ChrEyeFHL3", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_ChrEyeFHL1,
+	&s_parameter_ChrEyeFHL2,
+	&s_parameter_ChrEyeFHL3,
 };
+
 inline RaytracingShader s_shader_CHR_EYE_FHL = { SHADER_TYPE_CHR_EYE_FHL, s_textures_CHR_EYE_FHL, 3, s_parameters_CHR_EYE_FHL, 7 };
-inline RaytracingTexture s_textures_CHR_SKIN[5] =
+
+inline RaytracingTexture* s_textures_CHR_SKIN[5] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_CHR_SKIN[5] =
+
+inline RaytracingParameter* s_parameters_CHR_SKIN[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_SonicSkinFalloffParam", 0, 3 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_SonicSkinFalloffParam,
 };
+
 inline RaytracingShader s_shader_CHR_SKIN = { SHADER_TYPE_CHR_SKIN, s_textures_CHR_SKIN, 5, s_parameters_CHR_SKIN, 5 };
-inline RaytracingTexture s_textures_CHR_SKIN_HALF[3] =
+
+inline RaytracingTexture* s_textures_CHR_SKIN_HALF[3] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "reflection", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_ReflectionTexture,
 };
-inline RaytracingParameter s_parameters_CHR_SKIN_HALF[5] =
+
+inline RaytracingParameter* s_parameters_CHR_SKIN_HALF[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_SonicSkinFalloffParam", 0, 3 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_SonicSkinFalloffParam,
 };
+
 inline RaytracingShader s_shader_CHR_SKIN_HALF = { SHADER_TYPE_CHR_SKIN_HALF, s_textures_CHR_SKIN_HALF, 3, s_parameters_CHR_SKIN_HALF, 5 };
-inline RaytracingTexture s_textures_CHR_SKIN_IGNORE[4] =
+
+inline RaytracingTexture* s_textures_CHR_SKIN_IGNORE[4] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "displacement", 0, false },
-	{ "reflection", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_DisplacementTexture,
+	&s_texture_ReflectionTexture,
 };
-inline RaytracingParameter s_parameters_CHR_SKIN_IGNORE[7] =
+
+inline RaytracingParameter* s_parameters_CHR_SKIN_IGNORE[7] =
 {
-	{ "diffuse", 0, 4 },
-	{ "ambient", 0, 3 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_SonicSkinFalloffParam", 0, 3 },
-	{ "mrgChrEmissionParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Ambient,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_SonicSkinFalloffParam,
+	&s_parameter_ChrEmissionParam,
 };
+
 inline RaytracingShader s_shader_CHR_SKIN_IGNORE = { SHADER_TYPE_CHR_SKIN_IGNORE, s_textures_CHR_SKIN_IGNORE, 4, s_parameters_CHR_SKIN_IGNORE, 7 };
-inline RaytracingTexture s_textures_CLOUD[3] =
+
+inline RaytracingTexture* s_textures_CLOUD[3] =
 {
-	{ "normal", 0, false },
-	{ "displacement", 0, false },
-	{ "reflection", 0, false },
+	&s_texture_NormalTexture,
+	&s_texture_DisplacementTexture,
+	&s_texture_ReflectionTexture,
 };
-inline RaytracingParameter s_parameters_CLOUD[5] =
+
+inline RaytracingParameter* s_parameters_CLOUD[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_SonicSkinFalloffParam", 0, 3 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_SonicSkinFalloffParam,
 };
+
 inline RaytracingShader s_shader_CLOUD = { SHADER_TYPE_CLOUD, s_textures_CLOUD, 3, s_parameters_CLOUD, 5 };
-inline RaytracingTexture s_textures_DIM[4] =
+
+inline RaytracingTexture* s_textures_DIM[4] =
 {
-	{ "diffuse", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
-	{ "reflection", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
+	&s_texture_ReflectionTexture,
 };
-inline RaytracingParameter s_parameters_DIM[5] =
+
+inline RaytracingParameter* s_parameters_DIM[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "ambient", 0, 3 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Ambient,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_DIM = { SHADER_TYPE_DIM, s_textures_DIM, 4, s_parameters_DIM, 5 };
-inline RaytracingTexture s_textures_DISTORTION[4] =
+
+inline RaytracingTexture* s_textures_DISTORTION[4] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "normal", 0, false },
-	{ "normal", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
 };
-inline RaytracingParameter s_parameters_DISTORTION[4] =
+
+inline RaytracingParameter* s_parameters_DISTORTION[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_DISTORTION = { SHADER_TYPE_DISTORTION, s_textures_DISTORTION, 4, s_parameters_DISTORTION, 4 };
-inline RaytracingTexture s_textures_DISTORTION_OVERLAY[3] =
+
+inline RaytracingTexture* s_textures_DISTORTION_OVERLAY[3] =
 {
-	{ "diffuse", 0, false },
-	{ "normal", 0, false },
-	{ "normal", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
 };
-inline RaytracingParameter s_parameters_DISTORTION_OVERLAY[3] =
+
+inline RaytracingParameter* s_parameters_DISTORTION_OVERLAY[3] =
 {
-	{ "diffuse", 0, 4 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "mrgDistortionParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Opacity,
+	&s_parameter_DistortionParam,
 };
+
 inline RaytracingShader s_shader_DISTORTION_OVERLAY = { SHADER_TYPE_DISTORTION_OVERLAY, s_textures_DISTORTION_OVERLAY, 3, s_parameters_DISTORTION_OVERLAY, 3 };
-inline RaytracingTexture s_textures_ENM_EMISSION[4] =
+
+inline RaytracingTexture* s_textures_ENM_EMISSION[4] =
 {
-	{ "diffuse", 0, false },
-	{ "normal", 0, false },
-	{ "specular", 0, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_NormalTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_ENM_EMISSION[6] =
+
+inline RaytracingParameter* s_parameters_ENM_EMISSION[6] =
 {
-	{ "diffuse", 0, 4 },
-	{ "ambient", 0, 3 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "mrgChrEmissionParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Ambient,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_ChrEmissionParam,
 };
+
 inline RaytracingShader s_shader_ENM_EMISSION = { SHADER_TYPE_ENM_EMISSION, s_textures_ENM_EMISSION, 4, s_parameters_ENM_EMISSION, 6 };
-inline RaytracingTexture s_textures_ENM_GLASS[5] =
+
+inline RaytracingTexture* s_textures_ENM_GLASS[5] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "normal", 0, false },
-	{ "displacement", 0, false },
-	{ "reflection", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_NormalTexture,
+	&s_texture_DisplacementTexture,
+	&s_texture_ReflectionTexture,
 };
-inline RaytracingParameter s_parameters_ENM_GLASS[6] =
+
+inline RaytracingParameter* s_parameters_ENM_GLASS[6] =
 {
-	{ "diffuse", 0, 4 },
-	{ "ambient", 0, 3 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "mrgChrEmissionParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Ambient,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_ChrEmissionParam,
 };
+
 inline RaytracingShader s_shader_ENM_GLASS = { SHADER_TYPE_ENM_GLASS, s_textures_ENM_GLASS, 5, s_parameters_ENM_GLASS, 6 };
-inline RaytracingTexture s_textures_ENM_IGNORE[3] =
+
+inline RaytracingTexture* s_textures_ENM_IGNORE[3] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_ENM_IGNORE[6] =
+
+inline RaytracingParameter* s_parameters_ENM_IGNORE[6] =
 {
-	{ "diffuse", 0, 4 },
-	{ "ambient", 0, 3 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "mrgChrEmissionParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Ambient,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_ChrEmissionParam,
 };
+
 inline RaytracingShader s_shader_ENM_IGNORE = { SHADER_TYPE_ENM_IGNORE, s_textures_ENM_IGNORE, 3, s_parameters_ENM_IGNORE, 6 };
-inline RaytracingTexture s_textures_FADE_OUT_NORMAL[2] =
+
+inline RaytracingTexture* s_textures_FADE_OUT_NORMAL[2] =
 {
-	{ "diffuse", 0, false },
-	{ "normal", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_NormalTexture,
 };
-inline RaytracingParameter s_parameters_FADE_OUT_NORMAL[4] =
+
+inline RaytracingParameter* s_parameters_FADE_OUT_NORMAL[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_FADE_OUT_NORMAL = { SHADER_TYPE_FADE_OUT_NORMAL, s_textures_FADE_OUT_NORMAL, 2, s_parameters_FADE_OUT_NORMAL, 4 };
-inline RaytracingTexture s_textures_FALLOFF[4] =
+
+inline RaytracingTexture* s_textures_FALLOFF[4] =
 {
-	{ "diffuse", 0, false },
-	{ "normal", 0, false },
-	{ "gloss", 0, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_NormalTexture,
+	&s_texture_GlossTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_FALLOFF[4] =
+
+inline RaytracingParameter* s_parameters_FALLOFF[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_FALLOFF = { SHADER_TYPE_FALLOFF, s_textures_FALLOFF, 4, s_parameters_FALLOFF, 4 };
-inline RaytracingTexture s_textures_FALLOFF_V[4] =
+
+inline RaytracingTexture* s_textures_FALLOFF_V[4] =
 {
-	{ "diffuse", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
-	{ "normal", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
 };
-inline RaytracingParameter s_parameters_FALLOFF_V[4] =
+
+inline RaytracingParameter* s_parameters_FALLOFF_V[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_FALLOFF_V = { SHADER_TYPE_FALLOFF_V, s_textures_FALLOFF_V, 4, s_parameters_FALLOFF_V, 4 };
-inline RaytracingTexture s_textures_FUR[6] =
+
+inline RaytracingTexture* s_textures_FUR[6] =
 {
-	{ "diffuse", 0, false },
-	{ "diffuse", 1, false },
-	{ "specular", 0, false },
-	{ "normal", 0, false },
-	{ "normal", 1, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_DiffuseTexture2,
+	&s_texture_SpecularTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_FUR[7] =
+
+inline RaytracingParameter* s_parameters_FUR[7] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_SonicSkinFalloffParam", 0, 3 },
-	{ "FurParam", 0, 4 },
-	{ "FurParam2", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_SonicSkinFalloffParam,
+	&s_parameter_FurParam,
+	&s_parameter_FurParam2,
 };
+
 inline RaytracingShader s_shader_FUR = { SHADER_TYPE_FUR, s_textures_FUR, 6, s_parameters_FUR, 7 };
-inline RaytracingTexture s_textures_GLASS[4] =
+
+inline RaytracingTexture* s_textures_GLASS[4] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
 };
-inline RaytracingParameter s_parameters_GLASS[5] =
+
+inline RaytracingParameter* s_parameters_GLASS[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "mrgFresnelParam", 0, 2 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_FresnelParam,
 };
+
 inline RaytracingShader s_shader_GLASS = { SHADER_TYPE_GLASS, s_textures_GLASS, 4, s_parameters_GLASS, 5 };
-inline RaytracingTexture s_textures_ICE[3] =
+
+inline RaytracingTexture* s_textures_ICE[3] =
 {
-	{ "diffuse", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
 };
-inline RaytracingParameter s_parameters_ICE[4] =
+
+inline RaytracingParameter* s_parameters_ICE[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_ICE = { SHADER_TYPE_ICE, s_textures_ICE, 3, s_parameters_ICE, 4 };
-inline RaytracingTexture s_textures_IGNORE_LIGHT[3] =
+
+inline RaytracingTexture* s_textures_IGNORE_LIGHT[3] =
 {
-	{ "diffuse", 0, false },
-	{ "opacity", 0, true },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_OpacityTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_IGNORE_LIGHT[4] =
+
+inline RaytracingParameter* s_parameters_IGNORE_LIGHT[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "ambient", 0, 3 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_EmissionParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Ambient,
+	&s_parameter_Opacity,
+	&s_parameter_EmissionParam,
 };
+
 inline RaytracingShader s_shader_IGNORE_LIGHT = { SHADER_TYPE_IGNORE_LIGHT, s_textures_IGNORE_LIGHT, 3, s_parameters_IGNORE_LIGHT, 4 };
-inline RaytracingTexture s_textures_IGNORE_LIGHT_TWICE[1] =
+
+inline RaytracingTexture* s_textures_IGNORE_LIGHT_TWICE[1] =
 {
-	{ "diffuse", 0, false },
+	&s_texture_DiffuseTexture,
 };
-inline RaytracingParameter s_parameters_IGNORE_LIGHT_TWICE[2] =
+
+inline RaytracingParameter* s_parameters_IGNORE_LIGHT_TWICE[2] =
 {
-	{ "diffuse", 0, 4 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_IGNORE_LIGHT_TWICE = { SHADER_TYPE_IGNORE_LIGHT_TWICE, s_textures_IGNORE_LIGHT_TWICE, 1, s_parameters_IGNORE_LIGHT_TWICE, 2 };
-inline RaytracingTexture s_textures_INDIRECT_NO_LIGHT[3] =
+
+inline RaytracingTexture* s_textures_INDIRECT_NO_LIGHT[3] =
 {
-	{ "diffuse", 0, false },
-	{ "displacement", 0, false },
-	{ "displacement", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_DisplacementTexture,
+	&s_texture_DisplacementTexture2,
 };
-inline RaytracingParameter s_parameters_INDIRECT_NO_LIGHT[3] =
+
+inline RaytracingParameter* s_parameters_INDIRECT_NO_LIGHT[3] =
 {
-	{ "diffuse", 0, 4 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_OffsetParam", 0, 2 },
+	&s_parameter_Diffuse,
+	&s_parameter_Opacity,
+	&s_parameter_OffsetParam,
 };
+
 inline RaytracingShader s_shader_INDIRECT_NO_LIGHT = { SHADER_TYPE_INDIRECT_NO_LIGHT, s_textures_INDIRECT_NO_LIGHT, 3, s_parameters_INDIRECT_NO_LIGHT, 3 };
-inline RaytracingTexture s_textures_INDIRECT_V[5] =
+
+inline RaytracingTexture* s_textures_INDIRECT_V[5] =
 {
-	{ "diffuse", 0, false },
-	{ "opacity", 0, true },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
-	{ "displacement", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_OpacityTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
+	&s_texture_DisplacementTexture,
 };
-inline RaytracingParameter s_parameters_INDIRECT_V[5] =
+
+inline RaytracingParameter* s_parameters_INDIRECT_V[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_OffsetParam", 0, 2 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_OffsetParam,
 };
+
 inline RaytracingShader s_shader_INDIRECT_V = { SHADER_TYPE_INDIRECT_V, s_textures_INDIRECT_V, 5, s_parameters_INDIRECT_V, 5 };
-inline RaytracingTexture s_textures_LUMINESCENCE_V[6] =
+
+inline RaytracingTexture* s_textures_LUMINESCENCE_V[6] =
 {
-	{ "diffuse", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
-	{ "displacement", 0, false },
-	{ "diffuse", 1, false },
-	{ "gloss", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
+	&s_texture_DisplacementTexture,
+	&s_texture_DiffuseTexture2,
+	&s_texture_GlossTexture2,
 };
-inline RaytracingParameter s_parameters_LUMINESCENCE_V[5] =
+
+inline RaytracingParameter* s_parameters_LUMINESCENCE_V[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "ambient", 0, 3 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Ambient,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_LUMINESCENCE_V = { SHADER_TYPE_LUMINESCENCE_V, s_textures_LUMINESCENCE_V, 6, s_parameters_LUMINESCENCE_V, 5 };
-inline RaytracingTexture s_textures_METAL[4] =
+
+inline RaytracingTexture* s_textures_METAL[4] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
 };
-inline RaytracingParameter s_parameters_METAL[4] =
+
+inline RaytracingParameter* s_parameters_METAL[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_METAL = { SHADER_TYPE_METAL, s_textures_METAL, 4, s_parameters_METAL, 4 };
-inline RaytracingTexture s_textures_MIRROR[1] =
+
+inline RaytracingTexture* s_textures_MIRROR[1] =
 {
-	{ "diffuse", 0, false },
+	&s_texture_DiffuseTexture,
 };
-inline RaytracingParameter s_parameters_MIRROR[3] =
+
+inline RaytracingParameter* s_parameters_MIRROR[3] =
 {
-	{ "diffuse", 0, 4 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "mrgFresnelParam", 0, 2 },
+	&s_parameter_Diffuse,
+	&s_parameter_Opacity,
+	&s_parameter_FresnelParam,
 };
+
 inline RaytracingShader s_shader_MIRROR = { SHADER_TYPE_MIRROR, s_textures_MIRROR, 1, s_parameters_MIRROR, 3 };
-inline RaytracingTexture s_textures_RING[3] =
+
+inline RaytracingTexture* s_textures_RING[3] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "reflection", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_ReflectionTexture,
 };
-inline RaytracingParameter s_parameters_RING[5] =
+
+inline RaytracingParameter* s_parameters_RING[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "mrgLuminancerange", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_LuminanceRange,
 };
+
 inline RaytracingShader s_shader_RING = { SHADER_TYPE_RING, s_textures_RING, 3, s_parameters_RING, 5 };
-inline RaytracingTexture s_textures_SHOE[4] =
+
+inline RaytracingTexture* s_textures_SHOE[4] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
 };
-inline RaytracingParameter s_parameters_SHOE[4] =
+
+inline RaytracingParameter* s_parameters_SHOE[4] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
 };
+
 inline RaytracingShader s_shader_SHOE = { SHADER_TYPE_SHOE, s_textures_SHOE, 4, s_parameters_SHOE, 4 };
-inline RaytracingTexture s_textures_TIME_EATER[5] =
+
+inline RaytracingTexture* s_textures_TIME_EATER[5] =
 {
-	{ "diffuse", 0, false },
-	{ "specular", 0, false },
-	{ "opacity", 0, true },
-	{ "normal", 0, false },
-	{ "normal", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_OpacityTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
 };
-inline RaytracingParameter s_parameters_TIME_EATER[5] =
+
+inline RaytracingParameter* s_parameters_TIME_EATER[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "power_gloss_level", 1, 2 },
-	{ "g_SonicSkinFalloffParam", 0, 3 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_Opacity,
+	&s_parameter_GlossLevel,
+	&s_parameter_SonicSkinFalloffParam,
 };
+
 inline RaytracingShader s_shader_TIME_EATER = { SHADER_TYPE_TIME_EATER, s_textures_TIME_EATER, 5, s_parameters_TIME_EATER, 5 };
-inline RaytracingTexture s_textures_TRANS_THIN[3] =
+
+inline RaytracingTexture* s_textures_TRANS_THIN[3] =
 {
-	{ "diffuse", 0, false },
-	{ "gloss", 0, false },
-	{ "normal", 0, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_GlossTexture,
+	&s_texture_NormalTexture,
 };
-inline RaytracingParameter s_parameters_TRANS_THIN[5] =
+
+inline RaytracingParameter* s_parameters_TRANS_THIN[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_TransColorMask", 0, 3 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_TransColorMask,
 };
+
 inline RaytracingShader s_shader_TRANS_THIN = { SHADER_TYPE_TRANS_THIN, s_textures_TRANS_THIN, 3, s_parameters_TRANS_THIN, 5 };
-inline RaytracingTexture s_textures_WATER_ADD[3] =
+
+inline RaytracingTexture* s_textures_WATER_ADD[3] =
 {
-	{ "diffuse", 0, false },
-	{ "normal", 0, false },
-	{ "normal", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
 };
-inline RaytracingParameter s_parameters_WATER_ADD[5] =
+
+inline RaytracingParameter* s_parameters_WATER_ADD[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_WaterParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_WaterParam,
 };
+
 inline RaytracingShader s_shader_WATER_ADD = { SHADER_TYPE_WATER_ADD, s_textures_WATER_ADD, 3, s_parameters_WATER_ADD, 5 };
-inline RaytracingTexture s_textures_WATER_MUL[3] =
+
+inline RaytracingTexture* s_textures_WATER_MUL[3] =
 {
-	{ "diffuse", 0, false },
-	{ "normal", 0, false },
-	{ "normal", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
 };
-inline RaytracingParameter s_parameters_WATER_MUL[5] =
+
+inline RaytracingParameter* s_parameters_WATER_MUL[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "g_WaterParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_WaterParam,
 };
+
 inline RaytracingShader s_shader_WATER_MUL = { SHADER_TYPE_WATER_MUL, s_textures_WATER_MUL, 3, s_parameters_WATER_MUL, 5 };
-inline RaytracingTexture s_textures_WATER_OPACITY[3] =
+
+inline RaytracingTexture* s_textures_WATER_OPACITY[3] =
 {
-	{ "diffuse", 0, false },
-	{ "normal", 0, false },
-	{ "normal", 1, false },
+	&s_texture_DiffuseTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
 };
-inline RaytracingParameter s_parameters_WATER_OPACITY[5] =
+
+inline RaytracingParameter* s_parameters_WATER_OPACITY[5] =
 {
-	{ "diffuse", 0, 4 },
-	{ "opacity_reflection_refraction_spectype", 0, 1 },
-	{ "specular", 0, 3 },
-	{ "power_gloss_level", 1, 2 },
-	{ "g_WaterParam", 0, 4 },
+	&s_parameter_Diffuse,
+	&s_parameter_Opacity,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_WaterParam,
 };
+
 inline RaytracingShader s_shader_WATER_OPACITY = { SHADER_TYPE_WATER_OPACITY, s_textures_WATER_OPACITY, 3, s_parameters_WATER_OPACITY, 5 };
+
 inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 {
 	{ "BillboardParticle_", &s_shader_SYS_ERROR },

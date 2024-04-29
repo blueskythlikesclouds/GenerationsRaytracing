@@ -1,4 +1,5 @@
 #pragma once
+
 inline const wchar_t* s_shaderHitGroups[] =
 {
 	L"SYS_ERROR_PrimaryHitGroup",

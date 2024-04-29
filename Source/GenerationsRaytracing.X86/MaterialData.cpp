@@ -129,7 +129,7 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
     for (size_t i = 0; i < shader->textureNum; i++)
     {
-        auto& texture = shader->textures[i];
+        const auto texture = shader->textures[i];
         auto& dstTexture = message.textures[i];
 
         dstTexture.id = 0;
@@ -139,22 +139,22 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
         if ((message.shaderType == SHADER_TYPE_COMMON ||
             message.shaderType == SHADER_TYPE_IGNORE_LIGHT) &&
-            texture.isOpacity && !hasOpacityTexture)
+            texture->isOpacity && !hasOpacityTexture)
         {
             continue;
         }
 
-        if (texture.nameSymbol == Hedgehog::Base::CStringSymbol{})
-            texture.nameSymbol = texture.name;
+        if (texture->nameSymbol == Hedgehog::Base::CStringSymbol{})
+            texture->nameSymbol = texture->name;
 
         if (materialDataEx.m_spTexsetData != nullptr)
         {
             uint32_t offset = 0;
             for (const auto& srcTexture : materialDataEx.m_spTexsetData->m_TextureList)
             {
-                if (srcTexture->m_Type == texture.nameSymbol)
+                if (srcTexture->m_Type == texture->nameSymbol)
                 {
-                    if (texture.index != offset)
+                    if (texture->index != offset)
                     {
                         ++offset;
                     }
@@ -202,25 +202,41 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
     for (size_t i = 0; i < shader->parameterNum; i++)
     {
-        auto& parameter = shader->parameters[i];
-        memset(destParam, 0, parameter.size * sizeof(float));
+        const auto parameter = shader->parameters[i];
+        memcpy(destParam, &((&parameter->x)[parameter->index]), parameter->size * sizeof(float));
 
-        if (parameter.nameSymbol == Hedgehog::Base::CStringSymbol{})
-            parameter.nameSymbol = parameter.name;
+        if (parameter->nameSymbol == Hedgehog::Base::CStringSymbol{})
+            parameter->nameSymbol = parameter->name;
+
+        bool found = false;
 
         for (const auto& float4Param : materialDataEx.m_Float4Params)
         {
-            if (float4Param->m_Name == parameter.nameSymbol)
+            if (float4Param->m_Name == parameter->nameSymbol)
             {
-                memcpy(destParam, &float4Param->m_spValue[parameter.index], 
-                    std::min(parameter.size, float4Param->m_ValueNum * 4 - parameter.index) * sizeof(float));
+                memcpy(destParam, &float4Param->m_spValue[parameter->index], 
+                    std::min(parameter->size, float4Param->m_ValueNum * 4 - parameter->index) * sizeof(float));
 
+                found = true;
                 break;
             }
         }
 
-        message.parameterNum += parameter.size;
-        destParam += parameter.size;
+        if (!found)
+        {
+            auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
+            float4Param->m_Name = parameter->nameSymbol;
+            float4Param->m_ValueNum = 1;
+            float4Param->m_spValue = boost::make_shared<float[]>(4);
+            float4Param->m_spValue[0] = parameter->x;
+            float4Param->m_spValue[1] = parameter->y;
+            float4Param->m_spValue[2] = parameter->z;
+            float4Param->m_spValue[3] = parameter->w;
+            materialDataEx.m_Float4Params.push_back(float4Param);
+        }
+
+        message.parameterNum += parameter->size;
+        destParam += parameter->size;
     }
 
     assert(message.textureNum <= _countof(message.textures));
