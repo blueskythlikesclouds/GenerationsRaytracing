@@ -9,8 +9,8 @@ static void screenRenderParamCallback(void* A1, Hedgehog::FxRenderFramework::SSc
 {
     int32_t shaderIndex = 0;
 
-    if ((Configuration::s_toneMap && 
-        RaytracingParams::s_toneMapMode != TONE_MAP_MODE_DISABLE) || RaytracingParams::s_toneMapMode == TONE_MAP_MODE_ENABLE)
+    if (!Configuration::s_hdr && ((Configuration::s_toneMap && 
+        RaytracingParams::s_toneMapMode != TONE_MAP_MODE_DISABLE) || RaytracingParams::s_toneMapMode == TONE_MAP_MODE_ENABLE))
     {
         shaderIndex = screenRenderParam->ShaderIndex;
     }

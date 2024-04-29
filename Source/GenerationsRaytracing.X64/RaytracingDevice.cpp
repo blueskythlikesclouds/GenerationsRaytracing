@@ -32,6 +32,7 @@
 #include "Im3dTrianglesVertexShader.h"
 #include "Im3dTrianglesPixelShader.h"
 #include "ReservoirComputeShader.h"
+#include "CopyHdrTexturePixelShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
@@ -597,11 +598,10 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscal
     underlyingCommandList->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
     underlyingCommandList->SetGraphicsRoot32BitConstants(0, 3, &globals, 0);
     underlyingCommandList->SetGraphicsRootDescriptorTable(1, m_descriptorHeap.getGpuHandle(m_srvId));
-    underlyingCommandList->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
     underlyingCommandList->SetPipelineState(m_copyTexturePipeline.Get());
     underlyingCommandList->RSSetViewports(1, &viewport);
     underlyingCommandList->RSSetScissorRects(1, &scissorRect);
-    underlyingCommandList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    underlyingCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     commandList.transitionBarrier(m_outputTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -1390,7 +1390,7 @@ void RaytracingDevice::procMsgRenderSky()
     underlyingCommandList->ClearRenderTargetView(renderTarget, clearValue, 0, nullptr);
     underlyingCommandList->RSSetViewports(1, &viewport);
     underlyingCommandList->RSSetScissorRects(1, &scissorRect);
-    underlyingCommandList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    underlyingCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
     GlobalsSB globalsSB;
     globalsSB.backgroundScale = message.backgroundScale;
@@ -1659,6 +1659,29 @@ void RaytracingDevice::procMsgUpdatePlayableParam()
     }
 }
 
+void RaytracingDevice::procMsgCopyHdrTexture()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCopyHdrTexture>();
+
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
+    PIX_EVENT();
+
+    const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_viewport.Width), static_cast<LONG>(m_viewport.Height) };
+
+    underlyingCommandList->OMSetRenderTargets(1, &m_renderTargetView, FALSE, nullptr);
+    underlyingCommandList->SetGraphicsRootSignature(m_copyHdrTextureRootSignature.Get());
+    underlyingCommandList->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_globalsPS.textureIndices[0]));
+    underlyingCommandList->SetPipelineState(m_copyHdrTexturePipeline.Get());
+    underlyingCommandList->RSSetScissorRects(1, &scissorRect);
+    underlyingCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    commandList.commitBarriers();
+
+    underlyingCommandList->DrawInstanced(6, 1, 0, 0);
+}
+
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -1676,6 +1699,7 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgDispatchUpscaler::s_id: procMsgDispatchUpscaler(); break;
     case MsgDrawIm3d::s_id: procMsgDrawIm3d(); break;
     case MsgUpdatePlayableParam::s_id: procMsgUpdatePlayableParam(); break;
+    case MsgCopyHdrTexture::s_id: procMsgCopyHdrTexture(); break;
     default: return false;
     }
 
@@ -2177,6 +2201,46 @@ RaytracingDevice::RaytracingDevice()
     reservoirPipelineDesc.CS.pShaderBytecode = ReservoirComputeShader;
     reservoirPipelineDesc.CS.BytecodeLength = sizeof(ReservoirComputeShader);
     m_pipelineLibrary.createComputePipelineState(&reservoirPipelineDesc, IID_PPV_ARGS(m_reservoirPipeline.GetAddressOf()));
+
+    CD3DX12_DESCRIPTOR_RANGE1 copyHdrDescriptorRanges[1];
+    copyHdrDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+
+    CD3DX12_ROOT_PARAMETER1 copyHdrRootParams[1];
+    copyHdrRootParams[0].InitAsDescriptorTable(_countof(copyHdrDescriptorRanges), copyHdrDescriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    D3D12_STATIC_SAMPLER_DESC copyHdrStaticSamplers[1]{};
+    copyHdrStaticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    copyHdrStaticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    copyHdrStaticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    copyHdrStaticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    RootSignature::create(
+        m_device.Get(),
+        copyHdrRootParams,
+        _countof(copyHdrRootParams),
+        copyHdrStaticSamplers,
+        _countof(copyHdrStaticSamplers),
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS,
+        m_copyHdrTextureRootSignature, "copy_hdr");
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC copyHdrPipelineDesc{};
+    copyHdrPipelineDesc.pRootSignature = m_copyHdrTextureRootSignature.Get();
+    copyHdrPipelineDesc.VS.pShaderBytecode = CopyTextureVertexShader;
+    copyHdrPipelineDesc.VS.BytecodeLength = sizeof(CopyTextureVertexShader);
+    copyHdrPipelineDesc.PS.pShaderBytecode = CopyHdrTexturePixelShader;
+    copyHdrPipelineDesc.PS.BytecodeLength = sizeof(CopyHdrTexturePixelShader);
+    copyHdrPipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    copyHdrPipelineDesc.SampleMask = ~0;
+    copyHdrPipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    copyHdrPipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    copyHdrPipelineDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    copyHdrPipelineDesc.DepthStencilState.DepthEnable = FALSE;
+    copyHdrPipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    copyHdrPipelineDesc.NumRenderTargets = 1;
+    copyHdrPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    copyHdrPipelineDesc.SampleDesc.Count = 1;
+
+    m_pipelineLibrary.createGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
 }
 
 static void waitForQueueOnExit(CommandQueue& queue)

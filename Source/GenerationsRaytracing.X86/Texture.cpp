@@ -21,6 +21,14 @@ uint32_t Texture::getHeight() const
     return m_height;
 }
 
+Surface* Texture::getSurface(size_t index)
+{
+    if (!m_surfaces[index])
+        m_surfaces[index].Attach(new Surface(this, index));
+
+    return m_surfaces[index].Get();
+}
+
 void Texture::setResolution(uint32_t width, uint32_t height)
 {
     m_width = width;

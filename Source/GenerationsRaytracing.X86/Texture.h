@@ -17,6 +17,7 @@ public:
 
     uint32_t getWidth() const;
     uint32_t getHeight() const;
+    Surface* getSurface(size_t index);
 
     void setResolution(uint32_t width, uint32_t height);
 

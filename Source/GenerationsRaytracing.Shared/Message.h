@@ -27,6 +27,7 @@ struct MsgCreateSwapChain
     int32_t height;
     uint16_t renderWidth;
     uint16_t renderHeight;
+    uint8_t format;
     uint8_t bufferCount;
     uint8_t syncInterval;
     uint32_t textureId;
@@ -572,6 +573,11 @@ struct MsgUpdatePlayableParam
 
     uint32_t dataSize;
     uint8_t data[1u];
+};
+
+struct MsgCopyHdrTexture
+{
+    MSG_DEFINE_MESSAGE(MsgUpdatePlayableParam);
 };
 
 #pragma pack(pop)

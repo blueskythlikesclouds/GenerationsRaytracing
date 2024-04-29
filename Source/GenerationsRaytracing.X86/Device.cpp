@@ -371,6 +371,19 @@ Device::Device(uint32_t width, uint32_t height, HWND hWnd)
     : m_hWnd(hWnd)
 {
     m_backBuffer.Attach(new Texture(width, height, 1));
+
+    if (Configuration::s_hdr)
+    {
+        CreateTexture(
+            width,
+            height,
+            1,
+            D3DUSAGE_RENDERTARGET,
+            D3DFMT_A16B16G16R16F,
+            D3DPOOL_DEFAULT,
+            m_hdrTexture.GetAddressOf(),
+            nullptr);
+    }
 }
 
 Texture* Device::getBackBuffer() const
@@ -414,6 +427,16 @@ HRESULT Device::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDe
         renderImgui();
     }
 
+    if (Configuration::s_hdr)
+    {
+        // Force creation of RTV/SRV
+        SetRenderTarget(0, m_backBuffer->getSurface(0));
+        SetTexture(0, m_hdrTexture.Get());
+
+        s_messageSender.makeMessage<MsgCopyHdrTexture>();
+        s_messageSender.endMessage();
+    }
+
     s_messageSender.makeMessage<MsgPresent>();
     s_messageSender.endMessage();
 
@@ -424,7 +447,7 @@ HRESULT Device::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDe
 
 HRESULT Device::GetBackBuffer(UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, Surface** ppBackBuffer)
 {
-    return m_backBuffer->GetSurfaceLevel(0, ppBackBuffer);
+    return Configuration::s_hdr ? m_hdrTexture->GetSurfaceLevel(0, ppBackBuffer) : m_backBuffer->GetSurfaceLevel(0, ppBackBuffer);
 }
 
 FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::GetRasterStatus, UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus)

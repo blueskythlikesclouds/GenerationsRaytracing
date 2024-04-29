@@ -191,6 +191,10 @@ protected:
     // Reservoir
     ComPtr<ID3D12PipelineState> m_reservoirPipeline;
 
+    // HDR
+    ComPtr<ID3D12RootSignature> m_copyHdrTextureRootSignature;
+    ComPtr<ID3D12PipelineState> m_copyHdrTexturePipeline;
+
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
@@ -226,6 +230,7 @@ protected:
     void procMsgDispatchUpscaler();
     void procMsgDrawIm3d();
     void procMsgUpdatePlayableParam();
+    void procMsgCopyHdrTexture();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

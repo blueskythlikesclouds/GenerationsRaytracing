@@ -1,6 +1,7 @@
 #include "SwapChain.h"
 
 #include "Device.h"
+#include "DxgiConverter.h"
 #include "Message.h"
 
 SwapChain::SwapChain()
@@ -55,7 +56,7 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
     DXGI_SWAP_CHAIN_DESC1 desc{};
     desc.Width = message.renderWidth;
     desc.Height = message.renderHeight;
-    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.Format = DxgiConverter::convert(static_cast<D3DFORMAT>(message.format));
     desc.Stereo = FALSE;
     desc.SampleDesc.Count = 1;
     desc.SampleDesc.Quality = 0;
@@ -99,7 +100,7 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
         resource->SetName(name);
 #endif
 
-        texture.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texture.format = resource->GetDesc().Format;
         texture.rtvIndex = device.getRtvDescriptorHeap().allocate();
 
         device.getUnderlyingDevice()->CreateRenderTargetView(

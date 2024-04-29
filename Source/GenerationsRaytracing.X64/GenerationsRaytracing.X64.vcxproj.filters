@@ -353,5 +353,8 @@
     <FxCompile Include="ReservoirComputeShader.hlsl">
       <Filter>Shader\Reservoir</Filter>
     </FxCompile>
+    <FxCompile Include="CopyHdrTexturePixelShader.hlsl">
+      <Filter>Shader\Copy</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

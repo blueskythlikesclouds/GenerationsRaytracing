@@ -17,5 +17,6 @@ void Configuration::init()
         s_gachaLighting = iniFile.getBool("Mod", "GachaLighting", false);
         s_toneMap = iniFile.getBool("Mod", "ToneMap", true);
         s_furStyle = static_cast<FurStyle>(iniFile.get<uint32_t>("Mod", "FurStyle", static_cast<uint32_t>(FurStyle::Frontiers)));
+        s_hdr = iniFile.getBool("Mod", "HDR", false);
     }
 }

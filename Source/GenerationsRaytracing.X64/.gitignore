@@ -13,3 +13,4 @@ DXILLibrarySER.h
 Im3d*Shader.h
 ToneMapPixelShader.h
 ReservoirComputeShader.h
+CopyHdrTexturePixelShader.h

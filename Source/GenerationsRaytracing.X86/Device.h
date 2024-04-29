@@ -18,6 +18,7 @@ class Device : public Unknown
 protected:
     HWND m_hWnd;
     ComPtr<Texture> m_backBuffer;
+    ComPtr<Texture> m_hdrTexture;
 
     ComPtr<Texture> m_renderTargets[4];
     uint32_t m_renderTargetLevels[4]{};
