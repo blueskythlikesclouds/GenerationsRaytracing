@@ -437,13 +437,14 @@ public class ShaderConverter
             stringBuilder.AppendLine("\n\tif (g_EnableAlphaTest) {");
             stringBuilder.AppendLine("\t\tclip(oC0.w - g_AlphaThreshold);");
             stringBuilder.AppendLine("\t}");
+
+            if (!disassembly.Contains("oC1"))
+                stringBuilder.AppendLine("\toC1 = oC0;");
+
             stringBuilder.AppendLine("\n\tif (g_ExposureTextureId != 0) {");
             stringBuilder.AppendLine("\t\tTexture2D<float> exposure = ResourceDescriptorHeap[g_ExposureTextureId];");
             stringBuilder.AppendLine("\t\toC0.rgb /= max(0.0001, exposure[uint2(0, 0)] * 0.5);");
             stringBuilder.AppendLine("\t}");
-
-            if (!disassembly.Contains("oC1"))
-                stringBuilder.AppendLine("\toC1 = oC0;");
         }
 
         // Prevent half-pixel correction in CSD shaders
