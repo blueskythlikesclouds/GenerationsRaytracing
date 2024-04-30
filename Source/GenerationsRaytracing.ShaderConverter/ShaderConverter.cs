@@ -43,13 +43,13 @@ public class ShaderConverter
                 hash == 602606931u || hash == 781526840u);
     }
 
-    public static unsafe string Convert(byte[] data, out bool isPixelShader)
+    public static unsafe string Convert(Span<byte> data, out bool isPixelShader)
     {
         fixed (byte* ptr = data)
             return Convert(ptr, data.Length, out isPixelShader);
     }
 
-    public static unsafe byte[] Convert(byte[] data)
+    public static unsafe byte[] Convert(Span<byte> data)
     {
         fixed (byte* ptr = data)
             return Convert(ptr, data.Length);
