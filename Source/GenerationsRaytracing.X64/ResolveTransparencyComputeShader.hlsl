@@ -57,6 +57,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                 shadingParams.GlobalIllumination = g_GlobalIllumination_SRV[uint3(dispatchThreadId, i + 1)].rgb;
                 layers[i].DiffuseAlbedo = ComputeGI(gBufferData, 1.0);
             }
+            
+            layers[i].DiffuseAlbedo += gBufferData.Emission;
 
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
             {

@@ -88,6 +88,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             shadingParams.GlobalIllumination = g_GlobalIllumination_SRV[uint3(dispatchThreadId, 0)].rgb;
             diffuseAlbedo = ComputeGI(gBufferData, 1.0);
         }
+        
+        diffuseAlbedo += gBufferData.Emission;
     
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
         {
@@ -115,6 +117,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     else
     {
         color = gBufferData.Emission;
+        diffuseAlbedo = gBufferData.Emission;
     }
 
     g_ColorBeforeTransparency[dispatchThreadId] = float4(color, 1.0);
