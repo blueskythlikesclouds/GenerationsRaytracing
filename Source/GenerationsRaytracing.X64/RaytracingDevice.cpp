@@ -482,6 +482,27 @@ void RaytracingDevice::createRaytracingTextures()
 #endif
     }
 
+    resourceDesc.Width = m_upscaler->getWidth();
+    resourceDesc.Height = m_upscaler->getHeight();
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.Format = m_diffuseAlbedoTexture->GetResource()->GetDesc().Format;
+    resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+    const HRESULT hr = m_allocator->CreateResource(
+        &allocDesc,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        nullptr,
+        m_diffuseAlbedoRenderTargetTexture.ReleaseAndGetAddressOf(),
+        IID_ID3D12Resource,
+        nullptr);
+
+    assert(SUCCEEDED(hr) && m_diffuseAlbedoRenderTargetTexture != nullptr);
+
+#ifdef _DEBUG
+    m_diffuseAlbedoRenderTargetTexture->GetResource()->SetName(L"Diffuse Albedo Render Target Texture");
+#endif
+
     assert(m_uavId != NULL && m_srvId != NULL);
     
     auto uavHandle = m_descriptorHeap.getCpuHandle(m_uavId);
@@ -532,6 +553,16 @@ void RaytracingDevice::createRaytracingTextures()
         uavHandle.ptr += m_descriptorHeap.getIncrementSize();
         srvHandle.ptr += m_descriptorHeap.getIncrementSize();
     }
+
+    assert(m_diffuseAlbedoRtvId != NULL);
+
+    auto rtvHandle = m_rtvDescriptorHeap.getCpuHandle(m_diffuseAlbedoRtvId);
+
+    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+    rtvDesc.Format = resourceDesc.Format;
+    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+    m_device->CreateRenderTargetView(m_diffuseAlbedoRenderTargetTexture->GetResource(), &rtvDesc, rtvHandle);
 }
 
 void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
@@ -1052,10 +1083,16 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
     commandList.transitionBarrier(m_colorTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
+    commandList.transitionBarrier(m_diffuseAlbedoTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
     commandList.transitionBarrier(m_depthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
     commandList.transitionBarrier(m_renderTargetTextures[0],
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+
+    commandList.transitionBarrier(m_diffuseAlbedoRenderTargetTexture->GetResource(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
 
     commandList.transitionBarrier(m_depthStencilTexture,
@@ -1074,6 +1111,17 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
         &colorSrcLocation,
         nullptr);
 
+    const CD3DX12_TEXTURE_COPY_LOCATION diffuseAlbedoSrcLocation(m_diffuseAlbedoTexture->GetResource());
+    const CD3DX12_TEXTURE_COPY_LOCATION diffuseAlbedoDstLocation(m_diffuseAlbedoRenderTargetTexture->GetResource());
+
+    underlyingCommandList->CopyTextureRegion(
+        &diffuseAlbedoDstLocation,
+        0,
+        0,
+        0,
+        &diffuseAlbedoSrcLocation,
+        nullptr);
+
     const CD3DX12_TEXTURE_COPY_LOCATION depthSrcLocation(m_depthTexture->GetResource());
     const CD3DX12_TEXTURE_COPY_LOCATION depthDstLocation(m_depthStencilTexture);
 
@@ -1088,10 +1136,20 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
     commandList.transitionBarrier(m_renderTargetTextures[0],
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
+    commandList.transitionBarrier(m_diffuseAlbedoRenderTargetTexture->GetResource(),
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
     commandList.transitionBarrier(m_depthStencilTexture,
         D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ);
 
     PIX_END_EVENT();
+
+    m_renderTargetViews[1] = m_rtvDescriptorHeap.getCpuHandle(m_diffuseAlbedoRtvId);
+    m_dirtyFlags |= DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
+
+    m_pipelineDesc.RTVFormats[1] = m_diffuseAlbedoRenderTargetTexture->GetResource()->GetDesc().Format;
+    m_pipelineDesc.NumRenderTargets = 2;
+    m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
     m_globalsVS.floatConstants[3][0] += 2.0f * m_globalsRT.pixelJitterX / static_cast<float>(m_upscaler->getWidth());
     m_globalsVS.floatConstants[3][1] += -2.0f * m_globalsRT.pixelJitterY / static_cast<float>(m_upscaler->getHeight());
@@ -1125,22 +1183,24 @@ void RaytracingDevice::procMsgDispatchUpscaler()
         commandList.transitionBarriers(
             {
                 m_exposureTexture->GetResource(),
-                m_diffuseAlbedoTexture->GetResource(),
                 m_specularAlbedoTexture->GetResource(),
                 m_normalsRoughnessTexture->GetResource(),
                 m_linearDepthTexture->GetResource(),
                 m_specularHitDistanceTexture->GetResource(),
             }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-        commandList.transitionBarrier(m_renderTargetTextures[0],
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        commandList.transitionBarriers(
+            { 
+                m_renderTargetTextures[0],
+                m_diffuseAlbedoRenderTargetTexture->GetResource()
+            }, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         commandList.commitBarriers();
 
         m_upscaler->dispatch(
             {
                 *this,
-                m_diffuseAlbedoTexture->GetResource(),
+                m_diffuseAlbedoRenderTargetTexture->GetResource(),
                 m_specularAlbedoTexture->GetResource(),
                 m_normalsRoughnessTexture->GetResource(),
                 m_renderTargetTextures[0],
@@ -1161,6 +1221,13 @@ void RaytracingDevice::procMsgDispatchUpscaler()
     }
 
     copyToRenderTargetAndDepthStencil(message);
+
+    m_renderTargetViews[1].ptr = NULL;
+    m_dirtyFlags |= DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
+
+    m_pipelineDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
+    m_pipelineDesc.NumRenderTargets = 1;
+    m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
     m_globalsVS.floatConstants[3][0] = 0.0f;
     m_globalsVS.floatConstants[3][1] = 0.0f;
@@ -1946,6 +2013,7 @@ RaytracingDevice::RaytracingDevice()
 
     m_uavId = m_descriptorHeap.allocateMany(s_textureNum);
     m_srvId = m_descriptorHeap.allocateMany(s_textureNum);
+    m_diffuseAlbedoRtvId = m_rtvDescriptorHeap.allocate();
 
     CD3DX12_ROOT_PARAMETER1 copyRootParams[2];
     copyRootParams[0].InitAsConstants(3, 0, 0, D3D12_SHADER_VISIBILITY_PIXEL);

@@ -333,9 +333,7 @@ public class ShaderConverter
                 stringBuilder.AppendLine("\tout float oDepth : SV_Depth,");
 
             stringBuilder.Append("\tout float4 oC0 : SV_Target0");
-
-            if (disassembly.Contains("oC1"))
-                stringBuilder.Append(",\n\tout float4 oC1 : SV_Target1");
+            stringBuilder.Append(",\n\tout float4 oC1 : SV_Target1");
 
             if (disassembly.Contains("oC2"))
                 stringBuilder.Append(",\n\tout float4 oC2 : SV_Target2");
@@ -443,6 +441,9 @@ public class ShaderConverter
             stringBuilder.AppendLine("\t\tTexture2D<float> exposure = ResourceDescriptorHeap[g_ExposureTextureId];");
             stringBuilder.AppendLine("\t\toC0.rgb /= max(0.0001, exposure[uint2(0, 0)] * 0.5);");
             stringBuilder.AppendLine("\t}");
+
+            if (!disassembly.Contains("oC1"))
+                stringBuilder.AppendLine("\toC1 = oC0;");
         }
 
         // Prevent half-pixel correction in CSD shaders
