@@ -351,70 +351,9 @@ static boost::shared_ptr<Hedgehog::Mirage::CParameterFloat4Element> createFloat4
     return float4Param;
 }
 
-void ModelData::processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, MaterialMap& materialMap)
-{
-    if (!instanceInfoEx.m_handledEyeMaterials)
-    {
-        if (modelDataEx.m_spNodes != nullptr)
-        {
-            for (size_t i = 0; i < modelDataEx.m_NodeNum; i++)
-            {
-                if (modelDataEx.m_spNodes[i].m_Name == "Head")
-                {
-                    instanceInfoEx.m_headNodeIndex = i;
-                    break;
-                }
-            }
-        }
-
-        static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionSymbol("g_SonicEyeHighLightPosition");
-        static Hedgehog::Base::CStringSymbol s_sonicEyeHighLightPositionRaytracingSymbol("g_SonicEyeHighLightPositionRaytracing");
-
-        traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool)
-        {
-            if (meshDataEx.m_spMaterial == nullptr || meshDataEx.m_spMaterial->m_spShaderListData == nullptr || 
-                strstr(meshDataEx.m_spMaterial->m_spShaderListData->m_TypeAndName.c_str(), "ChrEye") == nullptr)
-            {
-                return;
-            }
-
-            auto& materialOverride = materialMap[meshDataEx.m_spMaterial.get()];
-            if (materialOverride == nullptr)
-                materialOverride = cloneMaterial(*meshDataEx.m_spMaterial);
-
-            auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialOverride.get());
-
-            if (materialDataEx.m_eyeParamHolder == nullptr)
-            {
-                materialDataEx.m_eyeParamHolder = std::make_unique<EyeParamHolder>();
-
-                materialDataEx.m_eyeParamHolder->originalValue = 
-                    createFloat4Param(materialDataEx, s_sonicEyeHighLightPositionSymbol, 1, nullptr)->m_spValue;
-
-                if (materialDataEx.m_spShaderListData->m_TypeAndName == "Mirage.shader-list ChrEyeFHL")
-                {
-                    materialDataEx.m_eyeParamHolder->originalValue[0] = 0.0f;
-                    materialDataEx.m_eyeParamHolder->originalValue[1] = 0.0f;
-                    materialDataEx.m_eyeParamHolder->originalValue[2] = 1.0f;
-                    materialDataEx.m_eyeParamHolder->originalValue[3] = 0.0f;
-                }
-                else
-                {
-                    materialDataEx.m_eyeParamHolder->originalValue[3] = 1.0f;
-                }
-
-                materialDataEx.m_eyeParamHolder->raytracingValue = 
-                    createFloat4Param(materialDataEx, s_sonicEyeHighLightPositionRaytracingSymbol, 1, nullptr)->m_spValue;
-            }
-        });
-
-        instanceInfoEx.m_handledEyeMaterials = true;
-    }
-}
-
 static std::unordered_map<Hedgehog::Mirage::CMaterialData*, float*> s_tmpMaterialCnt;
 
-static void processTexcoordMotion(EffectMap& effectMap, const Hedgehog::Motion::CTexcoordMotion& texcoordMotion)
+static void processTexcoordMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog::Motion::CTexcoordMotion& texcoordMotion)
 {
     if (texcoordMotion.m_pMaterialData != nullptr && texcoordMotion.m_pMaterialData->IsMadeAll())
     {
@@ -423,7 +362,7 @@ static void processTexcoordMotion(EffectMap& effectMap, const Hedgehog::Motion::
         const auto materialDataEx = reinterpret_cast<MaterialDataEx*>(texcoordMotion.m_pMaterialData);
         const auto materialData = materialDataEx->m_fhlMaterial != nullptr ? materialDataEx->m_fhlMaterial.get() : materialDataEx;
 
-        auto& materialClone = effectMap[materialData];
+        auto& materialClone = instanceInfoEx.m_effectMap[materialData];
         if (materialClone == nullptr)
             materialClone = cloneMaterial(*materialData);
 
@@ -442,7 +381,7 @@ static void processTexcoordMotion(EffectMap& effectMap, const Hedgehog::Motion::
     }
 }
 
-static void processMaterialMotion(EffectMap& effectMap, const Hedgehog::Motion::CMaterialMotion& materialMotion)
+static void processMaterialMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog::Motion::CMaterialMotion& materialMotion)
 {
     if (materialMotion.m_pMaterialData != nullptr && materialMotion.m_pMaterialData->IsMadeAll())
     {
@@ -453,7 +392,7 @@ static void processMaterialMotion(EffectMap& effectMap, const Hedgehog::Motion::
         static Hedgehog::Base::CStringSymbol s_powerGlossLevelSymbol("power_gloss_level");
         static Hedgehog::Base::CStringSymbol s_opacityReflectionRefractionSpectypeSymbol("opacity_reflection_refraction_spectype");
 
-        auto& material = effectMap[materialMotion.m_pMaterialData];
+        auto& material = instanceInfoEx.m_effectMap[materialMotion.m_pMaterialData];
         if (material == nullptr)
             material = cloneMaterial(*materialMotion.m_pMaterialData);
 
@@ -483,14 +422,14 @@ static void processMaterialMotion(EffectMap& effectMap, const Hedgehog::Motion::
     }
 }
 
-static void processTexpatternMotion(EffectMap& effectMap, const Hedgehog::Motion::CTexpatternMotion& texpatternMotion)
+static void processTexpatternMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog::Motion::CTexpatternMotion& texpatternMotion)
 {
     if (texpatternMotion.m_pMaterialData != nullptr && texpatternMotion.m_pMaterialData->IsMadeAll() &&
         texpatternMotion.m_pPictureData != nullptr && texpatternMotion.m_pPictureData->IsMadeAll())
     {
         static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
 
-        auto& material = effectMap[texpatternMotion.m_pMaterialData];
+        auto& material = instanceInfoEx.m_effectMap[texpatternMotion.m_pMaterialData];
         if (material == nullptr)
             material = cloneMaterial(*texpatternMotion.m_pMaterialData);
 
@@ -520,13 +459,13 @@ void ModelData::processSingleElementEffect(InstanceInfoEx& instanceInfoEx, Hedge
     if (const auto singleElementEffectMotionAll = dynamic_cast<Hedgehog::Motion::CSingleElementEffectMotionAll*>(singleElementEffect))
     {
         for (const auto& texcoordMotion : singleElementEffectMotionAll->m_TexcoordMotionList)
-            processTexcoordMotion(instanceInfoEx.m_effectMap, texcoordMotion);
+            processTexcoordMotion(instanceInfoEx, texcoordMotion);
 
         for (const auto& materialMotion : singleElementEffectMotionAll->m_MaterialMotionList)
-            processMaterialMotion(instanceInfoEx.m_effectMap, materialMotion);
+            processMaterialMotion(instanceInfoEx, materialMotion);
 
         for (const auto& texpatternMotion : singleElementEffectMotionAll->m_TexpatternMotionList)
-            processTexpatternMotion(instanceInfoEx.m_effectMap, texpatternMotion);
+            processTexpatternMotion(instanceInfoEx, texpatternMotion);
 
         if (const auto npcSingleElementEffectMotionAll = dynamic_cast<Sonic::CNPCSingleElementEffectMotionAll*>(singleElementEffect))
         {
@@ -539,14 +478,14 @@ void ModelData::processSingleElementEffect(InstanceInfoEx& instanceInfoEx, Hedge
     else if (const auto singleElementEffectUvMotion = dynamic_cast<Hedgehog::Motion::CSingleElementEffectUvMotion*>(singleElementEffect))
     {
         for (const auto& texcoordMotion : singleElementEffectUvMotion->m_TexcoordMotionList)
-            processTexcoordMotion(instanceInfoEx.m_effectMap, texcoordMotion);
+            processTexcoordMotion(instanceInfoEx, texcoordMotion);
 
         s_tmpMaterialCnt.clear();
     }
     else if (const auto singleElementEffectMatMotion = dynamic_cast<Hedgehog::Motion::CSingleElementEffectMatMotion*>(singleElementEffect))
     {
         for (const auto& materialMotion : singleElementEffectMatMotion->m_MaterialMotionList)
-            processMaterialMotion(instanceInfoEx.m_effectMap, materialMotion);
+            processMaterialMotion(instanceInfoEx, materialMotion);
     }
 }
 
@@ -571,17 +510,6 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                     }
                 }
             }
-        }
-
-        const auto& valueEx = *reinterpret_cast<MaterialDataEx*>(value.get());
-        if (valueEx.m_eyeParamHolder != nullptr)
-        {
-            auto transform = instanceInfoEx.m_Transform;
-            if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > instanceInfoEx.m_headNodeIndex)
-                transform = transform * instanceInfoEx.m_spPose->GetMatrixList()[instanceInfoEx.m_headNodeIndex];
-
-            *reinterpret_cast<Eigen::Array4f*>(valueEx.m_eyeParamHolder->raytracingValue.get()) = 
-                transform * Eigen::Vector4f(*reinterpret_cast<Eigen::Array4f*>(valueEx.m_eyeParamHolder->originalValue.get()));
         }
 
         MaterialData::create(*value, true);
@@ -633,6 +561,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
     instanceInfoEx.m_hashFrame = modelDataEx.m_hashFrame;
 
     auto transform = instanceInfoEx.m_Transform;
+    auto headTransform = instanceInfoEx.m_Transform;
     uint32_t bottomLevelAccelStructIds[_countof(s_instanceMasks)]{};
 
     if (modelDataEx.m_enableSkinning && instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > 1)
@@ -672,6 +601,20 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         }
         else 
         {
+            if (modelDataEx.m_spNodes != nullptr)
+            {
+                for (size_t i = 0; i < modelDataEx.m_NodeNum; i++)
+                {
+                    if (modelDataEx.m_spNodes[i].m_Name == "Head")
+                    {
+                        if (i < instanceInfoEx.m_spPose->GetMatrixNum())
+                            headTransform = headTransform * instanceInfoEx.m_spPose->GetMatrixList()[i];
+
+                        break;
+                    }
+                }
+            }
+
             uint32_t geometryCount = 0;
             uint32_t nodeCount = 0;
             traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool)
@@ -841,7 +784,10 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             for (size_t l = 0; l < 3; l++)
             {
                 for (size_t k = 0; k < 4; k++)
+                {
                     message.transform[l][k] = transform(l, k);
+                    message.headTransform[l][k] = headTransform(l, k);
+                }
             }
 
             auto& instanceId = instanceInfoEx.m_instanceIds[i];

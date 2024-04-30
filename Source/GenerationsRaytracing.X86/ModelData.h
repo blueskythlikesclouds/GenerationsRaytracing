@@ -29,9 +29,6 @@ struct ModelData
 
     static void createBottomLevelAccelStructs(TerrainModelDataEx& terrainModelDataEx);
 
-    static void processEyeMaterials(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx,
-        MaterialMap& materialMap);
-
     static void processSingleElementEffect(InstanceInfoEx& instanceInfoEx,
         Hedgehog::Mirage::CSingleElementEffect* singleElementEffect);
 

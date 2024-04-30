@@ -350,6 +350,7 @@ struct MsgCreateInstance
     MSG_DEFINE_MESSAGE(MsgReleaseRaytracingResource);
 
     float transform[3][4];
+    float headTransform[3][4];
     uint32_t instanceId;
     uint32_t bottomLevelAccelStructId;
     bool storePrevTransform;

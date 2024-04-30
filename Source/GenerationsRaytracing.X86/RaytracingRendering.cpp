@@ -33,25 +33,13 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
 
             if (modelDataEx->IsMadeAll())
             {
-                ModelData::processEyeMaterials(
-                    *modelDataEx,
-                    *instanceInfoEx,
-                    element->m_MaterialMap);
-
                 instanceInfoEx->m_chrPlayableMenuParam = 10000.0f;
 
-                if (RaytracingParams::s_enable)
+                if (element->m_spSingleElementEffect != nullptr)
                 {
-                    if (element->m_spSingleElementEffect != nullptr)
-                    {
-                        ModelData::processSingleElementEffect(
-                            *instanceInfoEx,
-                            element->m_spSingleElementEffect.get());
-                    }
-                }
-                else
-                {
-                    instanceInfoEx->m_handledEyeMaterials = false;
+                    ModelData::processSingleElementEffect(
+                        *instanceInfoEx,
+                        element->m_spSingleElementEffect.get());
                 }
 
                 ModelData::createBottomLevelAccelStructs(

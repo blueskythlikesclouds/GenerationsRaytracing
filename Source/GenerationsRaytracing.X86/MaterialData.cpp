@@ -18,7 +18,6 @@ HOOK(MaterialDataEx*, __fastcall, MaterialDataConstructor, 0x704CA0, MaterialDat
     const auto result = originalMaterialDataConstructor(This);
 
     This->m_materialId = NULL;
-    new (&This->m_eyeParamHolder) std::unique_ptr<EyeParamHolder>();
     This->m_materialHash = 0;
     This->m_hashFrame = 0;
     new (&This->m_fhlMaterial) boost::shared_ptr<Hedgehog::Mirage::CMaterialData>();
@@ -33,7 +32,6 @@ HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
     s_matCreateMutex.unlock();
 
     This->m_fhlMaterial.~shared_ptr();
-    This->m_eyeParamHolder.~unique_ptr();
     RaytracingUtil::releaseResource(RaytracingResourceType::Material, This->m_materialId);
 
     originalMaterialDataDestructor(This);

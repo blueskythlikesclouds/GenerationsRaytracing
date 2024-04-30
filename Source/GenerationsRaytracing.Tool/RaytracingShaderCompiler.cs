@@ -63,7 +63,7 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter Opacity = new("opacity_reflection_refraction_spectype", 0, 1, "Opacity", 1.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter LuminanceRange = new("mrgLuminancerange", 0, 1, "LuminanceRange", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter FresnelParam = new("mrgFresnelParam", 0, 2, "FresnelParam", 1.0f, 1.0f, 0.0f, 0.0f);
-    public static readonly RaytracingParameter SonicEyeHighLightPosition = new("g_SonicEyeHighLightPositionRaytracing", 0, 3, "SonicEyeHighLightPosition", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter SonicEyeHighLightPosition = new("g_SonicEyeHighLightPosition", 0, 3, "SonicEyeHighLightPosition", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter SonicEyeHighLightColor = new("g_SonicEyeHighLightColor", 0, 3, "SonicEyeHighLightColor", 1.0f, 1.0f, 1.0f, 0.0f);
     public static readonly RaytracingParameter SonicSkinFalloffParam = new("g_SonicSkinFalloffParam", 0, 3, "SonicSkinFalloffParam", 0.15f, 2.0f, 3.0f, 0.0f);
     public static readonly RaytracingParameter ChrEmissionParam = new("mrgChrEmissionParam", 0, 4, "ChrEmissionParam", 0.0f, 0.0f, 0.0f, 0.0f);

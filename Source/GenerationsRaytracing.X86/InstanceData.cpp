@@ -59,7 +59,7 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     This->m_modelHash = 0;
     This->m_hashFrame = 0;
     This->m_chrPlayableMenuParam = 10000.0f;
-    new (&This->m_effectMap) EffectMap();
+    new (&This->m_effectMap) decltype(This->m_effectMap)();
 
     return result;
 }
@@ -70,7 +70,7 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     s_trackedInstances.erase(This);
     s_instanceMutex.unlock();
 
-    This->m_effectMap.~EffectMap();
+    This->m_effectMap.~unordered_map();
     This->m_poseVertexBuffer.~ComPtr();
 
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)

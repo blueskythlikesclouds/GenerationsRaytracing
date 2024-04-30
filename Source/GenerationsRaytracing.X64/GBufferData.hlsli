@@ -286,8 +286,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
                 float2 gloss = SampleMaterialTexture2D(material.GlossTexture, vertex).xy;
                 float4 normalMap = SampleMaterialTexture2D(material.NormalTexture, vertex);
 
+                float3 highlightPosition = mul(instanceDesc.HeadTransform, float4(material.SonicEyeHighLightPosition, 1.0));
                 float3 highlightNormal = DecodeNormalMap(vertex, float4(normalMap.xy, 0.0, 1.0));
-                float3 lightDirection = NormalizeSafe(vertex.Position - material.SonicEyeHighLightPosition.xyz);
+                float3 lightDirection = NormalizeSafe(vertex.Position - highlightPosition);
                 float3 halfwayDirection = NormalizeSafe(-WorldRayDirection() + lightDirection);
 
                 float highlightSpecular = saturate(dot(highlightNormal, halfwayDirection));
@@ -309,7 +310,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
 
         case SHADER_TYPE_CHR_EYE_FHL:
             {
-                float3 direction = NormalizeSafe(mul(float4(material.SonicEyeHighLightPosition.xyz, 0.0), g_MtxView).xyz);
+                float3 direction = mul(instanceDesc.HeadTransform, float4(0.0, 0.0, 1.0, 0.0));
+                direction = NormalizeSafe(mul(float4(direction, 0.0), g_MtxView).xyz);
                 float2 offset = direction.xy * float2(-1.0, 1.0);
 
                 float2 pupilOffset = -material.ChrEyeFHL1.zw * offset;

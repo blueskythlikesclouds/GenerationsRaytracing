@@ -814,6 +814,9 @@ void RaytracingDevice::procMsgCreateInstance()
     memcpy(instanceDescEx.prevTransform,
         message.storePrevTransform ? instanceDesc.Transform : message.transform, sizeof(message.transform));
 
+    memcpy(instanceDescEx.headTransform, 
+        message.headTransform, sizeof(instanceDescEx.headTransform));
+
     instanceDescEx.playableParam = -10001.0f;
     instanceDescEx.chrPlayableMenuParam = message.chrPlayableMenuParam;
 
