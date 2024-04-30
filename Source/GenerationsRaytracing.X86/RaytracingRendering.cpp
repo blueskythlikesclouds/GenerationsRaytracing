@@ -230,192 +230,199 @@ static void __cdecl implOfTraceRays(void* a1)
     const bool shouldRender = s_prevRaytracingEnable;
     initRaytracingPatches(RaytracingParams::s_enable);
 
-    if (shouldRender && GetCurrentThreadId() == s_mainThreadId)
+    if (shouldRender)
     {
         setSceneSurface(a1, *reinterpret_cast<void**>(**reinterpret_cast<uint32_t**>(a1) + 84));
-
         const auto renderingDevice = **reinterpret_cast<hh::mr::CRenderingDevice***>(reinterpret_cast<uintptr_t>(a1) + 16);
-        const auto& renderScene = Sonic::CGameDocument::GetInstance()->GetWorld()->m_pMember->m_spRenderScene;
 
-        if (RaytracingParams::s_light != nullptr && RaytracingParams::s_light->IsMadeAll())
+        if (GetCurrentThreadId() == s_mainThreadId)
         {
-            renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(183, RaytracingParams::s_light->m_Direction.data(), 1);
-            renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(184, RaytracingParams::s_light->m_Color.data(), 1);
-            renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(185, RaytracingParams::s_light->m_Color.data(), 1);
+            const auto& renderScene = Sonic::CGameDocument::GetInstance()->GetWorld()->m_pMember->m_spRenderScene;
 
-            renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(10, RaytracingParams::s_light->m_Direction.data(), 1);
-            renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(36, RaytracingParams::s_light->m_Color.data(), 1);
-            renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(37, RaytracingParams::s_light->m_Color.data(), 1);
-        }
-
-        const auto prevSky = s_curSky;
-        const float prevBackGroundScale = s_curBackGroundScale;
-
-        if (RaytracingParams::s_sky != nullptr && RaytracingParams::s_sky->IsMadeAll())
-        {
-            s_curSky = RaytracingParams::s_sky;
-        }
-        else
-        {
-            const auto skyFindResult = renderScene->m_BundleMap.find("Sky");
-            if (skyFindResult != renderScene->m_BundleMap.end())
-                s_curSky = findSky(skyFindResult->second.get());
-            else
-                s_curSky = nullptr;
-        }
-
-        s_curBackGroundScale = *reinterpret_cast<const float*>(0x1A489EC);
-
-        if (s_curSky != prevSky || s_curBackGroundScale != prevBackGroundScale)
-        {
-            if (s_curSky != nullptr)
-                ModelData::renderSky(*s_curSky);
-
-            s_resetAccumulation = true;
-        }
-
-        MaterialData::createPendingMaterials();
-        InstanceData::createPendingInstances(renderingDevice);
-
-        static Hedgehog::Base::CStringSymbol s_renderCategories[] = 
-        {
-            "Object",
-            "Object_PreZPass",
-            "Object_ZPass",
-            "Object_OverlayZPass",
-            "Object_Overlay",
-            "Player"
-        };
-
-        for (const auto& symbol : s_renderCategories)
-        {
-            const auto categoryFindResult = renderScene->m_BundleMap.find(symbol);
-            if (categoryFindResult != renderScene->m_BundleMap.end())
-                createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get());
-        }
-
-        InstanceData::releaseUnusedInstances();
-
-        size_t localLightCount = 0;
-
-        if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
-        {
-            const auto& lightManager = gameDocument->m_pMember->m_spLightManager;
-
-            if (lightManager != nullptr)
+            if (RaytracingParams::s_light != nullptr && RaytracingParams::s_light->IsMadeAll())
             {
-                if (lightManager->m_pStaticLightContext && lightManager->m_pStaticLightContext->m_spLightListData && 
-                    lightManager->m_pStaticLightContext->m_spLightListData->IsMadeAll())
+                renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(183, RaytracingParams::s_light->m_Direction.data(), 1);
+                renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(184, RaytracingParams::s_light->m_Color.data(), 1);
+                renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(185, RaytracingParams::s_light->m_Color.data(), 1);
+
+                renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(10, RaytracingParams::s_light->m_Direction.data(), 1);
+                renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(36, RaytracingParams::s_light->m_Color.data(), 1);
+                renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(37, RaytracingParams::s_light->m_Color.data(), 1);
+            }
+
+            const auto prevSky = s_curSky;
+            const float prevBackGroundScale = s_curBackGroundScale;
+
+            if (RaytracingParams::s_sky != nullptr && RaytracingParams::s_sky->IsMadeAll())
+            {
+                s_curSky = RaytracingParams::s_sky;
+            }
+            else
+            {
+                const auto skyFindResult = renderScene->m_BundleMap.find("Sky");
+                if (skyFindResult != renderScene->m_BundleMap.end())
+                    s_curSky = findSky(skyFindResult->second.get());
+                else
+                    s_curSky = nullptr;
+            }
+
+            s_curBackGroundScale = *reinterpret_cast<const float*>(0x1A489EC);
+
+            if (s_curSky != prevSky || s_curBackGroundScale != prevBackGroundScale)
+            {
+                if (s_curSky != nullptr)
+                    ModelData::renderSky(*s_curSky);
+
+                s_resetAccumulation = true;
+            }
+
+            MaterialData::createPendingMaterials();
+            InstanceData::createPendingInstances(renderingDevice);
+
+            static Hedgehog::Base::CStringSymbol s_renderCategories[] =
+            {
+                "Object",
+                "Object_PreZPass",
+                "Object_ZPass",
+                "Object_OverlayZPass",
+                "Object_Overlay",
+                "Player"
+            };
+
+            for (const auto& symbol : s_renderCategories)
+            {
+                const auto categoryFindResult = renderScene->m_BundleMap.find(symbol);
+                if (categoryFindResult != renderScene->m_BundleMap.end())
+                    createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get());
+            }
+
+            InstanceData::releaseUnusedInstances();
+
+            size_t localLightCount = 0;
+
+            if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
+            {
+                const auto& lightManager = gameDocument->m_pMember->m_spLightManager;
+
+                if (lightManager != nullptr)
                 {
-                    const auto& lightListData = lightManager->m_pStaticLightContext->m_spLightListData;
-
-                    if (s_curLightList != lightListData.get() || LightData::s_dirty)
+                    if (lightManager->m_pStaticLightContext && lightManager->m_pStaticLightContext->m_spLightListData &&
+                        lightManager->m_pStaticLightContext->m_spLightListData->IsMadeAll())
                     {
-                        s_curLightList = lightListData.get();
-                        s_localLightCount = 0;
+                        const auto& lightListData = lightManager->m_pStaticLightContext->m_spLightListData;
 
-                        for (const auto& lightData : lightListData->m_Lights)
+                        if (s_curLightList != lightListData.get() || LightData::s_dirty)
                         {
-                            if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
+                            s_curLightList = lightListData.get();
+                            s_localLightCount = 0;
+
+                            for (const auto& lightData : lightListData->m_Lights)
                             {
-                                createLocalLight(*lightData, s_localLightCount);
+                                if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
+                                {
+                                    createLocalLight(*lightData, s_localLightCount);
+                                    ++s_localLightCount;
+                                }
+                            }
+
+                            for (const auto& light : LightData::s_lights)
+                            {
+                                auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+
+                                message.localLightId = s_localLightCount;
+                                memcpy(message.position, light.position, sizeof(message.position));
+                                message.color[0] = light.color[0] * light.colorIntensity;
+                                message.color[1] = light.color[1] * light.colorIntensity;
+                                message.color[2] = light.color[2] * light.colorIntensity;
+                                message.inRange = light.inRange;
+                                message.outRange = light.outRange;
+
+                                s_messageSender.endMessage();
+
                                 ++s_localLightCount;
                             }
-                        }
 
-                        for (const auto& light : LightData::s_lights)
-                        {
-                            auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
-                        
-                            message.localLightId = s_localLightCount;
-                            memcpy(message.position, light.position, sizeof(message.position));
-                            message.color[0] = light.color[0] * light.colorIntensity;
-                            message.color[1] = light.color[1] * light.colorIntensity;
-                            message.color[2] = light.color[2] * light.colorIntensity;
-                            message.inRange = light.inRange;
-                            message.outRange = light.outRange;
-                        
-                            s_messageSender.endMessage();
-                        
-                            ++s_localLightCount;
+                            LightData::s_dirty = false;
                         }
-
-                        LightData::s_dirty = false;
                     }
-                }
 
-                localLightCount = s_localLightCount;
+                    localLightCount = s_localLightCount;
 
-                if (lightManager->m_pLocalLightContext != nullptr)
-                {
-                    for (auto& localLight : lightManager->m_pLocalLightContext->m_LocalLights)
+                    if (lightManager->m_pLocalLightContext != nullptr)
                     {
-                        createLocalLight(*localLight->m_spLight, localLightCount);
-                        ++localLightCount;
+                        for (auto& localLight : lightManager->m_pLocalLightContext->m_LocalLights)
+                        {
+                            createLocalLight(*localLight->m_spLight, localLightCount);
+                            ++localLightCount;
+                        }
                     }
                 }
             }
+
+            if (s_prevDebugView != RaytracingParams::s_debugView ||
+                s_prevEnvMode != RaytracingParams::s_envMode ||
+                s_prevSkyColor != RaytracingParams::s_skyColor ||
+                s_prevGroundColor != RaytracingParams::s_groundColor)
+            {
+                s_resetAccumulation = true;
+            }
+
+            s_prevDebugView = RaytracingParams::s_debugView;
+            s_prevEnvMode = RaytracingParams::s_envMode;
+            s_prevSkyColor = RaytracingParams::s_skyColor;
+            s_prevGroundColor = RaytracingParams::s_groundColor;
+
+            auto& traceRaysMessage = s_messageSender.makeMessage<MsgTraceRays>();
+
+            traceRaysMessage.width = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 4);
+            traceRaysMessage.height = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 6);
+            traceRaysMessage.resetAccumulation = s_resetAccumulation;
+            traceRaysMessage.localLightCount = localLightCount;
+            traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
+            traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
+            traceRaysMessage.emissivePower = RaytracingParams::s_emissivePower;
+            traceRaysMessage.skyPower = RaytracingParams::s_skyPower;
+            traceRaysMessage.debugView = RaytracingParams::s_debugView;
+            traceRaysMessage.envMode = RaytracingParams::s_envMode;
+            memcpy(traceRaysMessage.skyColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.skyColor));
+
+            if (RaytracingParams::s_groundColor.squaredNorm() > 0.0001)
+                memcpy(traceRaysMessage.groundColor, RaytracingParams::s_groundColor.data(), sizeof(traceRaysMessage.groundColor));
+            else
+                memcpy(traceRaysMessage.groundColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.groundColor));
+
+            traceRaysMessage.useSkyTexture = s_curSky != nullptr;
+
+            if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
+            {
+                const auto renderDirector = gameDocument->m_pMember->m_spRenderDirector.get();
+                const auto mtfxInternal = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(renderDirector) + 0xC4);
+                const auto bgColor = reinterpret_cast<uint8_t*>(mtfxInternal + 0x1A0);
+
+                traceRaysMessage.backgroundColor[0] = static_cast<float>(bgColor[2]) / 255.0f;
+                traceRaysMessage.backgroundColor[1] = static_cast<float>(bgColor[1]) / 255.0f;
+                traceRaysMessage.backgroundColor[2] = static_cast<float>(bgColor[0]) / 255.0f;
+            }
+            else
+            {
+                memset(traceRaysMessage.backgroundColor, 0, sizeof(traceRaysMessage.backgroundColor));
+            }
+
+            traceRaysMessage.upscaler = RaytracingParams::s_upscaler == 0 ? Configuration::s_upscaler + 1 : RaytracingParams::s_upscaler;
+            traceRaysMessage.qualityMode = RaytracingParams::s_qualityMode == 0 ? Configuration::s_qualityMode + 1 : RaytracingParams::s_qualityMode;
+
+            traceRaysMessage.adaptionLuminanceTextureId = (*reinterpret_cast<Texture**>(
+                *reinterpret_cast<uint8_t**>(static_cast<uint8_t*>(a1) + 20) + 0x658))->getId();
+
+            traceRaysMessage.middleGray = *reinterpret_cast<float*>(0x1A572D0);
+            traceRaysMessage.skyInRoughReflection = RaytracingParams::s_skyInRoughReflection;
+
+            s_messageSender.endMessage();
         }
-
-        if (s_prevDebugView != RaytracingParams::s_debugView ||
-            s_prevEnvMode != RaytracingParams::s_envMode ||
-            s_prevSkyColor != RaytracingParams::s_skyColor ||
-            s_prevGroundColor != RaytracingParams::s_groundColor)
-        {
-            s_resetAccumulation = true;
-        }
-
-        s_prevDebugView = RaytracingParams::s_debugView;
-        s_prevEnvMode = RaytracingParams::s_envMode;
-        s_prevSkyColor = RaytracingParams::s_skyColor;
-        s_prevGroundColor = RaytracingParams::s_groundColor;
-
-        auto& traceRaysMessage = s_messageSender.makeMessage<MsgTraceRays>();
-
-        traceRaysMessage.width = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 4);
-        traceRaysMessage.height = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 6);
-        traceRaysMessage.resetAccumulation = s_resetAccumulation;
-        traceRaysMessage.localLightCount = localLightCount;
-        traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
-        traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
-        traceRaysMessage.emissivePower = RaytracingParams::s_emissivePower;
-        traceRaysMessage.skyPower = RaytracingParams::s_skyPower;
-        traceRaysMessage.debugView = RaytracingParams::s_debugView;
-        traceRaysMessage.envMode = RaytracingParams::s_envMode;
-        memcpy(traceRaysMessage.skyColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.skyColor));
-
-        if (RaytracingParams::s_groundColor.squaredNorm() > 0.0001)
-            memcpy(traceRaysMessage.groundColor, RaytracingParams::s_groundColor.data(), sizeof(traceRaysMessage.groundColor));
         else
-            memcpy(traceRaysMessage.groundColor, RaytracingParams::s_skyColor.data(), sizeof(traceRaysMessage.groundColor));
-
-        traceRaysMessage.useSkyTexture = s_curSky != nullptr;
-
-        if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
         {
-            const auto renderDirector = gameDocument->m_pMember->m_spRenderDirector.get();
-            const auto mtfxInternal = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(renderDirector) + 0xC4);
-            const auto bgColor = reinterpret_cast<uint8_t*>(mtfxInternal + 0x1A0);
-
-            traceRaysMessage.backgroundColor[0] = static_cast<float>(bgColor[2]) / 255.0f;
-            traceRaysMessage.backgroundColor[1] = static_cast<float>(bgColor[1]) / 255.0f;
-            traceRaysMessage.backgroundColor[2] = static_cast<float>(bgColor[0]) / 255.0f;
+            renderingDevice->m_pD3DDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
         }
-        else
-        {
-            memset(traceRaysMessage.backgroundColor, 0, sizeof(traceRaysMessage.backgroundColor));
-        }
-
-        traceRaysMessage.upscaler = RaytracingParams::s_upscaler == 0 ? Configuration::s_upscaler + 1 : RaytracingParams::s_upscaler;
-        traceRaysMessage.qualityMode = RaytracingParams::s_qualityMode == 0 ? Configuration::s_qualityMode + 1 : RaytracingParams::s_qualityMode;
-
-        traceRaysMessage.adaptionLuminanceTextureId = (*reinterpret_cast<Texture**>(
-            *reinterpret_cast<uint8_t**>(static_cast<uint8_t*>(a1) + 20) + 0x658))->getId();
-
-        traceRaysMessage.middleGray = *reinterpret_cast<float*>(0x1A572D0);
-        traceRaysMessage.skyInRoughReflection = RaytracingParams::s_skyInRoughReflection;
-
-        s_messageSender.endMessage();
 
         ++RaytracingRendering::s_frame;
     }
