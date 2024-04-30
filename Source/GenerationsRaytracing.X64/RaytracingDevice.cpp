@@ -859,15 +859,10 @@ void RaytracingDevice::procMsgCreateInstance()
 
             while (curId < lastId)
             {
-                if ((*curId) == srcGeometry.materialId)
-                {
+                if ((*curId) == dstGeometry.materialId)
                     dstGeometry.materialId = *(curId + 1);
-                    break;
-                }
-                else
-                {
-                    curId += 2;
-                }
+
+                curId += 2;
             }
 
             const auto& material = m_materials[dstGeometry.materialId];

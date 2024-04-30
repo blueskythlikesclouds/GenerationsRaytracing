@@ -59,6 +59,7 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     This->m_modelHash = 0;
     This->m_hashFrame = 0;
     This->m_chrPlayableMenuParam = 10000.0f;
+    new (&This->m_effectMap) EffectMap();
 
     return result;
 }
@@ -69,13 +70,14 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     s_trackedInstances.erase(This);
     s_instanceMutex.unlock();
 
-    for (auto& instanceId : This->m_instanceIds)
-        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
+    This->m_effectMap.~EffectMap();
+    This->m_poseVertexBuffer.~ComPtr();
 
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
-    This->m_poseVertexBuffer.~ComPtr();
+    for (auto& instanceId : This->m_instanceIds)
+        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
 
     originalInstanceInfoDestructor(This);
 }

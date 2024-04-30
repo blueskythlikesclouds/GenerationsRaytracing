@@ -46,20 +46,11 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                     {
                         ModelData::processSingleElementEffect(
                             *instanceInfoEx,
-                            element->m_MaterialMap,
                             element->m_spSingleElementEffect.get());
                     }
                 }
                 else
                 {
-                    for (auto it = element->m_MaterialMap.begin(); it != element->m_MaterialMap.end();)
-                    {
-                        if (it->second->m_TypeAndName == "RaytracingMaterialClone")
-                            it = element->m_MaterialMap.erase(it);
-                        else
-                            ++it;
-                    }
-
                     instanceInfoEx->m_handledEyeMaterials = false;
                 }
 

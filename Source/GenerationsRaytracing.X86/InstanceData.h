@@ -12,6 +12,8 @@ public:
     bool m_hasValidIterator;
 };
 
+using EffectMap = std::unordered_map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>>;
+
 class InstanceInfoEx : public Hedgehog::Mirage::CInstanceInfo
 {
 public:
@@ -23,6 +25,7 @@ public:
     XXH32_hash_t m_modelHash;
     uint32_t m_hashFrame;
     float m_chrPlayableMenuParam;
+    EffectMap m_effectMap;
 };
 
 struct InstanceData
