@@ -156,6 +156,9 @@ protected:
     ComPtr<D3D12MA::Allocation> m_colorBeforeTransparencyTexture;
     ComPtr<D3D12MA::Allocation> m_specularHitDistanceTexture;
 
+    ComPtr<D3D12MA::Allocation> m_diffuseAlbedoRenderTargetTexture;
+    uint32_t m_diffuseAlbedoRtvIndex = 0;
+
     // Resolve
     ComPtr<ID3D12PipelineState> m_resolvePipeline;
     ComPtr<ID3D12PipelineState> m_resolveTransparencyPipeline;

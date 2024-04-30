@@ -594,7 +594,7 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscal
         message.debugView
     };
 
-    underlyingCommandList->OMSetRenderTargets(1, &m_renderTargetView, FALSE, &m_depthStencilView);
+    underlyingCommandList->OMSetRenderTargets(1, m_renderTargetViews, FALSE, &m_depthStencilView);
     underlyingCommandList->SetGraphicsRootSignature(m_copyTextureRootSignature.Get());
     underlyingCommandList->SetGraphicsRoot32BitConstants(0, 3, &globals, 0);
     underlyingCommandList->SetGraphicsRootDescriptorTable(1, m_descriptorHeap.getGpuHandle(m_srvId));
@@ -609,7 +609,7 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscal
     commandList.transitionBarrier(m_depthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-    commandList.transitionBarrier(m_renderTargetTexture,
+    commandList.transitionBarrier(m_renderTargetTextures[0],
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     commandList.transitionBarrier(m_depthStencilTexture,
@@ -1055,7 +1055,7 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
     commandList.transitionBarrier(m_depthTexture->GetResource(),
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-    commandList.transitionBarrier(m_renderTargetTexture,
+    commandList.transitionBarrier(m_renderTargetTextures[0],
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
 
     commandList.transitionBarrier(m_depthStencilTexture,
@@ -1064,7 +1064,7 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
     commandList.commitBarriers();
 
     const CD3DX12_TEXTURE_COPY_LOCATION colorSrcLocation(m_colorTexture->GetResource());
-    const CD3DX12_TEXTURE_COPY_LOCATION colorDstLocation(m_renderTargetTexture);
+    const CD3DX12_TEXTURE_COPY_LOCATION colorDstLocation(m_renderTargetTextures[0]);
 
     underlyingCommandList->CopyTextureRegion(
         &colorDstLocation,
@@ -1085,7 +1085,7 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
         &depthSrcLocation,
         nullptr);
 
-    commandList.transitionBarrier(m_renderTargetTexture,
+    commandList.transitionBarrier(m_renderTargetTextures[0],
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     commandList.transitionBarrier(m_depthStencilTexture,
@@ -1132,7 +1132,7 @@ void RaytracingDevice::procMsgDispatchUpscaler()
                 m_specularHitDistanceTexture->GetResource(),
             }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-        commandList.transitionBarrier(m_renderTargetTexture,
+        commandList.transitionBarrier(m_renderTargetTextures[0],
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         commandList.commitBarriers();
@@ -1143,7 +1143,7 @@ void RaytracingDevice::procMsgDispatchUpscaler()
                 m_diffuseAlbedoTexture->GetResource(),
                 m_specularAlbedoTexture->GetResource(),
                 m_normalsRoughnessTexture->GetResource(),
-                m_renderTargetTexture,
+                m_renderTargetTextures[0],
                 m_outputTexture->GetResource(),
                 m_depthTexture->GetResource(),
                 m_linearDepthTexture->GetResource(),
@@ -1670,7 +1670,7 @@ void RaytracingDevice::procMsgCopyHdrTexture()
 
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_viewport.Width), static_cast<LONG>(m_viewport.Height) };
 
-    underlyingCommandList->OMSetRenderTargets(1, &m_renderTargetView, FALSE, nullptr);
+    underlyingCommandList->OMSetRenderTargets(1, m_renderTargetViews, FALSE, nullptr);
     underlyingCommandList->SetGraphicsRootSignature(m_copyHdrTextureRootSignature.Get());
     underlyingCommandList->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_globalsPS.textureIndices[0]));
     underlyingCommandList->SetPipelineState(m_copyHdrTexturePipeline.Get());

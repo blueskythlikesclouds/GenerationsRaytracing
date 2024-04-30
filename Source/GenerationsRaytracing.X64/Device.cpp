@@ -245,8 +245,8 @@ void Device::flushGraphicsState()
         }
 
         underlyingCommandList->OMSetRenderTargets(
-            m_renderTargetView.ptr != NULL ? 1 : 0,
-            m_renderTargetView.ptr != NULL ? &m_renderTargetView : nullptr,
+            m_pipelineDesc.NumRenderTargets,
+            m_pipelineDesc.NumRenderTargets != 0 ? m_renderTargetViews : nullptr,
             FALSE,
             m_depthStencilView.ptr != NULL ? &m_depthStencilView : nullptr);
     }
@@ -432,8 +432,6 @@ void Device::procMsgSetRenderTarget()
 {
     const auto& message = m_messageReceiver.getMessage<MsgSetRenderTarget>();
 
-    assert(message.renderTargetIndex == 0);
-
     if (message.textureId != NULL)
     {
         auto& texture = m_textures[message.textureId];
@@ -444,14 +442,14 @@ void Device::procMsgSetRenderTarget()
             commandList.transitionBarrier(texture.allocation->GetResource(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-            m_renderTargetTexture = texture.allocation->GetResource();
+            m_renderTargetTextures[message.renderTargetIndex] = texture.allocation->GetResource();
         }
         else
         {
             commandList.transitionBarrier(m_swapChain.getResource(),
                 D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-            m_renderTargetTexture = nullptr;
+            m_renderTargetTextures[message.renderTargetIndex] = nullptr;
         }
 
         if (texture.rtvIndex == NULL)
@@ -472,29 +470,39 @@ void Device::procMsgSetRenderTarget()
 
         const auto renderTargetView = m_rtvDescriptorHeap.getCpuHandle(texture.rtvIndex);
 
-        if (m_renderTargetView.ptr != renderTargetView.ptr)
+        if (m_renderTargetViews[message.renderTargetIndex].ptr != renderTargetView.ptr)
             m_dirtyFlags |= DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
 
-        if (m_pipelineDesc.NumRenderTargets != 1 || m_pipelineDesc.RTVFormats[0] != texture.format)
+        if (m_pipelineDesc.RTVFormats[message.renderTargetIndex] != texture.format)
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
-        m_renderTargetView = renderTargetView;
-        m_pipelineDesc.NumRenderTargets = 1;
-        m_pipelineDesc.RTVFormats[0] = texture.format;
+        m_renderTargetViews[message.renderTargetIndex] = renderTargetView;
+        m_pipelineDesc.RTVFormats[message.renderTargetIndex] = texture.format;
     }
     else
     {
-        if (m_renderTargetView.ptr != NULL)
+        if (m_renderTargetViews[message.renderTargetIndex].ptr != NULL)
             m_dirtyFlags |= DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
 
-        if (m_pipelineDesc.NumRenderTargets != 0 || m_pipelineDesc.RTVFormats[0] != DXGI_FORMAT_UNKNOWN)
+        if (m_pipelineDesc.RTVFormats[message.renderTargetIndex] != DXGI_FORMAT_UNKNOWN)
             m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
-        m_renderTargetView.ptr = NULL;
-        m_renderTargetTexture = nullptr;
-        m_pipelineDesc.NumRenderTargets = 0;
-        m_pipelineDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+        m_renderTargetViews[message.renderTargetIndex].ptr = NULL;
+        m_renderTargetTextures[message.renderTargetIndex] = nullptr;
+        m_pipelineDesc.RTVFormats[message.renderTargetIndex] = DXGI_FORMAT_UNKNOWN;
     }
+
+    uint32_t numRenderTargets = 0;
+    while (m_renderTargetViews[numRenderTargets].ptr != NULL &&
+        numRenderTargets < _countof(m_renderTargetTextures))
+    {
+        ++numRenderTargets;
+    }
+
+    if (m_pipelineDesc.NumRenderTargets != numRenderTargets)
+        m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+
+    m_pipelineDesc.NumRenderTargets = numRenderTargets;
 }
 
 static void addMissingInputElement(
@@ -992,7 +1000,7 @@ void Device::procMsgClear()
 
     commandList.commitBarriers();
 
-    if ((message.flags & D3DCLEAR_TARGET) && m_renderTargetView.ptr != NULL)
+    if ((message.flags & D3DCLEAR_TARGET))
     {
         FLOAT color[4];
         color[2] = static_cast<float>(message.color & 0xFF) / 255.0f;
@@ -1000,7 +1008,11 @@ void Device::procMsgClear()
         color[0] = static_cast<float>((message.color >> 16) & 0xFF) / 255.0f;
         color[3] = static_cast<float>((message.color >> 24) & 0xFF) / 255.0f;
 
-        underlyingCommandList->ClearRenderTargetView(m_renderTargetView, color, 0, nullptr);
+        for (const auto& renderTargetView : m_renderTargetViews)
+        {
+            if (renderTargetView.ptr != NULL)
+                underlyingCommandList->ClearRenderTargetView(renderTargetView, color, 0, nullptr);
+        }
     }
 
     if ((message.flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL)) && m_depthStencilView.ptr != NULL)
