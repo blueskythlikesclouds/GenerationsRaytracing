@@ -35,4 +35,6 @@ public:
 
     SubAllocation allocate(D3D12MA::Allocator* allocator, uint32_t byteSize);
     void free(SubAllocation& allocation) const;
+
+    void freeBlocks(std::vector<ComPtr<D3D12MA::Allocation>>& blocksToFree);
 };

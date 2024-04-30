@@ -43,34 +43,54 @@ SubAllocation SubAllocator::allocate(D3D12MA::Allocator* allocator, uint32_t byt
     for (size_t i = 0; i < m_blocks.size(); i++)
     {
         const auto& block = m_blocks[i];
-        HRESULT hr = block.virtualBlock->Allocate(&virtualAllocDesc, &subAllocation.virtualAllocation, &offset);
-        if (SUCCEEDED(hr))
+        if (block.blockAllocation != nullptr)
         {
-            subAllocation.blockAllocation = block.blockAllocation;
-            subAllocation.blockIndex = static_cast<uint32_t>(i);
-            subAllocation.byteOffset = static_cast<uint32_t>(offset);
+            HRESULT hr = block.virtualBlock->Allocate(&virtualAllocDesc, &subAllocation.virtualAllocation, &offset);
+            if (SUCCEEDED(hr))
+            {
+                subAllocation.blockAllocation = block.blockAllocation;
+                subAllocation.blockIndex = static_cast<uint32_t>(i);
+                subAllocation.byteOffset = static_cast<uint32_t>(offset);
 
-            return subAllocation;
+                return subAllocation;
+            }
         }
     }
 
-    // Create new block if the resource couldn't fit to any of them
-    subAllocation.blockIndex = static_cast<uint32_t>(m_blocks.size());
+    // Reuse or create new block if the resource couldn't fit to any of them
+
+    bool foundBlock = false;
+    for (uint32_t i = 0; i < m_blocks.size(); i++)
+    {
+        if (m_blocks[i].blockAllocation == nullptr)
+        {
+            subAllocation.blockIndex = i;
+            foundBlock = true;
+            break;
+        }
+    }
+
+    if (!foundBlock)
+        subAllocation.blockIndex = static_cast<uint32_t>(m_blocks.size());
 
     D3D12MA::ALLOCATION_DESC allocDesc{};
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 
     const auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(m_blockSize, m_flags);
 
-    auto& block = m_blocks.emplace_back();
+    auto& block = !foundBlock ? 
+        m_blocks.emplace_back() : m_blocks[subAllocation.blockIndex];
 
-    D3D12MA::VIRTUAL_BLOCK_DESC virtualBlockDesc{};
-    virtualBlockDesc.Size = m_blockSize;
+    if (!block.virtualBlock)
+    {
+        D3D12MA::VIRTUAL_BLOCK_DESC virtualBlockDesc{};
+        virtualBlockDesc.Size = m_blockSize;
 
-    HRESULT hr = D3D12MA::CreateVirtualBlock(&virtualBlockDesc, block.virtualBlock.GetAddressOf());
-    assert(SUCCEEDED(hr) && block.virtualBlock != nullptr);
+        const HRESULT hr = D3D12MA::CreateVirtualBlock(&virtualBlockDesc, block.virtualBlock.GetAddressOf());
+        assert(SUCCEEDED(hr) && block.virtualBlock != nullptr);
+    }
 
-    hr = allocator->CreateResource(
+    HRESULT hr = allocator->CreateResource(
         &allocDesc,
         &resourceDesc,
         m_initialState,
@@ -102,4 +122,25 @@ void SubAllocator::free(SubAllocation& allocation) const
         m_blocks[allocation.blockIndex].virtualBlock->FreeAllocation(allocation.virtualAllocation);
 
     allocation = {};
+}
+
+void SubAllocator::freeBlocks(std::vector<ComPtr<D3D12MA::Allocation>>& blocksToFree)
+{
+    size_t count = 0;
+
+    for (auto& block : m_blocks)
+    {
+        if (block.blockAllocation != nullptr && block.virtualBlock->IsEmpty())
+            blocksToFree.emplace_back(std::move(block.blockAllocation));
+
+        if (block.blockAllocation != nullptr)
+            ++count;
+    }
+
+    while (!m_blocks.empty() && m_blocks.back().blockAllocation == nullptr)
+        m_blocks.pop_back();
+
+    char debug[0x100];
+    sprintf(debug, "Remaining Blocks: %lld total, %lld actual\n", m_blocks.size(), count);
+    OutputDebugStringA(debug);
 }

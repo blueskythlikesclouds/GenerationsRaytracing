@@ -1716,6 +1716,7 @@ void RaytracingDevice::releaseRaytracingResources()
     for (auto& subAllocation : m_tempBottomLevelAccelStructs[m_frame])
         m_bottomLevelAccelStructAllocator.free(subAllocation);
 
+    m_bottomLevelAccelStructAllocator.freeBlocks(m_tempBuffers[m_frame]);
     m_tempBottomLevelAccelStructs[m_frame].clear();
 
     while (!m_materials.empty() && m_materials.back().shaderType == NULL)
