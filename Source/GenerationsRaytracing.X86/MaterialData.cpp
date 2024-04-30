@@ -313,6 +313,27 @@ HOOK(void, __fastcall, TexcoordAnimationEnv, 0x57C380, uintptr_t This, uintptr_t
     originalTexcoordAnimationEnv(This, Edx, deltaTime);
 }
 
+static FUNCTION_PTR(void, __thiscall, cloneMaterial, 0x704CE0,
+    Hedgehog::Mirage::CMaterialData* This, Hedgehog::Mirage::CMaterialData* rValue);
+
+HOOK(void, __fastcall, SingleElementEmplaceMaterialMap, 0x701CC0,
+    Hedgehog::Mirage::CSingleElement* This,
+    void* _,
+    Hedgehog::Mirage::CMaterialData* key,
+    const boost::shared_ptr<Hedgehog::Mirage::CMaterialData>& value)
+{
+    const auto keyEx = reinterpret_cast<MaterialDataEx*>(key);
+    if (keyEx->m_fhlMaterial != nullptr)
+    {
+        const auto materialClone = static_cast<Hedgehog::Mirage::CMaterialData*>(__HH_ALLOC(sizeof(MaterialDataEx)));
+        Hedgehog::Mirage::fpCMaterialDataCtor(materialClone);
+        cloneMaterial(materialClone, keyEx->m_fhlMaterial.get());
+        This->m_MaterialMap.emplace(keyEx->m_fhlMaterial.get(), boost::shared_ptr<Hedgehog::Mirage::CMaterialData>(materialClone));
+    }
+
+    return originalSingleElementEmplaceMaterialMap(This, _, key, value);
+}
+
 bool MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData, bool checkForHash)
 {
     if (materialData.IsMadeAll())
@@ -402,6 +423,8 @@ void MaterialData::init()
 
     INSTALL_HOOK(MaterialAnimationEnv);
     INSTALL_HOOK(TexcoordAnimationEnv);
+
+    INSTALL_HOOK(SingleElementEmplaceMaterialMap);
 }
 
 void MaterialData::postInit()
