@@ -139,8 +139,4 @@ void SubAllocator::freeBlocks(std::vector<ComPtr<D3D12MA::Allocation>>& blocksTo
 
     while (!m_blocks.empty() && m_blocks.back().blockAllocation == nullptr)
         m_blocks.pop_back();
-
-    char debug[0x100];
-    sprintf(debug, "Remaining Blocks: %lld total, %lld actual\n", m_blocks.size(), count);
-    OutputDebugStringA(debug);
 }
