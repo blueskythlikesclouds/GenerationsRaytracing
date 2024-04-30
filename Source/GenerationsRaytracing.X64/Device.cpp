@@ -1863,19 +1863,13 @@ Device::Device()
     HRESULT hr;
 
 #ifdef _DEBUG
-    ComPtr<ID3D12Debug> debugInterface;
+    ComPtr<ID3D12Debug1> debugInterface;
     hr = D3D12GetDebugInterface(IID_PPV_ARGS(debugInterface.GetAddressOf()));
 
     assert(SUCCEEDED(hr) && debugInterface != nullptr);
 
     debugInterface->EnableDebugLayer();
-
-    ComPtr<ID3D12Debug1> debugInterface1;
-    hr = debugInterface.As(&debugInterface1);
-
-    assert(SUCCEEDED(hr) && debugInterface1 != nullptr);
-
-    debugInterface1->SetEnableGPUBasedValidation(TRUE);
+    debugInterface->SetEnableGPUBasedValidation(TRUE);
 #endif
 
     const auto factory = m_swapChain.getUnderlyingFactory();
