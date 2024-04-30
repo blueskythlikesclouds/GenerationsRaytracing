@@ -97,9 +97,27 @@ ShaderCache::~ShaderCache()
         m_shaderConverter.freeHandle(handle.handlePtr);
 }
 
+static XXH64_hash_t getHash(const uint8_t* data, uint32_t dataSize)
+{
+    data += 4;
+    dataSize -= 4;
+
+    if (*reinterpret_cast<const uint16_t*>(data) == 0xFFFE)
+    {
+        uint32_t commentSize = *reinterpret_cast<const uint16_t*>(data + 2);
+        commentSize += 1;
+        commentSize *= 4;
+
+        data += commentSize;
+        dataSize -= commentSize;
+    }
+
+    return XXH3_64bits(data, dataSize);
+}
+
 std::unique_ptr<uint8_t[]> ShaderCache::getShader(const void* data, uint32_t dataSize, uint32_t& convertedSize)
 {
-    const XXH64_hash_t hash = XXH3_64bits(data, dataSize);
+    const XXH64_hash_t hash = getHash(reinterpret_cast<const uint8_t*>(data), dataSize);
     auto& shader = m_shaders[hash];
 
     if (shader.data == nullptr)

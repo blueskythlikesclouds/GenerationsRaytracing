@@ -6,18 +6,36 @@ public class DefaultShaderConverter
 {
 	private readonly ConcurrentDictionary<ulong, byte[]> _shaders = new();
 
-    private static readonly byte[] _makeShadowMapTransparentPatch = 
-        [0x01, 0x00, 0x00, 0x02, 0x01, 0x00, 0x03, 0xE0, 0x01, 0x00, 0xE4, 0x90, 0x00, 0x00, 0x00, 0x00];
+    private ulong ComputeHash(Span<byte> data)
+    {
+        int dataOffset = 4;
+        int dataSize = data.Length - 4;
+
+        if (Unsafe.As<byte, ushort>(ref data[4]) == 0xFFFE)
+        {
+            int commentSize = Unsafe.As<byte, ushort>(ref data[6]);
+            commentSize += 1;
+            commentSize *= 4;
+
+            dataOffset += commentSize;
+            dataSize -= commentSize;
+        }
+
+        return xxHash3.ComputeHash(data.Slice(dataOffset, dataSize), dataSize);
+    }
 
     private ulong ConvertUnchecked(Span<byte> data)
     {
-        ulong hash = xxHash3.ComputeHash(data, data.Length);
+        ulong hash = ComputeHash(data);
 
         if (!_shaders.ContainsKey(hash))
             _shaders.TryAdd(hash, ShaderConverter.Convert(data));
 
         return hash;
     }
+
+    private static readonly byte[] _makeShadowMapTransparentPatch =
+        [0x01, 0x00, 0x00, 0x02, 0x01, 0x00, 0x03, 0xE0, 0x01, 0x00, 0xE4, 0x90, 0x00, 0x00, 0x00, 0x00];
 
     public void Convert(Span<byte> data)
     {
@@ -27,11 +45,11 @@ public class DefaultShaderConverter
         {
             int instructionOffset = 0;
 
-            if (hash == 0x4050A79D8259057A)
+            if (hash == 0xDD13000F18B99C6A)
             {
                 instructionOffset = 0x1E4;
             }
-            else if (hash == 0x6E8D6052A54245DA)
+            else if (hash == 0x761B21E9E3E1DA07)
             {
                 instructionOffset = 0x474;
             }
