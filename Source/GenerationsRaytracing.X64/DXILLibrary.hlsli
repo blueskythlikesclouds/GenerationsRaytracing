@@ -10,7 +10,6 @@ struct [raypayload] PrimaryRayPayload
 {
     float3 dDdx : read(closesthit) : write(caller);
     float3 dDdy : read(closesthit) : write(caller);
-    float2 MotionVectors : read(caller) : write(closesthit, miss);
     float T : read(caller) : write(closesthit, miss);
 };
 
@@ -41,10 +40,12 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
 
     g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
 
-    payload.MotionVectors =
+    g_MotionVectors[DispatchRaysIndex().xy] =
         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 
+    g_LinearDepth[DispatchRaysIndex().xy] = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
+    
     payload.T = RayTCurrent();
 }
 
@@ -52,14 +53,20 @@ struct [raypayload] PrimaryTransparentRayPayload
 {
     float3 dDdx : read(anyhit) : write(caller);
     float3 dDdy : read(anyhit) : write(caller);
-    float2 MotionVectors : read(caller, anyhit) : write(caller, anyhit);
-    float T : read(caller, anyhit) : write(caller, anyhit);
-    uint LayerIndex : read(caller, anyhit) : write(caller, anyhit);
+    float T[GBUFFER_LAYER_NUM] : read(anyhit) : write(anyhit);
+    uint LayerCount : read(caller, anyhit) : write(caller, anyhit);
 };
 
 void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     inout PrimaryTransparentRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
+    // Ignore duplicate any hit invocations
+    for (uint i = 1; i < payload.LayerCount; i++)
+    {
+        if (RayTCurrent() == payload.T[i])
+            IgnoreHit();
+    }
+    
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
@@ -68,20 +75,47 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
 
     if (gBufferData.Alpha > 0.0)
     {
-        StoreGBufferData(uint3(DispatchRaysIndex().xy, payload.LayerIndex), gBufferData);
-
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE) && gBufferData.Alpha > 0.5 && RayTCurrent() < payload.T)
+        uint layerIndex = 1;
+        
+        while (layerIndex < payload.LayerCount)
         {
-            payload.MotionVectors =
-                ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
-                ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
+            if (RayTCurrent() > payload.T[layerIndex])
+            {
+                payload.LayerCount = min(GBUFFER_LAYER_NUM, payload.LayerCount + 1);
+                
+                for (uint i = payload.LayerCount - 1; i > layerIndex; i--)
+                {
+                    GBufferData gBufferDataToInsert = LoadGBufferData(uint3(DispatchRaysIndex().xy, i - 1));
+                    StoreGBufferData(uint3(DispatchRaysIndex().xy, i), gBufferDataToInsert);
+                    payload.T[i] = payload.T[i - 1];
+                }      
+                
+                break;
+            }
             
-            payload.T = RayTCurrent();
+            ++layerIndex;
         }
-
-        ++payload.LayerIndex;
-        if (payload.LayerIndex == GBUFFER_LAYER_NUM)
-            AcceptHitAndEndSearch();
+        
+        if (layerIndex < GBUFFER_LAYER_NUM)
+        {
+            StoreGBufferData(uint3(DispatchRaysIndex().xy, layerIndex), gBufferData);
+            payload.T[layerIndex] = RayTCurrent();
+            payload.LayerCount = max(payload.LayerCount, layerIndex + 1);
+                        
+            if (!(gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE) && gBufferData.Alpha > 0.5)
+            {
+                float linearDepth = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
+                
+                if (linearDepth < g_LinearDepth[DispatchRaysIndex().xy])
+                {
+                    g_MotionVectors[DispatchRaysIndex().xy] =
+                        ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
+                        ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
+                    
+                    g_LinearDepth[DispatchRaysIndex().xy] = linearDepth;
+                }
+            }
+        }                
     }
 
     IgnoreHit();

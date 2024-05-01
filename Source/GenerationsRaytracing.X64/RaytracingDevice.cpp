@@ -698,9 +698,6 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
             if (!(geometryDesc.flags & (GEOMETRY_FLAG_TRANSPARENT | GEOMETRY_FLAG_PUNCH_THROUGH)))
                 dstGeometryDesc.Flags |= D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
-            if (geometryDesc.flags & GEOMETRY_FLAG_TRANSPARENT)
-                dstGeometryDesc.Flags |= D3D12_RAYTRACING_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION;
-
             auto& triangles = dstGeometryDesc.Triangles;
 
             triangles.Transform3x4 = NULL;
@@ -1915,7 +1912,7 @@ RaytracingDevice::RaytracingDevice()
     dxilLibrarySubobject.SetDXILLibrary(&dxilLibrary);
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
-    shaderConfigSubobject.Config(sizeof(float) * 12, sizeof(float) * 2);
+    shaderConfigSubobject.Config(sizeof(float) * 15, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
     pipelineConfigSubobject.Config(1);
