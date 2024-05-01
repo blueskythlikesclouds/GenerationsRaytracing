@@ -77,7 +77,7 @@
       <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
       <AdditionalOptions>-HV 2021 -all-resources-bound -Zi -Fd "$(IntDir)%(Filename).pdb" </AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance;$(SolutionDir)..\Dependencies\ThreadGroupIDSwizzling;$(SolutionDir)..\Dependencies\nvapi</AdditionalIncludeDirectories>
-      <ShaderModel>6.6</ShaderModel>
+      <ShaderModel>6.7</ShaderModel>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -113,7 +113,7 @@
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance;$(SolutionDir)..\Dependencies\ThreadGroupIDSwizzling;$(SolutionDir)..\Dependencies\nvapi</AdditionalIncludeDirectories>
-      <ShaderModel>6.6</ShaderModel>
+      <ShaderModel>6.7</ShaderModel>
       <AdditionalOptions>-HV 2021 -all-resources-bound -Zi -Fd "$(IntDir)%(Filename).pdb" </AdditionalOptions>
     </FxCompile>
   </ItemDefinitionGroup>
@@ -256,8 +256,6 @@
       </EntryPointName>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </EntryPointName>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">-enable-payload-qualifiers %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">-enable-payload-qualifiers %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
     <FxCompile Include="DXILLibrarySER.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -266,8 +264,6 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">-enable-payload-qualifiers %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">-enable-payload-qualifiers %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
     <FxCompile Include="FVFPixelShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
