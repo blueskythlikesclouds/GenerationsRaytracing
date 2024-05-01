@@ -153,8 +153,11 @@ protected:
     ComPtr<D3D12MA::Allocation> m_specularAlbedoTexture;
     ComPtr<D3D12MA::Allocation> m_normalsRoughnessTexture;
     ComPtr<D3D12MA::Allocation> m_linearDepthTexture;
-    ComPtr<D3D12MA::Allocation> m_colorBeforeTransparencyTexture;
     ComPtr<D3D12MA::Allocation> m_specularHitDistanceTexture;
+
+    ComPtr<D3D12MA::Allocation> m_colorBeforeTransparencyTexture;
+    ComPtr<D3D12MA::Allocation> m_diffuseAlbedoBeforeTransparencyTexture;
+    ComPtr<D3D12MA::Allocation> m_specularAlbedoBeforeTransparencyTexture;
 
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoRenderTargetTexture;
     uint32_t m_diffuseAlbedoRtvId = 0;

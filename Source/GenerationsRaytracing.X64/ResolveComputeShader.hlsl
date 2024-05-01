@@ -122,8 +122,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
 
     g_ColorBeforeTransparency[dispatchThreadId] = float4(color, 1.0);
     g_PrevReservoir[dispatchThreadId] = StoreReservoir(reservoir);
-    g_DiffuseAlbedo[dispatchThreadId] = diffuseAlbedo;
-    g_SpecularAlbedo[dispatchThreadId] = specularAlbedo;
+    g_DiffuseAlbedoBeforeTransparency[dispatchThreadId] = diffuseAlbedo;
+    g_SpecularAlbedoBeforeTransparency[dispatchThreadId] = specularAlbedo;
     g_NormalsRoughness[dispatchThreadId] = normalsRoughness;
     g_SpecularHitDistance[dispatchThreadId] = specularHitDistance;
 

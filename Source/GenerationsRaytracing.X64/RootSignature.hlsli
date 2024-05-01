@@ -175,7 +175,10 @@ DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedo, 19);
 DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedo, 20);
 DEFINE_TEXTURE(Texture2D<float4>, g_NormalsRoughness, 21);
 DEFINE_TEXTURE(Texture2D<float>, g_LinearDepth, 22);
-DEFINE_TEXTURE(Texture2D<float4>, g_ColorBeforeTransparency, 23);
-DEFINE_TEXTURE(Texture2D<float>, g_SpecularHitDistance, 24);
+DEFINE_TEXTURE(Texture2D<float>, g_SpecularHitDistance, 23);
+
+DEFINE_TEXTURE(Texture2D<float4>, g_ColorBeforeTransparency, 24);
+DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedoBeforeTransparency, 25);
+DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedoBeforeTransparency, 26);
 
 #undef DEFINE_TEXTURE

@@ -397,7 +397,7 @@ bool RaytracingDevice::createTopLevelAccelStruct()
     return true;
 }
 
-static constexpr size_t s_textureNum = 25;
+static constexpr size_t s_textureNum = 27;
 
 void RaytracingDevice::createRaytracingTextures()
 {
@@ -453,8 +453,11 @@ void RaytracingDevice::createRaytracingTextures()
         { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture, L"Specular Albedo Texture" },
         { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_normalsRoughnessTexture, L"Normals Roughness Texture" },
         { 1, DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture, L"Linear Depth Texture" },
-        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
         { 1, DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture, L"Specular Hit Distance Texture" },
+
+        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
+        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoBeforeTransparencyTexture, L"Diffuse Albedo Before Transparency Texture" },
+        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoBeforeTransparencyTexture, L"Specular Albedo Before Transparency Texture" },
     };
 
     static_assert(_countof(textureDescs) == s_textureNum);
@@ -579,13 +582,15 @@ void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
         (m_upscaler->getHeight() + 7) / 8,
         1);
 
-    commandList.uavBarrier(m_diffuseAlbedoTexture->GetResource());
-    commandList.uavBarrier(m_specularAlbedoTexture->GetResource());
     commandList.uavBarrier(m_normalsRoughnessTexture->GetResource());
     commandList.uavBarrier(m_specularHitDistanceTexture->GetResource());
 
-    commandList.transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    commandList.transitionBarriers(
+        { 
+            m_colorBeforeTransparencyTexture->GetResource(),
+            m_diffuseAlbedoBeforeTransparencyTexture->GetResource(),
+            m_specularAlbedoBeforeTransparencyTexture->GetResource()
+        }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     commandList.commitBarriers();
 
