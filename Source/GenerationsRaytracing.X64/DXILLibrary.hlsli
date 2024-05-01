@@ -101,8 +101,14 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
             StoreGBufferData(uint3(DispatchRaysIndex().xy, layerIndex), gBufferData);
             payload.T[layerIndex] = RayTCurrent();
             payload.LayerCount = max(payload.LayerCount, layerIndex + 1);
-                        
-            if (!(gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE) && gBufferData.Alpha > 0.5)
+            
+            bool canWriteMotionVectorsAndDepth = !(gBufferData.Flags & (
+                GBUFFER_FLAG_IS_ADDITIVE |
+                GBUFFER_FLAG_REFRACTION_ADD |
+                GBUFFER_FLAG_REFRACTION_MUL |
+                GBUFFER_FLAG_REFRACTION_OVERLAY));
+            
+            if (canWriteMotionVectorsAndDepth && gBufferData.Alpha > 0.5)
             {
                 float linearDepth = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
                 
