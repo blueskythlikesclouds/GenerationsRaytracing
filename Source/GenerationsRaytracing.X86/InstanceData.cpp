@@ -60,6 +60,8 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     This->m_hashFrame = 0;
     This->m_chrPlayableMenuParam = 10000.0f;
     new (&This->m_effectMap) decltype(This->m_effectMap)();
+    This->m_matrixHash = 0;
+    This->m_prevMatrixHash = 0;
 
     return result;
 }

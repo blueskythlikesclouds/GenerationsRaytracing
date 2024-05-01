@@ -556,6 +556,8 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
         instanceInfoEx.m_poseVertexBuffer = nullptr;
+        instanceInfoEx.m_matrixHash = 0;
+        instanceInfoEx.m_prevMatrixHash = 0;
     }
 
     instanceInfoEx.m_modelHash = modelDataEx.m_modelHash;
@@ -613,119 +615,129 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             }
         }
 
-        uint32_t geometryCount = 0;
-        uint32_t nodeCount = 0;
-        traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool)
+        const XXH32_hash_t matrixHash = XXH32(
+            matrixList, matrixNum * sizeof(Hedgehog::Math::CMatrix), 0);
+
+        const bool shouldComputePose = instanceInfoEx.m_matrixHash != matrixHash || instanceInfoEx.m_prevMatrixHash != matrixHash;
+        instanceInfoEx.m_prevMatrixHash = instanceInfoEx.m_matrixHash;
+        instanceInfoEx.m_matrixHash = matrixHash;
+
+        if (shouldComputePose)
         {
-            if (meshDataEx.m_NodeNum != 0)
+            uint32_t geometryCount = 0;
+            uint32_t nodeCount = 0;
+            traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool)
             {
-                ++geometryCount;
-                nodeCount += meshDataEx.m_NodeNum;
-            }
-        });
-
-        auto& message = s_messageSender.makeMessage<MsgComputePose>(
-            matrixNum * sizeof(Hedgehog::Math::CMatrix) +
-            geometryCount * sizeof(MsgComputePose::GeometryDesc) +
-            nodeCount * sizeof(uint32_t));
-
-        message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
-        message.nodeCount = static_cast<uint8_t>(matrixNum);
-        message.geometryCount = geometryCount;
-        memcpy(message.data, matrixList, matrixNum * sizeof(Hedgehog::Math::CMatrix));
-
-        auto geometryDesc = reinterpret_cast<MsgComputePose::GeometryDesc*>(message.data +
-            matrixNum * sizeof(Hedgehog::Math::CMatrix));
-
-        memset(geometryDesc, 0, geometryCount * sizeof(MsgComputePose::GeometryDesc));
-
-        auto nodePalette = reinterpret_cast<uint32_t*>(geometryDesc + geometryCount);
-
-        uint32_t vertexOffset = 0;
-        traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool visible)
-        {
-            if (meshDataEx.m_NodeNum != 0)
-            {
-                geometryDesc->vertexCount = meshDataEx.m_VertexNum;
-                geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
-                geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
-                geometryDesc->vertexOffset = meshDataEx.m_VertexOffset;
-
-                const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
-                    meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
-
-                auto vertexElement = vertexDeclaration->getVertexElements();
-
-                while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
+                if (meshDataEx.m_NodeNum != 0)
                 {
-                    const uint8_t offset = static_cast<uint8_t>(vertexElement->Offset);
+                    ++geometryCount;
+                    nodeCount += meshDataEx.m_NodeNum;
+                }
+            });
 
-                    switch (vertexElement->Usage)
+            auto& message = s_messageSender.makeMessage<MsgComputePose>(
+                matrixNum * sizeof(Hedgehog::Math::CMatrix) +
+                geometryCount * sizeof(MsgComputePose::GeometryDesc) +
+                nodeCount * sizeof(uint32_t));
+
+            message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
+            message.nodeCount = static_cast<uint8_t>(matrixNum);
+            message.geometryCount = geometryCount;
+            memcpy(message.data, matrixList, matrixNum * sizeof(Hedgehog::Math::CMatrix));
+
+            auto geometryDesc = reinterpret_cast<MsgComputePose::GeometryDesc*>(message.data +
+                matrixNum * sizeof(Hedgehog::Math::CMatrix));
+
+            memset(geometryDesc, 0, geometryCount * sizeof(MsgComputePose::GeometryDesc));
+
+            auto nodePalette = reinterpret_cast<uint32_t*>(geometryDesc + geometryCount);
+
+            uint32_t vertexOffset = 0;
+            traverseModelData(modelDataEx, ~0, [&](const MeshDataEx& meshDataEx, uint32_t, bool visible)
+            {
+                if (meshDataEx.m_NodeNum != 0)
+                {
+                    geometryDesc->vertexCount = meshDataEx.m_VertexNum;
+                    geometryDesc->vertexBufferId = reinterpret_cast<const VertexBuffer*>(meshDataEx.m_pD3DVertexBuffer)->getId();
+                    geometryDesc->vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
+                    geometryDesc->vertexOffset = meshDataEx.m_VertexOffset;
+
+                    const auto vertexDeclaration = reinterpret_cast<const VertexDeclaration*>(
+                        meshDataEx.m_VertexDeclarationPtr.m_pD3DVertexDeclaration);
+
+                    auto vertexElement = vertexDeclaration->getVertexElements();
+
+                    while (vertexElement->Stream != 0xFF && vertexElement->Type != D3DDECLTYPE_UNUSED)
                     {
-                    case D3DDECLUSAGE_NORMAL:
-                        geometryDesc->normalOffset = offset;
-                        break;
+                        const uint8_t offset = static_cast<uint8_t>(vertexElement->Offset);
 
-                    case D3DDECLUSAGE_TANGENT:
-                        geometryDesc->tangentOffset = offset;
-                        break;
+                        switch (vertexElement->Usage)
+                        {
+                        case D3DDECLUSAGE_NORMAL:
+                            geometryDesc->normalOffset = offset;
+                            break;
 
-                    case D3DDECLUSAGE_BINORMAL:
-                        geometryDesc->binormalOffset = offset;
-                        break;
+                        case D3DDECLUSAGE_TANGENT:
+                            geometryDesc->tangentOffset = offset;
+                            break;
 
-                    case D3DDECLUSAGE_BLENDWEIGHT:
-                        if (vertexElement->UsageIndex == 0)
-                            geometryDesc->blendWeightOffset = offset;
-                        else
-                            geometryDesc->blendWeight1Offset = offset;
-                        break;
+                        case D3DDECLUSAGE_BINORMAL:
+                            geometryDesc->binormalOffset = offset;
+                            break;
 
-                    case D3DDECLUSAGE_BLENDINDICES:
-                        if (vertexElement->UsageIndex == 0)
-                            geometryDesc->blendIndicesOffset = offset;
-                        else
-                            geometryDesc->blendIndices1Offset = offset;
-                        break;
+                        case D3DDECLUSAGE_BLENDWEIGHT:
+                            if (vertexElement->UsageIndex == 0)
+                                geometryDesc->blendWeightOffset = offset;
+                            else
+                                geometryDesc->blendWeight1Offset = offset;
+                            break;
+
+                        case D3DDECLUSAGE_BLENDINDICES:
+                            if (vertexElement->UsageIndex == 0)
+                                geometryDesc->blendIndicesOffset = offset;
+                            else
+                                geometryDesc->blendIndices1Offset = offset;
+                            break;
+                        }
+
+                        ++vertexElement;
                     }
 
-                    ++vertexElement;
+                    geometryDesc->nodeCount = static_cast<uint8_t>(meshDataEx.m_NodeNum);
+
+                    for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
+                        nodePalette[i] = meshDataEx.m_pNodeIndices[i] >= message.nodeCount ? 0 : static_cast<uint32_t>(meshDataEx.m_pNodeIndices[i]);
+
+                    geometryDesc->visible = visible;
+
+                    if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals)
+                    {
+                        auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
+
+                        smoothNormalMsg.indexBufferId = meshDataEx.m_indices->getId();
+                        smoothNormalMsg.indexOffset = meshDataEx.m_indexOffset;
+                        smoothNormalMsg.vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
+                        smoothNormalMsg.vertexCount = meshDataEx.m_VertexNum;
+                        smoothNormalMsg.vertexOffset = vertexOffset;
+                        smoothNormalMsg.normalOffset = geometryDesc->normalOffset;
+                        smoothNormalMsg.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
+                        smoothNormalMsg.adjacencyBufferId = meshDataEx.m_adjacency->getId();
+
+                        s_messageSender.endMessage();
+                    }
+
+                    ++geometryDesc;
+                    nodePalette += meshDataEx.m_NodeNum;
                 }
 
-                geometryDesc->nodeCount = static_cast<uint8_t>(meshDataEx.m_NodeNum);
+                if (visible && shouldCheckForHash)
+                    MaterialData::create(*meshDataEx.m_spMaterial, true);
 
-                for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
-                    nodePalette[i] = meshDataEx.m_pNodeIndices[i] >= message.nodeCount ? 0 : static_cast<uint32_t>(meshDataEx.m_pNodeIndices[i]);
+                vertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
+            });
 
-                geometryDesc->visible = visible;
-
-                if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals)
-                {
-                    auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
-
-                    smoothNormalMsg.indexBufferId = meshDataEx.m_indices->getId();
-                    smoothNormalMsg.indexOffset = meshDataEx.m_indexOffset;
-                    smoothNormalMsg.vertexStride = static_cast<uint8_t>(meshDataEx.m_VertexSize);
-                    smoothNormalMsg.vertexCount = meshDataEx.m_VertexNum;
-                    smoothNormalMsg.vertexOffset = vertexOffset;
-                    smoothNormalMsg.normalOffset = geometryDesc->normalOffset;
-                    smoothNormalMsg.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
-                    smoothNormalMsg.adjacencyBufferId = meshDataEx.m_adjacency->getId();
-
-                    s_messageSender.endMessage();
-                }
-
-                ++geometryDesc;
-                nodePalette += meshDataEx.m_NodeNum;
-            }
-
-            if (visible && shouldCheckForHash)
-                MaterialData::create(*meshDataEx.m_spMaterial, true);
-
-            vertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
-        });
-
-        s_messageSender.endMessage();
+            s_messageSender.endMessage();
+        }
 
         for (size_t i = 0; i < _countof(s_instanceMasks); i++)
         {
@@ -736,7 +748,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                 ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, 
                     bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId());
             }
-            else
+            else if (shouldComputePose)
             {
                 auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
                 buildMessage.bottomLevelAccelStructId = bottomLevelAccelStructId;
