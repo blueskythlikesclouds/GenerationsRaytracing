@@ -85,8 +85,19 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
                 
                 for (uint i = payload.LayerCount - 1; i > layerIndex; i--)
                 {
-                    GBufferData gBufferDataToInsert = LoadGBufferData(uint3(DispatchRaysIndex().xy, i - 1));
-                    StoreGBufferData(uint3(DispatchRaysIndex().xy, i), gBufferDataToInsert);
+                    uint3 srcIndex = uint3(DispatchRaysIndex().xy, i - 1);
+                    uint3 destIndex = uint3(DispatchRaysIndex().xy, i);
+
+                    g_GBuffer0[destIndex] = g_GBuffer0[srcIndex];
+                    g_GBuffer1[destIndex] = g_GBuffer1[srcIndex];
+                    g_GBuffer2[destIndex] = g_GBuffer2[srcIndex];
+                    g_GBuffer3[destIndex] = g_GBuffer3[srcIndex];
+                    g_GBuffer4[destIndex] = g_GBuffer4[srcIndex];
+                    g_GBuffer5[destIndex] = g_GBuffer5[srcIndex];
+                    g_GBuffer6[destIndex] = g_GBuffer6[srcIndex];
+                    g_GBuffer7[destIndex] = g_GBuffer7[srcIndex];
+                    g_GBuffer8[destIndex] = g_GBuffer8[srcIndex];
+
                     payload.T[i] = payload.T[i - 1];
                 }      
                 
