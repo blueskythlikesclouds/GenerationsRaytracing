@@ -57,11 +57,9 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     This->m_headNodeIndex = 0;
     This->m_handledEyeMaterials = false;
     This->m_modelHash = 0;
-    This->m_visibilityBits = 0;
     This->m_hashFrame = 0;
     This->m_chrPlayableMenuParam = 10000.0f;
     new (&This->m_effectMap) decltype(This->m_effectMap)();
-    new (&This->m_unscaledBoneStates) std::vector<bool>();
 
     return result;
 }
@@ -72,7 +70,6 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     s_trackedInstances.erase(This);
     s_instanceMutex.unlock();
 
-    This->m_unscaledBoneStates.~vector();
     This->m_effectMap.~unordered_map();
     This->m_poseVertexBuffer.~ComPtr();
 

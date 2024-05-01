@@ -76,7 +76,8 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     message.bottomLevelAccelStructId = (bottomLevelAccelStructId = ModelData::s_idAllocator.allocate());
-    message.allowUpdate = poseVertexBufferId != NULL;
+    message.preferFastBuild = poseVertexBufferId != NULL;
+    message.allowUpdate = false;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
@@ -190,7 +191,6 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
         bottomLevelAccelStructId = NULL;
 
     This->m_modelHash = 0;
-    This->m_visibilityBits = 0;
     This->m_hashFrame = 0;
     This->m_enableSkinning = false;
 
@@ -526,13 +526,6 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         const XXH32_hash_t modelHash = XXH32(modelDataEx.m_NodeGroupModels.data(),
             modelDataEx.m_NodeGroupModels.size() * sizeof(modelDataEx.m_NodeGroupModels[0]), 0);
 
-        uint32_t visibilityBits = 0;
-        for (size_t i = 0; i < modelDataEx.m_NodeGroupModels.size(); i++)
-        {
-            if (modelDataEx.m_NodeGroupModels[i]->m_Visible)
-                visibilityBits |= 1 << i;
-        }
-
         if (modelDataEx.m_modelHash != modelHash)
         {
             for (auto& bottomLevelAccelStructId : modelDataEx.m_bottomLevelAccelStructIds)
@@ -551,7 +544,6 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         }
 
         modelDataEx.m_modelHash = modelHash;
-        modelDataEx.m_visibilityBits = visibilityBits;
         modelDataEx.m_hashFrame = RaytracingRendering::s_frame;
     }
 
@@ -566,10 +558,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         instanceInfoEx.m_poseVertexBuffer = nullptr;
     }
 
-    bool performUpdate = instanceInfoEx.m_visibilityBits == modelDataEx.m_visibilityBits;
-
     instanceInfoEx.m_modelHash = modelDataEx.m_modelHash;
-    instanceInfoEx.m_visibilityBits = modelDataEx.m_visibilityBits;
     instanceInfoEx.m_hashFrame = modelDataEx.m_hashFrame;
 
     auto transform = instanceInfoEx.m_Transform;
@@ -615,25 +604,13 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         const auto matrixList = instanceInfoEx.m_spPose->GetMatrixList();
         const size_t matrixNum = instanceInfoEx.m_spPose->GetMatrixNum();
 
-        instanceInfoEx.m_unscaledBoneStates.resize(matrixNum);
-        bool foundHead = false;
-
-        for (size_t i = 0; i < instanceInfoEx.m_spPose->GetMatrixNum(); i++)
+        for (size_t i = 0; i < modelDataEx.m_NodeNum; i++)
         {
-            if (!foundHead && i < modelDataEx.m_NodeNum && modelDataEx.m_spNodes[i].m_Name == "Head")
+            if (i < matrixNum && modelDataEx.m_spNodes[i].m_Name == "Head")
             {
                 headTransform = headTransform * matrixList[i];
-                foundHead = true;
+                break;
             }
-        
-            const bool unscaled =
-                matrixList[i].matrix().col(0).squaredNorm() == 0.0f ||
-                matrixList[i].matrix().col(1).squaredNorm() == 0.0f ||
-                matrixList[i].matrix().col(2).squaredNorm() == 0.0f;
-
-            performUpdate &= instanceInfoEx.m_unscaledBoneStates[i] == unscaled;
-
-            instanceInfoEx.m_unscaledBoneStates[i] = unscaled;
         }
 
         uint32_t geometryCount = 0;
@@ -763,7 +740,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             {
                 auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
                 buildMessage.bottomLevelAccelStructId = bottomLevelAccelStructId;
-                buildMessage.performUpdate = performUpdate && RaytracingParams::s_allowAccelStructUpdate;
+                buildMessage.performUpdate = false;
                 s_messageSender.endMessage();
             }
 

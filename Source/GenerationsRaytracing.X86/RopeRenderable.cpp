@@ -115,6 +115,7 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
             sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
         createMsg.bottomLevelAccelStructId = ropeRenderableEx->m_bottomLevelAccelStructId;
+        createMsg.preferFastBuild = false;
         createMsg.allowUpdate = false;
 
         const auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(createMsg.data);
