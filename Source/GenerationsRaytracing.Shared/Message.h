@@ -423,6 +423,8 @@ struct MsgComputePose
         uint8_t binormalOffset;
         uint8_t blendWeightOffset;
         uint8_t blendIndicesOffset;
+        uint8_t blendWeight1Offset;
+        uint8_t blendIndices1Offset;
         uint8_t nodeCount;
         bool visible;
     };

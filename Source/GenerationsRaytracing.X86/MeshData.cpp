@@ -161,9 +161,9 @@ static void optimizeVertexFormat(MeshResource* meshResource)
         { D3DDECLUSAGE_BLENDWEIGHT, DECLTYPE_UBYTE4N }
     };
 
-    for (const auto [usage, type] : usageAndTypePairs)
+    for (size_t i = 0; i < 4; i++)
     {
-        for (size_t i = 0; i < (usage == D3DDECLUSAGE_TEXCOORD ? 4u : 1u); i++)
+        for (const auto [usage, type] : usageAndTypePairs)
         {
             if (usages[usage][i])
             {

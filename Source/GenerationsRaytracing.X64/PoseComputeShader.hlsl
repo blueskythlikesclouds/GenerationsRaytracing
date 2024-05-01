@@ -11,6 +11,8 @@ cbuffer GeometryDesc : register(b0)
     uint g_BinormalOffset;
     uint g_BlendWeightOffset;
     uint g_BlendIndicesOffset;
+    uint g_BlendWeight1Offset;
+    uint g_BlendIndices1Offset;
     uint g_NodeCount;
     bool g_Visible;
 }
@@ -18,6 +20,24 @@ cbuffer GeometryDesc : register(b0)
 StructuredBuffer<uint> g_Palette : register(t1);
 ByteAddressBuffer g_Src : register(t2);
 RWByteAddressBuffer g_Dest : register(u0);
+
+uint4 UnpackUint4(uint value)
+{
+    return uint4(
+        (value >> 0) & 0xFF,
+        (value >> 8) & 0xFF,
+        (value >> 16) & 0xFF,
+        (value >> 24) & 0xFF);
+}
+
+float4x4 ComputeNodeMatrix(uint4 blendIndices, float4 blendWeight)
+{
+    return
+        g_Pose[g_Palette[blendIndices.x]] * blendWeight.x +
+        g_Pose[g_Palette[blendIndices.y]] * blendWeight.y +
+        g_Pose[g_Palette[blendIndices.z]] * blendWeight.z +
+        g_Pose[g_Palette[blendIndices.w]] * blendWeight.w;
+}
 
 [numthreads(64, 1, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
@@ -35,28 +55,33 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     if (g_Visible)
     {
         uint2 blendIndicesAndWeight = g_Src.Load2(vertexOffset + g_BlendIndicesOffset);
+        uint4 blendIndices = min(g_NodeCount - 1, UnpackUint4(blendIndicesAndWeight.x));
+        
+        float4 blendWeight = UnpackUint4(blendIndicesAndWeight.y) / 255.0;
+        float weightSum = blendWeight.x + blendWeight.y + blendWeight.z + blendWeight.w;
+        
+        float4x4 nodeMatrix = 0.0;
+        
+        if (g_BlendIndices1Offset != 0)
+        {
+            uint2 blendIndicesAndWeight1 = g_Src.Load2(vertexOffset + g_BlendIndices1Offset);
+            uint4 blendIndices1 = min(g_NodeCount - 1, UnpackUint4(blendIndicesAndWeight1.x));
+            
+            float4 blendWeight1 = UnpackUint4(blendIndicesAndWeight1.y) / 255.0;
+            weightSum += blendWeight1.x + blendWeight1.y + blendWeight1.z + blendWeight1.w;
+            
+            if (weightSum > 0.0)
+                blendWeight1 /= weightSum;
+            
+            nodeMatrix += ComputeNodeMatrix(blendIndices1, blendWeight1);
+        }
+        
+        if (weightSum > 0.0)
+            blendWeight /= weightSum;
+        else
+            blendWeight.w = 1.0;
 
-        uint4 blendIndices = uint4(
-            (blendIndicesAndWeight.x >> 0) & 0xFF,
-            (blendIndicesAndWeight.x >> 8) & 0xFF,
-            (blendIndicesAndWeight.x >> 16) & 0xFF,
-            (blendIndicesAndWeight.x >> 24) & 0xFF);
-
-        blendIndices = min(g_NodeCount - 1, blendIndices);
-
-        float4 blendWeight = float4(
-            ((blendIndicesAndWeight.y >> 0) & 0xFF) / 255.0,
-            ((blendIndicesAndWeight.y >> 8) & 0xFF) / 255.0,
-            ((blendIndicesAndWeight.y >> 16) & 0xFF) / 255.0,
-            ((blendIndicesAndWeight.y >> 24) & 0xFF) / 255.0);
-
-        blendWeight.w = 1.0 - blendWeight.x - blendWeight.y - blendWeight.z;
-
-        float4x4 nodeMatrix =
-            g_Pose[g_Palette[blendIndices.x]] * blendWeight.x +
-            g_Pose[g_Palette[blendIndices.y]] * blendWeight.y +
-            g_Pose[g_Palette[blendIndices.z]] * blendWeight.z +
-            g_Pose[g_Palette[blendIndices.w]] * blendWeight.w;
+        nodeMatrix += ComputeNodeMatrix(blendIndices, blendWeight);
 
         position = g_Src.Load<float3>(vertexOffset);
         uint3 nrmTgnBin = g_Src.Load3(vertexOffset + g_NormalOffset);

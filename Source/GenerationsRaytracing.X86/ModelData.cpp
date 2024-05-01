@@ -679,11 +679,17 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                             break;
 
                         case D3DDECLUSAGE_BLENDWEIGHT:
-                            geometryDesc->blendWeightOffset = offset;
+                            if (vertexElement->UsageIndex == 0)
+                                geometryDesc->blendWeightOffset = offset;
+                            else
+                                geometryDesc->blendWeight1Offset = offset;
                             break;
 
                         case D3DDECLUSAGE_BLENDINDICES:
-                            geometryDesc->blendIndicesOffset = offset;
+                            if (vertexElement->UsageIndex == 0)
+                                geometryDesc->blendIndicesOffset = offset;
+                            else
+                                geometryDesc->blendIndices1Offset = offset;
                             break;
                         }
 

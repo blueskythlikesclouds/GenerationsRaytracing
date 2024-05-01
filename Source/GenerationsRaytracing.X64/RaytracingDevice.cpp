@@ -1363,6 +1363,8 @@ void RaytracingDevice::procMsgComputePose()
             uint32_t binormalOffset;
             uint32_t blendWeightOffset;
             uint32_t blendIndicesOffset;
+            uint32_t blendWeight1Offset;
+            uint32_t blendIndices1Offset;
             uint32_t nodeCount;
             uint32_t visible;
         } cbGeometryDesc =
@@ -1374,6 +1376,8 @@ void RaytracingDevice::procMsgComputePose()
             geometryDesc->binormalOffset,
             geometryDesc->blendWeightOffset,
             geometryDesc->blendIndicesOffset,
+            geometryDesc->blendWeight1Offset,
+            geometryDesc->blendIndices1Offset,
             geometryDesc->nodeCount,
             geometryDesc->visible
         };
