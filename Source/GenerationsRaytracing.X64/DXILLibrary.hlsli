@@ -60,26 +60,39 @@ struct [raypayload] PrimaryTransparentRayPayload
 void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     inout PrimaryTransparentRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
-    // Ignore duplicate any hit invocations
+    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
+    bool isXluObject = !(geometryDesc.Flags & GEOMETRY_FLAG_TRANSPARENT);
+    
+    // Ignore duplicate any hit invocations or XLU objects that fail the depth test
     for (uint i = 1; i < payload.LayerCount; i++)
     {
-        if (RayTCurrent() == payload.T[i])
+        float layerDepth = abs(payload.T[i]);
+        bool layerIsXluObject = payload.T[i] < 0.0;
+        
+        if (RayTCurrent() == layerDepth || (isXluObject && layerIsXluObject && RayTCurrent() > layerDepth))
             IgnoreHit();
     }
     
-    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
+    
     GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
-
+    gBufferData.Alpha *= instanceDesc.ForceAlphaColor;
+            
     if (gBufferData.Alpha > 0.0)
     {
         uint layerIndex = 1;
         
         while (layerIndex < payload.LayerCount)
         {
-            if (RayTCurrent() > payload.T[layerIndex])
+            float layerDepth = abs(payload.T[layerIndex]);
+            bool layerIsXluObject = payload.T[layerIndex] < 0.0;
+            
+            if (isXluObject && layerIsXluObject)
+                break;
+            
+            if (RayTCurrent() > layerDepth)
             {
                 payload.LayerCount = min(GBUFFER_LAYER_NUM, payload.LayerCount + 1);
                 
@@ -87,7 +100,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
                 {
                     uint3 srcIndex = uint3(DispatchRaysIndex().xy, i - 1);
                     uint3 destIndex = uint3(DispatchRaysIndex().xy, i);
-
+                
                     g_GBuffer0[destIndex] = g_GBuffer0[srcIndex];
                     g_GBuffer1[destIndex] = g_GBuffer1[srcIndex];
                     g_GBuffer2[destIndex] = g_GBuffer2[srcIndex];
@@ -97,9 +110,9 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
                     g_GBuffer6[destIndex] = g_GBuffer6[srcIndex];
                     g_GBuffer7[destIndex] = g_GBuffer7[srcIndex];
                     g_GBuffer8[destIndex] = g_GBuffer8[srcIndex];
-
+                
                     payload.T[i] = payload.T[i - 1];
-                }      
+                }
                 
                 break;
             }
@@ -110,7 +123,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
         if (layerIndex < GBUFFER_LAYER_NUM)
         {
             StoreGBufferData(uint3(DispatchRaysIndex().xy, layerIndex), gBufferData);
-            payload.T[layerIndex] = RayTCurrent();
+            payload.T[layerIndex] = isXluObject ? -RayTCurrent() : RayTCurrent();
             payload.LayerCount = max(payload.LayerCount, layerIndex + 1);
             
             bool canWriteMotionVectorsAndDepth = !(gBufferData.Flags & (

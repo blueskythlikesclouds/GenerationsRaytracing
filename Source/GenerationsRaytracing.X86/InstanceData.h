@@ -26,6 +26,8 @@ public:
     std::unordered_map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>> m_effectMap;
     XXH32_hash_t m_matrixHash;
     XXH32_hash_t m_prevMatrixHash;
+    bool m_enableForceAlphaColor;
+    float m_forceAlphaColor;
 };
 
 struct InstanceData

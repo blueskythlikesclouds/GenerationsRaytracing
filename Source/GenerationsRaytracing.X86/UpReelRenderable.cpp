@@ -207,6 +207,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
     message.instanceMask = INSTANCE_MASK_OPAQUE;
     message.playableParam = -10001.0f;
     message.chrPlayableMenuParam = 10000.0f;
+    message.forceAlphaColor = 1.0f;
 
     s_messageSender.endMessage();
 }

@@ -457,6 +457,12 @@ static void processTexpatternMotion(InstanceInfoEx& instanceInfoEx, const Hedgeh
 
 void ModelData::processSingleElementEffect(InstanceInfoEx& instanceInfoEx, Hedgehog::Mirage::CSingleElementEffect* singleElementEffect)
 {
+    if (singleElementEffect->m_ForceAlphaColor.w() < 0.99f)
+    {
+        instanceInfoEx.m_enableForceAlphaColor = singleElementEffect->m_EnableForceAlphaColor;
+        instanceInfoEx.m_forceAlphaColor = singleElementEffect->m_ForceAlphaColor.w();
+    }
+
     if (const auto singleElementEffectMotionAll = dynamic_cast<Hedgehog::Motion::CSingleElementEffectMotionAll*>(singleElementEffect))
     {
         for (const auto& texcoordMotion : singleElementEffectMotionAll->m_TexcoordMotionList)
@@ -824,9 +830,10 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             message.instanceId = instanceId;
             message.bottomLevelAccelStructId = bottomLevelAccelStructId;
             message.isMirrored = false;
-            message.instanceMask = s_instanceMasks[i].instanceMask;
+            message.instanceMask = instanceInfoEx.m_enableForceAlphaColor ? INSTANCE_MASK_TRANSPARENT : s_instanceMasks[i].instanceMask;
             message.playableParam = -10001.0f;
             message.chrPlayableMenuParam = instanceInfoEx.m_chrPlayableMenuParam + RaytracingRendering::s_worldShift.y();
+            message.forceAlphaColor = instanceInfoEx.m_forceAlphaColor;
 
             auto materialIds = reinterpret_cast<uint32_t*>(message.data);
 

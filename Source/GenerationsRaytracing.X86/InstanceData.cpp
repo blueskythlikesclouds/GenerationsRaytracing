@@ -60,6 +60,8 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
     new (&This->m_effectMap) decltype(This->m_effectMap)();
     This->m_matrixHash = 0;
     This->m_prevMatrixHash = 0;
+    This->m_enableForceAlphaColor = false;
+    This->m_forceAlphaColor = 1.0f;
 
     return result;
 }
@@ -135,6 +137,7 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
                     message.instanceMask = s_instanceMasks[i].instanceMask;
                     message.playableParam = playableParam;
                     message.chrPlayableMenuParam = 10000.0f;
+                    message.forceAlphaColor = 1.0f;
 
                     s_messageSender.endMessage();
                 }

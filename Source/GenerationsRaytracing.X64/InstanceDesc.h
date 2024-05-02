@@ -6,6 +6,6 @@ struct InstanceDesc
     float headTransform[3][4];
     float playableParam;
     float chrPlayableMenuParam;
-    uint32_t padding1;
+    float forceAlphaColor;
     uint32_t padding2;
 };

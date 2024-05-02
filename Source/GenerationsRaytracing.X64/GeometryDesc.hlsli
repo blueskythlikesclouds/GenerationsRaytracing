@@ -35,7 +35,7 @@ struct InstanceDesc
     row_major float3x4 HeadTransform;
     float PlayableParam;
     float ChrPlayableMenuParam;
-    uint Padding1;
+    float ForceAlphaColor;
     uint Padding2;
 };
 

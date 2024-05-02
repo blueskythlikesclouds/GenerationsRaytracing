@@ -801,6 +801,7 @@ void RaytracingDevice::procMsgCreateInstance()
 
     instanceDescEx.playableParam = message.playableParam;
     instanceDescEx.chrPlayableMenuParam = message.chrPlayableMenuParam;
+    instanceDescEx.forceAlphaColor = message.forceAlphaColor;
 
     memcpy(instanceDesc.Transform, message.transform, sizeof(message.transform));
 
