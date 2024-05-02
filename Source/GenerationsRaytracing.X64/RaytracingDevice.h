@@ -240,7 +240,6 @@ protected:
     void procMsgComputeSmoothNormal();
     void procMsgDispatchUpscaler();
     void procMsgDrawIm3d();
-    void procMsgUpdatePlayableParam();
     void procMsgCopyHdrTexture();
 
     bool processRaytracingMessage() override;

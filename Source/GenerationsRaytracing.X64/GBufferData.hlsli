@@ -1201,7 +1201,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
 
                 if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
                 {
-                    float3 viewPosition = mul(float4(vertex.Position, 1.0), g_MtxView).xyz;
+                    float3 viewPosition = mul(float4(vertex.Position, 0.0), g_MtxView).xyz;
                     gBufferData.Alpha *= saturate(viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection));
                 }
 
@@ -1217,7 +1217,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
 
                 if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
                 {
-                    float3 viewPosition = mul(float4(vertex.Position, 1.0), g_MtxView).xyz;
+                    float3 viewPosition = mul(float4(vertex.Position, 0.0), g_MtxView).xyz;
                     gBufferData.Alpha *= saturate(viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection));
                 }
 
@@ -1233,7 +1233,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
             
                 if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
                 {
-                    float3 viewPosition = mul(float4(vertex.Position, 1.0), g_MtxView).xyz;
+                    float3 viewPosition = mul(float4(vertex.Position, 0.0), g_MtxView).xyz;
                     gBufferData.Alpha = saturate((viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection)) / material.WaterParam.w);
                 }
 

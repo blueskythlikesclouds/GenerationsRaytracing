@@ -800,6 +800,12 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                 {
                     message.transform[l][k] = transform(l, k);
                     message.headTransform[l][k] = headTransform(l, k);
+
+                    if (k == 3)
+                    {
+                        message.transform[l][k] += RaytracingRendering::s_worldShift[l];
+                        message.headTransform[l][k] += RaytracingRendering::s_worldShift[l];
+                    }
                 }
             }
 
@@ -819,7 +825,8 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             message.bottomLevelAccelStructId = bottomLevelAccelStructId;
             message.isMirrored = false;
             message.instanceMask = s_instanceMasks[i].instanceMask;
-            message.chrPlayableMenuParam = instanceInfoEx.m_chrPlayableMenuParam;
+            message.playableParam = -10001.0f;
+            message.chrPlayableMenuParam = instanceInfoEx.m_chrPlayableMenuParam + RaytracingRendering::s_worldShift.y();
 
             auto materialIds = reinterpret_cast<uint32_t*>(message.data);
 

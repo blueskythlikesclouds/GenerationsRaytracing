@@ -32,7 +32,7 @@ struct InstanceData
 {
     static inline FreeListAllocator s_idAllocator;
 
-    static void createPendingInstances(Hedgehog::Mirage::CRenderingDevice* renderingDevice);
+    static void createInstances(Hedgehog::Mirage::CRenderingDevice* renderingDevice);
 
     static void trackInstance(InstanceInfoEx* instanceInfoEx);
     static void releaseUnusedInstances();

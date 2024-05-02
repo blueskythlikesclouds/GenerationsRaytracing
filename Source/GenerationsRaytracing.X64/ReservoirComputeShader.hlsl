@@ -16,7 +16,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     if (!(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)))
     {
         uint randSeed = InitRandom(dispatchThreadId);
-        float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+        float3 eyeDirection = NormalizeSafe(-gBufferData.Position);
     
         // Generate initial candidates
         Reservoir reservoir = (Reservoir) 0;

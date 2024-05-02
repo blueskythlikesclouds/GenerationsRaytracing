@@ -144,7 +144,7 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
     for (size_t i = 0; i < 3; i++)
     {
         for (size_t j = 0; j < 4; j++)
-            message.transform[i][j] = (i == j) ? 1.0f : 0.0f;
+            message.transform[i][j] = (i == j) ? 1.0f : j == 3 ? RaytracingRendering::s_worldShift[i] : 0.0f;
     }
 
     message.instanceId = ropeRenderableEx->m_instanceId;
@@ -152,6 +152,7 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
     message.storePrevTransform = false;
     message.isMirrored = false;
     message.instanceMask = INSTANCE_MASK_OPAQUE;
+    message.playableParam = -10001.0f;
     message.chrPlayableMenuParam = 10000.0f;
 
     s_messageSender.endMessage();

@@ -6,7 +6,7 @@ void PrimaryRayGeneration()
     float3 rayDirection = ComputePrimaryRayDirection(DispatchRaysIndex().xy, DispatchRaysDimensions().xy);
 
     RayDesc ray;
-    ray.Origin = g_EyePosition.xyz;
+    ray.Origin = 0.0;
     ray.Direction = normalize(rayDirection);
     ray.TMin = 0.0;
     ray.TMax = INF;
@@ -62,7 +62,7 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
 
     GBufferData gBufferData = (GBufferData) 0;
-    gBufferData.Position = WorldRayOrigin() + WorldRayDirection() * g_CameraNearFarAspect.y;
+    gBufferData.Position = WorldRayDirection() * g_CameraNearFarAspect.y;
     gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
     gBufferData.SpecularGloss = 1.0;
     gBufferData.Normal = -WorldRayDirection();
@@ -171,7 +171,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
                 uint sample = NextRandomUint(randSeed) % g_LocalLightCount;
                 LocalLight localLight = g_LocalLights[sample];
 
-                float3 lightDirection = localLight.Position - payload.Position;
+                float3 lightDirection = (localLight.Position - g_EyePosition.xyz) - payload.Position;
                 float distance = length(lightDirection);
 
                 if (distance > 0.0)
@@ -239,7 +239,7 @@ void SecondaryRayGeneration()
         
             if (shouldTraceReflection)
             {
-                float3 eyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+                float3 eyeDirection = NormalizeSafe(-gBufferData.Position);
     
                 if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
                 {

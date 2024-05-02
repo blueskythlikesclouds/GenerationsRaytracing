@@ -192,7 +192,12 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
     for (size_t i = 0; i < 3; i++)
     {
         for (size_t j = 0; j < 4; j++)
+        {
             message.transform[i][j] = reelRendererEx->m_WorldMatrix(i, j);
+
+            if (j == 3)
+                message.transform[i][j] += RaytracingRendering::s_worldShift[i];
+        }
     }
 
     message.instanceId = reelRendererEx->m_instanceId;
@@ -200,6 +205,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
     message.storePrevTransform = storePrevTransform;
     message.isMirrored = false;
     message.instanceMask = INSTANCE_MASK_OPAQUE;
+    message.playableParam = -10001.0f;
     message.chrPlayableMenuParam = 10000.0f;
 
     s_messageSender.endMessage();

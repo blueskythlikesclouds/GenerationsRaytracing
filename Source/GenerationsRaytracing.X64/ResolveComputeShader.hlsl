@@ -25,10 +25,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         float depth = g_Depth_SRV[dispatchThreadId];
         uint randSeed = InitRandom(dispatchThreadId.xy);
     
-        ShadingParams shadingParams = (ShadingParams) 0;
-    
-        shadingParams.EyePosition = g_EyePosition.xyz;
-        shadingParams.EyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+        ShadingParams shadingParams = (ShadingParams) 0;    
+        shadingParams.EyeDirection = NormalizeSafe(-gBufferData.Position);
     
         if (g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
         {
@@ -67,7 +65,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     
             if (reservoir.W > 0.0001)
             {
-                float3 direction = localLight.Position - gBufferData.Position;
+                float3 direction = (localLight.Position - g_EyePosition.xyz) - gBufferData.Position;
                 float distance = length(direction);
                 if (distance > 0.0)
                     direction /= distance;
@@ -104,7 +102,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             normalsRoughness.w = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
     
         color = ComputeGeometryShading(gBufferData, shadingParams, randSeed);
-        float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
+        float3 viewPosition = mul(float4(gBufferData.Position, 0.0), g_MtxView).xyz;
         float2 lightScattering = ComputeLightScattering(gBufferData.Position, viewPosition);
     
         if (all(and(!isnan(lightScattering), !isinf(lightScattering))))

@@ -8,7 +8,6 @@
 
 struct ShadingParams
 {
-    float3 EyePosition;
     float3 EyeDirection;
     Reservoir Reservoir;
     float3 GlobalIllumination;
@@ -165,7 +164,7 @@ float ComputeLocalLightFalloff(float distance, float inRange, float outRange)
 
 float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
-    float3 direction = localLight.Position - gBufferData.Position;
+    float3 direction = (localLight.Position - g_EyePosition.xyz) - gBufferData.Position;
     float distance = length(direction);
 
     if (distance > 0.0)
@@ -333,7 +332,7 @@ float2 ComputeLightScattering(float3 position, float3 viewPosition)
     r0.x = r0.x * -r0.y;
     r0.x = exp(r0.x);
     r0.y = -r0.x + 1;
-    r3.xyz = -position + g_EyePosition.xyz;
+    r3.xyz = -position;
     r4.xyz = NormalizeSafe(r3.xyz);
     r3.x = dot(-mrgGlobalLight_Direction.xyz, r4.xyz);
     r3.y = g_LightScattering_ConstG_FogDensity.z * r3.x + g_LightScattering_ConstG_FogDensity.y;

@@ -30,8 +30,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             GBufferData gBufferData = LoadGBufferData(uint3(dispatchThreadId, i));
 
             ShadingParams shadingParams = (ShadingParams) 0;
-            shadingParams.EyePosition = g_EyePosition.xyz;
-            shadingParams.EyeDirection = NormalizeSafe(g_EyePosition.xyz - gBufferData.Position);
+            shadingParams.EyeDirection = NormalizeSafe(-gBufferData.Position);
 
             float3 diffuseAlbedo = gBufferData.Emission;
             
@@ -56,7 +55,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
                 normalsRoughness.w = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
 
-            float3 viewPosition = mul(float4(gBufferData.Position, 1.0), g_MtxView).xyz;
+            float3 viewPosition = mul(float4(gBufferData.Position, 0.0), g_MtxView).xyz;
 
             if (gBufferData.Flags & GBUFFER_FLAG_REFRACTION_ALL)
             {

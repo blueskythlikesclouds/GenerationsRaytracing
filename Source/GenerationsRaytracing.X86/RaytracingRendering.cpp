@@ -216,7 +216,8 @@ static void __cdecl implOfTraceRays(void* a1)
 
         if (GetCurrentThreadId() == s_mainThreadId)
         {
-            const auto& renderScene = Sonic::CGameDocument::GetInstance()->GetWorld()->m_pMember->m_spRenderScene;
+            const auto world = Sonic::CGameDocument::GetInstance()->GetWorld();
+            const auto& renderScene = world->m_pMember->m_spRenderScene;
 
             if (RaytracingParams::s_light != nullptr && RaytracingParams::s_light->IsMadeAll())
             {
@@ -255,8 +256,10 @@ static void __cdecl implOfTraceRays(void* a1)
                 s_resetAccumulation = true;
             }
 
+            RaytracingRendering::s_worldShift = -world->GetCamera()->m_MyCamera.m_Position;
+
             MaterialData::createPendingMaterials();
-            InstanceData::createPendingInstances(renderingDevice);
+            InstanceData::createInstances(renderingDevice);
 
             static Hedgehog::Base::CStringSymbol s_renderCategories[] =
             {

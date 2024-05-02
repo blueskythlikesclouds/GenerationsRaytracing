@@ -195,7 +195,7 @@ Vertex LoadVertex(
         float2 dBarydx;
         float2 dBarydy;
         ComputeBarycentricDifferentials(
-            PropagateRayDifferentials(rayDiff, WorldRayOrigin(), WorldRayDirection(), RayTCurrent(), outWldNormal),
+            PropagateRayDifferentials(rayDiff, 0.0, WorldRayDirection(), RayTCurrent(), outWldNormal),
             WorldRayDirection(),
             mul(ObjectToWorld3x4(), float4(position1 - position0, 0.0)).xyz,
             mul(ObjectToWorld3x4(), float4(position2 - position0, 0.0)).xyz,

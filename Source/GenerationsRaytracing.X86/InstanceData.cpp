@@ -7,7 +7,7 @@
 #include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
 
-static std::unordered_set<TerrainInstanceInfoDataEx*> s_instancesToCreate;
+static std::unordered_set<TerrainInstanceInfoDataEx*> s_instances;
 static std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*> s_instanceSubsets;
 static Mutex s_terrainInstanceMutex;
 
@@ -31,11 +31,9 @@ HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInsta
 {
     LockGuard lock(s_terrainInstanceMutex);
 
-    s_instancesToCreate.erase(This);
+    s_instances.erase(This);
     if (This->m_hasValidIterator)
         s_instanceSubsets.erase(This->m_subsetIterator);
-
-    PlayableParam::removeInstance(This);
 
     for (auto& instanceId : This->m_instanceIds)
         RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
@@ -84,61 +82,65 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     originalInstanceInfoDestructor(This);
 }
 
-void InstanceData::createPendingInstances(Hedgehog::Mirage::CRenderingDevice* renderingDevice)
+void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* renderingDevice)
 {
     LockGuard lock(s_terrainInstanceMutex);
 
-    for (auto it = s_instancesToCreate.begin(); it != s_instancesToCreate.end();)
+    for (auto& instance : s_instances)
     {
-        if ((*it)->IsMadeAll())
+        if (instance->IsMadeAll() && instance->m_spTerrainModel != nullptr)
         {
-            if ((*it)->m_spTerrainModel != nullptr)
+            const auto terrainModelEx =
+                reinterpret_cast<TerrainModelDataEx*>(instance->m_spTerrainModel.get());
+
+            ModelData::createBottomLevelAccelStructs(*terrainModelEx);
+
+            const bool isMirrored = instance->m_scpTransform->determinant() < 0.0f;
+            const float playableParam = PlayableParam::getPlayableParam(instance, renderingDevice);
+
+            for (size_t i = 0; i < _countof(s_instanceMasks); i++)
             {
-                const auto terrainModelEx =
-                    reinterpret_cast<TerrainModelDataEx*>((*it)->m_spTerrainModel.get());
+                const auto bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructIds[i];
 
-                ModelData::createBottomLevelAccelStructs(*terrainModelEx);
-
-                const bool isMirrored = (*it)->m_scpTransform->determinant() < 0.0f;
-
-                for (size_t i = 0; i < _countof(s_instanceMasks); i++)
+                if (bottomLevelAccelStructId != NULL)
                 {
-                    const auto bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructIds[i];
+                    auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
 
-                    if (bottomLevelAccelStructId != NULL)
+                    for (size_t j = 0; j < 3; j++)
                     {
-                        auto& instanceId = (*it)->m_instanceIds[i];
-                        assert(instanceId == NULL);
-                        instanceId = s_idAllocator.allocate();
-
-                        auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
-
-                        for (size_t j = 0; j < 3; j++)
+                        for (size_t k = 0; k < 4; k++)
                         {
-                            for (size_t k = 0; k < 4; k++)
-                                message.transform[j][k] = (*(*it)->m_scpTransform)(j, k);
+                            message.transform[j][k] = (*instance->m_scpTransform)(j, k);
+
+                            if (k == 3)
+                                message.transform[j][k] += RaytracingRendering::s_worldShift[j];
                         }
-
-                        message.instanceId = instanceId;
-                        message.bottomLevelAccelStructId = bottomLevelAccelStructId;
-                        message.storePrevTransform = false;
-                        message.isMirrored = isMirrored;
-                        message.instanceMask = s_instanceMasks[i].instanceMask;
-                        message.chrPlayableMenuParam = 10000.0f;
-
-                        s_messageSender.endMessage();
                     }
+
+                    auto& instanceId = instance->m_instanceIds[i];
+
+                    if (instanceId == NULL)
+                    {
+                        instanceId = s_idAllocator.allocate();
+                        message.storePrevTransform = false;
+                    }
+                    else
+                    {
+                        message.storePrevTransform = true;
+                    }
+
+                    message.instanceId = instanceId;
+                    message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+                    message.isMirrored = isMirrored;
+                    message.instanceMask = s_instanceMasks[i].instanceMask;
+                    message.playableParam = playableParam;
+                    message.chrPlayableMenuParam = 10000.0f;
+
+                    s_messageSender.endMessage();
                 }
             }
-            it = s_instancesToCreate.erase(it);
-        }
-        else
-        {
-            ++it;
         }
     }
-
-    PlayableParam::updatePlayableParams(renderingDevice);
 }
 
 void InstanceData::trackInstance(InstanceInfoEx* instanceInfoEx)
@@ -171,33 +173,25 @@ static uint32_t* __stdcall instanceSubsetMidAsmHook(uint32_t* status, TerrainIns
 {
     LockGuard lock(s_terrainInstanceMutex);
 
-    bool alreadyCreated = false;
-
-    for (const auto& instanceId : terrainInstanceInfoDataEx->m_instanceIds)
-        alreadyCreated |= (instanceId != NULL);
-
-    if (!alreadyCreated)
+    if (status != reinterpret_cast<uint32_t*>(0x1B2449C))
     {
-        if (status != reinterpret_cast<uint32_t*>(0x1B2449C))
-        {
-            if (terrainInstanceInfoDataEx->m_hasValidIterator)
-                s_instanceSubsets.erase(terrainInstanceInfoDataEx->m_subsetIterator);
-            else
-                terrainInstanceInfoDataEx->m_hasValidIterator = true;
-
-            terrainInstanceInfoDataEx->m_subsetIterator = s_instanceSubsets.emplace(*(status - 1), terrainInstanceInfoDataEx);
-
-            if (*status != 1)
-                s_instancesToCreate.emplace(terrainInstanceInfoDataEx);
-        }
+        if (terrainInstanceInfoDataEx->m_hasValidIterator)
+            s_instanceSubsets.erase(terrainInstanceInfoDataEx->m_subsetIterator);
         else
-        {
-            s_instancesToCreate.emplace(terrainInstanceInfoDataEx);
-        }
-
-        PlayableParam::trackInstance(terrainInstanceInfoDataEx);
+            terrainInstanceInfoDataEx->m_hasValidIterator = true;
+    
+        terrainInstanceInfoDataEx->m_subsetIterator = s_instanceSubsets.emplace(*(status - 1), terrainInstanceInfoDataEx);
+    
+        if (*status != 1)
+            s_instances.emplace(terrainInstanceInfoDataEx);
+        else
+            s_instances.erase(terrainInstanceInfoDataEx);
     }
-
+    else
+    {
+        s_instances.emplace(terrainInstanceInfoDataEx);
+    }
+    
     return status;
 }
 
@@ -223,15 +217,7 @@ static void showTerrainInstanceSubsets(uint32_t subsetId)
 
     auto [begin, end] = s_instanceSubsets.equal_range(subsetId);
     for (auto it = begin; it != end; ++it)
-    {
-        bool alreadyCreated = false;
-
-        for (const auto& instanceId : it->second->m_instanceIds)
-            alreadyCreated |= (instanceId != NULL);
-
-        if (!alreadyCreated)
-            s_instancesToCreate.emplace(it->second);
-    }
+        s_instances.emplace(it->second);
 }
 
 static void hideTerrainInstanceSubsets(uint32_t subsetId)
@@ -243,6 +229,8 @@ static void hideTerrainInstanceSubsets(uint32_t subsetId)
     {
         for (auto& instanceId : it->second->m_instanceIds)
             RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
+
+        s_instances.erase(it->second);
     }
 }
 

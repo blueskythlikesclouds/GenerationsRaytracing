@@ -44,7 +44,7 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
         ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
 
-    g_LinearDepth[DispatchRaysIndex().xy] = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
+    g_LinearDepth[DispatchRaysIndex().xy] = -mul(float4(vertex.Position, 0.0), g_MtxView).z;
     
     payload.T = RayTCurrent();
 }
@@ -121,7 +121,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
             
             if (canWriteMotionVectorsAndDepth && gBufferData.Alpha > 0.5)
             {
-                float linearDepth = -mul(float4(vertex.Position, 1.0), g_MtxView).z;
+                float linearDepth = -mul(float4(vertex.Position, 0.0), g_MtxView).z;
                 
                 if (linearDepth < g_LinearDepth[DispatchRaysIndex().xy])
                 {

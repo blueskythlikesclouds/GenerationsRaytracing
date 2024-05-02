@@ -80,7 +80,7 @@ float3 TangentToWorld(float3 normal, float3 value)
 
 float2 ComputeNdcPosition(float3 position, float4x4 view, float4x4 projection)
 {
-    float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);
+    float4 projectedPosition = mul(float4(mul(float4(position, 0.0), view).xyz, 1.0), projection);
     return (projectedPosition.xy / projectedPosition.w * float2(0.5, -0.5) + 0.5);
 }
 
@@ -91,7 +91,7 @@ float2 ComputePixelPosition(float3 position, float4x4 view, float4x4 projection)
 
 float ComputeDepth(float3 position, float4x4 view, float4x4 projection)
 {
-    float4 projectedPosition = mul(mul(float4(position, 1.0), view), projection);
+    float4 projectedPosition = mul(float4(mul(float4(position, 0.0), view).xyz, 1.0), projection);
     return projectedPosition.z / projectedPosition.w;
 }
 

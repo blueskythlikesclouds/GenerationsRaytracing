@@ -357,6 +357,7 @@ struct MsgCreateInstance
     bool storePrevTransform;
     bool isMirrored;
     uint8_t instanceMask;
+    float playableParam;
     float chrPlayableMenuParam;
     uint32_t dataSize;
     uint8_t data[1u];
@@ -565,23 +566,9 @@ struct MsgDrawIm3d
     uint8_t data[1u];
 };
 
-struct MsgUpdatePlayableParam
-{
-    MSG_DEFINE_MESSAGE(MsgDrawIm3d);
-
-    struct InstanceData
-    {
-        uint32_t instanceId;
-        float playableParam;
-    };
-
-    uint32_t dataSize;
-    uint8_t data[1u];
-};
-
 struct MsgCopyHdrTexture
 {
-    MSG_DEFINE_MESSAGE(MsgUpdatePlayableParam);
+    MSG_DEFINE_MESSAGE(MsgDrawIm3d);
 };
 
 #pragma pack(pop)
