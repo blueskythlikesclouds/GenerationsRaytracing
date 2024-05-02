@@ -845,7 +845,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
                     gBufferData.Specular = 0.0;
                 }
 
-                float3 visibilityFactor = gBufferData.Specular * gBufferData.SpecularFresnel * 0.5;
+                float3 visibilityFactor = gBufferData.SpecularTint * gBufferData.SpecularEnvironment * gBufferData.SpecularFresnel * 0.5;
                 gBufferData.Alpha = sqrt(max(gBufferData.Alpha * gBufferData.Alpha, dot(visibilityFactor, visibilityFactor)));
 
                 break;
