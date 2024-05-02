@@ -41,8 +41,8 @@ float4x4 ComputeNodeMatrix(uint4 blendIndices, float4 blendWeight)
 
 bool CheckNodeMatrixUnscaled(float4x4 nodeMatrix)
 {
-    return dot(nodeMatrix[0].xyz, nodeMatrix[0].xyz) == 0 ||
-        dot(nodeMatrix[1].xyz, nodeMatrix[1].xyz) == 0 ||
+    return dot(nodeMatrix[0].xyz, nodeMatrix[0].xyz) == 0 &&
+        dot(nodeMatrix[1].xyz, nodeMatrix[1].xyz) == 0 &&
         dot(nodeMatrix[2].xyz, nodeMatrix[2].xyz) == 0;
 }
 
