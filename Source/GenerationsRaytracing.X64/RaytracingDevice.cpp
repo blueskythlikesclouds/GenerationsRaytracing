@@ -409,6 +409,7 @@ void RaytracingDevice::createRaytracingTextures()
 
     D3D12MA::ALLOCATION_DESC allocDesc{};
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+    allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
     auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_UNKNOWN,
