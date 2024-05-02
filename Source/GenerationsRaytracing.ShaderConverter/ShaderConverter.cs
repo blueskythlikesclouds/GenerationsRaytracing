@@ -334,9 +334,7 @@ public class ShaderConverter
 
             stringBuilder.Append("\tout float4 oC0 : SV_Target0");
             stringBuilder.Append(",\n\tout float4 oC1 : SV_Target1");
-
-            if (disassembly.Contains("oC2"))
-                stringBuilder.Append(",\n\tout float4 oC2 : SV_Target2");
+            stringBuilder.Append(",\n\tout float4 oC2 : SV_Target2");
 
             if (disassembly.Contains("oC3"))
                 stringBuilder.Append(",\n\tout float4 oC3 : SV_Target3");
@@ -440,6 +438,9 @@ public class ShaderConverter
 
             if (!disassembly.Contains("oC1"))
                 stringBuilder.AppendLine("\toC1 = oC0;");
+
+            if (!disassembly.Contains("oC2"))
+                stringBuilder.AppendLine("\toC2 = float4(0.0, 0.0, 0.0, oC0.w);");
 
             stringBuilder.AppendLine("\n\tif (g_ExposureTextureId != 0) {");
             stringBuilder.AppendLine("\t\tTexture2D<float> exposure = ResourceDescriptorHeap[g_ExposureTextureId];");

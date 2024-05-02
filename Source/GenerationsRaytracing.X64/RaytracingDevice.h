@@ -125,6 +125,10 @@ protected:
     uint32_t m_srvId = 0;
     uint32_t m_exposureTextureId = 0;
 
+    uint32_t m_colorRtvId = 0;
+    uint32_t m_diffuseAlbedoRtvId = 0;
+    uint32_t m_specularAlbedoRtvId = 0;
+
     ComPtr<D3D12MA::Allocation> m_colorTexture;
     ComPtr<D3D12MA::Allocation> m_outputTexture;
     ComPtr<D3D12MA::Allocation> m_depthTexture;
@@ -158,9 +162,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_colorBeforeTransparencyTexture;
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoBeforeTransparencyTexture;
     ComPtr<D3D12MA::Allocation> m_specularAlbedoBeforeTransparencyTexture;
-
-    ComPtr<D3D12MA::Allocation> m_diffuseAlbedoRenderTargetTexture;
-    uint32_t m_diffuseAlbedoRtvId = 0;
 
     // Resolve
     ComPtr<ID3D12PipelineState> m_resolvePipeline;
@@ -200,6 +201,10 @@ protected:
     // HDR
     ComPtr<ID3D12RootSignature> m_copyHdrTextureRootSignature;
     ComPtr<ID3D12PipelineState> m_copyHdrTexturePipeline;
+
+    // Prepare For Upscaler
+    D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
+    DXGI_FORMAT m_renderTargetFormat{};
 
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
