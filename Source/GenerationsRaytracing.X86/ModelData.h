@@ -9,6 +9,7 @@ class TerrainModelDataEx : public Hedgehog::Mirage::CTerrainModelData
 {
 public:
     uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceMasks)];
+    uint64_t m_bottomLevelAccelStructFrames[_countof(s_instanceMasks)];
 };
 
 class ModelDataEx : public Hedgehog::Mirage::CModelData
@@ -16,7 +17,7 @@ class ModelDataEx : public Hedgehog::Mirage::CModelData
 public:
     uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceMasks)];
     XXH32_hash_t m_modelHash;
-    uint32_t m_hashFrame;
+    uint64_t m_hashFrame;
     bool m_enableSkinning;
     boost::shared_ptr<CModelData> m_noAoModel;
 };

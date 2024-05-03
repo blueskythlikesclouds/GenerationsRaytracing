@@ -21,7 +21,7 @@ public:
     uint32_t m_headNodeIndex;
     bool m_handledEyeMaterials;
     XXH32_hash_t m_modelHash;
-    uint32_t m_hashFrame;
+    uint64_t m_hashFrame;
     float m_chrPlayableMenuParam;
     std::unordered_map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>> m_effectMap;
     XXH32_hash_t m_matrixHash;

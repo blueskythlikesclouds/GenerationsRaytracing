@@ -210,7 +210,7 @@ protected:
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO buildAccelStruct(SubAllocation& allocation,
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate);
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate, bool buildAsync);
 
     void buildBottomLevelAccelStruct(BottomLevelAccelStruct& bottomLevelAccelStruct);
 

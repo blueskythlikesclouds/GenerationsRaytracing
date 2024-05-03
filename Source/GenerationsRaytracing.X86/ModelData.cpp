@@ -61,7 +61,7 @@ static void traverseModelData(const TModelData& modelData, uint32_t geometryMask
 }
 
 template<typename T>
-static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMask, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId)
+static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMask, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId, bool buildAsync)
 {
     assert(bottomLevelAccelStructId == NULL);
 
@@ -78,6 +78,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
     message.bottomLevelAccelStructId = (bottomLevelAccelStructId = ModelData::s_idAllocator.allocate());
     message.preferFastBuild = poseVertexBufferId != NULL;
     message.allowUpdate = false;
+    message.buildAsync = buildAsync;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
@@ -172,6 +173,9 @@ HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, Ter
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
 
+    for (auto& bottomLevelAccelStructFrame : This->m_bottomLevelAccelStructFrames)
+        bottomLevelAccelStructFrame = NULL;
+
     return result;
 }
 
@@ -216,7 +220,10 @@ void ModelData::createBottomLevelAccelStructs(TerrainModelDataEx& terrainModelDa
         auto& bottomLevelAccelStructId = terrainModelDataEx.m_bottomLevelAccelStructIds[i];
 
         if (bottomLevelAccelStructId == NULL)
-            ::createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL);
+        {
+            ::createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, true);
+            terrainModelDataEx.m_bottomLevelAccelStructFrames[i] = RaytracingRendering::s_frame;
+        }
     }
 }
 
@@ -752,7 +759,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             if (bottomLevelAccelStructId == NULL)
             {
                 ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, 
-                    bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId());
+                    bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId(), false);
             }
             else if (shouldComputePose)
             {
@@ -785,7 +792,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             if (bottomLevelAccelStructId == NULL)
             {
                 ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask,
-                    bottomLevelAccelStructId, NULL);
+                    bottomLevelAccelStructId, NULL, false);
             }
 
             bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;

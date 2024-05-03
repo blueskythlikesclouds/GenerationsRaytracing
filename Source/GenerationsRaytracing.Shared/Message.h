@@ -327,6 +327,7 @@ struct MsgCreateBottomLevelAccelStruct
     uint32_t bottomLevelAccelStructId;
     bool preferFastBuild;
     bool allowUpdate;
+    bool buildAsync;
     uint32_t dataSize;
     uint8_t data[1u];
 };

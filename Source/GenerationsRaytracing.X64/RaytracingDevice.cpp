@@ -110,7 +110,7 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
 }
 
 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate)
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate, bool buildAsync)
 {
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
     m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
@@ -152,10 +152,15 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO RaytracingDevice::buildAcc
                 static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes), D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
         }
 
-        auto& commandList = getGraphicsCommandList();
+        auto& commandList = buildAsync ? getComputeCommandList() : getGraphicsCommandList();
+
+        if (buildAsync && !commandList.isOpen())
+            commandList.open();
 
         commandList.getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
-        commandList.uavBarrier(allocation.blockAllocation->GetResource());
+
+        if (!buildAsync)
+            commandList.uavBarrier(allocation.blockAllocation->GetResource());
     }
 
     return preBuildInfo;
@@ -392,7 +397,7 @@ bool RaytracingDevice::createTopLevelAccelStruct()
         static_cast<uint32_t>(m_instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
     getGraphicsCommandList().commitBarriers();
-    buildAccelStruct(m_topLevelAccelStruct, accelStructDesc, true);
+    buildAccelStruct(m_topLevelAccelStruct, accelStructDesc, true, false);
 
     return true;
 }
@@ -729,11 +734,12 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     bottomLevelAccelStruct.desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
     bottomLevelAccelStruct.desc.Inputs.pGeometryDescs = bottomLevelAccelStruct.geometryDescs.data();
 
-    auto preBuildInfo = buildAccelStruct(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
+    auto preBuildInfo = buildAccelStruct(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, message.buildAsync, message.buildAsync);
     bottomLevelAccelStruct.scratchBufferSize = static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
     bottomLevelAccelStruct.updateScratchBufferSize = static_cast<uint32_t>(preBuildInfo.UpdateScratchDataSizeInBytes);
     
-    m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
+    if (!message.buildAsync)
+        m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
 }
 
 void RaytracingDevice::procMsgReleaseRaytracingResource()
