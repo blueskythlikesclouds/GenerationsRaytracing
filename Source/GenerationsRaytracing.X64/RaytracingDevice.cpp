@@ -887,7 +887,7 @@ void RaytracingDevice::procMsgTraceRays()
         m_width = message.width;
         m_height = message.height;
 
-        m_graphicsQueue.wait(m_fenceValues[(m_frame - 1) % NUM_FRAMES]);
+        m_graphicsQueue.getFence()->SetEventOnCompletion(m_fenceValues[(m_frame - 1) % NUM_FRAMES], nullptr);
 
         if (upscalerMismatch)
         {
@@ -2255,19 +2255,37 @@ RaytracingDevice::RaytracingDevice()
     m_pipelineLibrary.createGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
 }
 
-static void waitForQueueOnExit(CommandQueue& queue)
-{
-    if (queue.getUnderlyingQueue() != nullptr)
-    {
-        const uint64_t fenceValue = queue.getNextFenceValue();
-        queue.signal(fenceValue);
-        queue.wait(fenceValue);
-    }
-}
-
 RaytracingDevice::~RaytracingDevice()
 {
-    // Wait for GPU operations to finish to exit cleanly
-    waitForQueueOnExit(m_copyQueue);
-    waitForQueueOnExit(m_graphicsQueue);
+    if (m_device != nullptr)
+    {
+        ++m_fenceValue;
+
+        m_graphicsQueue.signal(m_fenceValue);
+        m_computeQueue.signal(m_fenceValue);
+        m_copyQueue.signal(m_fenceValue);
+
+        ID3D12Fence* fences[] =
+        {
+            m_graphicsQueue.getFence(),
+            m_computeQueue.getFence(),
+            m_copyQueue.getFence()
+        };
+
+        uint64_t fenceValues[] =
+        {
+            m_fenceValue,
+            m_fenceValue,
+            m_fenceValue
+        };
+
+        static_assert(_countof(fenceValues) == _countof(fences));
+
+        m_device->SetEventOnMultipleFenceCompletion(
+            fences,
+            fenceValues,
+            _countof(fences),
+            D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL,
+            nullptr);
+    }
 }

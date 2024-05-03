@@ -19,8 +19,34 @@ void CommandQueue::init(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE type)
 
     assert(SUCCEEDED(hr) && m_fence != nullptr);
 
-    m_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-    assert(m_event != nullptr);
+#ifdef _DEBUG
+    const wchar_t* name = nullptr;
+
+    switch (type)
+    {
+    case D3D12_COMMAND_LIST_TYPE_DIRECT:
+        name = L"Graphics";
+        break;
+
+    case D3D12_COMMAND_LIST_TYPE_COMPUTE:
+        name = L"Compute";
+        break;
+
+    case D3D12_COMMAND_LIST_TYPE_COPY:
+        name = L"Copy";
+        break;
+    }
+
+    wchar_t queueName[0x100];
+    wcscpy_s(queueName, name);
+    wcscat_s(queueName, L" Queue");
+    m_queue->SetName(queueName);
+
+    wchar_t fenceName[0x100];
+    wcscpy_s(fenceName, name);
+    wcscat_s(fenceName, L" Fence");
+    m_fence->SetName(fenceName);
+#endif
 }
 
 D3D12_COMMAND_LIST_TYPE CommandQueue::getType() const
@@ -33,9 +59,9 @@ ID3D12CommandQueue* CommandQueue::getUnderlyingQueue() const
     return m_queue.Get();
 }
 
-uint64_t CommandQueue::getNextFenceValue()
+ID3D12Fence* CommandQueue::getFence() const
 {
-    return InterlockedIncrement(&m_fenceValue);
+    return m_fence.Get();
 }
 
 void CommandQueue::executeCommandList(const CommandList& commandList) const
@@ -50,23 +76,8 @@ void CommandQueue::signal(uint64_t fenceValue) const
     assert(SUCCEEDED(hr));
 }
 
-void CommandQueue::wait(uint64_t fenceValue) const
-{
-    if (m_fence->GetCompletedValue() < fenceValue)
-    {
-        const HRESULT hr = m_fence->SetEventOnCompletion(fenceValue, m_event);
-        assert(SUCCEEDED(hr));
-
-        const DWORD result = WaitForSingleObject(m_event, INFINITE);
-        assert(result == WAIT_OBJECT_0);
-    }
-}
-
 void CommandQueue::wait(uint64_t fenceValue, const CommandQueue& commandQueue) const
 {
-    if (commandQueue.m_fence->GetCompletedValue() < fenceValue)
-    {
-        const HRESULT hr = m_queue->Wait(commandQueue.m_fence.Get(), fenceValue);
-        assert(SUCCEEDED(hr));
-    }
+    const HRESULT hr = m_queue->Wait(commandQueue.m_fence.Get(), fenceValue);
+    assert(SUCCEEDED(hr));
 }

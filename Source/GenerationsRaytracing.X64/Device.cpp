@@ -1960,10 +1960,14 @@ Device::Device()
     assert(SUCCEEDED(hr) && m_allocator != nullptr);
 
     m_graphicsQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+    m_computeQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE);
     m_copyQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_COPY);
 
     for (auto& graphicsCommandList : m_graphicsCommandLists)
         graphicsCommandList.init(m_device.Get(), m_graphicsQueue);
+
+    for (auto& computeCommandList : m_computeCommandLists)
+        computeCommandList.init(m_device.Get(), m_computeQueue);
 
     for (auto& copyCommandList : m_copyCommandLists)
         copyCommandList.init(m_device.Get(), m_copyQueue);
@@ -2098,38 +2102,6 @@ void Device::processMessages()
     if (m_swapChain.getWindow().m_shouldExit)
         return;
 
-    auto& copyCommandList = getCopyCommandList();
-    bool copyQueueShouldWaitForGraphicsQueue = false;
-
-    if (copyCommandList.isOpen())
-    {
-        copyCommandList.close();
-        m_copyQueue.executeCommandList(copyCommandList);
-
-        // Wait for copy command list to finish
-        const uint64_t fenceValue = m_copyQueue.getNextFenceValue();
-        m_copyQueue.signal(fenceValue);
-        m_graphicsQueue.wait(fenceValue, m_copyQueue);
-
-        copyQueueShouldWaitForGraphicsQueue = true;
-    }
-
-    graphicsCommandList.close();
-    m_graphicsQueue.executeCommandList(graphicsCommandList);
-
-    m_fenceValues[m_frame] = m_graphicsQueue.getNextFenceValue();
-
-    if (copyQueueShouldWaitForGraphicsQueue)
-        m_copyQueue.wait(m_fenceValues[m_frame], m_graphicsQueue);
-
-    m_graphicsQueue.signal(m_fenceValues[m_frame]);
-
-    if (m_shouldPresent)
-    {
-        m_swapChain.present();
-        m_shouldPresent = false;
-    }
-
     if (m_uploadBufferOffset > 0)
         m_uploadBuffers[m_frame].resize(m_uploadBufferIndex + 1);
     else if (m_uploadBufferIndex > 0)
@@ -2151,11 +2123,78 @@ void Device::processMessages()
     m_samplerDescsFirst = 0;
     m_samplerDescsLast = _countof(m_samplerDescs) - 1;
 
+    m_fenceValues[m_frame] = ++m_fenceValue;
+
+    auto& fences = m_fences[m_frame];
+    auto& fenceCount = m_fenceCounts[m_frame];
+    fenceCount = 0u;
+
+    auto& copyCommandList = getCopyCommandList();
+    bool shouldWaitForCopyQueue = false;
+
+    if (copyCommandList.isOpen())
+    {
+        copyCommandList.close();
+        m_copyQueue.executeCommandList(copyCommandList);
+        m_copyQueue.signal(m_fenceValue);
+
+        fences[fenceCount] = m_copyQueue.getFence();
+        ++fenceCount;
+
+        shouldWaitForCopyQueue = true;
+    }
+
+    auto& computeCommandList = getComputeCommandList();
+    if (computeCommandList.isOpen())
+    {
+        computeCommandList.close();
+
+        if (shouldWaitForCopyQueue)
+            m_computeQueue.wait(m_fenceValue, m_copyQueue);
+
+        m_computeQueue.executeCommandList(computeCommandList);
+        m_computeQueue.signal(m_fenceValue);
+
+        fences[fenceCount] = m_computeQueue.getFence();
+        ++fenceCount;
+    }
+
+    if (shouldWaitForCopyQueue)
+        m_graphicsQueue.wait(m_fenceValue, m_copyQueue);
+
+    graphicsCommandList.close();
+    m_graphicsQueue.executeCommandList(graphicsCommandList);
+    m_graphicsQueue.signal(m_fenceValue);
+
+    fences[fenceCount] = m_graphicsQueue.getFence();
+    ++fenceCount;
+
+    if (m_shouldPresent)
+    {
+        m_swapChain.present();
+        m_shouldPresent = false;
+    }
+
     m_frame = m_nextFrame;
     m_nextFrame = (m_frame + 1) % NUM_FRAMES;
 
-    // Wait for graphics command list to finish
-    m_graphicsQueue.wait(m_fenceValues[m_frame]);
+    uint64_t fenceValues[_countof(fences)];
+    for (auto& fenceValue : fenceValues)
+        fenceValue = m_fenceValues[m_frame];
+
+    if (m_fenceCounts[m_frame] > 1)
+    {
+        m_device->SetEventOnMultipleFenceCompletion(
+            m_fences[m_frame],
+            fenceValues,
+            m_fenceCounts[m_frame],
+            D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL,
+            nullptr);
+    }
+    else
+    {
+        m_graphicsQueue.getFence()->SetEventOnCompletion(m_fenceValues[m_frame], nullptr);
+    }
 
     // Cleanup
     for (const auto& texture : m_tempTextures[m_frame])
@@ -2237,6 +2276,16 @@ CommandList& Device::getGraphicsCommandList()
 ID3D12GraphicsCommandList4* Device::getUnderlyingGraphicsCommandList() const
 {
     return m_graphicsCommandLists[m_frame].getUnderlyingCommandList();
+}
+
+CommandList& Device::getComputeCommandList()
+{
+    return m_computeCommandLists[m_frame];
+}
+
+ID3D12GraphicsCommandList4* Device::getUnderlyingComputeCommandList() const
+{
+    return m_computeCommandLists[m_frame].getUnderlyingCommandList();
 }
 
 CommandList& Device::getCopyCommandList()

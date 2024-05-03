@@ -72,12 +72,17 @@ protected:
     bool m_gpuUploadHeapSupported = false;
 
     CommandQueue m_graphicsQueue;
+    CommandQueue m_computeQueue;
     CommandQueue m_copyQueue;
 
     CommandList m_graphicsCommandLists[NUM_FRAMES];
+    CommandList m_computeCommandLists[NUM_FRAMES];
     CommandList m_copyCommandLists[NUM_FRAMES];
 
+    uint64_t m_fenceValue = 0;
+    ID3D12Fence* m_fences[NUM_FRAMES][3]{};
     uint64_t m_fenceValues[NUM_FRAMES]{};
+    uint32_t m_fenceCounts[NUM_FRAMES]{};
 
     DescriptorHeap m_descriptorHeap;
     DescriptorHeap m_samplerDescriptorHeap;
@@ -230,6 +235,9 @@ public:
 
     CommandList& getGraphicsCommandList();
     ID3D12GraphicsCommandList4* getUnderlyingGraphicsCommandList() const;
+
+    CommandList& getComputeCommandList();
+    ID3D12GraphicsCommandList4* getUnderlyingComputeCommandList() const;
 
     CommandList& getCopyCommandList();
     ID3D12GraphicsCommandList4* getUnderlyingCopyCommandList() const;
