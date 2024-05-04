@@ -832,7 +832,9 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.resourceId];
 
         m_tempBottomLevelAccelStructs[m_frame].emplace_back(std::move(bottomLevelAccelStruct.allocation));
-        freeGeometryDescs(m_bottomLevelAccelStructs[message.resourceId].geometryId, m_bottomLevelAccelStructs[message.resourceId].geometryCount);
+
+        if (bottomLevelAccelStruct.geometryCount != 0)
+            m_tempGeometryRanges[m_frame].emplace_back(bottomLevelAccelStruct.geometryId, bottomLevelAccelStruct.geometryCount);
 
         if (bottomLevelAccelStruct.readbackId != NULL)
             m_tempReadbackIds[m_frame].push_back(bottomLevelAccelStruct.readbackId);

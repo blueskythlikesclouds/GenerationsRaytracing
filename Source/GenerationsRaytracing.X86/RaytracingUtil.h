@@ -5,4 +5,5 @@
 struct RaytracingUtil
 {
     static void releaseResource(RaytracingResourceType resourceType, uint32_t& resourceId);
+    static void releaseResources();
 };

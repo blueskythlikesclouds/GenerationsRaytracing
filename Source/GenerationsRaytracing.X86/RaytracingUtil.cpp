@@ -5,9 +5,24 @@
 #include "MessageSender.h"
 #include "ModelData.h"
 
+static std::vector<std::pair<RaytracingResourceType, uint32_t>> s_releasedResources;
+static Mutex s_mutex;
+
 void RaytracingUtil::releaseResource(RaytracingResourceType resourceType, uint32_t& resourceId)
 {
     if (resourceId != NULL)
+    {
+        LockGuard lock(s_mutex);
+        s_releasedResources.emplace_back(resourceType, resourceId);
+        resourceId = NULL;
+    }
+}
+
+void RaytracingUtil::releaseResources()
+{
+    LockGuard lock(s_mutex);
+
+    for (auto& [resourceType, resourceId] : s_releasedResources)
     {
         auto& message = s_messageSender.makeMessage<MsgReleaseRaytracingResource>();
         message.resourceType = resourceType;
@@ -24,7 +39,7 @@ void RaytracingUtil::releaseResource(RaytracingResourceType resourceType, uint32
             MaterialData::s_idAllocator.free(resourceId);
             break;
         }
-
-        resourceId = NULL;
     }
+
+    s_releasedResources.clear();
 }

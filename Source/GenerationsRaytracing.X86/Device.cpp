@@ -11,6 +11,7 @@
 #include "VertexBuffer.h"
 #include "VertexDeclaration.h"
 #include "VertexShader.h"
+#include "RaytracingUtil.h"
 
 void Device::createVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, VertexDeclaration** ppDecl, bool isFVF)
 {
@@ -620,6 +621,7 @@ HRESULT Device::EndScene()
 {
     endImgui();
     endIm3d();
+    RaytracingUtil::releaseResources();
 
     return S_OK;
 }
