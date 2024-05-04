@@ -203,14 +203,17 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
 
+    for (auto& buildFrame : This->m_buildFrames)
+        buildFrame = 0;
+
+    for (auto& compactionState : This->m_compactionStates)
+        compactionState = false;
+
     This->m_modelHash = 0;
     This->m_hashFrame = 0;
     This->m_enableSkinning = false;
 
     new (&This->m_noAoModel) boost::shared_ptr<Hedgehog::Mirage::CModelData>();
-
-    for (auto& compactionState : This->m_compactionStates)
-        compactionState = false;
 
     return result;
 }
@@ -564,6 +567,12 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             for (auto& bottomLevelAccelStructId : modelDataEx.m_bottomLevelAccelStructIds)
                 RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
+            for (auto& buildFrame : modelDataEx.m_buildFrames)
+                buildFrame = 0;
+
+            for (auto& compactionState : modelDataEx.m_compactionStates)
+                compactionState = false;
+
             modelDataEx.m_enableSkinning = false;
 
             if (modelDataEx.m_NodeNum != 0)
@@ -574,9 +583,6 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                         modelDataEx.m_enableSkinning = true;
                 });
             }
-
-            for (auto& compactionState : modelDataEx.m_compactionStates)
-                compactionState = false;
         }
 
         modelDataEx.m_modelHash = modelHash;
@@ -812,8 +818,9 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             if (bottomLevelAccelStructId == NULL)
             {
                 ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, false);
+                modelDataEx.m_buildFrames[i] = RaytracingRendering::s_frame;
             }
-            else if (!modelDataEx.m_compactionStates[i])
+            else if (!modelDataEx.m_compactionStates[i] && modelDataEx.m_buildFrames[i] != RaytracingRendering::s_frame)
             {
                 auto& message = s_messageSender.makeMessage<MsgCompactBottomLevelAccelStruct>();
                 message.bottomLevelAccelStructId = bottomLevelAccelStructId;

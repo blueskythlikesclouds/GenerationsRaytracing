@@ -17,11 +17,12 @@ class ModelDataEx : public Hedgehog::Mirage::CModelData
 {
 public:
     uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceMasks)];
+    uint64_t m_buildFrames[_countof(s_instanceMasks)];
+    bool m_compactionStates[_countof(s_instanceMasks)];
     XXH32_hash_t m_modelHash;
     uint64_t m_hashFrame;
     bool m_enableSkinning;
     boost::shared_ptr<CModelData> m_noAoModel;
-    bool m_compactionStates[_countof(s_instanceMasks)];
 };
 
 using MaterialMap = hh::map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>>;
