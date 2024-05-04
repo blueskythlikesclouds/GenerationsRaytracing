@@ -205,6 +205,8 @@ static DWORD s_mainThreadId;
 
 static void __cdecl implOfTraceRays(void* a1)
 {
+    ++RaytracingRendering::s_frame;
+
     s_resetAccumulation = RaytracingParams::update();
     const bool shouldRender = s_prevRaytracingEnable;
     initRaytracingPatches(RaytracingParams::s_enable);
@@ -408,8 +410,6 @@ static void __cdecl implOfTraceRays(void* a1)
     {
         sceneRender(a1);
     }
-
-    ++RaytracingRendering::s_frame;
 }
 
 static void implOfDispatchUpscaler(void* A1)

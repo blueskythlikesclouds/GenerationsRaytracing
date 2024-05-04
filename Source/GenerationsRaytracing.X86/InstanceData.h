@@ -7,7 +7,7 @@
 class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoData
 {
 public:
-    uint32_t m_instanceFrames[_countof(s_instanceMasks)];
+    uint64_t m_instanceFrames[_countof(s_instanceMasks)];
     float m_prevTransform[3][4];
     std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*>::iterator m_subsetIterator;
     bool m_hasValidIterator;
@@ -16,7 +16,7 @@ public:
 class InstanceInfoEx : public Hedgehog::Mirage::CInstanceInfo
 {
 public:
-    uint32_t m_instanceFrames[_countof(s_instanceMasks)];
+    uint64_t m_instanceFrames[_countof(s_instanceMasks)];
     float m_prevTransform[3][4];
     uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceMasks)];
     ComPtr<VertexBuffer> m_poseVertexBuffer;
