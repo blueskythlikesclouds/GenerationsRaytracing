@@ -79,6 +79,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
     message.preferFastBuild = poseVertexBufferId != NULL;
     message.allowUpdate = false;
     message.buildAsync = buildAsync;
+    message.allowCompaction = poseVertexBufferId == NULL;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
@@ -166,6 +167,11 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
     s_messageSender.endMessage();
 }
 
+static void* __cdecl allocTerrainModelData(void*, void*, void*)
+{
+    return __HH_ALLOC(sizeof(TerrainModelDataEx));
+}
+
 HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, TerrainModelDataEx* This)
 {
     const auto result = originalTerrainModelDataConstructor(This);
@@ -173,8 +179,11 @@ HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, Ter
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
 
-    for (auto& bottomLevelAccelStructFrame : This->m_bottomLevelAccelStructFrames)
-        bottomLevelAccelStructFrame = NULL;
+    for (auto& buildFrame : This->m_buildFrames)
+        buildFrame = 0;
+
+    for (auto& compactionState : This->m_compactionStates)
+        compactionState = false;
 
     return result;
 }
@@ -200,6 +209,9 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
 
     new (&This->m_noAoModel) boost::shared_ptr<Hedgehog::Mirage::CModelData>();
 
+    for (auto& compactionState : This->m_compactionStates)
+        compactionState = false;
+
     return result;
 }
 
@@ -222,7 +234,15 @@ void ModelData::createBottomLevelAccelStructs(TerrainModelDataEx& terrainModelDa
         if (bottomLevelAccelStructId == NULL)
         {
             ::createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, true);
-            terrainModelDataEx.m_bottomLevelAccelStructFrames[i] = RaytracingRendering::s_frame;
+            terrainModelDataEx.m_buildFrames[i] = RaytracingRendering::s_frame;
+        }
+        else if (terrainModelDataEx.m_buildFrames[i] != RaytracingRendering::s_frame && !terrainModelDataEx.m_compactionStates[i])
+        {
+            auto& message = s_messageSender.makeMessage<MsgCompactBottomLevelAccelStruct>();
+            message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+            s_messageSender.endMessage();
+
+            terrainModelDataEx.m_compactionStates[i] = true;
         }
     }
 }
@@ -554,6 +574,9 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                         modelDataEx.m_enableSkinning = true;
                 });
             }
+
+            for (auto& compactionState : modelDataEx.m_compactionStates)
+                compactionState = false;
         }
 
         modelDataEx.m_modelHash = modelHash;
@@ -791,8 +814,15 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
             if (bottomLevelAccelStructId == NULL)
             {
-                ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask,
-                    bottomLevelAccelStructId, NULL, false);
+                ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, false);
+            }
+            else if (!modelDataEx.m_compactionStates[i])
+            {
+                auto& message = s_messageSender.makeMessage<MsgCompactBottomLevelAccelStruct>();
+                message.bottomLevelAccelStructId = bottomLevelAccelStructId;
+                s_messageSender.endMessage();
+            
+                modelDataEx.m_compactionStates[i] = true;
             }
 
             bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;
@@ -983,7 +1013,7 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
 
 void ModelData::init()
 {
-    WRITE_MEMORY(0x72FCDC, uint8_t, sizeof(TerrainModelDataEx));
+    WRITE_CALL(0x72FCDD, allocTerrainModelData);
 
     INSTALL_HOOK(TerrainModelDataConstructor);
     INSTALL_HOOK(TerrainModelDataDestructor);

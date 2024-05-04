@@ -2184,16 +2184,19 @@ void Device::processMessages()
 
     if (m_fenceCounts[m_frame] > 1)
     {
-        m_device->SetEventOnMultipleFenceCompletion(
+        HRESULT hr = m_device->SetEventOnMultipleFenceCompletion(
             m_fences[m_frame],
             fenceValues,
             m_fenceCounts[m_frame],
             D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL,
             nullptr);
+
+        assert(SUCCEEDED(hr));
     }
     else
     {
-        m_graphicsQueue.getFence()->SetEventOnCompletion(m_fenceValues[m_frame], nullptr);
+        HRESULT hr = m_graphicsQueue.getFence()->SetEventOnCompletion(m_fenceValues[m_frame], nullptr);
+        assert(SUCCEEDED(hr));
     }
 
     // Cleanup

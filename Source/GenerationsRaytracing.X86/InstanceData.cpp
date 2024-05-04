@@ -104,7 +104,7 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
             {
                 const auto bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructIds[i];
 
-                if (bottomLevelAccelStructId != NULL && terrainModelEx->m_bottomLevelAccelStructFrames[i] != RaytracingRendering::s_frame)
+                if (bottomLevelAccelStructId != NULL && terrainModelEx->m_buildFrames[i] != RaytracingRendering::s_frame)
                 {
                     auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
 

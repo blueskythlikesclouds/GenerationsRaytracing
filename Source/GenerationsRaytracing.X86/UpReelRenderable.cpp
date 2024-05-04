@@ -164,6 +164,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         createMsg.preferFastBuild = false;
         createMsg.allowUpdate = false;
         createMsg.buildAsync = false;
+        createMsg.allowCompaction = false;
 
         const auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(createMsg.data);
 

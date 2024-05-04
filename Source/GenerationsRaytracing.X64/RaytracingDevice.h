@@ -65,6 +65,8 @@ struct SmoothNormalCmd
     uint32_t adjacencyBufferId;
 };
 
+constexpr size_t READBACK_NUM_ELEMENTS = 65536;
+
 class RaytracingDevice final : public Device
 {
 protected:
@@ -101,6 +103,12 @@ protected:
     std::map<uint32_t, std::multimap<uint32_t, uint32_t>::iterator> m_freeIndices;
     std::vector<uint32_t> m_pendingBuilds;
     std::vector<SubAllocation> m_tempBottomLevelAccelStructs[NUM_FRAMES];
+    
+    ComPtr<ID3D12Resource> m_readbackBuffer;
+    uint64_t* m_readbackMemory = nullptr;
+    FreeListAllocator m_readbackAllocator;
+    std::vector<uint32_t> m_tempReadbackIds[NUM_FRAMES];
+    std::vector<uint32_t> m_pendingCompactions;
 
     // Material
     std::vector<Material> m_materials;
@@ -209,14 +217,20 @@ protected:
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO buildAccelStruct(SubAllocation& allocation,
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate, bool buildAsync);
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO buildAccelStruct(
+        SubAllocation& allocation,
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, 
+        bool buildImmediate,
+        bool buildAsync,
+        uint32_t* readbackId);
 
     void buildBottomLevelAccelStruct(BottomLevelAccelStruct& bottomLevelAccelStruct);
 
     void handlePendingBottomLevelAccelStructBuilds();
 
     void handlePendingSmoothNormalCommands();
+
+    void handlePendingBottomLevelAccelStructCompactions();
 
     void writeHitGroupShaderTable(size_t geometryIndex, size_t shaderType, bool constTexCoord);
 
@@ -241,6 +255,7 @@ protected:
     void procMsgDispatchUpscaler();
     void procMsgDrawIm3d();
     void procMsgCopyHdrTexture();
+    void procMsgCompactBottomLevelAccelStruct();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;
