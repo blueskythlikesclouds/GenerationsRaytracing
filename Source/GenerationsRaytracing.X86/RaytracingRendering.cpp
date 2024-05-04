@@ -205,8 +205,6 @@ static DWORD s_mainThreadId;
 
 static void __cdecl implOfTraceRays(void* a1)
 {
-    ++RaytracingRendering::s_frame;
-
     s_resetAccumulation = RaytracingParams::update();
     const bool shouldRender = s_prevRaytracingEnable;
     initRaytracingPatches(RaytracingParams::s_enable);
@@ -215,6 +213,7 @@ static void __cdecl implOfTraceRays(void* a1)
     {
         setSceneSurface(a1, *reinterpret_cast<void**>(**reinterpret_cast<uint32_t**>(a1) + 84));
         const auto renderingDevice = **reinterpret_cast<hh::mr::CRenderingDevice***>(reinterpret_cast<uintptr_t>(a1) + 16);
+        const auto d3dDevice = renderingDevice->m_pD3DDevice;
 
         if (GetCurrentThreadId() == s_mainThreadId)
         {
@@ -223,13 +222,13 @@ static void __cdecl implOfTraceRays(void* a1)
 
             if (RaytracingParams::s_light != nullptr && RaytracingParams::s_light->IsMadeAll())
             {
-                renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(183, RaytracingParams::s_light->m_Direction.data(), 1);
-                renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(184, RaytracingParams::s_light->m_Color.data(), 1);
-                renderingDevice->m_pD3DDevice->SetVertexShaderConstantF(185, RaytracingParams::s_light->m_Color.data(), 1);
+                d3dDevice->SetVertexShaderConstantF(183, RaytracingParams::s_light->m_Direction.data(), 1);
+                d3dDevice->SetVertexShaderConstantF(184, RaytracingParams::s_light->m_Color.data(), 1);
+                d3dDevice->SetVertexShaderConstantF(185, RaytracingParams::s_light->m_Color.data(), 1);
 
-                renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(10, RaytracingParams::s_light->m_Direction.data(), 1);
-                renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(36, RaytracingParams::s_light->m_Color.data(), 1);
-                renderingDevice->m_pD3DDevice->SetPixelShaderConstantF(37, RaytracingParams::s_light->m_Color.data(), 1);
+                d3dDevice->SetPixelShaderConstantF(10, RaytracingParams::s_light->m_Direction.data(), 1);
+                d3dDevice->SetPixelShaderConstantF(36, RaytracingParams::s_light->m_Color.data(), 1);
+                d3dDevice->SetPixelShaderConstantF(37, RaytracingParams::s_light->m_Color.data(), 1);
             }
 
             const auto prevSky = s_curSky;
@@ -410,6 +409,8 @@ static void __cdecl implOfTraceRays(void* a1)
     {
         sceneRender(a1);
     }
+
+    ++RaytracingRendering::s_frame;
 }
 
 static void implOfDispatchUpscaler(void* A1)

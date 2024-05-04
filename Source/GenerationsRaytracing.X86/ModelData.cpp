@@ -61,7 +61,7 @@ static void traverseModelData(const TModelData& modelData, uint32_t geometryMask
 }
 
 template<typename T>
-static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMask, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId, bool buildAsync)
+static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMask, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId, bool asyncBuild)
 {
     assert(bottomLevelAccelStructId == NULL);
 
@@ -76,10 +76,10 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     message.bottomLevelAccelStructId = (bottomLevelAccelStructId = ModelData::s_idAllocator.allocate());
-    message.preferFastBuild = poseVertexBufferId != NULL;
     message.allowUpdate = false;
-    message.buildAsync = buildAsync;
     message.allowCompaction = poseVertexBufferId == NULL;
+    message.preferFastBuild = poseVertexBufferId != NULL;
+    message.asyncBuild = asyncBuild;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
@@ -179,12 +179,6 @@ HOOK(TerrainModelDataEx*, __fastcall, TerrainModelDataConstructor, 0x717440, Ter
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
 
-    for (auto& buildFrame : This->m_buildFrames)
-        buildFrame = 0;
-
-    for (auto& compactionState : This->m_compactionStates)
-        compactionState = false;
-
     return result;
 }
 
@@ -203,16 +197,9 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
 
-    for (auto& buildFrame : This->m_buildFrames)
-        buildFrame = 0;
-
-    for (auto& compactionState : This->m_compactionStates)
-        compactionState = false;
-
     This->m_modelHash = 0;
     This->m_hashFrame = 0;
     This->m_enableSkinning = false;
-
     new (&This->m_noAoModel) boost::shared_ptr<Hedgehog::Mirage::CModelData>();
 
     return result;
@@ -235,18 +222,7 @@ void ModelData::createBottomLevelAccelStructs(TerrainModelDataEx& terrainModelDa
         auto& bottomLevelAccelStructId = terrainModelDataEx.m_bottomLevelAccelStructIds[i];
 
         if (bottomLevelAccelStructId == NULL)
-        {
-            ::createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, true);
-            terrainModelDataEx.m_buildFrames[i] = RaytracingRendering::s_frame;
-        }
-        else if (terrainModelDataEx.m_buildFrames[i] != RaytracingRendering::s_frame && !terrainModelDataEx.m_compactionStates[i])
-        {
-            auto& message = s_messageSender.makeMessage<MsgCompactBottomLevelAccelStruct>();
-            message.bottomLevelAccelStructId = bottomLevelAccelStructId;
-            s_messageSender.endMessage();
-
-            terrainModelDataEx.m_compactionStates[i] = true;
-        }
+            createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, true);
     }
 }
 
@@ -567,12 +543,6 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             for (auto& bottomLevelAccelStructId : modelDataEx.m_bottomLevelAccelStructIds)
                 RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
-            for (auto& buildFrame : modelDataEx.m_buildFrames)
-                buildFrame = 0;
-
-            for (auto& compactionState : modelDataEx.m_compactionStates)
-                compactionState = false;
-
             modelDataEx.m_enableSkinning = false;
 
             if (modelDataEx.m_NodeNum != 0)
@@ -784,7 +754,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
             if (bottomLevelAccelStructId == NULL)
             {
-                ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, 
+                createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, 
                     bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId(), false);
             }
             else if (shouldComputePose)
@@ -816,18 +786,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             auto& bottomLevelAccelStructId = modelDataEx.m_bottomLevelAccelStructIds[i];
 
             if (bottomLevelAccelStructId == NULL)
-            {
-                ::createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, false);
-                modelDataEx.m_buildFrames[i] = RaytracingRendering::s_frame;
-            }
-            else if (!modelDataEx.m_compactionStates[i] && modelDataEx.m_buildFrames[i] != RaytracingRendering::s_frame)
-            {
-                auto& message = s_messageSender.makeMessage<MsgCompactBottomLevelAccelStruct>();
-                message.bottomLevelAccelStructId = bottomLevelAccelStructId;
-                s_messageSender.endMessage();
-            
-                modelDataEx.m_compactionStates[i] = true;
-            }
+                createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, false);
 
             bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;
         }
@@ -851,19 +810,18 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         }
     }
 
+    const bool copyPrevTransform = instanceInfoEx.m_instanceFrame == (RaytracingRendering::s_frame - 1);
+
     for (size_t i = 0; i < _countof(s_instanceMasks); i++)
     {
         const auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
         if (bottomLevelAccelStructId != NULL)
         {
-            const bool shouldCopyPrevTransform = (instanceInfoEx.m_instanceFrames[i] + 1) == RaytracingRendering::s_frame;
-            instanceInfoEx.m_instanceFrames[i] = RaytracingRendering::s_frame;
-
             auto& message = s_messageSender.makeMessage<MsgCreateInstance>(
                 (materialMap.size() + instanceInfoEx.m_effectMap.size()) * sizeof(uint32_t) * 2);
 
             memcpy(message.transform, transformTransposed, sizeof(message.transform));
-            memcpy(message.prevTransform, shouldCopyPrevTransform ? instanceInfoEx.m_prevTransform : transformTransposed, sizeof(message.prevTransform));
+            memcpy(message.prevTransform, copyPrevTransform ? instanceInfoEx.m_prevTransform : transformTransposed, sizeof(message.prevTransform));
             memcpy(message.headTransform, headTransformTransposed, sizeof(message.headTransform));
 
             message.bottomLevelAccelStructId = bottomLevelAccelStructId;
@@ -897,6 +855,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         }
     }
 
+    instanceInfoEx.m_instanceFrame = RaytracingRendering::s_frame;
     memcpy(instanceInfoEx.m_prevTransform, transformTransposed, sizeof(instanceInfoEx.m_prevTransform));
 }
 

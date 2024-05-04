@@ -109,12 +109,8 @@ void RaytracingDevice::freeGeometryDescs(uint32_t id, uint32_t count)
     }
 }
 
-D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO RaytracingDevice::buildAccelStruct(
-    SubAllocation& allocation,
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, 
-    bool buildImmediate,
-    bool buildAsync,
-    uint32_t* readbackId)
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO RaytracingDevice::buildAccelStruct(SubAllocation& allocation,
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate)
 {
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO preBuildInfo{};
     m_device->GetRaytracingAccelerationStructurePrebuildInfo(&accelStructDesc.Inputs, &preBuildInfo);
@@ -156,29 +152,10 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO RaytracingDevice::buildAcc
                 static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes), D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
         }
 
-        auto& commandList = buildAsync ? getComputeCommandList() : getGraphicsCommandList();
+        auto& commandList = getGraphicsCommandList();
 
-        if (buildAsync)
-            commandList.open();
-
-        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postBuildInfo{};
-        postBuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
-
-        if (readbackId != nullptr)
-        {
-            assert(*readbackId == NULL);
-            *readbackId = m_readbackAllocator.allocate();
-            assert(*readbackId < READBACK_NUM_ELEMENTS);
-            postBuildInfo.DestBuffer = m_readbackBuffer->GetGPUVirtualAddress() + (*readbackId) * sizeof(uint64_t);
-        }
-
-        commandList.getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(
-            &accelStructDesc, 
-            readbackId != nullptr ? 1u : 0u,
-            readbackId != nullptr ? &postBuildInfo : nullptr);
-
-        if (!buildAsync)
-            commandList.uavBarrier(allocation.blockAllocation->GetResource());
+        commandList.getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(&accelStructDesc, 0, nullptr);
+        commandList.uavBarrier(allocation.blockAllocation->GetResource());
     }
 
     return preBuildInfo;
@@ -224,7 +201,10 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
     }
 
-    auto& commandList = getGraphicsCommandList();
+    auto& commandList = bottomLevelAccelStruct.asyncBuild ? getComputeCommandList() : getGraphicsCommandList();
+
+    if (bottomLevelAccelStruct.asyncBuild)
+        commandList.open();
 
     const bool allowCompaction = (bottomLevelAccelStruct.desc.Inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION) != 0;
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postBuildInfo{};
@@ -243,7 +223,10 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
         allowCompaction ? 1u : 0u,
         allowCompaction ? &postBuildInfo : nullptr);
 
-    commandList.uavBarrier(bottomLevelAccelStruct.allocation.blockAllocation->GetResource());
+    if (!bottomLevelAccelStruct.asyncBuild)
+        commandList.uavBarrier(bottomLevelAccelStruct.allocation.blockAllocation->GetResource());
+
+    bottomLevelAccelStruct.asyncBuild = false;
 }
 
 void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
@@ -258,7 +241,13 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
     commandList.commitBarriers();
 
     for (const auto pendingBuild : m_pendingBuilds)
-        buildBottomLevelAccelStruct(m_bottomLevelAccelStructs[pendingBuild]);
+    {
+        auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[pendingBuild];
+        buildBottomLevelAccelStruct(bottomLevelAccelStruct);
+
+        if (bottomLevelAccelStruct.desc.Inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION)
+            m_pendingCompactions.emplace(pendingBuild);
+    }
 
     m_pendingPoses.clear();
     m_pendingBuilds.clear();
@@ -336,6 +325,7 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructCompactions()
     for (auto bottomLevelAccelStructId : m_pendingCompactions)
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[bottomLevelAccelStructId];
+        assert(bottomLevelAccelStruct.desc.Inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION);
         assert(bottomLevelAccelStruct.readbackId != NULL);
 
         const uint64_t compactedSize = m_readbackMemory[bottomLevelAccelStruct.readbackId];
@@ -449,9 +439,9 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
 
 bool RaytracingDevice::createTopLevelAccelStruct()
 {
+    handlePendingBottomLevelAccelStructCompactions();
     handlePendingBottomLevelAccelStructBuilds();
     handlePendingSmoothNormalCommands();
-    handlePendingBottomLevelAccelStructCompactions();
 
     if (m_instanceDescs.empty())
         return false;
@@ -467,7 +457,7 @@ bool RaytracingDevice::createTopLevelAccelStruct()
         static_cast<uint32_t>(m_instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
     getGraphicsCommandList().commitBarriers();
-    buildAccelStruct(m_topLevelAccelStruct, accelStructDesc, true, false, nullptr);
+    buildAccelStruct(m_topLevelAccelStruct, accelStructDesc, true);
 
     return true;
 }
@@ -792,33 +782,27 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
 
     bottomLevelAccelStruct.desc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
 
-    if (message.preferFastBuild)
-        bottomLevelAccelStruct.desc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
-    else
-        bottomLevelAccelStruct.desc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-
     if (message.allowUpdate)
         bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
     if (message.allowCompaction)
         bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
 
+    if (message.preferFastBuild)
+        bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
+    else
+        bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+
     bottomLevelAccelStruct.desc.Inputs.NumDescs = static_cast<UINT>(bottomLevelAccelStruct.geometryDescs.size());
     bottomLevelAccelStruct.desc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
     bottomLevelAccelStruct.desc.Inputs.pGeometryDescs = bottomLevelAccelStruct.geometryDescs.data();
 
-    auto preBuildInfo = buildAccelStruct(
-        bottomLevelAccelStruct.allocation, 
-        bottomLevelAccelStruct.desc,
-        message.buildAsync,
-        message.buildAsync,
-        &bottomLevelAccelStruct.readbackId);
-
+    auto preBuildInfo = buildAccelStruct(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
     bottomLevelAccelStruct.scratchBufferSize = static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
     bottomLevelAccelStruct.updateScratchBufferSize = static_cast<uint32_t>(preBuildInfo.UpdateScratchDataSizeInBytes);
-    
-    if (!message.buildAsync)
-        m_pendingBuilds.push_back(message.bottomLevelAccelStructId);
+    bottomLevelAccelStruct.asyncBuild = message.asyncBuild;
+
+    m_pendingBuilds.emplace_back(message.bottomLevelAccelStructId);
 }
 
 void RaytracingDevice::procMsgReleaseRaytracingResource()
@@ -838,6 +822,8 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
 
         if (bottomLevelAccelStruct.readbackId != NULL)
             m_tempReadbackIds[m_frame].push_back(bottomLevelAccelStruct.readbackId);
+
+        m_pendingCompactions.erase(message.resourceId);
 
         bottomLevelAccelStruct = {};
         break;
@@ -860,63 +846,65 @@ void RaytracingDevice::procMsgCreateInstance()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCreateInstance>();
 
-    auto& instanceDesc = m_instanceDescs.emplace_back();
-    auto& instanceDescEx = m_instanceDescsEx.emplace_back();
-
-    memcpy(instanceDesc.Transform, message.transform, sizeof(instanceDesc.Transform));
-    memcpy(instanceDescEx.prevTransform, message.prevTransform, sizeof(instanceDescEx.prevTransform));
-    memcpy(instanceDescEx.headTransform, message.headTransform, sizeof(instanceDescEx.headTransform));
-    instanceDescEx.playableParam = message.playableParam;
-    instanceDescEx.chrPlayableMenuParam = message.chrPlayableMenuParam;
-    instanceDescEx.forceAlphaColor = message.forceAlphaColor;
-
     auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
-
-    if (message.dataSize > 0)
+    if (!bottomLevelAccelStruct.asyncBuild)
     {
-        auto& [geometryId, geometryCount] = m_tempGeometryRanges[m_frame].emplace_back();
+        auto& instanceDesc = m_instanceDescs.emplace_back();
+        auto& instanceDescEx = m_instanceDescsEx.emplace_back();
 
-        geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
-        geometryCount = bottomLevelAccelStruct.geometryCount;
-        
-        auto& geometryDesc = m_geometryDescs[geometryId];
-       
-        for (size_t i = 0; i < geometryCount; i++)
+        memcpy(instanceDesc.Transform, message.transform, sizeof(instanceDesc.Transform));
+        memcpy(instanceDescEx.prevTransform, message.prevTransform, sizeof(instanceDescEx.prevTransform));
+        memcpy(instanceDescEx.headTransform, message.headTransform, sizeof(instanceDescEx.headTransform));
+        instanceDescEx.playableParam = message.playableParam;
+        instanceDescEx.chrPlayableMenuParam = message.chrPlayableMenuParam;
+        instanceDescEx.forceAlphaColor = message.forceAlphaColor;
+
+        if (message.dataSize > 0)
         {
-            auto& geometry = m_geometryDescs[geometryId + i];
-            geometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
+            auto& [geometryId, geometryCount] = m_tempGeometryRanges[m_frame].emplace_back();
 
-            auto curId = reinterpret_cast<const uint32_t*>(message.data);
-            const auto lastId = reinterpret_cast<const uint32_t*>(message.data + message.dataSize);
+            geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
+            geometryCount = bottomLevelAccelStruct.geometryCount;
 
-            while (curId < lastId)
+            auto& geometryDesc = m_geometryDescs[geometryId];
+
+            for (size_t i = 0; i < geometryCount; i++)
             {
-                if ((*curId) == geometry.materialId)
-                    geometry.materialId = *(curId + 1);
+                auto& geometry = m_geometryDescs[geometryId + i];
+                geometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
 
-                curId += 2;
+                auto curId = reinterpret_cast<const uint32_t*>(message.data);
+                const auto lastId = reinterpret_cast<const uint32_t*>(message.data + message.dataSize);
+
+                while (curId < lastId)
+                {
+                    if ((*curId) == geometry.materialId)
+                        geometry.materialId = *(curId + 1);
+
+                    curId += 2;
+                }
+
+                const auto& material = m_materials[geometry.materialId];
+                writeHitGroupShaderTable(geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
             }
 
-            const auto& material = m_materials[geometry.materialId];
-            writeHitGroupShaderTable(geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
+            instanceDesc.InstanceID = geometryId;
+        }
+        else
+        {
+            instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
         }
 
-        instanceDesc.InstanceID = geometryId;
+        instanceDesc.InstanceMask = message.instanceMask;
+        instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
+        instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
+
+        if (message.isMirrored && !(instanceDesc.Flags & D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE))
+            instanceDesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+
+        instanceDesc.AccelerationStructure =
+            bottomLevelAccelStruct.allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + bottomLevelAccelStruct.allocation.byteOffset;
     }
-    else
-    {
-        instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
-    }
-
-    instanceDesc.InstanceMask = message.instanceMask;
-    instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
-    instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
-
-    if (message.isMirrored && !(instanceDesc.Flags & D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE))
-        instanceDesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
-
-    instanceDesc.AccelerationStructure = 
-        bottomLevelAccelStruct.allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + bottomLevelAccelStruct.allocation.byteOffset;
 }
 
 void RaytracingDevice::procMsgTraceRays()
@@ -1738,13 +1726,6 @@ void RaytracingDevice::procMsgCopyHdrTexture()
     underlyingCommandList->DrawInstanced(6, 1, 0, 0);
 }
 
-void RaytracingDevice::procMsgCompactBottomLevelAccelStruct()
-{
-    const auto& message = m_messageReceiver.getMessage<MsgCompactBottomLevelAccelStruct>();
-
-    m_pendingCompactions.push_back(message.bottomLevelAccelStructId);
-}
-
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -1762,7 +1743,6 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgDispatchUpscaler::s_id: procMsgDispatchUpscaler(); break;
     case MsgDrawIm3d::s_id: procMsgDrawIm3d(); break;
     case MsgCopyHdrTexture::s_id: procMsgCopyHdrTexture(); break;
-    case MsgCompactBottomLevelAccelStruct::s_id: procMsgCompactBottomLevelAccelStruct(); break;
     default: return false;
     }
 

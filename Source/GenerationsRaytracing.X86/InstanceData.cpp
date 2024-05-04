@@ -18,9 +18,7 @@ HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor,
 {
     const auto result = originalTerrainInstanceInfoDataConstructor(This);
 
-    for (auto& instanceFrame : This->m_instanceFrames)
-        instanceFrame = 0;
-
+    This->m_instanceFrame = 0;
     new (&This->m_subsetIterator) decltype(This->m_subsetIterator) ();
     This->m_hasValidIterator = false;
 
@@ -42,12 +40,10 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 {
     const auto result = originalInstanceInfoConstructor(This);
 
-    for (auto& instanceFrame : This->m_instanceFrames)
-        instanceFrame = 0;
-
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
 
+    This->m_instanceFrame = 0;
     new (std::addressof(This->m_poseVertexBuffer)) ComPtr<VertexBuffer>();
     This->m_headNodeIndex = 0;
     This->m_handledEyeMaterials = false;
@@ -104,6 +100,7 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
                 }
             }
 
+            const bool copyPrevTransform = instance->m_instanceFrame == (RaytracingRendering::s_frame - 1);
             const bool isMirrored = instance->m_scpTransform->determinant() < 0.0f;
             const float playableParam = PlayableParam::getPlayableParam(instance, renderingDevice);
 
@@ -111,14 +108,11 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
             {
                 const auto bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructIds[i];
 
-                if (bottomLevelAccelStructId != NULL && terrainModelEx->m_buildFrames[i] != RaytracingRendering::s_frame)
+                if (bottomLevelAccelStructId != NULL)
                 {
-                    const bool shouldCopyPrevTransform = (instance->m_instanceFrames[i] + 1) == RaytracingRendering::s_frame;
-                    instance->m_instanceFrames[i] = RaytracingRendering::s_frame;
-
                     auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
                     memcpy(message.transform, transform, sizeof(message.transform));
-                    memcpy(message.prevTransform, shouldCopyPrevTransform ? instance->m_prevTransform : transform, sizeof(message.prevTransform));
+                    memcpy(message.prevTransform, copyPrevTransform ? instance->m_prevTransform : transform, sizeof(message.prevTransform));
                     message.bottomLevelAccelStructId = bottomLevelAccelStructId;
                     message.isMirrored = isMirrored;
                     message.instanceMask = s_instanceMasks[i].instanceMask;
@@ -129,6 +123,7 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
                 }
             }
 
+            instance->m_instanceFrame = RaytracingRendering::s_frame;
             memcpy(instance->m_prevTransform, transform, sizeof(instance->m_prevTransform));
         }
     }

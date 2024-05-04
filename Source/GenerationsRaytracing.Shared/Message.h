@@ -325,10 +325,10 @@ struct MsgCreateBottomLevelAccelStruct
     };
 
     uint32_t bottomLevelAccelStructId;
-    bool preferFastBuild;
     bool allowUpdate;
     bool allowCompaction;
-    bool buildAsync;
+    bool preferFastBuild;
+    bool asyncBuild;
     uint32_t dataSize;
     uint8_t data[1u];
 };
@@ -570,12 +570,6 @@ struct MsgDrawIm3d
 struct MsgCopyHdrTexture
 {
     MSG_DEFINE_MESSAGE(MsgDrawIm3d);
-};
-
-struct MsgCompactBottomLevelAccelStruct
-{
-    MSG_DEFINE_MESSAGE(MsgCopyHdrTexture);
-    uint32_t bottomLevelAccelStructId;
 };
 
 #pragma pack(pop)

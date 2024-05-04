@@ -22,7 +22,7 @@ public:
     uint32_t m_bottomLevelAccelStructId;
     XXH32_hash_t m_vertexHash;
     ComPtr<VertexBuffer> m_vertexBuffer;
-    uint64_t m_frame;
+    uint32_t m_frame;
 };
 
 static uint16_t s_indices[] =
@@ -163,7 +163,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         createMsg.bottomLevelAccelStructId = reelRendererEx->m_bottomLevelAccelStructId;
         createMsg.preferFastBuild = false;
         createMsg.allowUpdate = false;
-        createMsg.buildAsync = false;
+        createMsg.asyncBuild = false;
         createMsg.allowCompaction = false;
 
         const auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(createMsg.data);

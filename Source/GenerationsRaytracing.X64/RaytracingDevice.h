@@ -108,7 +108,7 @@ protected:
     uint64_t* m_readbackMemory = nullptr;
     FreeListAllocator m_readbackAllocator;
     std::vector<uint32_t> m_tempReadbackIds[NUM_FRAMES];
-    std::vector<uint32_t> m_pendingCompactions;
+    ankerl::unordered_dense::set<uint32_t> m_pendingCompactions;
 
     // Material
     std::vector<Material> m_materials;
@@ -217,12 +217,8 @@ protected:
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO buildAccelStruct(
-        SubAllocation& allocation,
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, 
-        bool buildImmediate,
-        bool buildAsync,
-        uint32_t* readbackId);
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO buildAccelStruct(SubAllocation& allocation,
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC& accelStructDesc, bool buildImmediate);
 
     void buildBottomLevelAccelStruct(BottomLevelAccelStruct& bottomLevelAccelStruct);
 

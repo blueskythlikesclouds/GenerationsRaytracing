@@ -31,7 +31,7 @@ public:
     uint32_t m_bottomLevelAccelStructId;
     uint32_t m_vertexBufferId;
     ComPtr<IndexBuffer> m_indexBuffer;
-    uint64_t m_frame;
+    uint32_t m_frame;
 };
 
 void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRenderable* ropeRenderable)
@@ -117,7 +117,7 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
         createMsg.bottomLevelAccelStructId = ropeRenderableEx->m_bottomLevelAccelStructId;
         createMsg.preferFastBuild = false;
         createMsg.allowUpdate = false;
-        createMsg.buildAsync = false;
+        createMsg.asyncBuild = false;
         createMsg.allowCompaction = false;
 
         const auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(createMsg.data);
