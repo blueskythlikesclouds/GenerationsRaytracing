@@ -158,7 +158,7 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO RaytracingDevice::buildAcc
 
         auto& commandList = buildAsync ? getComputeCommandList() : getGraphicsCommandList();
 
-        if (buildAsync && !commandList.isOpen())
+        if (buildAsync)
             commandList.open();
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postBuildInfo{};
@@ -325,11 +325,11 @@ void RaytracingDevice::handlePendingSmoothNormalCommands()
 
 void RaytracingDevice::handlePendingBottomLevelAccelStructCompactions()
 {
-    PIX_EVENT();
+    if (m_pendingCompactions.empty())
+        return;
 
     auto& commandList = getComputeCommandList();
-    if (!commandList.isOpen())
-        commandList.open();
+    commandList.open();
 
     const auto underlyingCommandList = commandList.getUnderlyingCommandList();
 
