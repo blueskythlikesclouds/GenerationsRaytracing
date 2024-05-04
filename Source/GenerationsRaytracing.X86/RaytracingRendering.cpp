@@ -407,13 +407,13 @@ static void __cdecl implOfTraceRays(void* a1)
         {
             renderingDevice->m_pD3DDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
         }
-
-        ++RaytracingRendering::s_frame;
     }
     else
     {
         sceneRender(a1);
     }
+
+    ++RaytracingRendering::s_frame;
 }
 
 static void implOfDispatchUpscaler(void* A1)
