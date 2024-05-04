@@ -18,11 +18,11 @@ class ReelRendererEx : public Sonic::CObjUpReel::CReelRenderer
 {
 public:
     uint32_t m_materialId;
+    float m_prevTransform[3][4];
     uint32_t m_bottomLevelAccelStructId;
-    uint32_t m_instanceId;
     XXH32_hash_t m_vertexHash;
     ComPtr<VertexBuffer> m_vertexBuffer;
-    uint32_t m_frame;
+    uint64_t m_frame;
 };
 
 static uint16_t s_indices[] =
@@ -182,12 +182,8 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         s_messageSender.endMessage();
     }
 
+    const bool shouldCopyPrevTransform = (reelRendererEx->m_frame + 1) == RaytracingRendering::s_frame;
     reelRendererEx->m_frame = RaytracingRendering::s_frame;
-
-    const bool storePrevTransform = reelRendererEx->m_instanceId != NULL;
-
-    if (reelRendererEx->m_instanceId == NULL)
-        reelRendererEx->m_instanceId = InstanceData::s_idAllocator.allocate();
 
     auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
 
@@ -202,14 +198,16 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         }
     }
 
-    message.instanceId = reelRendererEx->m_instanceId;
+    memcpy(message.prevTransform, shouldCopyPrevTransform ? reelRendererEx->m_prevTransform : message.transform, sizeof(message.prevTransform));
+
     message.bottomLevelAccelStructId = reelRendererEx->m_bottomLevelAccelStructId;
-    message.storePrevTransform = storePrevTransform;
     message.isMirrored = false;
     message.instanceMask = INSTANCE_MASK_OPAQUE;
     message.playableParam = -10001.0f;
     message.chrPlayableMenuParam = 10000.0f;
     message.forceAlphaColor = 1.0f;
+
+    memcpy(reelRendererEx->m_prevTransform, message.transform, sizeof(reelRendererEx->m_prevTransform));
 
     s_messageSender.endMessage();
 }
@@ -220,7 +218,6 @@ HOOK(void*, __stdcall, ReelRendererConstructor, 0x102EC00, ReelRendererEx* This,
 
     This->m_materialId = NULL;
     This->m_bottomLevelAccelStructId = NULL;
-    This->m_instanceId = NULL;
     This->m_vertexHash = 0;
     new (std::addressof(This->m_vertexBuffer)) ComPtr<VertexBuffer>();
     This->m_frame = 0;
@@ -231,7 +228,6 @@ HOOK(void*, __stdcall, ReelRendererConstructor, 0x102EC00, ReelRendererEx* This,
 HOOK(void*, __fastcall, ReelRendererDestructor, 0x458890, ReelRendererEx* This, void* _, uint8_t flags)
 {
     This->m_vertexBuffer.~ComPtr();
-    RaytracingUtil::releaseResource(RaytracingResourceType::Instance, This->m_instanceId);
     RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
     RaytracingUtil::releaseResource(RaytracingResourceType::Material, This->m_materialId);
 

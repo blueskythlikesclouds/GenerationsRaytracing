@@ -48,8 +48,6 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                     *modelDataEx,
                     *instanceInfoEx,
                     element->m_MaterialMap);
-
-                InstanceData::trackInstance(instanceInfoEx);
             }
 
         }
@@ -279,8 +277,6 @@ static void __cdecl implOfTraceRays(void* a1)
                 if (categoryFindResult != renderScene->m_BundleMap.end())
                     createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get());
             }
-
-            InstanceData::releaseUnusedInstances();
 
             size_t localLightCount = 0;
 

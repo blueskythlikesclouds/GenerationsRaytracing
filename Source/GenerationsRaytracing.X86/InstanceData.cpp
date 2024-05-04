@@ -18,8 +18,8 @@ HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor,
 {
     const auto result = originalTerrainInstanceInfoDataConstructor(This);
 
-    for (auto& instanceId : This->m_instanceIds)
-        instanceId = NULL;
+    for (auto& instanceFrame : This->m_instanceFrames)
+        instanceFrame = 0;
 
     new (&This->m_subsetIterator) decltype(This->m_subsetIterator) ();
     This->m_hasValidIterator = false;
@@ -35,9 +35,6 @@ HOOK(void, __fastcall, TerrainInstanceInfoDataDestructor, 0x717090, TerrainInsta
     if (This->m_hasValidIterator)
         s_instanceSubsets.erase(This->m_subsetIterator);
 
-    for (auto& instanceId : This->m_instanceIds)
-        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
-
     originalTerrainInstanceInfoDataDestructor(This);
 }
 
@@ -45,8 +42,8 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 {
     const auto result = originalInstanceInfoConstructor(This);
 
-    for (auto& instanceId : This->m_instanceIds)
-        instanceId = NULL;
+    for (auto& instanceFrame : This->m_instanceFrames)
+        instanceFrame = 0;
 
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
@@ -78,9 +75,6 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
-    for (auto& instanceId : This->m_instanceIds)
-        RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
-
     originalInstanceInfoDestructor(This);
 }
 
@@ -97,6 +91,19 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
 
             ModelData::createBottomLevelAccelStructs(*terrainModelEx);
 
+            float transform[3][4];
+
+            for (size_t i = 0; i < 3; i++)
+            {
+                for (size_t j = 0; j < 4; j++)
+                {
+                    transform[i][j] = (*instance->m_scpTransform)(i, j);
+
+                    if (j == 3)
+                        transform[i][j] += RaytracingRendering::s_worldShift[i];
+                }
+            }
+
             const bool isMirrored = instance->m_scpTransform->determinant() < 0.0f;
             const float playableParam = PlayableParam::getPlayableParam(instance, renderingDevice);
 
@@ -106,68 +113,23 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
 
                 if (bottomLevelAccelStructId != NULL && terrainModelEx->m_buildFrames[i] != RaytracingRendering::s_frame)
                 {
+                    const bool shouldCopyPrevTransform = (instance->m_instanceFrames[i] + 1) == RaytracingRendering::s_frame;
+                    instance->m_instanceFrames[i] = RaytracingRendering::s_frame;
+
                     auto& message = s_messageSender.makeMessage<MsgCreateInstance>(0);
-
-                    for (size_t j = 0; j < 3; j++)
-                    {
-                        for (size_t k = 0; k < 4; k++)
-                        {
-                            message.transform[j][k] = (*instance->m_scpTransform)(j, k);
-
-                            if (k == 3)
-                                message.transform[j][k] += RaytracingRendering::s_worldShift[j];
-                        }
-                    }
-
-                    auto& instanceId = instance->m_instanceIds[i];
-
-                    if (instanceId == NULL)
-                    {
-                        instanceId = s_idAllocator.allocate();
-                        message.storePrevTransform = false;
-                    }
-                    else
-                    {
-                        message.storePrevTransform = true;
-                    }
-
-                    message.instanceId = instanceId;
+                    memcpy(message.transform, transform, sizeof(message.transform));
+                    memcpy(message.prevTransform, shouldCopyPrevTransform ? instance->m_prevTransform : transform, sizeof(message.prevTransform));
                     message.bottomLevelAccelStructId = bottomLevelAccelStructId;
                     message.isMirrored = isMirrored;
                     message.instanceMask = s_instanceMasks[i].instanceMask;
                     message.playableParam = playableParam;
                     message.chrPlayableMenuParam = 10000.0f;
                     message.forceAlphaColor = 1.0f;
-
                     s_messageSender.endMessage();
                 }
             }
-        }
-    }
-}
 
-void InstanceData::trackInstance(InstanceInfoEx* instanceInfoEx)
-{
-    LockGuard lock(s_instanceMutex);
-    s_trackedInstances.emplace(instanceInfoEx);
-}
-
-void InstanceData::releaseUnusedInstances()
-{
-    LockGuard lock(s_instanceMutex);
-
-    for (auto it = s_trackedInstances.begin(); it != s_trackedInstances.end();)
-    {
-        if ((*it)->m_hashFrame != RaytracingRendering::s_frame)
-        {
-            for (auto& instanceId : (*it)->m_instanceIds)
-                RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
-
-            it = s_trackedInstances.erase(it);
-        }
-        else
-        {
-            ++it;
+            memcpy(instance->m_prevTransform, transform, sizeof(instance->m_prevTransform));
         }
     }
 }
@@ -229,12 +191,7 @@ static void hideTerrainInstanceSubsets(uint32_t subsetId)
 
     auto [begin, end] = s_instanceSubsets.equal_range(subsetId);
     for (auto it = begin; it != end; ++it)
-    {
-        for (auto& instanceId : it->second->m_instanceIds)
-            RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
-
         s_instances.erase(it->second);
-    }
 }
 
 HOOK(void, __fastcall, ProcMsgShowTerrainInstanceSubset, 0xD50870, Sonic::CTerrainManager2nd* This, void* _, uint32_t* message)

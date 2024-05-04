@@ -841,20 +841,6 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
         break;
     }
 
-    case RaytracingResourceType::Instance:
-        memset(&m_instanceDescs[message.resourceId], 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
-
-        if (m_geometryRanges.size() > message.resourceId)
-        {
-            auto& geometryRange = m_geometryRanges[message.resourceId];
-            if (geometryRange.first != NULL)
-                freeGeometryDescs(geometryRange.first, geometryRange.second);
-
-            geometryRange = {};
-        }
-
-        break;
-
     case RaytracingResourceType::Material:
     {
         if (m_materials.size() > message.resourceId)
@@ -872,76 +858,48 @@ void RaytracingDevice::procMsgCreateInstance()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCreateInstance>();
 
-    if (m_instanceDescs.size() <= message.instanceId)
-        m_instanceDescs.resize(message.instanceId + 1);
+    auto& instanceDesc = m_instanceDescs.emplace_back();
+    auto& instanceDescEx = m_instanceDescsEx.emplace_back();
 
-    if (m_instanceDescsEx.size() <= message.instanceId)
-        m_instanceDescsEx.resize(message.instanceId + 1);
-
-    auto& instanceDesc = m_instanceDescs[message.instanceId];
-    auto& instanceDescEx = m_instanceDescsEx[message.instanceId];
-
-    memcpy(instanceDescEx.prevTransform,
-        message.storePrevTransform ? instanceDesc.Transform : message.transform, sizeof(message.transform));
-
-    memcpy(instanceDescEx.headTransform, 
-        message.headTransform, sizeof(instanceDescEx.headTransform));
-
+    memcpy(instanceDesc.Transform, message.transform, sizeof(instanceDesc.Transform));
+    memcpy(instanceDescEx.prevTransform, message.prevTransform, sizeof(instanceDescEx.prevTransform));
+    memcpy(instanceDescEx.headTransform, message.headTransform, sizeof(instanceDescEx.headTransform));
     instanceDescEx.playableParam = message.playableParam;
     instanceDescEx.chrPlayableMenuParam = message.chrPlayableMenuParam;
     instanceDescEx.forceAlphaColor = message.forceAlphaColor;
-
-    memcpy(instanceDesc.Transform, message.transform, sizeof(message.transform));
 
     auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
 
     if (message.dataSize > 0)
     {
-        if (m_geometryRanges.size() <= message.instanceId)
-            m_geometryRanges.resize(message.instanceId + 1);
+        auto& [geometryId, geometryCount] = m_tempGeometryRanges[m_frame].emplace_back();
 
-        auto& [geometryId, geometryCount] = m_geometryRanges[message.instanceId];
-
-        if (geometryId == NULL)
-        {
-            geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
-            geometryCount = bottomLevelAccelStruct.geometryCount;
-
-            auto& geometryDesc = m_geometryDescs[geometryId];
-
-            memcpy(&geometryDesc, &m_geometryDescs[bottomLevelAccelStruct.geometryId],
-                bottomLevelAccelStruct.geometryCount * sizeof(GeometryDesc));
-
-            for (size_t i = 0; i < geometryCount; i++)
-            {
-                const auto& material = m_materials[geometryDesc.materialId];
-                writeHitGroupShaderTable(geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
-            }
-        }
-
-        instanceDesc.InstanceID = geometryId;
-
+        geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
+        geometryCount = bottomLevelAccelStruct.geometryCount;
+        
+        auto& geometryDesc = m_geometryDescs[geometryId];
+       
         for (size_t i = 0; i < geometryCount; i++)
         {
-            const auto& srcGeometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
-            auto& dstGeometry = m_geometryDescs[geometryId + i];
-
-            dstGeometry.materialId = srcGeometry.materialId;
+            auto& geometry = m_geometryDescs[geometryId + i];
+            geometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
 
             auto curId = reinterpret_cast<const uint32_t*>(message.data);
             const auto lastId = reinterpret_cast<const uint32_t*>(message.data + message.dataSize);
 
             while (curId < lastId)
             {
-                if ((*curId) == dstGeometry.materialId)
-                    dstGeometry.materialId = *(curId + 1);
+                if ((*curId) == geometry.materialId)
+                    geometry.materialId = *(curId + 1);
 
                 curId += 2;
             }
 
-            const auto& material = m_materials[dstGeometry.materialId];
+            const auto& material = m_materials[geometry.materialId];
             writeHitGroupShaderTable(geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
         }
+
+        instanceDesc.InstanceID = geometryId;
     }
     else
     {
@@ -1830,11 +1788,13 @@ void RaytracingDevice::releaseRaytracingResources()
     while (!m_materials.empty() && m_materials.back().shaderType == NULL)
         m_materials.pop_back();
 
-    while (!m_instanceDescs.empty() && m_instanceDescs.back().AccelerationStructure == NULL)
-    {
-        m_instanceDescs.pop_back();
-        m_instanceDescsEx.pop_back();
-    }
+    m_instanceDescs.clear();
+    m_instanceDescsEx.clear();
+
+    for (auto& [geometryId, geometryCount] : m_tempGeometryRanges[m_frame])
+        freeGeometryDescs(geometryId, geometryCount);
+
+    m_tempGeometryRanges[m_frame].clear();
 }
 
 static constexpr size_t s_serUavRegister = 0;

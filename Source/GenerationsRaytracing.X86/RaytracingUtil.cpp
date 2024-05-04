@@ -20,10 +20,6 @@ void RaytracingUtil::releaseResource(RaytracingResourceType resourceType, uint32
             ModelData::s_idAllocator.free(resourceId);
             break;
 
-        case RaytracingResourceType::Instance:
-            InstanceData::s_idAllocator.free(resourceId);
-            break;
-
         case RaytracingResourceType::Material:
             MaterialData::s_idAllocator.free(resourceId);
             break;

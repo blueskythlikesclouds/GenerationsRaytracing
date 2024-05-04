@@ -585,9 +585,6 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
     if (instanceInfoEx.m_modelHash != modelDataEx.m_modelHash)
     {
-        for (auto& instanceId : instanceInfoEx.m_instanceIds)
-            RaytracingUtil::releaseResource(RaytracingResourceType::Instance, instanceId);
-
         for (auto& bottomLevelAccelStructId : instanceInfoEx.m_bottomLevelAccelStructIds)
             RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
 
@@ -829,42 +826,39 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         }
     }
 
+    float transformTransposed[3][4];
+    float headTransformTransposed[3][4];
+
+    for (size_t i = 0; i < 3; i++)
+    {
+        for (size_t j = 0; j < 4; j++)
+        {
+            transformTransposed[i][j] = transform(i, j);
+            headTransformTransposed[i][j] = headTransform(i, j);
+
+            if (j == 3)
+            {
+                transformTransposed[i][j] += RaytracingRendering::s_worldShift[i];
+                headTransformTransposed[i][j] += RaytracingRendering::s_worldShift[i];
+            }
+        }
+    }
+
     for (size_t i = 0; i < _countof(s_instanceMasks); i++)
     {
         const auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
         if (bottomLevelAccelStructId != NULL)
         {
+            const bool shouldCopyPrevTransform = (instanceInfoEx.m_instanceFrames[i] + 1) == RaytracingRendering::s_frame;
+            instanceInfoEx.m_instanceFrames[i] = RaytracingRendering::s_frame;
+
             auto& message = s_messageSender.makeMessage<MsgCreateInstance>(
                 (materialMap.size() + instanceInfoEx.m_effectMap.size()) * sizeof(uint32_t) * 2);
 
-            for (size_t l = 0; l < 3; l++)
-            {
-                for (size_t k = 0; k < 4; k++)
-                {
-                    message.transform[l][k] = transform(l, k);
-                    message.headTransform[l][k] = headTransform(l, k);
+            memcpy(message.transform, transformTransposed, sizeof(message.transform));
+            memcpy(message.prevTransform, shouldCopyPrevTransform ? instanceInfoEx.m_prevTransform : transformTransposed, sizeof(message.prevTransform));
+            memcpy(message.headTransform, headTransformTransposed, sizeof(message.headTransform));
 
-                    if (k == 3)
-                    {
-                        message.transform[l][k] += RaytracingRendering::s_worldShift[l];
-                        message.headTransform[l][k] += RaytracingRendering::s_worldShift[l];
-                    }
-                }
-            }
-
-            auto& instanceId = instanceInfoEx.m_instanceIds[i];
-
-            if (instanceId == NULL)
-            {
-                instanceId = InstanceData::s_idAllocator.allocate();
-                message.storePrevTransform = false;
-            }
-            else
-            {
-                message.storePrevTransform = true;
-            }
-
-            message.instanceId = instanceId;
             message.bottomLevelAccelStructId = bottomLevelAccelStructId;
             message.isMirrored = false;
             message.instanceMask = instanceInfoEx.m_enableForceAlphaColor ? INSTANCE_MASK_TRANSPARENT : s_instanceMasks[i].instanceMask;
@@ -895,6 +889,8 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             s_messageSender.endMessage();
         }
     }
+
+    memcpy(instanceInfoEx.m_prevTransform, transformTransposed, sizeof(instanceInfoEx.m_prevTransform));
 }
 
 void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)

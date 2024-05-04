@@ -116,7 +116,7 @@ protected:
     // Top Level Accel Struct
     std::vector<D3D12_RAYTRACING_INSTANCE_DESC> m_instanceDescs;
     std::vector<InstanceDesc> m_instanceDescsEx;
-    std::vector<std::pair<uint32_t, uint32_t>> m_geometryRanges;
+    std::vector<std::pair<uint32_t, uint32_t>> m_tempGeometryRanges[NUM_FRAMES];
     SubAllocation m_topLevelAccelStruct;
 
     // Upscaler

@@ -336,7 +336,6 @@ struct MsgCreateBottomLevelAccelStruct
 enum class RaytracingResourceType : uint8_t
 {
     BottomLevelAccelStruct,
-    Instance,
     Material
 };
 
@@ -353,10 +352,9 @@ struct MsgCreateInstance
     MSG_DEFINE_MESSAGE(MsgReleaseRaytracingResource);
 
     float transform[3][4];
+    float prevTransform[3][4];
     float headTransform[3][4];
-    uint32_t instanceId;
     uint32_t bottomLevelAccelStructId;
-    bool storePrevTransform;
     bool isMirrored;
     uint8_t instanceMask;
     float playableParam;
