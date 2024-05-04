@@ -807,7 +807,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
         for (size_t i = 0; i < _countof(s_instanceMasks); i++)
         {
-            auto& bottomLevelAccelStructId = instanceInfoEx.m_bottomLevelAccelStructIds[i];
+            auto& bottomLevelAccelStructId = modelDataEx.m_bottomLevelAccelStructIds[i];
 
             if (bottomLevelAccelStructId == NULL)
             {
