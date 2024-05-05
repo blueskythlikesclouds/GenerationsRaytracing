@@ -41,9 +41,11 @@ float4x4 ComputeNodeMatrix(uint4 blendIndices, float4 blendWeight)
 
 bool CheckNodeMatrixZeroScaled(float4x4 nodeMatrix)
 {
-    return dot(nodeMatrix[0].xyz, nodeMatrix[0].xyz) == 0 &&
-        dot(nodeMatrix[1].xyz, nodeMatrix[1].xyz) == 0 &&
-        dot(nodeMatrix[2].xyz, nodeMatrix[2].xyz) == 0;
+    bool x = dot(nodeMatrix[0].xyz, nodeMatrix[0].xyz) < 0.0001;
+    bool y = dot(nodeMatrix[1].xyz, nodeMatrix[1].xyz) < 0.0001;
+    bool z = dot(nodeMatrix[2].xyz, nodeMatrix[2].xyz) < 0.0001;
+    
+    return (x && y) || (y && z) || (x && z);
 }
 
 [numthreads(64, 1, 1)]

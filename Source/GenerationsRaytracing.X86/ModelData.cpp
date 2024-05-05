@@ -77,7 +77,14 @@ static bool checkZeroScaled(const MeshDataEx& meshDataEx)
 }
 
 template<typename T>
-static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMask, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId, bool asyncBuild)
+static void createBottomLevelAccelStruct(
+    const T& modelData, 
+    uint32_t geometryMask, 
+    uint32_t& bottomLevelAccelStructId, 
+    uint32_t poseVertexBufferId,
+    bool allowUpdate,
+    bool preferFastBuild,
+    bool asyncBuild)
 {
     assert(bottomLevelAccelStructId == NULL);
 
@@ -96,9 +103,9 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     message.bottomLevelAccelStructId = (bottomLevelAccelStructId = ModelData::s_idAllocator.allocate());
-    message.allowUpdate = poseVertexBufferId != NULL;
+    message.allowUpdate = allowUpdate;
     message.allowCompaction = false;
-    message.preferFastBuild = false;
+    message.preferFastBuild = preferFastBuild;
     message.asyncBuild = asyncBuild;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
@@ -243,7 +250,7 @@ void ModelData::createBottomLevelAccelStructs(TerrainModelDataEx& terrainModelDa
         auto& bottomLevelAccelStructId = terrainModelDataEx.m_bottomLevelAccelStructIds[i];
 
         if (bottomLevelAccelStructId == NULL)
-            createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, true);
+            createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, false, false, true);
     }
 }
 
@@ -773,10 +780,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
                     geometryDesc->visible = visible;
 
-                    if (meshDataEx.m_adjacency != nullptr && 
-                        RaytracingParams::s_computeSmoothNormals &&
-                        visible && 
-                        !checkZeroScaled(meshDataEx))
+                    if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals && visible)
                     {
                         auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
 
@@ -811,16 +815,21 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         {
             const auto& matrix = matrixList[i].matrix();
 
-            s_matrixZeroScaledStates[i] =
-                matrix.col(0).squaredNorm() == 0.0f &&
-                matrix.col(1).squaredNorm() == 0.0f &&
-                matrix.col(2).squaredNorm() == 0.0f;
+            const bool x = matrix.col(0).squaredNorm() < 0.0001f;
+            const bool y = matrix.col(1).squaredNorm() < 0.0001f;
+            const bool z = matrix.col(2).squaredNorm() < 0.0001f;
+
+            s_matrixZeroScaledStates[i] = (x && y) || (y && z) || (x && z);
         }
 
         const XXH32_hash_t bottomLevelAccelStructHash = XXH32(
             s_matrixZeroScaledStates.data(), s_matrixZeroScaledStates.size(), modelDataEx.m_visibilityFlags);
 
         bottomLevelAccelStructIds = instanceInfoEx.m_bottomLevelAccelStructIds[bottomLevelAccelStructHash].data();
+
+        // Chaos Emeralds cause a massive amount of lag because they are 
+        // very separated in cutscenes and end up having an enormous AABB.
+        const bool allowUpdate = strstr(modelDataEx.m_TypeAndName.c_str(), "chaosemerald") == nullptr;
 
         for (size_t i = 0; i < _countof(s_instanceMasks); i++)
         {
@@ -829,13 +838,13 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             if (bottomLevelAccelStructId == NULL)
             {
                 createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, 
-                    bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId(), false);
+                    bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId(), allowUpdate, !allowUpdate, false);
             }
             else if (shouldComputePose)
             {
                 auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
                 buildMessage.bottomLevelAccelStructId = bottomLevelAccelStructId;
-                buildMessage.performUpdate = true;
+                buildMessage.performUpdate = allowUpdate;
                 s_messageSender.endMessage();
             }
         }
@@ -862,7 +871,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
 
             if (bottomLevelAccelStructId == NULL)
-                createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, true);
+                createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, false, false, true);
         }
     }
 
