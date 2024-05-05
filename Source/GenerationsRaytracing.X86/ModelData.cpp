@@ -60,6 +60,22 @@ static void traverseModelData(const TModelData& modelData, uint32_t geometryMask
     }
 }
 
+static std::vector<uint8_t> s_matrixZeroScaledStates;
+
+static bool checkZeroScaled(const MeshDataEx& meshDataEx)
+{
+    if (!s_matrixZeroScaledStates.empty())
+    {
+        for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
+        {
+            const uint8_t nodeIndex = meshDataEx.m_pNodeIndices[i];
+            if (nodeIndex < s_matrixZeroScaledStates.size() && s_matrixZeroScaledStates[nodeIndex])
+                return true;
+        }
+    }
+    return false;
+}
+
 template<typename T>
 static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMask, uint32_t& bottomLevelAccelStructId, uint32_t poseVertexBufferId, bool asyncBuild)
 {
@@ -67,7 +83,11 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
 
     size_t geometryCount = 0;
 
-    traverseModelData(modelData, geometryMask, [&](const MeshDataEx&, uint32_t, bool) { ++geometryCount; });
+    traverseModelData(modelData, geometryMask, [&](const MeshDataEx& meshDataEx, uint32_t, bool visible)
+    {
+        if (poseVertexBufferId == NULL || (visible && !checkZeroScaled(meshDataEx)))
+            ++geometryCount; 
+    });
 
     if (geometryCount == 0)
         return;
@@ -76,16 +96,16 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
         geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     message.bottomLevelAccelStructId = (bottomLevelAccelStructId = ModelData::s_idAllocator.allocate());
-    message.allowUpdate = false;
+    message.allowUpdate = poseVertexBufferId != NULL;
     message.allowCompaction = false;
-    message.preferFastBuild = poseVertexBufferId != NULL;
+    message.preferFastBuild = false;
     message.asyncBuild = asyncBuild;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
     uint32_t poseVertexOffset = 0;
 
-    traverseModelData(modelData, poseVertexBufferId != NULL ? ~0 : geometryMask, [&](const MeshDataEx& meshDataEx, uint32_t flags, bool)
+    traverseModelData(modelData, poseVertexBufferId != NULL ? ~0 : geometryMask, [&](const MeshDataEx& meshDataEx, uint32_t flags, bool visible)
     {
         uint32_t vertexOffset = meshDataEx.m_VertexOffset;
         if (poseVertexBufferId != NULL)
@@ -93,7 +113,7 @@ static void createBottomLevelAccelStruct(const T& modelData, uint32_t geometryMa
             vertexOffset = poseVertexOffset;
             poseVertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
 
-            if ((flags & geometryMask) == 0)
+            if ((flags & geometryMask) == 0 || !visible || checkZeroScaled(meshDataEx))
                 return;
 
             flags |= GEOMETRY_FLAG_POSE;
@@ -197,6 +217,7 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
     for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
         bottomLevelAccelStructId = NULL;
 
+    This->m_visibilityFlags = 0;
     This->m_modelHash = 0;
     This->m_hashFrame = 0;
     This->m_enableSkinning = false;
@@ -535,6 +556,14 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
     if (shouldCheckForHash)
     {
+        modelDataEx.m_visibilityFlags = 0;
+
+        for (size_t i = 0; i < modelDataEx.m_NodeGroupModels.size(); i++)
+        {
+            if (modelDataEx.m_NodeGroupModels[i]->m_Visible)
+                modelDataEx.m_visibilityFlags |= 1 << i;
+        }
+
         const XXH32_hash_t modelHash = XXH32(modelDataEx.m_NodeGroupModels.data(),
             modelDataEx.m_NodeGroupModels.size() * sizeof(modelDataEx.m_NodeGroupModels[0]), 0);
 
@@ -561,9 +590,13 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
     if (instanceInfoEx.m_modelHash != modelDataEx.m_modelHash)
     {
-        for (auto& bottomLevelAccelStructId : instanceInfoEx.m_bottomLevelAccelStructIds)
-            RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
+        for (auto& [_, bottomLevelAccelStructIds] : instanceInfoEx.m_bottomLevelAccelStructIds)
+        {
+            for (auto& bottomLevelAccelStructId : bottomLevelAccelStructIds)
+                RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
+        }
 
+        instanceInfoEx.m_bottomLevelAccelStructIds.clear();
         instanceInfoEx.m_poseVertexBuffer = nullptr;
         instanceInfoEx.m_matrixHash = 0;
         instanceInfoEx.m_prevMatrixHash = 0;
@@ -574,7 +607,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
     auto transform = instanceInfoEx.m_Transform;
     auto headTransform = instanceInfoEx.m_Transform;
-    uint32_t bottomLevelAccelStructIds[_countof(s_instanceMasks)]{};
+    uint32_t* bottomLevelAccelStructIds = nullptr;
 
     if (modelDataEx.m_enableSkinning && instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() > 1)
     {
@@ -614,15 +647,6 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
         const auto matrixList = instanceInfoEx.m_spPose->GetMatrixList();
         const size_t matrixNum = instanceInfoEx.m_spPose->GetMatrixNum();
-
-        for (size_t i = 0; i < modelDataEx.m_NodeNum; i++)
-        {
-            if (i < matrixNum && modelDataEx.m_spNodes[i].m_Name == "Head")
-            {
-                headTransform = headTransform * matrixList[i];
-                break;
-            }
-        }
 
         const XXH32_hash_t matrixHash = XXH32(
             matrixList, matrixNum * sizeof(Hedgehog::Math::CMatrix), 0);
@@ -719,7 +743,10 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
                     geometryDesc->visible = visible;
 
-                    if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals)
+                    if (meshDataEx.m_adjacency != nullptr && 
+                        RaytracingParams::s_computeSmoothNormals &&
+                        visible && 
+                        !checkZeroScaled(meshDataEx))
                     {
                         auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
 
@@ -748,9 +775,29 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             s_messageSender.endMessage();
         }
 
+        s_matrixZeroScaledStates.resize(std::min(matrixNum, modelDataEx.m_NodeNum));
+
+        for (size_t i = 0; i < s_matrixZeroScaledStates.size(); i++)
+        {
+            if (modelDataEx.m_spNodes[i].m_Name == "Head")
+                headTransform = headTransform * matrixList[i];
+
+            const auto& matrix = matrixList[i].matrix();
+
+            s_matrixZeroScaledStates[i] =
+                matrix.col(0).squaredNorm() == 0.0f &&
+                matrix.col(1).squaredNorm() == 0.0f &&
+                matrix.col(2).squaredNorm() == 0.0f;
+        }
+
+        const XXH32_hash_t bottomLevelAccelStructHash = XXH32(
+            s_matrixZeroScaledStates.data(), s_matrixZeroScaledStates.size(), modelDataEx.m_visibilityFlags);
+
+        bottomLevelAccelStructIds = instanceInfoEx.m_bottomLevelAccelStructIds[bottomLevelAccelStructHash].data();
+
         for (size_t i = 0; i < _countof(s_instanceMasks); i++)
         {
-            auto& bottomLevelAccelStructId = instanceInfoEx.m_bottomLevelAccelStructIds[i];
+            auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
 
             if (bottomLevelAccelStructId == NULL)
             {
@@ -761,12 +808,12 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             {
                 auto& buildMessage = s_messageSender.makeMessage<MsgBuildBottomLevelAccelStruct>();
                 buildMessage.bottomLevelAccelStructId = bottomLevelAccelStructId;
-                buildMessage.performUpdate = false;
+                buildMessage.performUpdate = true;
                 s_messageSender.endMessage();
             }
-
-            bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;
         }
+
+        s_matrixZeroScaledStates.clear();
     }
     else
     {
@@ -781,14 +828,14 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         if (instanceInfoEx.m_spPose != nullptr)
             transform = transform * (*instanceInfoEx.m_spPose->GetMatrixList());
 
+        bottomLevelAccelStructIds = modelDataEx.m_bottomLevelAccelStructIds;
+
         for (size_t i = 0; i < _countof(s_instanceMasks); i++)
         {
-            auto& bottomLevelAccelStructId = modelDataEx.m_bottomLevelAccelStructIds[i];
+            auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
 
             if (bottomLevelAccelStructId == NULL)
                 createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, true);
-
-            bottomLevelAccelStructIds[i] = bottomLevelAccelStructId;
         }
     }
 

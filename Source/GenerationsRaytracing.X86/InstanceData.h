@@ -18,7 +18,7 @@ class InstanceInfoEx : public Hedgehog::Mirage::CInstanceInfo
 public:
     uint32_t m_instanceFrame;
     float m_prevTransform[3][4];
-    uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceMasks)];
+    std::unordered_map<XXH32_hash_t, std::array<uint32_t, _countof(s_instanceMasks)>> m_bottomLevelAccelStructIds;
     ComPtr<VertexBuffer> m_poseVertexBuffer;
     uint32_t m_headNodeIndex;
     bool m_handledEyeMaterials;

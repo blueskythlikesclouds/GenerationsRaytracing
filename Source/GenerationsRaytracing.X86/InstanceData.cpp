@@ -40,10 +40,8 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 {
     const auto result = originalInstanceInfoConstructor(This);
 
-    for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
-        bottomLevelAccelStructId = NULL;
-
     This->m_instanceFrame = 0;
+    new (&This->m_bottomLevelAccelStructIds) decltype(This->m_bottomLevelAccelStructIds)();
     new (std::addressof(This->m_poseVertexBuffer)) ComPtr<VertexBuffer>();
     This->m_headNodeIndex = 0;
     This->m_handledEyeMaterials = false;
@@ -68,8 +66,13 @@ HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
     This->m_effectMap.~unordered_map();
     This->m_poseVertexBuffer.~ComPtr();
 
-    for (auto& bottomLevelAccelStructId : This->m_bottomLevelAccelStructIds)
-        RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
+    for (auto& [_, bottomLevelAccelStructIds] : This->m_bottomLevelAccelStructIds)
+    {
+        for (auto& bottomLevelAccelStructId : bottomLevelAccelStructIds)
+            RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, bottomLevelAccelStructId);
+    }
+
+    This->m_bottomLevelAccelStructIds.~unordered_map();
 
     originalInstanceInfoDestructor(This);
 }

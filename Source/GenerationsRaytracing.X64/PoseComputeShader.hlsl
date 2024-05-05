@@ -39,7 +39,7 @@ float4x4 ComputeNodeMatrix(uint4 blendIndices, float4 blendWeight)
         g_Pose[g_Palette[blendIndices.w]] * blendWeight.w;
 }
 
-bool CheckNodeMatrixUnscaled(float4x4 nodeMatrix)
+bool CheckNodeMatrixZeroScaled(float4x4 nodeMatrix)
 {
     return dot(nodeMatrix[0].xyz, nodeMatrix[0].xyz) == 0 &&
         dot(nodeMatrix[1].xyz, nodeMatrix[1].xyz) == 0 &&
@@ -89,7 +89,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
         nodeMatrix += ComputeNodeMatrix(blendIndices, blendWeight);
         
-        if (!CheckNodeMatrixUnscaled(nodeMatrix))
+        if (!CheckNodeMatrixZeroScaled(nodeMatrix))
         {
             position = g_Src.Load<float3>(vertexOffset);
             uint3 nrmTgnBin = g_Src.Load3(vertexOffset + g_NormalOffset);
