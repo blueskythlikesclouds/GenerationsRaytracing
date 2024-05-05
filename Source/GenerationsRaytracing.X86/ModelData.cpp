@@ -645,8 +645,24 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             });
         }
 
+        Hedgehog::Math::CMatrix headTransformInverse;
+        bool foundHeadTransform = false;
+
         const auto matrixList = instanceInfoEx.m_spPose->GetMatrixList();
         const size_t matrixNum = instanceInfoEx.m_spPose->GetMatrixNum();
+
+        for (size_t i = 0; i < std::min(matrixNum, modelDataEx.m_NodeNum); i++)
+        {
+            if (modelDataEx.m_spNodes[i].m_Name == "Head")
+            {
+                const auto& matrix = matrixList[i];
+                headTransform = headTransform * matrix;
+                transform = transform * matrix;
+                headTransformInverse = matrix.inverse();
+                foundHeadTransform = true;
+                break;
+            }
+        }
 
         const XXH32_hash_t matrixHash = XXH32(
             matrixList, matrixNum * sizeof(Hedgehog::Math::CMatrix), 0);
@@ -676,7 +692,21 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             message.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
             message.nodeCount = static_cast<uint8_t>(matrixNum);
             message.geometryCount = geometryCount;
-            memcpy(message.data, matrixList, matrixNum * sizeof(Hedgehog::Math::CMatrix));
+            
+            if (foundHeadTransform)
+            {
+                auto dstMatrixList = reinterpret_cast<Hedgehog::Math::CMatrix*>(message.data);
+
+                for (size_t i = 0; i < matrixNum; i++)
+                {
+                    *dstMatrixList = headTransformInverse * matrixList[i];
+                    ++dstMatrixList;
+                }
+            }
+            else
+            {
+                memcpy(message.data, matrixList, matrixNum * sizeof(Hedgehog::Math::CMatrix));
+            }
 
             auto geometryDesc = reinterpret_cast<MsgComputePose::GeometryDesc*>(message.data +
                 matrixNum * sizeof(Hedgehog::Math::CMatrix));
@@ -779,9 +809,6 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
         for (size_t i = 0; i < s_matrixZeroScaledStates.size(); i++)
         {
-            if (modelDataEx.m_spNodes[i].m_Name == "Head")
-                headTransform = headTransform * matrixList[i];
-
             const auto& matrix = matrixList[i].matrix();
 
             s_matrixZeroScaledStates[i] =
