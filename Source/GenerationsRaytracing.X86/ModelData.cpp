@@ -62,16 +62,17 @@ static void traverseModelData(const TModelData& modelData, uint32_t geometryMask
 
 static std::vector<uint8_t> s_matrixZeroScaledStates;
 
-static bool checkZeroScaled(const MeshDataEx& meshDataEx)
+static bool checkAllZeroScaled(const MeshDataEx& meshDataEx)
 {
     if (!s_matrixZeroScaledStates.empty())
     {
         for (size_t i = 0; i < meshDataEx.m_NodeNum; i++)
         {
             const uint8_t nodeIndex = meshDataEx.m_pNodeIndices[i];
-            if (nodeIndex < s_matrixZeroScaledStates.size() && s_matrixZeroScaledStates[nodeIndex])
-                return true;
+            if (nodeIndex >= s_matrixZeroScaledStates.size() || !s_matrixZeroScaledStates[nodeIndex])
+                return false;
         }
+        return true;
     }
     return false;
 }
@@ -92,7 +93,7 @@ static void createBottomLevelAccelStruct(
 
     traverseModelData(modelData, geometryMask, [&](const MeshDataEx& meshDataEx, uint32_t, bool visible)
     {
-        if (poseVertexBufferId == NULL || (visible && !checkZeroScaled(meshDataEx)))
+        if (poseVertexBufferId == NULL || (visible && !checkAllZeroScaled(meshDataEx)))
             ++geometryCount; 
     });
 
@@ -120,7 +121,7 @@ static void createBottomLevelAccelStruct(
             vertexOffset = poseVertexOffset;
             poseVertexOffset += meshDataEx.m_VertexNum * (meshDataEx.m_VertexSize + 0xC); // Extra 12 bytes for previous position
 
-            if ((flags & geometryMask) == 0 || !visible || checkZeroScaled(meshDataEx))
+            if ((flags & geometryMask) == 0 || !visible || checkAllZeroScaled(meshDataEx))
                 return;
 
             flags |= GEOMETRY_FLAG_POSE;
