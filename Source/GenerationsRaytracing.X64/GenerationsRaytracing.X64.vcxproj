@@ -223,6 +223,7 @@
     <ClInclude Include="SwapChain.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="DxgiConverter.h" />
+    <ClInclude Include="TopLevelAccelStruct.h" />
     <ClInclude Include="UploadBuffer.h" />
     <ClInclude Include="Upscaler.h" />
     <ClInclude Include="VertexDeclaration.h" />

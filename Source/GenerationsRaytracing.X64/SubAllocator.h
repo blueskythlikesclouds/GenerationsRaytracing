@@ -9,6 +9,8 @@ struct SubAllocation
     uint32_t blockIndex = 0;
     uint32_t byteOffset = 0;
     uint32_t byteSize = 0;
+
+    D3D12_GPU_VIRTUAL_ADDRESS getGpuVA() const;
 };
 
 class SubAllocator

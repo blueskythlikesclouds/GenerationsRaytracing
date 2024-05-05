@@ -1,20 +1,20 @@
 #pragma once
 
 #include "FreeListAllocator.h"
-#include "InstanceMask.h"
+#include "InstanceType.h"
 
 class InstanceInfoEx;
 
 class TerrainModelDataEx : public Hedgehog::Mirage::CTerrainModelData
 {
 public:
-    uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceMasks)];
+    uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceTypes)];
 };
 
 class ModelDataEx : public Hedgehog::Mirage::CModelData
 {
 public:
-    uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceMasks)];
+    uint32_t m_bottomLevelAccelStructIds[_countof(s_instanceTypes)];
     uint32_t m_visibilityFlags;
     XXH32_hash_t m_modelHash;
     uint32_t m_hashFrame;

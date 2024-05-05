@@ -356,7 +356,7 @@ struct MsgCreateInstance
     float headTransform[3][4];
     uint32_t bottomLevelAccelStructId;
     bool isMirrored;
-    uint8_t instanceMask;
+    uint8_t instanceType;
     float playableParam;
     float chrPlayableMenuParam;
     float forceAlphaColor;

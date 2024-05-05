@@ -243,7 +243,7 @@
     <ClInclude Include="ModelReplacer.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
-    <ClInclude Include="InstanceMask.h">
+    <ClInclude Include="InstanceType.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="ShareVertexBuffer.h">

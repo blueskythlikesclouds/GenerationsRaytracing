@@ -74,7 +74,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     }
     
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
-    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+    InstanceDesc instanceDesc = g_InstanceDescsTransparent[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
     
     GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);

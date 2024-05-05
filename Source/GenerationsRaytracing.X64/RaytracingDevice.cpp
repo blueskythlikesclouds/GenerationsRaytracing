@@ -124,8 +124,7 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO RaytracingDevice::buildAcc
             static_cast<uint32_t>(preBuildInfo.ResultDataMaxSizeInBytes));
     }
 
-    accelStructDesc.DestAccelerationStructureData =
-        allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + allocation.byteOffset;
+    accelStructDesc.DestAccelerationStructureData = allocation.getGpuVA();
 
     if (buildImmediate)
     {
@@ -167,9 +166,7 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
 
     if (bottomLevelAccelStruct.desc.Inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE)
     {
-        bottomLevelAccelStruct.desc.SourceAccelerationStructureData = 
-            bottomLevelAccelStruct.allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + bottomLevelAccelStruct.allocation.byteOffset;
-
+        bottomLevelAccelStruct.desc.SourceAccelerationStructureData = bottomLevelAccelStruct.allocation.getGpuVA();
         scratchBufferSize = bottomLevelAccelStruct.updateScratchBufferSize;
     }
     else
@@ -383,28 +380,30 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     return globalsRT;
 }
 
-bool RaytracingDevice::createTopLevelAccelStruct()
+void RaytracingDevice::createTopLevelAccelStructs()
 {
     handlePendingBottomLevelAccelStructBuilds();
     handlePendingSmoothNormalCommands();
 
-    if (m_instanceDescs.empty())
-        return false;
+    getGraphicsCommandList().commitBarriers();
 
     PIX_EVENT();
 
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
-    accelStructDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-    accelStructDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-    accelStructDesc.Inputs.NumDescs = static_cast<UINT>(m_instanceDescs.size());
-    accelStructDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-    accelStructDesc.Inputs.InstanceDescs = createBuffer(m_instanceDescs.data(),
-        static_cast<uint32_t>(m_instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
+    for (auto& topLevelAccelStruct : m_topLevelAccelStructs)
+    {
+        if (!topLevelAccelStruct.instanceDescs.empty())
+        {
+            D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC accelStructDesc{};
+            accelStructDesc.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+            accelStructDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+            accelStructDesc.Inputs.NumDescs = static_cast<UINT>(topLevelAccelStruct.instanceDescs.size());
+            accelStructDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+            accelStructDesc.Inputs.InstanceDescs = createBuffer(topLevelAccelStruct.instanceDescs.data(),
+                static_cast<uint32_t>(topLevelAccelStruct.instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)), D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
-    getGraphicsCommandList().commitBarriers();
-    buildAccelStruct(m_topLevelAccelStruct, accelStructDesc, true);
-
-    return true;
+            buildAccelStruct(topLevelAccelStruct.allocation, accelStructDesc, true);
+        }
+    }
 }
 
 static constexpr size_t s_textureNum = 27;
@@ -789,15 +788,15 @@ void RaytracingDevice::procMsgCreateInstance()
     auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
     if (!bottomLevelAccelStruct.asyncBuild)
     {
-        auto& instanceDesc = m_instanceDescs.emplace_back();
-        auto& instanceDescEx = m_instanceDescsEx.emplace_back();
+        auto& instanceDesc = m_topLevelAccelStructs[message.instanceType].instanceDescs.emplace_back();
+        auto& alsoInstanceDesc = m_topLevelAccelStructs[message.instanceType].alsoInstanceDescs.emplace_back();
 
         memcpy(instanceDesc.Transform, message.transform, sizeof(instanceDesc.Transform));
-        memcpy(instanceDescEx.prevTransform, message.prevTransform, sizeof(instanceDescEx.prevTransform));
-        memcpy(instanceDescEx.headTransform, message.headTransform, sizeof(instanceDescEx.headTransform));
-        instanceDescEx.playableParam = message.playableParam;
-        instanceDescEx.chrPlayableMenuParam = message.chrPlayableMenuParam;
-        instanceDescEx.forceAlphaColor = message.forceAlphaColor;
+        memcpy(alsoInstanceDesc.prevTransform, message.prevTransform, sizeof(alsoInstanceDesc.prevTransform));
+        memcpy(alsoInstanceDesc.headTransform, message.headTransform, sizeof(alsoInstanceDesc.headTransform));
+        alsoInstanceDesc.playableParam = message.playableParam;
+        alsoInstanceDesc.chrPlayableMenuParam = message.chrPlayableMenuParam;
+        alsoInstanceDesc.forceAlphaColor = message.forceAlphaColor;
 
         if (message.dataSize > 0)
         {
@@ -835,15 +834,14 @@ void RaytracingDevice::procMsgCreateInstance()
             instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
         }
 
-        instanceDesc.InstanceMask = message.instanceMask;
+        instanceDesc.InstanceMask = 1;
         instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
         instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
 
         if (message.isMirrored && !(instanceDesc.Flags & D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE))
             instanceDesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
 
-        instanceDesc.AccelerationStructure =
-            bottomLevelAccelStruct.allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + bottomLevelAccelStruct.allocation.byteOffset;
+        instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation.getGpuVA();
     }
 }
 
@@ -851,8 +849,13 @@ void RaytracingDevice::procMsgTraceRays()
 {
     const auto& message = m_messageReceiver.getMessage<MsgTraceRays>();
 
-    if (!createTopLevelAccelStruct())
+    createTopLevelAccelStructs();
+
+    if (m_topLevelAccelStructs[INSTANCE_TYPE_OPAQUE].instanceDescs.empty() &&
+        m_topLevelAccelStructs[INSTANCE_TYPE_TRANSPARENT].instanceDescs.empty())
+    {
         return;
+    }
 
     const bool resolutionMismatch = m_width != message.width || m_height != message.height;
     const bool upscalerMismatch = message.upscaler != 0 && m_upscaler->getType() != m_upscalerOverride[message.upscaler - 1];
@@ -910,8 +913,11 @@ void RaytracingDevice::procMsgTraceRays()
 
     const auto globalsRT = createGlobalsRT(message);
 
-    const auto topLevelAccelStruct =
-        m_topLevelAccelStruct.blockAllocation->GetResource()->GetGPUVirtualAddress() + m_topLevelAccelStruct.byteOffset;
+    const auto topLevelAccelStruct = !m_topLevelAccelStructs[INSTANCE_TYPE_OPAQUE].instanceDescs.empty() ? 
+        m_topLevelAccelStructs[INSTANCE_TYPE_OPAQUE].allocation.getGpuVA() : NULL;
+
+    const auto topLevelAccelStructTransparent = !m_topLevelAccelStructs[INSTANCE_TYPE_TRANSPARENT].instanceDescs.empty() ?
+        m_topLevelAccelStructs[INSTANCE_TYPE_TRANSPARENT].allocation.getGpuVA() : NULL;
 
     const auto geometryDescs = createBuffer(m_geometryDescs.data(), 
         static_cast<uint32_t>(m_geometryDescs.size() * sizeof(GeometryDesc)), 0x10);
@@ -919,8 +925,11 @@ void RaytracingDevice::procMsgTraceRays()
     const auto materials = createBuffer(m_materials.data(),
         static_cast<uint32_t>(m_materials.size() * sizeof(Material)), 0x10);
 
-    const auto instanceDescs = createBuffer(m_instanceDescsEx.data(),
-        static_cast<uint32_t>(m_instanceDescsEx.size() * sizeof(InstanceDesc)), 0x10);
+    const auto instanceDescs = createBuffer(m_topLevelAccelStructs[INSTANCE_TYPE_OPAQUE].alsoInstanceDescs.data(),
+        static_cast<uint32_t>(m_topLevelAccelStructs[INSTANCE_TYPE_OPAQUE].alsoInstanceDescs.size() * sizeof(InstanceDesc)), 0x10);
+
+    const auto instanceDescsTransparent = createBuffer(m_topLevelAccelStructs[INSTANCE_TYPE_TRANSPARENT].alsoInstanceDescs.data(),
+        static_cast<uint32_t>(m_topLevelAccelStructs[INSTANCE_TYPE_TRANSPARENT].alsoInstanceDescs.size() * sizeof(InstanceDesc)), 0x10);
 
     const auto localLights = createBuffer(m_localLights.data(),
         message.localLightCount * sizeof(LocalLight), 0x10);
@@ -939,15 +948,17 @@ void RaytracingDevice::procMsgTraceRays()
     underlyingCommandList->SetComputeRootConstantBufferView(1, globalsPS);
     underlyingCommandList->SetComputeRootConstantBufferView(2, globalsRT);
     underlyingCommandList->SetComputeRootShaderResourceView(3, topLevelAccelStruct);
-    underlyingCommandList->SetComputeRootShaderResourceView(4, geometryDescs);
-    underlyingCommandList->SetComputeRootShaderResourceView(5, materials);
-    underlyingCommandList->SetComputeRootShaderResourceView(6, instanceDescs);
-    underlyingCommandList->SetComputeRootShaderResourceView(7, localLights);
-    underlyingCommandList->SetComputeRootDescriptorTable(8, m_descriptorHeap.getGpuHandle(m_uavId));
-    underlyingCommandList->SetComputeRootDescriptorTable(9, m_descriptorHeap.getGpuHandle(m_srvId));
+    underlyingCommandList->SetComputeRootShaderResourceView(4, topLevelAccelStructTransparent);
+    underlyingCommandList->SetComputeRootShaderResourceView(5, geometryDescs);
+    underlyingCommandList->SetComputeRootShaderResourceView(6, materials);
+    underlyingCommandList->SetComputeRootShaderResourceView(7, instanceDescs);
+    underlyingCommandList->SetComputeRootShaderResourceView(8, instanceDescsTransparent);
+    underlyingCommandList->SetComputeRootShaderResourceView(9, localLights);
+    underlyingCommandList->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_uavId));
+    underlyingCommandList->SetComputeRootDescriptorTable(11, m_descriptorHeap.getGpuHandle(m_srvId));
 
     if (m_serSupported)
-        underlyingCommandList->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_serUavId));
+        underlyingCommandList->SetComputeRootDescriptorTable(12, m_descriptorHeap.getGpuHandle(m_serUavId));
 
     const auto rayGenShaderTable = createBuffer(
         m_rayGenShaderTable.data(), static_cast<uint32_t>(m_rayGenShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -1104,8 +1115,11 @@ void RaytracingDevice::procMsgDispatchUpscaler()
 {
     const auto& message = m_messageReceiver.getMessage<MsgDispatchUpscaler>();
 
-    if (m_instanceDescs.empty())
+    if (m_topLevelAccelStructs[INSTANCE_TYPE_OPAQUE].instanceDescs.empty() &&
+        m_topLevelAccelStructs[INSTANCE_TYPE_TRANSPARENT].instanceDescs.empty())
+    {
         return;
+    }
 
     if (message.debugView == DEBUG_VIEW_NONE)
     {
@@ -1705,8 +1719,11 @@ void RaytracingDevice::releaseRaytracingResources()
     while (!m_materials.empty() && m_materials.back().shaderType == NULL)
         m_materials.pop_back();
 
-    m_instanceDescs.clear();
-    m_instanceDescsEx.clear();
+    for (auto& topLevelAccelStruct : m_topLevelAccelStructs)
+    {
+        topLevelAccelStruct.instanceDescs.clear();
+        topLevelAccelStruct.alsoInstanceDescs.clear();
+    }
 
     for (auto& [geometryId, geometryCount] : m_tempGeometryRanges[m_frame])
         freeGeometryDescs(geometryId, geometryCount);
@@ -1746,7 +1763,7 @@ RaytracingDevice::RaytracingDevice()
     CD3DX12_DESCRIPTOR_RANGE1 serDescriptorRanges[1];
     serDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, s_serUavRegister, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
-    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[11];
+    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[13];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[2].InitAsConstantBufferView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -1755,9 +1772,11 @@ RaytracingDevice::RaytracingDevice()
     raytracingRootParams[5].InitAsShaderResourceView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[6].InitAsShaderResourceView(3, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[7].InitAsShaderResourceView(4, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
-    raytracingRootParams[8].InitAsDescriptorTable(_countof(uavDescriptorRanges), uavDescriptorRanges);
-    raytracingRootParams[9].InitAsDescriptorTable(_countof(srvDescriptorRanges), srvDescriptorRanges);
-    raytracingRootParams[10].InitAsDescriptorTable(_countof(serDescriptorRanges), serDescriptorRanges);
+    raytracingRootParams[8].InitAsShaderResourceView(5, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[9].InitAsShaderResourceView(6, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    raytracingRootParams[10].InitAsDescriptorTable(_countof(uavDescriptorRanges), uavDescriptorRanges);
+    raytracingRootParams[11].InitAsDescriptorTable(_countof(srvDescriptorRanges), srvDescriptorRanges);
+    raytracingRootParams[12].InitAsDescriptorTable(_countof(serDescriptorRanges), serDescriptorRanges);
 
     D3D12_STATIC_SAMPLER_DESC raytracingStaticSamplers[1]{};
     raytracingStaticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;

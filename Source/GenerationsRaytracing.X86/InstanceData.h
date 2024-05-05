@@ -1,7 +1,7 @@
 #pragma once
 
 #include "FreeListAllocator.h"
-#include "InstanceMask.h"
+#include "InstanceType.h"
 #include "VertexBuffer.h"
 
 class TerrainInstanceInfoDataEx : public Hedgehog::Mirage::CTerrainInstanceInfoData
@@ -18,7 +18,7 @@ class InstanceInfoEx : public Hedgehog::Mirage::CInstanceInfo
 public:
     uint32_t m_instanceFrame;
     float m_prevTransform[3][4];
-    std::unordered_map<XXH32_hash_t, std::array<uint32_t, _countof(s_instanceMasks)>> m_bottomLevelAccelStructIds;
+    std::unordered_map<XXH32_hash_t, std::array<uint32_t, _countof(s_instanceTypes)>> m_bottomLevelAccelStructIds;
     ComPtr<VertexBuffer> m_poseVertexBuffer;
     uint32_t m_headNodeIndex;
     bool m_handledEyeMaterials;

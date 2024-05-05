@@ -29,7 +29,7 @@ void PrimaryRayGeneration()
     TraceRay(
         g_BVH,
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
-        INSTANCE_MASK_OPAQUE,
+        1,
         HIT_GROUP_PRIMARY,
         HIT_GROUP_NUM,
         MISS_PRIMARY,
@@ -44,9 +44,9 @@ void PrimaryRayGeneration()
     payload1.LayerCount = 1;
 
     TraceRay(
-        g_BVH,
+        g_BVHTransparent,
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES | RAY_FLAG_FORCE_NON_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-        INSTANCE_MASK_TRANSPARENT,
+        1,
         HIT_GROUP_PRIMARY_TRANSPARENT,
         HIT_GROUP_NUM,
         MISS_PRIMARY_TRANSPARENT,
@@ -123,7 +123,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
 #endif
             g_BVH,
             bounceIndex != 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
-            INSTANCE_MASK_OPAQUE,
+            1,
             HIT_GROUP_SECONDARY,
             HIT_GROUP_NUM,
             bounceIndex == 0 ? args.MissShaderIndex : MISS_SECONDARY_ENVIRONMENT_COLOR,

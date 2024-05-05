@@ -92,7 +92,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        INSTANCE_MASK_OPAQUE,
+        1,
         ray);
 
     while (query.Proceed())
@@ -149,7 +149,7 @@ float TraceShadowCullNonOpaque(float3 position, float3 direction, float2 random)
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        INSTANCE_MASK_OPAQUE,
+        1,
         ray);
     
     query.Proceed();
@@ -191,7 +191,7 @@ float TraceLocalLightShadow(float3 position, float3 direction, float2 random, fl
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        INSTANCE_MASK_OPAQUE,
+        1,
         ray);
 
     query.Proceed();

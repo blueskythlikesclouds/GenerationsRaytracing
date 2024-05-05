@@ -162,7 +162,7 @@
     <ClInclude Include="BaseTexture.h" />
     <ClInclude Include="FileBinder.h" />
     <ClInclude Include="GroundSmokeParticle.h" />
-    <ClInclude Include="InstanceMask.h" />
+    <ClInclude Include="InstanceType.h" />
     <ClInclude Include="LightData.h" />
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />

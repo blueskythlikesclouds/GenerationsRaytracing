@@ -107,7 +107,7 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
             const bool isMirrored = instance->m_scpTransform->determinant() < 0.0f;
             const float playableParam = PlayableParam::getPlayableParam(instance, renderingDevice);
 
-            for (size_t i = 0; i < _countof(s_instanceMasks); i++)
+            for (size_t i = 0; i < _countof(s_instanceTypes); i++)
             {
                 const auto bottomLevelAccelStructId = terrainModelEx->m_bottomLevelAccelStructIds[i];
 
@@ -118,7 +118,7 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
                     memcpy(message.prevTransform, copyPrevTransform ? instance->m_prevTransform : transform, sizeof(message.prevTransform));
                     message.bottomLevelAccelStructId = bottomLevelAccelStructId;
                     message.isMirrored = isMirrored;
-                    message.instanceMask = s_instanceMasks[i].instanceMask;
+                    message.instanceType = s_instanceTypes[i].instanceMask;
                     message.playableParam = playableParam;
                     message.chrPlayableMenuParam = 10000.0f;
                     message.forceAlphaColor = 1.0f;

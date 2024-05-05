@@ -11,6 +11,8 @@
 #include "HitGroups.h"
 #include "SubAllocator.h"
 #include "Upscaler.h"
+#include "TopLevelAccelStruct.h"
+#include "ShaderTable.h"
 
 struct MsgDispatchUpscaler;
 struct MsgTraceRays;
@@ -106,10 +108,8 @@ protected:
     std::vector<Material> m_materials;
 
     // Top Level Accel Struct
-    std::vector<D3D12_RAYTRACING_INSTANCE_DESC> m_instanceDescs;
-    std::vector<InstanceDesc> m_instanceDescsEx;
+    TopLevelAccelStruct m_topLevelAccelStructs[INSTANCE_TYPE_NUM];
     std::vector<std::pair<uint32_t, uint32_t>> m_tempGeometryRanges[NUM_FRAMES];
-    SubAllocation m_topLevelAccelStruct;
 
     // Upscaler
     std::unique_ptr<NGX> m_ngx;
@@ -221,7 +221,7 @@ protected:
     void writeHitGroupShaderTable(size_t geometryIndex, size_t shaderType, bool constTexCoord);
 
     D3D12_GPU_VIRTUAL_ADDRESS createGlobalsRT(const MsgTraceRays& message);
-    bool createTopLevelAccelStruct();
+    void createTopLevelAccelStructs();
 
     void createRaytracingTextures();
     void dispatchResolver(const MsgTraceRays& message);

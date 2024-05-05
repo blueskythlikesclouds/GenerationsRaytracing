@@ -245,12 +245,12 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
 
 void ModelData::createBottomLevelAccelStructs(TerrainModelDataEx& terrainModelDataEx)
 {
-    for (size_t i = 0; i < _countof(s_instanceMasks); i++)
+    for (size_t i = 0; i < _countof(s_instanceTypes); i++)
     {
         auto& bottomLevelAccelStructId = terrainModelDataEx.m_bottomLevelAccelStructIds[i];
 
         if (bottomLevelAccelStructId == NULL)
-            createBottomLevelAccelStruct(terrainModelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, false, false, true);
+            createBottomLevelAccelStruct(terrainModelDataEx, s_instanceTypes[i].geometryMask, bottomLevelAccelStructId, NULL, false, false, true);
     }
 }
 
@@ -831,13 +831,13 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         // very separated in cutscenes and end up having an enormous AABB.
         const bool allowUpdate = strstr(modelDataEx.m_TypeAndName.c_str(), "chaosemerald") == nullptr;
 
-        for (size_t i = 0; i < _countof(s_instanceMasks); i++)
+        for (size_t i = 0; i < _countof(s_instanceTypes); i++)
         {
             auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
 
             if (bottomLevelAccelStructId == NULL)
             {
-                createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, 
+                createBottomLevelAccelStruct(modelDataEx, s_instanceTypes[i].geometryMask, 
                     bottomLevelAccelStructId, instanceInfoEx.m_poseVertexBuffer->getId(), allowUpdate, !allowUpdate, false);
             }
             else if (shouldComputePose)
@@ -866,12 +866,12 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
         bottomLevelAccelStructIds = modelDataEx.m_bottomLevelAccelStructIds;
 
-        for (size_t i = 0; i < _countof(s_instanceMasks); i++)
+        for (size_t i = 0; i < _countof(s_instanceTypes); i++)
         {
             auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
 
             if (bottomLevelAccelStructId == NULL)
-                createBottomLevelAccelStruct(modelDataEx, s_instanceMasks[i].geometryMask, bottomLevelAccelStructId, NULL, false, false, true);
+                createBottomLevelAccelStruct(modelDataEx, s_instanceTypes[i].geometryMask, bottomLevelAccelStructId, NULL, false, false, true);
         }
     }
 
@@ -895,7 +895,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
     const bool copyPrevTransform = instanceInfoEx.m_instanceFrame == (RaytracingRendering::s_frame - 1);
 
-    for (size_t i = 0; i < _countof(s_instanceMasks); i++)
+    for (size_t i = 0; i < _countof(s_instanceTypes); i++)
     {
         const auto& bottomLevelAccelStructId = bottomLevelAccelStructIds[i];
         if (bottomLevelAccelStructId != NULL)
@@ -909,7 +909,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
             message.bottomLevelAccelStructId = bottomLevelAccelStructId;
             message.isMirrored = false;
-            message.instanceMask = instanceInfoEx.m_enableForceAlphaColor ? INSTANCE_MASK_TRANSPARENT : s_instanceMasks[i].instanceMask;
+            message.instanceType = instanceInfoEx.m_enableForceAlphaColor ? INSTANCE_TYPE_TRANSPARENT : s_instanceTypes[i].instanceMask;
             message.playableParam = -10001.0f;
             message.chrPlayableMenuParam = instanceInfoEx.m_chrPlayableMenuParam + RaytracingRendering::s_worldShift.y();
             message.forceAlphaColor = instanceInfoEx.m_forceAlphaColor;

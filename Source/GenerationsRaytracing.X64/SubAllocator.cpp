@@ -1,5 +1,10 @@
 #include "SubAllocator.h"
 
+D3D12_GPU_VIRTUAL_ADDRESS SubAllocation::getGpuVA() const
+{
+    return blockAllocation->GetResource()->GetGPUVirtualAddress() + byteOffset;
+}
+
 SubAllocator::SubAllocator(
     uint32_t blockSize,
     D3D12_RESOURCE_FLAGS flags,

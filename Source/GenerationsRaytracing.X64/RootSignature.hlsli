@@ -134,10 +134,12 @@ struct LocalLight
 };
 
 RaytracingAccelerationStructure g_BVH : register(t0);
-StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t1);
-StructuredBuffer<MaterialData> g_Materials : register(t2);
-StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t3);
-StructuredBuffer<LocalLight> g_LocalLights : register(t4);
+RaytracingAccelerationStructure g_BVHTransparent : register(t1);
+StructuredBuffer<GeometryDesc> g_GeometryDescs : register(t2);
+StructuredBuffer<MaterialData> g_Materials : register(t3);
+StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t4);
+StructuredBuffer<InstanceDesc> g_InstanceDescsTransparent : register(t5);
+StructuredBuffer<LocalLight> g_LocalLights : register(t6);
 
 #endif
 

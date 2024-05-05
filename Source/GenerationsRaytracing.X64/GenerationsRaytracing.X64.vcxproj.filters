@@ -240,6 +240,9 @@
     <ClInclude Include="GBufferData.h">
       <Filter>Shader\Material</Filter>
     </ClInclude>
+    <ClInclude Include="TopLevelAccelStruct.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MessageReceiver.inl">
