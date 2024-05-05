@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEFAULT_BLOCK_SIZE (64 * 1024 * 1024)
+#define DEFAULT_BLOCK_SIZE (8 * 1024 * 1024)
 
 struct SubAllocation
 {

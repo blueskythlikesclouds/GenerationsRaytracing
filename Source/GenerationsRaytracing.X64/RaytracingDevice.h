@@ -65,8 +65,6 @@ struct SmoothNormalCmd
     uint32_t adjacencyBufferId;
 };
 
-constexpr size_t READBACK_NUM_ELEMENTS = 65536;
-
 class RaytracingDevice final : public Device
 {
 protected:
@@ -104,12 +102,6 @@ protected:
     std::vector<uint32_t> m_pendingBuilds;
     std::vector<SubAllocation> m_tempBottomLevelAccelStructs[NUM_FRAMES];
     
-    ComPtr<ID3D12Resource> m_readbackBuffer;
-    uint64_t* m_readbackMemory = nullptr;
-    FreeListAllocator m_readbackAllocator;
-    std::vector<uint32_t> m_tempReadbackIds[NUM_FRAMES];
-    ankerl::unordered_dense::set<uint32_t> m_pendingCompactions;
-
     // Material
     std::vector<Material> m_materials;
 
@@ -225,8 +217,6 @@ protected:
     void handlePendingBottomLevelAccelStructBuilds();
 
     void handlePendingSmoothNormalCommands();
-
-    void handlePendingBottomLevelAccelStructCompactions();
 
     void writeHitGroupShaderTable(size_t geometryIndex, size_t shaderType, bool constTexCoord);
 

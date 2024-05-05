@@ -206,22 +206,7 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
     if (bottomLevelAccelStruct.asyncBuild)
         commandList.open();
 
-    const bool allowCompaction = (bottomLevelAccelStruct.desc.Inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION) != 0;
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postBuildInfo{};
-    postBuildInfo.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
-
-    if (allowCompaction)
-    {
-        assert(bottomLevelAccelStruct.readbackId == NULL);
-        bottomLevelAccelStruct.readbackId = m_readbackAllocator.allocate();
-        assert(bottomLevelAccelStruct.readbackId < READBACK_NUM_ELEMENTS);
-        postBuildInfo.DestBuffer = m_readbackBuffer->GetGPUVirtualAddress() + bottomLevelAccelStruct.readbackId * sizeof(uint64_t);
-    }
-
-    commandList.getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(
-        &bottomLevelAccelStruct.desc,
-        allowCompaction ? 1u : 0u,
-        allowCompaction ? &postBuildInfo : nullptr);
+    commandList.getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
 
     if (!bottomLevelAccelStruct.asyncBuild)
         commandList.uavBarrier(bottomLevelAccelStruct.allocation.blockAllocation->GetResource());
@@ -244,9 +229,6 @@ void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
     {
         auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[pendingBuild];
         buildBottomLevelAccelStruct(bottomLevelAccelStruct);
-
-        if (bottomLevelAccelStruct.desc.Inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION)
-            m_pendingCompactions.emplace(pendingBuild);
     }
 
     m_pendingPoses.clear();
@@ -310,42 +292,6 @@ void RaytracingDevice::handlePendingSmoothNormalCommands()
     }
 
     m_smoothNormalCommands.clear();
-}
-
-void RaytracingDevice::handlePendingBottomLevelAccelStructCompactions()
-{
-    if (m_pendingCompactions.empty())
-        return;
-
-    auto& commandList = getComputeCommandList();
-    commandList.open();
-
-    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
-
-    for (auto bottomLevelAccelStructId : m_pendingCompactions)
-    {
-        auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[bottomLevelAccelStructId];
-        assert(bottomLevelAccelStruct.desc.Inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION);
-        assert(bottomLevelAccelStruct.readbackId != NULL);
-
-        const uint64_t compactedSize = m_readbackMemory[bottomLevelAccelStruct.readbackId];
-        assert(compactedSize > 0 && compactedSize <= bottomLevelAccelStruct.allocation.byteSize);
-
-        auto allocation = m_bottomLevelAccelStructAllocator.allocate(m_allocator.Get(), static_cast<uint32_t>(compactedSize));
-
-        underlyingCommandList->CopyRaytracingAccelerationStructure(
-            allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + allocation.byteOffset,
-            bottomLevelAccelStruct.allocation.blockAllocation->GetResource()->GetGPUVirtualAddress() + bottomLevelAccelStruct.allocation.byteOffset,
-            D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_COMPACT);
-
-        m_tempBottomLevelAccelStructs[m_frame].emplace_back(std::move(bottomLevelAccelStruct.allocation));
-        bottomLevelAccelStruct.allocation = std::move(allocation);
-
-        m_tempReadbackIds[m_frame].push_back(bottomLevelAccelStruct.readbackId);
-        bottomLevelAccelStruct.readbackId = NULL;
-    }
-
-    m_pendingCompactions.clear();
 }
 
 void RaytracingDevice::writeHitGroupShaderTable(size_t geometryIndex, size_t shaderType, bool constTexCoord)
@@ -439,7 +385,6 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
 
 bool RaytracingDevice::createTopLevelAccelStruct()
 {
-    handlePendingBottomLevelAccelStructCompactions();
     handlePendingBottomLevelAccelStructBuilds();
     handlePendingSmoothNormalCommands();
 
@@ -819,11 +764,6 @@ void RaytracingDevice::procMsgReleaseRaytracingResource()
 
         if (bottomLevelAccelStruct.geometryCount != 0)
             m_tempGeometryRanges[m_frame].emplace_back(bottomLevelAccelStruct.geometryId, bottomLevelAccelStruct.geometryCount);
-
-        if (bottomLevelAccelStruct.readbackId != NULL)
-            m_tempReadbackIds[m_frame].push_back(bottomLevelAccelStruct.readbackId);
-
-        m_pendingCompactions.erase(message.resourceId);
 
         bottomLevelAccelStruct = {};
         break;
@@ -1762,11 +1702,6 @@ void RaytracingDevice::releaseRaytracingResources()
     m_bottomLevelAccelStructAllocator.freeBlocks(m_tempBuffers[m_frame]);
     m_tempBottomLevelAccelStructs[m_frame].clear();
 
-    for (auto readbackId : m_tempReadbackIds[m_frame])
-        m_readbackAllocator.free(readbackId);
-
-    m_tempReadbackIds[m_frame].clear();
-
     while (!m_materials.empty() && m_materials.back().shaderType == NULL)
         m_materials.pop_back();
 
@@ -2296,24 +2231,6 @@ RaytracingDevice::RaytracingDevice()
     copyHdrPipelineDesc.SampleDesc.Count = 1;
 
     m_pipelineLibrary.createGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
-
-    const D3D12_HEAP_PROPERTIES readbackHeapProperties = m_device->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_READBACK);
-    const D3D12_RESOURCE_DESC readbackResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(
-        READBACK_NUM_ELEMENTS * sizeof(uint64_t), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-
-    hr = m_device->CreateCommittedResource(
-        &readbackHeapProperties,
-        D3D12_HEAP_FLAG_NONE,
-        &readbackResourceDesc,
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-        nullptr,
-        IID_PPV_ARGS(m_readbackBuffer.GetAddressOf()));
-
-    assert(SUCCEEDED(hr) && m_readbackBuffer != nullptr);
-
-    D3D12_RANGE readRange{};
-    hr = m_readbackBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_readbackMemory));
-    assert(SUCCEEDED(hr) && m_readbackMemory != nullptr);
 }
 
 RaytracingDevice::~RaytracingDevice()

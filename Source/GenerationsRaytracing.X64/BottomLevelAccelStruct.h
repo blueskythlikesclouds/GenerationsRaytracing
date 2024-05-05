@@ -13,5 +13,4 @@ struct BottomLevelAccelStruct
     uint32_t updateScratchBufferSize = 0;
     D3D12_RAYTRACING_INSTANCE_FLAGS instanceFlags{};
     bool asyncBuild = false;
-    uint32_t readbackId = 0;
 };

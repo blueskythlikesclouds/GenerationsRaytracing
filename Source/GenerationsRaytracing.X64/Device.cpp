@@ -2144,6 +2144,16 @@ void Device::processMessages()
         shouldWaitForCopyQueue = true;
     }
 
+    if (shouldWaitForCopyQueue)
+        m_graphicsQueue.wait(m_fenceValue, m_copyQueue);
+
+    graphicsCommandList.close();
+    m_graphicsQueue.executeCommandList(graphicsCommandList);
+    m_graphicsQueue.signal(m_fenceValue);
+
+    fences[fenceCount] = m_graphicsQueue.getFence();
+    ++fenceCount;
+
     auto& computeCommandList = getComputeCommandList();
     if (computeCommandList.isOpen())
     {
@@ -2158,16 +2168,6 @@ void Device::processMessages()
         fences[fenceCount] = m_computeQueue.getFence();
         ++fenceCount;
     }
-
-    if (shouldWaitForCopyQueue)
-        m_graphicsQueue.wait(m_fenceValue, m_copyQueue);
-
-    graphicsCommandList.close();
-    m_graphicsQueue.executeCommandList(graphicsCommandList);
-    m_graphicsQueue.signal(m_fenceValue);
-
-    fences[fenceCount] = m_graphicsQueue.getFence();
-    ++fenceCount;
 
     if (m_shouldPresent)
     {
