@@ -77,8 +77,7 @@ void PrimaryMiss(inout PrimaryRayPayload payload : SV_RayPayload)
     g_Depth[DispatchRaysIndex().xy] = 1.0;
 
     g_MotionVectors[DispatchRaysIndex().xy] =
-        ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) -
-        ComputePixelPosition(gBufferData.Position, g_MtxView, g_MtxProjection);
+        ComputePixelPosition(gBufferData.Position, g_MtxPrevView, g_MtxPrevProjection) - (DispatchRaysIndex().xy - g_PixelJitter + 0.5);
 
     g_LinearDepth[DispatchRaysIndex().xy] = 65504.0;
     

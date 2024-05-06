@@ -38,13 +38,14 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
     gBufferData.Alpha = 1.0;
     StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
 
-    g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
-
-    g_MotionVectors[DispatchRaysIndex().xy] =
-        ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
-        ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
-
-    g_LinearDepth[DispatchRaysIndex().xy] = -mul(float4(vertex.Position, 0.0), g_MtxView).z;
+    g_Depth[DispatchRaysIndex().xy] = 
+        ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
+    
+    g_MotionVectors[DispatchRaysIndex().xy] = 
+        ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) - (DispatchRaysIndex().xy - g_PixelJitter + 0.5);
+    
+    g_LinearDepth[DispatchRaysIndex().xy] = 
+        -mul(float4(vertex.Position, 0.0), g_MtxView).z;
     
     payload.T = RayTCurrent();
 }
@@ -138,9 +139,8 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
                 
                 if (linearDepth < g_LinearDepth[DispatchRaysIndex().xy])
                 {
-                    g_MotionVectors[DispatchRaysIndex().xy] =
-                        ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) -
-                        ComputePixelPosition(vertex.Position, g_MtxView, g_MtxProjection);
+                    g_MotionVectors[DispatchRaysIndex().xy] = 
+                        ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) - (DispatchRaysIndex().xy - g_PixelJitter + 0.5);
                     
                     g_LinearDepth[DispatchRaysIndex().xy] = linearDepth;
                 }
