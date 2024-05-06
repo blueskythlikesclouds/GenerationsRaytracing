@@ -36,7 +36,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         float3 posB = g_Vertices.Load<float3>(b * g_VertexStride);
         float3 posC = g_Vertices.Load<float3>(c * g_VertexStride);
 
-        normal += normalize(cross(posA - posC, posA - posB));
+        if (!isnan(posA.x) && !isnan(posB.x) && !isnan(posC.x))
+            normal += normalize(cross(posA - posC, posA - posB));
     }
 
     g_Vertices.Store(g_NormalOffset + dispatchThreadId.x * g_VertexStride, EncodeSnorm10(normalize(normal)));

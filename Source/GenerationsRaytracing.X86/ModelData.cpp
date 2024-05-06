@@ -675,7 +675,9 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
         const XXH32_hash_t matrixHash = XXH32(
             matrixList, matrixNum * sizeof(Hedgehog::Math::CMatrix), 0);
 
-        const bool shouldComputePose = instanceInfoEx.m_matrixHash != matrixHash || instanceInfoEx.m_prevMatrixHash != matrixHash;
+        const bool shouldComputePose = instanceInfoEx.m_matrixHash != matrixHash || instanceInfoEx.m_prevMatrixHash != matrixHash ||
+            RaytracingParams::s_prevComputeSmoothNormals != RaytracingParams::s_computeSmoothNormals;
+
         instanceInfoEx.m_prevMatrixHash = instanceInfoEx.m_matrixHash;
         instanceInfoEx.m_matrixHash = matrixHash;
 
@@ -781,7 +783,10 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
                     geometryDesc->visible = visible;
 
-                    if (meshDataEx.m_adjacency != nullptr && RaytracingParams::s_computeSmoothNormals && visible)
+                    if (meshDataEx.m_adjacency != nullptr && 
+                        RaytracingParams::s_computeSmoothNormals && 
+                        visible && 
+                        !checkAllZeroScaled(meshDataEx))
                     {
                         auto& smoothNormalMsg = s_messageSender.makeMessage<MsgComputeSmoothNormal>();
 

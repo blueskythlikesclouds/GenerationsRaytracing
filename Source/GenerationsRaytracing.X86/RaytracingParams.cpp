@@ -229,6 +229,8 @@ static size_t s_durationIndex = 0;
 
 void RaytracingParams::imguiWindow()
 {
+    s_prevComputeSmoothNormals = s_computeSmoothNormals;
+
     if (ImGui::Begin("Generations Raytracing", &Configuration::s_enableImgui, ImGuiWindowFlags_MenuBar))
     {
         if (ImGui::BeginMenuBar())
