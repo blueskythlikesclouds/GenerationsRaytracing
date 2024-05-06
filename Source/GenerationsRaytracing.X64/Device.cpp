@@ -550,6 +550,8 @@ void Device::procMsgCreateVertexDeclaration()
     auto texCoordFormat = DXGI_FORMAT_R32G32_FLOAT;
 
     bool enable10BitNormal = false;
+    bool enableBlendWeight = false;
+    bool enableBlendIndices = false;
 
     const D3DVERTEXELEMENT9* vertexElement = reinterpret_cast<const D3DVERTEXELEMENT9*>(message.data);
 
@@ -588,6 +590,14 @@ void Device::procMsgCreateVertexDeclaration()
                 texCoordFormat = inputElement.Format;
             }
             break;
+
+        case D3DDECLUSAGE_BLENDWEIGHT:
+            enableBlendWeight = true;
+            break;
+
+        case D3DDECLUSAGE_BLENDINDICES:
+            enableBlendIndices = true;
+            break;
         }
 
         ++vertexElement;
@@ -616,6 +626,8 @@ void Device::procMsgCreateVertexDeclaration()
     vertexDeclaration.inputElementsSize = static_cast<uint32_t>(inputElements.size());
     vertexDeclaration.isFVF = message.isFVF;
     vertexDeclaration.enable10BitNormal = enable10BitNormal;
+    vertexDeclaration.enableBlendWeight = enableBlendWeight;
+    vertexDeclaration.enableBlendIndices = enableBlendIndices;
 
     memcpy(vertexDeclaration.inputElements.get(), 
         inputElements.data(), inputElements.size() * sizeof(D3D12_INPUT_ELEMENT_DESC));
@@ -674,6 +686,8 @@ void Device::procMsgCreateVertexShader()
 static constexpr size_t GLOBALS_VS_UNUSED_CONSTANT = 196;
 static constexpr size_t GLOBALS_VS_BOOLEANS = 0;
 static constexpr size_t GLOBALS_VS_ENABLE_10_BIT_NORMAL = 1;
+static constexpr size_t GLOBALS_VS_ENABLE_BLEND_WEIGHT = 2;
+static constexpr size_t GLOBALS_VS_ENABLE_BLEND_INDICES = 3;
 
 void Device::procMsgSetRenderState()
 {
@@ -1209,12 +1223,17 @@ void Device::procMsgSetVertexDeclaration()
 
     const auto& vertexDeclaration = m_vertexDeclarations[message.vertexDeclarationId];
 
-    auto& enable10BitNormal = reinterpret_cast<uint32_t&>(
-        m_globalsVS.floatConstants[GLOBALS_VS_UNUSED_CONSTANT][GLOBALS_VS_ENABLE_10_BIT_NORMAL]);
+    auto& enable10BitNormal = reinterpret_cast<uint32_t&>(m_globalsVS.floatConstants[GLOBALS_VS_UNUSED_CONSTANT][GLOBALS_VS_ENABLE_10_BIT_NORMAL]);
+    auto& enableBlendWeight = reinterpret_cast<uint32_t&>(m_globalsVS.floatConstants[GLOBALS_VS_UNUSED_CONSTANT][GLOBALS_VS_ENABLE_BLEND_WEIGHT]);
+    auto& enableBlendIndices = reinterpret_cast<uint32_t&>(m_globalsVS.floatConstants[GLOBALS_VS_UNUSED_CONSTANT][GLOBALS_VS_ENABLE_BLEND_INDICES]);
 
-    if (enable10BitNormal != static_cast<uint32_t>(vertexDeclaration.enable10BitNormal))
+    if (enable10BitNormal != static_cast<uint32_t>(vertexDeclaration.enable10BitNormal) ||
+        enableBlendWeight != static_cast<uint32_t>(vertexDeclaration.enableBlendWeight) ||
+        enableBlendIndices != static_cast<uint32_t>(vertexDeclaration.enableBlendIndices))
     {
         enable10BitNormal = static_cast<uint32_t>(vertexDeclaration.enable10BitNormal);
+        enableBlendWeight = static_cast<uint32_t>(vertexDeclaration.enableBlendWeight);
+        enableBlendIndices = static_cast<uint32_t>(vertexDeclaration.enableBlendIndices);
         m_dirtyFlags |= DIRTY_FLAG_GLOBALS_VS;
     }
 

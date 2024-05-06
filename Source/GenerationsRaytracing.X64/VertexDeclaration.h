@@ -6,4 +6,6 @@ struct VertexDeclaration
     uint32_t inputElementsSize = 0;
     bool isFVF = false;
     bool enable10BitNormal = false;
+    bool enableBlendWeight = false;
+    bool enableBlendIndices = false;
 };

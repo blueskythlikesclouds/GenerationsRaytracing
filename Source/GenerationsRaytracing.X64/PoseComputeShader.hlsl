@@ -62,7 +62,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     
     if (g_Visible)
     {
-        uint2 blendIndicesAndWeight = g_Src.Load2(vertexOffset + g_BlendIndicesOffset);
+        uint2 blendIndicesAndWeight = uint2(0x00000000, 0xFF000000);
+        
+        if (g_BlendIndicesOffset != 0)
+            blendIndicesAndWeight = g_Src.Load2(vertexOffset + g_BlendIndicesOffset);
+        
         uint4 blendIndices = min(g_NodeCount - 1, UnpackUint4(blendIndicesAndWeight.x));
         
         float4 blendWeight = UnpackUint4(blendIndicesAndWeight.y) / 255.0;

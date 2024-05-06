@@ -90,6 +90,7 @@ struct MeshResource
     uint32_t vertexSize;
     uint8_t* vertexData;
     VertexElement* vertexElements;
+    uint32_t nodeCount;
 };
 
 static std::vector<uint8_t> s_vertexData;
@@ -139,10 +140,16 @@ static void optimizeVertexFormat(MeshResource* meshResource)
         ++vertexElement;
     }
 
-    if (!ShareVertexBuffer::s_makingModelData)
+    if (!ShareVertexBuffer::s_makingModelData || _byteswap_ulong(meshResource->nodeCount) <= 1)
     {
         usages[D3DDECLUSAGE_BLENDWEIGHT][0] = false;
         usages[D3DDECLUSAGE_BLENDINDICES][0] = false;
+    }
+
+    if (_byteswap_ulong(meshResource->nodeCount) <= 4)
+    {
+        usages[D3DDECLUSAGE_BLENDWEIGHT][1] = false;
+        usages[D3DDECLUSAGE_BLENDINDICES][1] = false;
     }
 
     VertexElement elements[32]{};

@@ -293,6 +293,8 @@ public class ShaderConverter
         {
             stringBuilder.AppendLine("\tuint g_Booleans : packoffset(c196.x);");
             stringBuilder.AppendLine("\tbool g_Enable10BitNormal : packoffset(c196.y);");
+            stringBuilder.AppendLine("\tbool g_EnableBlendWeight : packoffset(c196.z);");
+            stringBuilder.AppendLine("\tbool g_EnableBlendIndices : packoffset(c196.w);");
         }
 
         stringBuilder.AppendLine("}\n");
@@ -300,17 +302,35 @@ public class ShaderConverter
         stringBuilder.AppendLine("void main(");
 
         bool isMetaInstancer = !isPixelShader && constants.Any(x => x.Name == "g_InstanceTypes");
-        var varsToCheck10BitNormal = new HashSet<string>();
+        var tenBitNormalTokens = new HashSet<string>();
+        string blendWeightToken = null;
+        string blendIndicesToken = null;
 
         foreach (var semantic in inSemantics)
         {
             string type = "float";
 
-            if (semantic.Key == "BLENDINDICES" || (isMetaInstancer && semantic.Key == "TEXCOORD2"))
-                type = "uint";
+            switch (semantic.Key)
+            {
+                case "BLENDWEIGHT":
+                    blendWeightToken = semantic.Value;
+                    break;
 
-            if (semantic.Key == "NORMAL" || semantic.Key == "TANGENT" || semantic.Key == "BINORMAL")
-                varsToCheck10BitNormal.Add(semantic.Value);
+                case "BLENDINDICES":
+                    type = "uint";
+                    blendIndicesToken = semantic.Value;
+                    break;
+
+                case "NORMAL":
+                case "TANGENT":
+                case "BINORMAL":
+                    tenBitNormalTokens.Add(semantic.Value);
+                    break;
+
+                case "TEXCOORD2" when isMetaInstancer:
+                    type = "uint";
+                    break;
+            }
 
             stringBuilder.AppendFormat("\tin {0}4 {1} : {2},\n", type, semantic.Value, semantic.Key);
         }
@@ -408,8 +428,14 @@ public class ShaderConverter
                     else if (argument.Token[0] == 'c')
                         argument.Token = $"C[{argument.Token.Substring(1)}]";
 
-                    else if (varsToCheck10BitNormal.Contains(argument.Token))
+                    else if (tenBitNormalTokens.Contains(argument.Token))
                         argument.Token = $"(g_Enable10BitNormal ? {argument.Token} * 2.0 - 1.0 : {argument.Token})";
+
+                    else if (blendWeightToken != null && argument.Token == blendWeightToken)
+                        argument.Token = $"(g_EnableBlendWeight ? {argument.Token} : float4(0.0, 0.0, 0.0, 1.0))";
+
+                    else if (blendIndicesToken != null && argument.Token == blendIndicesToken)
+                        argument.Token = $"(g_EnableBlendIndices ? {argument.Token} : uint4(0, 0, 0, 0))";
                 }
             }
 
