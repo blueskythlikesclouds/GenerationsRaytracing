@@ -387,6 +387,7 @@ struct MsgTraceRays
     uint32_t adaptionLuminanceTextureId;
     float middleGray;
     bool skyInRoughReflection;
+    bool enableExposureTexture;
 };
 
 struct MsgCreateMaterial

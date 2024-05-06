@@ -1099,8 +1099,11 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
     m_globalsVS.floatConstants[3][1] += -2.0f * m_globalsRT.pixelJitterY / static_cast<float>(m_upscaler->getHeight());
     m_dirtyFlags |= DIRTY_FLAG_GLOBALS_VS;
 
-    m_globalsPS.exposureTextureId = m_exposureTextureId;
-    m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
+    if (message.enableExposureTexture)
+    {
+        m_globalsPS.exposureTextureId = m_exposureTextureId;
+        m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
+    }
 
     m_viewport.Width = static_cast<FLOAT>(m_upscaler->getWidth());
     m_viewport.Height = static_cast<FLOAT>(m_upscaler->getHeight());
