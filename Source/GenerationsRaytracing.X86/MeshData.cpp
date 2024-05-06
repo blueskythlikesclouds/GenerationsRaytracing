@@ -4,6 +4,8 @@
 #include "MessageSender.h"
 #include "ShareVertexBuffer.h"
 #include "MeshOpt.h"
+#include "ModelReplacer.h"
+#include "SampleChunkResource.h"
 
 HOOK(MeshDataEx*, __fastcall, MeshDataConstructor, 0x722860, MeshDataEx* This)
 {
@@ -40,6 +42,7 @@ enum DeclType
     DECLTYPE_USHORT2N = 0x2C2059,
     DECLTYPE_USHORT4N = 0x1A205A,
     DECLTYPE_UDEC3 = 0x2A2287,
+    DECLTYPE_UDEC3N = 0x2A2087,
     DECLTYPE_DEC3N = 0x2A2187,
     DECLTYPE_FLOAT16_2 = 0x2C235F,
     DECLTYPE_FLOAT16_4 = 0x1A2360,
@@ -63,6 +66,8 @@ static size_t getDeclTypeSize(size_t declType)
     case DECLTYPE_SHORT4N: return 8;
     case DECLTYPE_USHORT2N: return 4;
     case DECLTYPE_USHORT4N: return 8;
+    case DECLTYPE_UDEC3: return 4;
+    case DECLTYPE_UDEC3N: return 4;
     case DECLTYPE_DEC3N: return 4;
     case DECLTYPE_FLOAT16_2: return 4;
     case DECLTYPE_FLOAT16_4: return 8;
@@ -160,9 +165,9 @@ static void optimizeVertexFormat(MeshResource* meshResource)
     { 
         { D3DDECLUSAGE_POSITION, DECLTYPE_FLOAT3 },
         { D3DDECLUSAGE_COLOR, DECLTYPE_UBYTE4N },
-        { D3DDECLUSAGE_NORMAL, DECLTYPE_DEC3N },
-        { D3DDECLUSAGE_TANGENT, DECLTYPE_DEC3N },
-        { D3DDECLUSAGE_BINORMAL, DECLTYPE_DEC3N },
+        { D3DDECLUSAGE_NORMAL, DECLTYPE_UDEC3N },
+        { D3DDECLUSAGE_TANGENT, DECLTYPE_UDEC3N },
+        { D3DDECLUSAGE_BINORMAL, DECLTYPE_UDEC3N },
         { D3DDECLUSAGE_TEXCOORD, DECLTYPE_FLOAT16_2 },
         { D3DDECLUSAGE_BLENDINDICES, DECLTYPE_UBYTE4 },
         { D3DDECLUSAGE_BLENDWEIGHT, DECLTYPE_UBYTE4N }
@@ -316,20 +321,16 @@ static IndexBuffer* createIndexBuffer()
 static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshResource)
 {
     assert(meshData.m_indices == nullptr);
-
+    
     const uint32_t indexNum = _byteswap_ulong(meshResource->indexCount);
     if (indexNum <= 2)
         return;
-
-    const bool shareVertexBuffer = *reinterpret_cast<uint32_t*>(0x1B244D4) != 0;
-
-    if (shareVertexBuffer)
-        meshData.m_indexOffset = s_indices.size();
-
-    s_indices.reserve(s_indices.size() + (indexNum - 2) * 3);
-
+    
+    meshData.m_indexOffset = s_indices.size();
+    s_indices.reserve(meshData.m_indexOffset + (indexNum - 2) * 3);
+    
     size_t start = 0;
-
+    
     for (size_t i = 0; i < _byteswap_ulong(meshResource->indexCount); ++i)
     {
         if (meshResource->indices[i] == 0xFFFF)
@@ -341,10 +342,10 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
             uint16_t a = _byteswap_ushort(meshResource->indices[i - 2]);
             uint16_t b = _byteswap_ushort(meshResource->indices[i - 1]);
             uint16_t c = _byteswap_ushort(meshResource->indices[i]);
-
+    
             if ((i - start) & 1)
                 std::swap(a, b);
-
+    
             if (a != b && a != c && b != c)
             {
                 s_indices.push_back(a);
@@ -353,18 +354,26 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
             }
         }
     }
-
+    
     meshData.m_indexCount = s_indices.size() - meshData.m_indexOffset;
+}
 
-    if (meshData.m_indexCount == 0)
-        return;
-
+static void generateAdjacencyData(MeshDataEx& meshData, MeshResource* meshResource)
+{
     if (strstr(meshResource->materialName, "_smooth_normal") != nullptr)
     {
         std::vector<std::vector<uint32_t>> adjacentTriangles(_byteswap_ulong(meshResource->vertexCount));
 
-        for (size_t i = 0; i < meshData.m_indexCount; i++)
-            adjacentTriangles[s_indices[meshData.m_indexOffset + i]].push_back(i / 3);
+        if (ShareVertexBuffer::s_loadingSampleChunkV2 && SampleChunkResource::s_triangleTopology)
+        {
+            for (size_t i = 0; i < _byteswap_ulong(meshResource->indexCount); i++)
+                adjacentTriangles[_byteswap_ushort(meshResource->indices[i])].push_back(i / 3);
+        }
+        else
+        {
+            for (size_t i = 0; i < meshData.m_indexCount; i++)
+                adjacentTriangles[s_indices[meshData.m_indexOffset + i]].push_back(i / 3);
+        }
 
         size_t adjacentIndexNum = 0;
         for (const auto& adjacencyIndices : adjacentTriangles)
@@ -403,23 +412,50 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
 
         s_messageSender.endMessage();
     }
-
-    if (!shareVertexBuffer)
-        meshData.m_indices.Attach(createIndexBuffer());
 }
 
 HOOK(void, __fastcall, ProcessShareVertexBuffer, 0x72EBD0, Hedgehog::Mirage::CShareVertexBuffer* This)
 {
-    if (!s_indices.empty())
+    if (ShareVertexBuffer::s_loadingSampleChunkV2)
     {
-        ComPtr<IndexBuffer> indexBuffer;
-        indexBuffer.Attach(createIndexBuffer());
+        originalProcessShareVertexBuffer(This);
 
         for (const auto& meshData : This->m_MeshDataList)
-            reinterpret_cast<MeshDataEx*>(meshData.pMeshData)->m_indices = indexBuffer;
-    }
+        {
+            const auto meshDataEx = reinterpret_cast<MeshDataEx*>(meshData.pMeshData);
 
-    originalProcessShareVertexBuffer(This);
+            meshDataEx->m_indices = reinterpret_cast<IndexBuffer*>(meshDataEx->m_pD3DIndexBuffer);
+            meshDataEx->m_indexCount = meshDataEx->m_IndexNum;
+            meshDataEx->m_indexOffset = meshDataEx->m_IndexOffset;
+        }
+    }
+    else
+    {
+        if (!s_indices.empty())
+        {
+            ComPtr<IndexBuffer> indexBuffer;
+            indexBuffer.Attach(createIndexBuffer());
+
+            for (const auto& meshData : This->m_MeshDataList)
+                reinterpret_cast<MeshDataEx*>(meshData.pMeshData)->m_indices = indexBuffer;
+        }
+
+        originalProcessShareVertexBuffer(This);
+    }
+}
+
+static void optimizeMeshData(MeshDataEx& meshData, MeshResource* meshResource)
+{
+    if (!meshData.IsMadeOne())
+    {
+        if (!ShareVertexBuffer::s_loadingSampleChunkV2 || !SampleChunkResource::s_optimizedVertexFormat)
+            optimizeVertexFormat(meshResource);
+
+        if (!ShareVertexBuffer::s_loadingSampleChunkV2 || !SampleChunkResource::s_triangleTopology)
+            convertToTriangles(meshData, meshResource);
+
+        generateAdjacencyData(meshData, meshResource);
+    }
 }
 
 HOOK(void, __cdecl, MakeMeshData, 0x744A00,
@@ -428,11 +464,7 @@ HOOK(void, __cdecl, MakeMeshData, 0x744A00,
     const Hedgehog::Mirage::CMirageDatabaseWrapper& databaseWrapper,
     Hedgehog::Mirage::CRenderingInfrastructure& renderingInfrastructure)
 {
-    if (!meshData.IsMadeOne())
-    {
-        optimizeVertexFormat(meshResource);
-        convertToTriangles(meshData, meshResource);
-    }
+    optimizeMeshData(meshData, meshResource);
     originalMakeMeshData(meshData, meshResource, databaseWrapper, renderingInfrastructure);
 }
 
@@ -442,11 +474,7 @@ HOOK(void, __cdecl, MakeMeshData2, 0x744CC0,
     const Hedgehog::Mirage::CMirageDatabaseWrapper& databaseWrapper,
     Hedgehog::Mirage::CRenderingInfrastructure& renderingInfrastructure)
 {
-    if (!meshData.IsMadeOne())
-    {
-        optimizeVertexFormat(meshResource);
-        convertToTriangles(meshData, meshResource);
-    }
+    optimizeMeshData(meshData, meshResource);
     originalMakeMeshData2(meshData, meshResource, databaseWrapper, renderingInfrastructure);
 }
 
@@ -484,4 +512,6 @@ void MeshData::init()
 
     INSTALL_HOOK(MakeMeshData);
     INSTALL_HOOK(MakeMeshData2);
+
+    WRITE_MEMORY(0x13E93DC, uint32_t, DECLTYPE_UDEC3N);
 }

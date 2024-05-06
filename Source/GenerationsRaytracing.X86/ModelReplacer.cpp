@@ -1,6 +1,7 @@
 #include "ModelReplacer.h"
 
 #include "ModelData.h"
+#include "SampleChunkResource.h"
 
 struct NoAoModel
 {
@@ -41,7 +42,7 @@ static void parseJson(json& json)
 
 HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
     const Hedgehog::Base::CSharedString& name,
-    const void* data,
+    void* data,
     uint32_t dataSize,
     const boost::shared_ptr<Hedgehog::Database::CDatabase>& database,
     Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)

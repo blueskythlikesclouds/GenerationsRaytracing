@@ -29,6 +29,7 @@
 #include "StageSelection.h"
 #include "TerrainData.h"
 #include "UpReelRenderable.h"
+#include "SampleChunkResource.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
 
@@ -98,6 +99,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     GroundSmokeParticle::init();
     TerrainData::init();
     LightData::init(modInfo);
+    SampleChunkResource::init();
 
 #ifdef _DEBUG
 #if 0

@@ -1,4 +1,5 @@
 #include "ShareVertexBuffer.h"
+#include "SampleChunkResource.h"
 
 static FUNCTION_PTR(void, __thiscall, shareVertexBufferCtor, 0x72EC90, void*);
 static FUNCTION_PTR(void, __thiscall, shareVertexBufferDtor, 0x72EBE0, void*);
@@ -8,12 +9,21 @@ static FUNCTION_PTR(void, __cdecl, shareVertexBufferFinish, 0x725050, void*, voi
 
 HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
     const Hedgehog::Base::CSharedString& name,
-    const void* data,
+    void* data,
     uint32_t dataSize,
     const boost::shared_ptr<Hedgehog::Database::CDatabase>& database,
     Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)
 {
     ShareVertexBuffer::s_makingModelData = true;
+
+    if (data != nullptr)
+    {
+        ShareVertexBuffer::s_loadingSampleChunkV2 =
+            (_byteswap_ulong(reinterpret_cast<const SampleChunkHeaderV2*>(data)->fileSize) & 0x80000000) != 0;
+
+        if (ShareVertexBuffer::s_loadingSampleChunkV2)
+            reinterpret_cast<SampleChunkHeaderV1*>(data)->version = 0x05000000;
+    }
 
     if (*reinterpret_cast<uint32_t*>(0x1B244D4) == NULL)
     {
@@ -30,6 +40,7 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
         originalModelDataMake(name, data, dataSize, database, renderingInfrastructure);
     }
 
+    ShareVertexBuffer::s_loadingSampleChunkV2 = false;
     ShareVertexBuffer::s_makingModelData = false;
 }
 

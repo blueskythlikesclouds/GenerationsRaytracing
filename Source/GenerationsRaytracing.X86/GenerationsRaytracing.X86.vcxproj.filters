@@ -135,6 +135,9 @@
     <ClCompile Include="PlayableParam.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
+    <ClCompile Include="SampleChunkResource.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -278,6 +281,9 @@
     </ClInclude>
     <ClInclude Include="PlayableParam.h">
       <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="SampleChunkResource.h">
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
