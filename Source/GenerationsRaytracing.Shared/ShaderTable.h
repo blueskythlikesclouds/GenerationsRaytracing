@@ -15,6 +15,8 @@
 #define MISS_SECONDARY_ENVIRONMENT_COLOR 3
 #define MISS_NUM                         4
 
+#define INSTANCE_MASK_DEFAULT            1
+
 #define INSTANCE_TYPE_OPAQUE             0
 #define INSTANCE_TYPE_TRANSPARENT        1
 #define INSTANCE_TYPE_NUM                2

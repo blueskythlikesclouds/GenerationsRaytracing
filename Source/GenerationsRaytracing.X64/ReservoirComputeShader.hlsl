@@ -24,7 +24,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     
         for (uint i = 0; i < localLightCount; i++)
         {
-            uint sample = NextRandomUint(randSeed) % g_LocalLightCount;
+            uint sample = min(uint(NextRandomFloat(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
             float weight = ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[sample]) * g_LocalLightCount;
             UpdateReservoir(reservoir, sample, weight, 1, NextRandomFloat(randSeed));
         }

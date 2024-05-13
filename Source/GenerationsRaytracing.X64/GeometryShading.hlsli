@@ -92,7 +92,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        1,
+        INSTANCE_MASK_DEFAULT,
         ray);
 
     while (query.Proceed())
@@ -149,7 +149,7 @@ float TraceShadowCullNonOpaque(float3 position, float3 direction, float2 random)
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        1,
+        INSTANCE_MASK_DEFAULT,
         ray);
     
     query.Proceed();
@@ -191,7 +191,7 @@ float TraceLocalLightShadow(float3 position, float3 direction, float2 random, fl
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        1,
+        INSTANCE_MASK_DEFAULT,
         ray);
 
     query.Proceed();
@@ -202,7 +202,7 @@ float TraceLocalLightShadow(float3 position, float3 direction, float2 random, fl
 float ComputeReservoirWeight(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
     float3 localLighting = ComputeLocalLighting(gBufferData, eyeDirection, localLight);
-    return length(localLighting);
+    return dot(localLighting, float3(0.299, 0.587, 0.114));
 }
 
 float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)

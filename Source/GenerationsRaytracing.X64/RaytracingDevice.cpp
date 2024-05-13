@@ -834,7 +834,7 @@ void RaytracingDevice::procMsgCreateInstance()
             instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
         }
 
-        instanceDesc.InstanceMask = 1;
+        instanceDesc.InstanceMask = INSTANCE_MASK_DEFAULT;
         instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
         instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
 

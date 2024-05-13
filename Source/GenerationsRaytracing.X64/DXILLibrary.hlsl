@@ -29,7 +29,7 @@ void PrimaryRayGeneration()
     TraceRay(
         g_BVH,
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
-        1,
+        INSTANCE_MASK_DEFAULT,
         HIT_GROUP_PRIMARY,
         HIT_GROUP_NUM,
         MISS_PRIMARY,
@@ -46,7 +46,7 @@ void PrimaryRayGeneration()
     TraceRay(
         g_BVHTransparent,
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES | RAY_FLAG_FORCE_NON_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-        1,
+        INSTANCE_MASK_DEFAULT,
         HIT_GROUP_PRIMARY_TRANSPARENT,
         HIT_GROUP_NUM,
         MISS_PRIMARY_TRANSPARENT,
@@ -122,10 +122,10 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
 #endif
             g_BVH,
             bounceIndex != 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
-            1,
+            INSTANCE_MASK_DEFAULT,
             HIT_GROUP_SECONDARY,
             HIT_GROUP_NUM,
-            bounceIndex == 0 ? args.MissShaderIndex : MISS_SECONDARY_ENVIRONMENT_COLOR,
+            bounceIndex != 0 ? MISS_SECONDARY_ENVIRONMENT_COLOR : args.MissShaderIndex,
             ray,
             payload);
 
@@ -167,7 +167,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
 
             if (bounceIndex == 0 && g_LocalLightCount > 0)
             {
-                uint sample = NextRandomUint(randSeed) % g_LocalLightCount;
+                uint sample = min(uint(NextRandomFloat(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
                 LocalLight localLight = g_LocalLights[sample];
 
                 float3 lightDirection = (localLight.Position - g_EyePosition.xyz) - payload.Position;
