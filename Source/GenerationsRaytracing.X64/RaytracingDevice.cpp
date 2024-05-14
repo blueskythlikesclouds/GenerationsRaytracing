@@ -1032,7 +1032,8 @@ void RaytracingDevice::procMsgTraceRays()
             m_depthTexture->GetResource(),
             m_reservoirTexture->GetResource(),
             m_giTexture->GetResource(),
-            m_reflectionTexture->GetResource()
+            m_reflectionTexture->GetResource(),
+            m_linearDepthTexture->GetResource()
         }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     commandList.commitBarriers();
@@ -1137,7 +1138,6 @@ void RaytracingDevice::procMsgDispatchUpscaler()
                 m_diffuseAlbedoTexture->GetResource(),
                 m_specularAlbedoTexture->GetResource(),
                 m_normalsRoughnessTexture->GetResource(),
-                m_linearDepthTexture->GetResource(),
                 m_specularHitDistanceTexture->GetResource(),
             }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 

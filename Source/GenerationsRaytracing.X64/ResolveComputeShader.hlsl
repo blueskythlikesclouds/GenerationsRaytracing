@@ -21,9 +21,11 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     float specularHitDistance = 0.0;
 
     GBufferData gBufferData = LoadGBufferData(uint3(dispatchThreadId, 0));
+    float linearDepth = 65504.0;
+    
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
     {
-        float depth = g_Depth_SRV[dispatchThreadId];
+        linearDepth = g_LinearDepth_SRV[dispatchThreadId];
         uint randSeed = InitRandom(dispatchThreadId.xy);
     
         ShadingParams shadingParams = (ShadingParams) 0;    
@@ -48,7 +50,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                     GBufferData neighborGBufferData = LoadGBufferData(uint3(neighborIndex, 0));
 
                     if (!(neighborGBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)) &&
-                        abs(depth - g_Depth_SRV[neighborIndex]) <= 0.05 &&
+                        abs(linearDepth - g_LinearDepth_SRV[neighborIndex]) <= 0.05 &&
                         dot(gBufferData.Normal, neighborGBufferData.Normal.xyz) >= 0.9063)
                     {
                         Reservoir neighborReservoir = LoadReservoir(g_Reservoir_SRV[neighborIndex]);
