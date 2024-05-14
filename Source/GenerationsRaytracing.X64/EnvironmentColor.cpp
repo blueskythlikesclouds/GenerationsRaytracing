@@ -119,7 +119,7 @@ static const xxHashMap<std::array<uint8_t, 6>> s_environmentColors =
     { 0x87f6cecb05549bfd, { 153, 93, 77 } },                 // bsl
     { 0xa72a03b46543d1b8, { 38, 27, 84 } },                  // cnz100
     { 0xac3c2e9c794443bb, { 62, 18, 15 } },                  // cpz100
-    { 0xcdb2f1065b8e9656, { 48, 49, 107 } },                 // cpz200
+    { 0xcdb2f1065b8e9656, { 38, 44, 138 } },                 // cpz200
     { 0xbb6a4511aeae905e, { 117, 64, 34 } },                 // csc100
     { 0xb0c02ec7639c752a, { 117, 63, 36 } },                 // csc200
     { 0x7cef91a4098b129e, { 76, 124, 204 } },                // cte100, cte200

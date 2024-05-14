@@ -336,6 +336,9 @@ void LightData::renderImgui()
     ImGui::SameLine();
     ImGui::Checkbox("Show All Gismos", &s_showAllGismos);
 
+    ImGui::SameLine();
+    ImGui::Checkbox("GI Only (Requires Debug Shaders)", reinterpret_cast<bool*>(0x1E5E3E0));
+
     ImGui::EndChild();
     ImGui::EndTabItem();
 }

@@ -206,13 +206,13 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
             hitDistance = distance(args.Position, payload.Position);
 
         radiance += args.Throughput * color;
-        args.Throughput *= diffuse;
 
         if (terminatePath)
             break;
 
         args.Position = payload.Position;
         args.Direction = TangentToWorld(payload.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
+        args.Throughput *= diffuse;
     }
 
     return float4(radiance, hitDistance);
