@@ -1,6 +1,7 @@
 #include "GeometryShading.hlsli"
 #include "RootSignature.hlsli"
 #include "ThreadGroupTilingX.hlsl"
+#include "LocalLight.h"
 
 [numthreads(8, 8, 1)]
 void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
@@ -63,7 +64,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             ComputeReservoirWeight(reservoir,
                 ComputeReservoirWeight(gBufferData, shadingParams.EyeDirection, localLight));
     
-            if (reservoir.W > 0.0001)
+            if ((localLight.Flags & LOCAL_LIGHT_FLAG_CAST_SHADOW) && reservoir.W > 0.0001)
             {
                 float3 direction = (localLight.Position - g_EyePosition.xyz) - gBufferData.Position;
                 float distance = length(direction);
@@ -74,8 +75,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                     gBufferData.Position,
                     direction,
                     float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)),
-                    1.0 / localLight.OutRange,
-                    distance);
+                    localLight.ShadowRange,
+                    distance,
+                    (localLight.Flags & LOCAL_LIGHT_FLAG_ENABLE_BACKFACE_CULLING) != 0);
             }
     
             shadingParams.Reservoir = reservoir;

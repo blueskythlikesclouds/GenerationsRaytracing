@@ -3,11 +3,14 @@
 struct Light
 {
     std::string name;
-    float position[3];
-    float color[3];
-    float colorIntensity;
-    float inRange;
-    float outRange;
+    float position[3]{};
+    float color[3]{};
+    float colorIntensity{};
+    float inRange{};
+    float outRange{};
+    bool castShadow{};
+    bool enableBackfaceCulling{};
+    float shadowRange{};
 };
 
 struct LightData

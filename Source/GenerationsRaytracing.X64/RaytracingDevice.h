@@ -241,7 +241,6 @@ protected:
     void procMsgDispatchUpscaler();
     void procMsgDrawIm3d();
     void procMsgCopyHdrTexture();
-    void procMsgCompactBottomLevelAccelStruct();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

@@ -1538,6 +1538,9 @@ void RaytracingDevice::procMsgCreateLocalLight()
     localLight.inRange = message.inRange;
     memcpy(localLight.color, message.color, sizeof(localLight.color));
     localLight.outRange = message.outRange;
+    localLight.flags = message.castShadow ? LOCAL_LIGHT_FLAG_CAST_SHADOW : 0;
+    localLight.flags |= message.enableBackfaceCulling ? LOCAL_LIGHT_FLAG_ENABLE_BACKFACE_CULLING : 0;
+    localLight.shadowRange = message.shadowRange;
 }
 
 void RaytracingDevice::procMsgComputeSmoothNormal()
@@ -1580,11 +1583,18 @@ void RaytracingDevice::procMsgDrawIm3d()
     const D3D12_VIEWPORT viewport = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f};
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
 
+    const auto& depthStencilTexture = m_textures[message.depthStencilId];
+    const auto depthStencilView = m_dsvDescriptorHeap.getCpuHandle(depthStencilTexture.dsvIndex);
+
     underlyingCommandList->SetGraphicsRootSignature(m_im3dRootSignature.Get());
+    underlyingCommandList->OMSetRenderTargets(1, m_renderTargetViews, FALSE, &depthStencilView);
     underlyingCommandList->SetGraphicsRootConstantBufferView(0, 
         createBuffer(&globals, sizeof(globals), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
     underlyingCommandList->RSSetViewports(1, &viewport);
     underlyingCommandList->RSSetScissorRects(1, &scissorRect);
+
+    commandList.transitionBarrier(depthStencilTexture.allocation->GetResource(),
+        D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ);
 
     commandList.commitBarriers();
 
@@ -2184,10 +2194,11 @@ RaytracingDevice::RaytracingDevice()
     im3dPipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     im3dPipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     im3dPipelineDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-    im3dPipelineDesc.DepthStencilState.DepthEnable = FALSE;
+    im3dPipelineDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
     im3dPipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     im3dPipelineDesc.NumRenderTargets = 1;
     im3dPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    im3dPipelineDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     im3dPipelineDesc.SampleDesc.Count = 1;
 
     im3dPipelineDesc.VS.pShaderBytecode = Im3dTrianglesVertexShader;

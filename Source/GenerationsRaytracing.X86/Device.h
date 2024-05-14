@@ -77,6 +77,7 @@ protected:
         bool render{};
         float projection[4][4];
         float view[4][4];
+        ComPtr<Texture> depthStencil;
     } m_im3d;
 
     void beginIm3d();
@@ -87,6 +88,7 @@ public:
     Device(uint32_t width, uint32_t height, HWND hWnd);
 
     Texture* getBackBuffer() const;
+    void storeIm3dDepthStencil();
 
     virtual HRESULT TestCooperativeLevel() final;
     virtual UINT GetAvailableTextureMem() final;

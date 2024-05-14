@@ -177,7 +177,7 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
     return localLighting;
 }
 
-float TraceLocalLightShadow(float3 position, float3 direction, float2 random, float radius, float distance)
+float TraceLocalLightShadow(float3 position, float3 direction, float2 random, float radius, float distance, bool enableBackfaceCulling)
 {
     RayDesc ray;
 
@@ -186,11 +186,11 @@ float TraceLocalLightShadow(float3 position, float3 direction, float2 random, fl
     ray.TMin = 0.0;
     ray.TMax = distance;
 
-    RayQuery<RAY_FLAG_CULL_BACK_FACING_TRIANGLES | RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
+    RayQuery<RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
 
     query.TraceRayInline(
         g_BVH,
-        RAY_FLAG_NONE,
+        enableBackfaceCulling ? RAY_FLAG_CULL_BACK_FACING_TRIANGLES : RAY_FLAG_NONE,
         INSTANCE_MASK_DEFAULT,
         ray);
 

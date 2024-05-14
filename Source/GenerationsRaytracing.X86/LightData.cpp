@@ -1,4 +1,5 @@
 #include "LightData.h"
+#include "Logger.h"
 
 static XXH32_hash_t s_currentHash = 0;
 static xxHashMap<std::vector<Light>> s_serializedLights;
@@ -39,6 +40,9 @@ static void load()
                 lightObj["color_intensity"].get_to(light.colorIntensity);
                 lightObj["in_range"].get_to(light.inRange);
                 lightObj["out_range"].get_to(light.outRange);
+                lightObj["cast_shadow"].get_to(light.castShadow);
+                lightObj["enable_backface_culling"].get_to(light.enableBackfaceCulling);
+                lightObj["shadow_range"].get_to(light.shadowRange);
             }
         }
     }
@@ -65,7 +69,10 @@ static void save()
                     { "color_b", light.color[2] },
                     { "color_intensity", light.colorIntensity },
                     { "in_range", light.inRange },
-                    { "out_range", light.outRange }
+                    { "out_range", light.outRange },
+                    { "cast_shadow", light.castShadow },
+                    { "enable_backface_culling", light.enableBackfaceCulling },
+                    { "shadow_range", light.shadowRange }
                 });
         }
 
@@ -82,6 +89,9 @@ HOOK(void, __cdecl, LightDataMake, 0x740920, Hedgehog::Mirage::CLightData* light
     // Ignore corrupted omni lights saved by old GLvl
     if (*(data + 3) == 1 && *(data - 13) == 28)
     {
+        Logger::logFormatted(LogType::Error, "\"%s.light\" is corrupted, ignoring...", 
+            lightData->m_TypeAndName.c_str() + sizeof("Mirage.light"));
+
         lightData->SetMadeOne();
     }
     else
@@ -173,6 +183,9 @@ void LightData::renderImgui()
                 light.colorIntensity = 1.0f;
                 light.inRange = 0.0f;
                 light.outRange = 10.0f;
+                light.castShadow = false;
+                light.enableBackfaceCulling = false;
+                light.shadowRange = 0.0f;
             }
 
             s_dirty = true;
@@ -252,6 +265,24 @@ void LightData::renderImgui()
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
                 s_dirty |= ImGui::DragFloat("##Out Range", &light.outRange, 0.1f, light.inRange, FLT_MAX, s_format);
+
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("Shadow Range");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                s_dirty |= ImGui::DragFloat("##Shadow Range", &light.shadowRange, 0.001f, 0.0f, FLT_MAX, s_format);
+
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("Cast Shadow");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                s_dirty |= ImGui::Checkbox("##Cast Shadow", &light.castShadow);
+
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("Backface Culling");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                s_dirty |= ImGui::Checkbox("##Backface Culling", &light.enableBackfaceCulling);
 
                 ImGui::EndTable();
             }

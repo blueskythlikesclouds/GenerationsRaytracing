@@ -1,4 +1,5 @@
 #include "DXILLibrary.hlsli"
+#include "LocalLight.h"
 
 [shader("raygeneration")]
 void PrimaryRayGeneration()
@@ -179,8 +180,16 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
                 float3 localLighting = diffuse * localLight.Color * lightPower * g_LocalLightCount * saturate(dot(payload.Normal, lightDirection)) *
                     ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
 
-                if (any(localLighting > 0.0001))
-                    localLighting *= TraceLocalLightShadow(payload.Position, lightDirection, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 1.0 / localLight.OutRange, distance);
+                if ((localLight.Flags & LOCAL_LIGHT_FLAG_CAST_SHADOW) && any(localLighting > 0.0001))
+                {
+                    localLighting *= TraceLocalLightShadow(
+                        payload.Position, 
+                        lightDirection, 
+                        float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 
+                        localLight.ShadowRange, 
+                        distance,
+                        (localLight.Flags & LOCAL_LIGHT_FLAG_ENABLE_BACKFACE_CULLING) != 0);
+                }
 
                 color += localLighting;
             }

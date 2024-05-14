@@ -121,6 +121,9 @@ static void createLocalLight(Hedgehog::Mirage::CLightData& lightData, size_t loc
     memcpy(message.color, lightData.m_Color.data(), sizeof(message.color));
     message.inRange = lightData.m_Range.z();
     message.outRange = lightData.m_Range.w();
+    message.castShadow = false;
+    message.enableBackfaceCulling = false;
+    message.shadowRange = 1.0f / lightData.m_Range.w();
     
     s_messageSender.endMessage();
 }
@@ -217,8 +220,11 @@ static void __cdecl implOfTraceRays(void* a1)
     if (shouldRender)
     {
         setSceneSurface(a1, *reinterpret_cast<void**>(**reinterpret_cast<uint32_t**>(a1) + 84));
+
         const auto renderingDevice = **reinterpret_cast<hh::mr::CRenderingDevice***>(reinterpret_cast<uintptr_t>(a1) + 16);
+
         const auto d3dDevice = renderingDevice->m_pD3DDevice;
+        reinterpret_cast<Device*>(d3dDevice)->storeIm3dDepthStencil();
 
         if (GetCurrentThreadId() == s_mainThreadId)
         {
@@ -323,6 +329,9 @@ static void __cdecl implOfTraceRays(void* a1)
                                 message.color[2] = light.color[2] * light.colorIntensity;
                                 message.inRange = light.inRange;
                                 message.outRange = light.outRange;
+                                message.castShadow = light.castShadow;
+                                message.enableBackfaceCulling = light.enableBackfaceCulling;
+                                message.shadowRange = light.shadowRange;
 
                                 s_messageSender.endMessage();
 

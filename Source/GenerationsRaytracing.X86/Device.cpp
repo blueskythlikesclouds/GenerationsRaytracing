@@ -330,7 +330,7 @@ void Device::endIm3d()
 void Device::renderIm3d()
 {
     const uint32_t drawListCount = Im3d::GetDrawListCount();
-    if (drawListCount == 0)
+    if (drawListCount == 0 || m_im3d.depthStencil == nullptr)
         return;
 
     uint32_t vertexSize = 0;
@@ -344,6 +344,7 @@ void Device::renderIm3d()
     memcpy(message.view, m_im3d.view, sizeof(message.view));
     message.viewportSize[0] = Im3d::GetAppData().m_viewportSize.x;
     message.viewportSize[1] = Im3d::GetAppData().m_viewportSize.y;
+    message.depthStencilId = m_im3d.depthStencil->getId();
     message.vertexSize = vertexSize;
     message.drawListCount = drawListCount;
 
@@ -390,6 +391,11 @@ Device::Device(uint32_t width, uint32_t height, HWND hWnd)
 Texture* Device::getBackBuffer() const
 {
     return m_backBuffer.Get();
+}
+
+void Device::storeIm3dDepthStencil()
+{
+    m_im3d.depthStencil = m_depthStencil;
 }
 
 FUNCTION_STUB(HRESULT, E_NOTIMPL, Device::TestCooperativeLevel)

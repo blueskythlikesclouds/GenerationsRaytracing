@@ -131,6 +131,12 @@ struct LocalLight
     float InRange;
     float3 Color;
     float OutRange;
+    
+    uint Flags;
+    float ShadowRange;
+    
+    uint Padding0;
+    uint Padding1;
 };
 
 RaytracingAccelerationStructure g_BVH : register(t0);

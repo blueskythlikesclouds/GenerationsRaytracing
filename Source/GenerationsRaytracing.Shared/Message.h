@@ -495,6 +495,9 @@ struct MsgCreateLocalLight
     float color[3];
     float inRange;
     float outRange;
+    bool castShadow;
+    bool enableBackfaceCulling;
+    float shadowRange;
 };
 
 struct MsgSetPixelShaderConstantB
@@ -562,6 +565,7 @@ struct MsgDrawIm3d
     float projection[4][4];
     float view[4][4];
     float viewportSize[2];
+    uint32_t depthStencilId;
     uint32_t vertexSize;
     uint32_t drawListCount;
     uint32_t dataSize;
