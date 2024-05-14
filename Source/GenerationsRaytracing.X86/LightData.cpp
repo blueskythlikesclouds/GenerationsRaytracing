@@ -119,13 +119,18 @@ static void makeName(const char* originalName, char* destName, size_t destNameSi
     char prefix[0x100];
     strcpy_s(prefix, originalName);
     size_t length = strlen(prefix);
+    size_t index = 0;
+    size_t digits = 1;
     while (length > 0 && std::isdigit(prefix[length - 1]))
     {
         --length;
+        index += (prefix[length] - '0') * digits;
+        digits *= 10;
         prefix[length] = '\0';
     }
+    if (digits == 1)
+        index = LightData::s_lights.size();
 
-    size_t index = LightData::s_lights.size();
     while (true)
     {
         sprintf_s(destName, destNameSize, "%s%03d", prefix, index);
