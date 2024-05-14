@@ -21,11 +21,10 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     float specularHitDistance = 0.0;
 
     GBufferData gBufferData = LoadGBufferData(uint3(dispatchThreadId, 0));
-    float linearDepth = 65504.0;
     
     if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
     {
-        linearDepth = g_LinearDepth_SRV[dispatchThreadId];
+        float linearDepth = g_LinearDepth_SRV[dispatchThreadId];
         uint randSeed = InitRandom(dispatchThreadId.xy);
     
         ShadingParams shadingParams = (ShadingParams) 0;    
@@ -122,7 +121,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         diffuseAlbedo = gBufferData.Emission;
     }
 
-    g_ColorBeforeTransparency[dispatchThreadId] = float4(color, linearDepth);
+    g_ColorBeforeTransparency[dispatchThreadId] = float4(color, 1.0);
     g_PrevReservoir[dispatchThreadId] = StoreReservoir(reservoir);
     g_DiffuseAlbedoBeforeTransparency[dispatchThreadId] = diffuseAlbedo;
     g_SpecularAlbedoBeforeTransparency[dispatchThreadId] = specularAlbedo;

@@ -167,34 +167,11 @@ void SecondaryClosestHit(uint shaderType,
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_MIPMAP_LOD);
 
-    bool reusedFromPrimaryRay = false;
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
     
-    if (g_CurrentFrame > 0)
-    {
-        int2 pixelPosition = (int2) ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection);
-        float linearDepth = mul(float4(vertex.PrevPosition, 0.0), g_MtxPrevView).z;
-        
-        if (all(and(pixelPosition >= 0, pixelPosition < DispatchRaysDimensions().xy)) && linearDepth < 0.0)
-        {
-            float4 colorBeforeTransparencyAndPrevDepth = g_ColorBeforeTransparency[pixelPosition];
-            if (abs(colorBeforeTransparencyAndPrevDepth.w + linearDepth) <= 0.05)
-            {
-                payload.Color = colorBeforeTransparencyAndPrevDepth.rgb;
-                payload.Diffuse = 0.0;
-                
-                reusedFromPrimaryRay = true;
-            }
-        }
-    }
-    
-    if (!reusedFromPrimaryRay)
-    {
-        GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
-
-        payload.Color = gBufferData.Emission;
-        payload.Diffuse = gBufferData.Diffuse;
-        payload.Position = gBufferData.Position;
-        payload.Normal = gBufferData.Normal;
-    }
+    payload.Color = gBufferData.Emission;
+    payload.Diffuse = gBufferData.Diffuse;
+    payload.Position = gBufferData.Position;
+    payload.Normal = gBufferData.Normal;
 }
 
