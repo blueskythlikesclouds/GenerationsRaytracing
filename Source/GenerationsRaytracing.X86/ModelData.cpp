@@ -395,14 +395,11 @@ static void processTexcoordMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog
     {
         static Hedgehog::Base::CStringSymbol s_texCoordOffsetSymbol("mrgTexcoordOffset");
 
-        const auto materialDataEx = reinterpret_cast<MaterialDataEx*>(texcoordMotion.m_pMaterialData);
-        const auto materialData = materialDataEx->m_fhlMaterial != nullptr ? materialDataEx->m_fhlMaterial.get() : materialDataEx;
-
-        auto& materialClone = instanceInfoEx.m_effectMap[materialData];
+        auto& materialClone = instanceInfoEx.m_effectMap[texcoordMotion.m_pMaterialData];
         if (materialClone == nullptr)
-            materialClone = cloneMaterial(*materialData);
+            materialClone = cloneMaterial(*texcoordMotion.m_pMaterialData);
 
-        auto& offsets = s_tmpMaterialCnt[materialData];
+        auto& offsets = s_tmpMaterialCnt[texcoordMotion.m_pMaterialData];
         if (offsets == nullptr)
         {
             offsets = createFloat4Param(*materialClone, s_texCoordOffsetSymbol, 2, nullptr)->m_spValue.get();
@@ -531,31 +528,14 @@ void ModelData::processSingleElementEffect(InstanceInfoEx& instanceInfoEx, Hedge
     }
 }
 
+static std::vector<Hedgehog::Mirage::CMaterialData*> s_materialsToClone;
+
 void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap)
 {
     static Hedgehog::Base::CStringSymbol s_texCoordOffsetSymbol("mrgTexcoordOffset");
 
     for (auto& [key, value] : materialMap)
-    {
-        auto& keyEx = *reinterpret_cast<MaterialDataEx*>(key);
-        if (keyEx.m_fhlMaterial != nullptr)
-        {
-            const auto findResult = materialMap.find(keyEx.m_fhlMaterial.get());
-            if (findResult != materialMap.end())
-            {
-                for (const auto& float4Param : value->m_Float4Params)
-                {
-                    if (float4Param->m_Name == s_texCoordOffsetSymbol && float4Param->m_ValueNum == 2)
-                    {
-                        createFloat4Param(*findResult->second, s_texCoordOffsetSymbol, 2, float4Param->m_spValue.get());
-                        break;
-                    }
-                }
-            }
-        }
-
         MaterialData::create(*value, true);
-    }
 
     for (auto& [key, value] : instanceInfoEx.m_effectMap)
         MaterialData::create(*value, true);

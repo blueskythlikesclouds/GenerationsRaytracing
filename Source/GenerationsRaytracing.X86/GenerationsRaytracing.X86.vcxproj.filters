@@ -138,6 +138,9 @@
     <ClCompile Include="SampleChunkResource.cpp">
       <Filter>Patch</Filter>
     </ClCompile>
+    <ClCompile Include="Logger.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -284,6 +287,9 @@
     </ClInclude>
     <ClInclude Include="SampleChunkResource.h">
       <Filter>Patch</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>Utilities</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -113,6 +113,7 @@
     <ClCompile Include="FileBinder.cpp" />
     <ClCompile Include="GroundSmokeParticle.cpp" />
     <ClCompile Include="LightData.cpp" />
+    <ClCompile Include="Logger.cpp" />
     <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="ModelReplacer.cpp" />
@@ -165,6 +166,7 @@
     <ClInclude Include="GroundSmokeParticle.h" />
     <ClInclude Include="InstanceType.h" />
     <ClInclude Include="LightData.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="MemoryAllocator.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="MeshOpt.h" />

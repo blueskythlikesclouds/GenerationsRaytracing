@@ -13,6 +13,7 @@
 #include "RopeRenderable.h"
 #include "ToneMap.h"
 #include "UpReelRenderable.h"
+#include "ModelReplacer.h"
 
 static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable)
 {
@@ -43,6 +44,10 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                         *instanceInfoEx,
                         element->m_spSingleElementEffect.get());
                 }
+
+                ModelReplacer::processFhlMaterials(
+                    *instanceInfoEx,
+                    element->m_MaterialMap);
 
                 ModelData::createBottomLevelAccelStructs(
                     *modelDataEx,
@@ -259,6 +264,7 @@ static void __cdecl implOfTraceRays(void* a1)
 
             RaytracingRendering::s_worldShift = -world->GetCamera()->m_MyCamera.m_Position;
 
+            ModelReplacer::createPendingModels();
             MaterialData::createPendingMaterials();
             InstanceData::createInstances(renderingDevice);
 

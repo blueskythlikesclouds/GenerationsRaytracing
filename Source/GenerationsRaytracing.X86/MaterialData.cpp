@@ -37,30 +37,6 @@ HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
     originalMaterialDataDestructor(This);
 }
 
-HOOK(void, __cdecl, MaterialDataMake, 0x733E60,
-    const Hedgehog::Base::CSharedString& name,
-    const void* data,
-    uint32_t dataSize,
-    const boost::shared_ptr<Hedgehog::Database::CDatabase>& database,
-    Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)
-{
-    const char* fhlSuffix = strstr(name.c_str(), "_fhl");
-
-    if (fhlSuffix == (name.data() + name.size() - 4) && data != nullptr)
-    {
-        Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
-
-        const auto materialData = wrapper.GetMaterialData(name.substr(0, name.size() - 4));
-        if (materialData != nullptr)
-        {
-            auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData.get());
-            materialDataEx.m_fhlMaterial = wrapper.GetMaterialData(name);
-        }
-    }
-
-    originalMaterialDataMake(name, data, dataSize, database, renderingInfrastructure);
-}
-
 static void createMaterial(MaterialDataEx& materialDataEx)
 {
     auto& message = s_messageSender.makeMessage<MsgCreateMaterial>();
@@ -245,50 +221,6 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
 static void __fastcall materialDataSetMadeOne(MaterialDataEx* This)
 {
-    if (This->m_fhlMaterial != nullptr)
-    {
-        static Hedgehog::Base::CStringSymbol s_texcoordOffsetSymbol("mrgTexcoordOffset");
-
-        boost::shared_ptr<float[]> value;
-        for (const auto& float4Param : This->m_Float4Params)
-        {
-            if (float4Param->m_Name == s_texcoordOffsetSymbol && float4Param->m_ValueNum == 2)
-            {
-                value = float4Param->m_spValue;
-                break;
-            }
-        }
-        if (value == nullptr)
-        {
-            value = boost::make_shared<float[]>(8, 0.0f);
-
-            const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
-            float4Param->m_Name = s_texcoordOffsetSymbol;
-            float4Param->m_ValueNum = 2;
-            float4Param->m_spValue = value;
-
-            This->m_Float4Params.push_back(float4Param);
-        }
-
-        for (const auto& float4Param : This->m_fhlMaterial->m_Float4Params)
-        {
-            if (float4Param->m_Name == s_texcoordOffsetSymbol && float4Param->m_ValueNum == 2)
-            {
-                float4Param->m_spValue = std::move(value);
-                break;
-            }
-        }
-        if (value != nullptr)
-        {
-            const auto float4Param = boost::make_shared<Hedgehog::Mirage::CParameterFloat4Element>();
-            float4Param->m_Name = s_texcoordOffsetSymbol;
-            float4Param->m_ValueNum = 2;
-            float4Param->m_spValue = value;
-
-            This->m_fhlMaterial->m_Float4Params.push_back(float4Param);
-        }
-    }
-
     LockGuard lock(s_matCreateMutex);
     s_materialsToCreate.emplace(This);
 
@@ -304,34 +236,42 @@ HOOK(void, __fastcall, MaterialAnimationEnv, 0x57C1C0, uintptr_t This, uintptr_t
     originalMaterialAnimationEnv(This, Edx, deltaTime);
 }
 
-HOOK(void, __fastcall, TexcoordAnimationEnv, 0x57C380, uintptr_t This, uintptr_t Edx, float deltaTime)
+HOOK(void, __cdecl, SampleTexcoordAnim, 0x757E50, MaterialDataEx* materialData, uintptr_t a2, uintptr_t a3, uintptr_t a4)
 {
     s_matCreateMutex.lock();
-    s_materialsToCreate.emplace(*reinterpret_cast<Hedgehog::Mirage::CMaterialData**>(This + 12));
+    s_materialsToCreate.emplace(materialData);
     s_matCreateMutex.unlock();
 
-    originalTexcoordAnimationEnv(This, Edx, deltaTime);
-}
-
-static FUNCTION_PTR(void, __thiscall, cloneMaterial, 0x704CE0,
-    Hedgehog::Mirage::CMaterialData* This, Hedgehog::Mirage::CMaterialData* rValue);
-
-HOOK(void, __fastcall, SingleElementEmplaceMaterialMap, 0x701CC0,
-    Hedgehog::Mirage::CSingleElement* This,
-    void* _,
-    Hedgehog::Mirage::CMaterialData* key,
-    const boost::shared_ptr<Hedgehog::Mirage::CMaterialData>& value)
-{
-    const auto keyEx = reinterpret_cast<MaterialDataEx*>(key);
-    if (keyEx->m_fhlMaterial != nullptr)
+    if (materialData->m_fhlMaterial != nullptr &&
+        materialData->m_fhlMaterial->IsMadeOne())
     {
-        const auto materialClone = static_cast<Hedgehog::Mirage::CMaterialData*>(__HH_ALLOC(sizeof(MaterialDataEx)));
-        Hedgehog::Mirage::fpCMaterialDataCtor(materialClone);
-        cloneMaterial(materialClone, keyEx->m_fhlMaterial.get());
-        This->m_MaterialMap.emplace(keyEx->m_fhlMaterial.get(), boost::shared_ptr<Hedgehog::Mirage::CMaterialData>(materialClone));
+        static Hedgehog::Base::CStringSymbol s_texcoordOffsetSymbol("mrgTexcoordOffset");
+
+        for (auto& sourceParam : materialData->m_Float4Params)
+        {
+            if (sourceParam->m_Name == s_texcoordOffsetSymbol)
+            {
+                bool found = false;
+
+                for (auto& destParam : materialData->m_fhlMaterial->m_Float4Params)
+                {
+                    if (destParam->m_Name == s_texcoordOffsetSymbol)
+                    {
+                        destParam = sourceParam;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                    materialData->m_fhlMaterial->m_Float4Params.push_back(sourceParam);
+
+                break;
+            }
+        }
     }
 
-    return originalSingleElementEmplaceMaterialMap(This, _, key, value);
+    originalSampleTexcoordAnim(materialData, a2, a3, a4);
 }
 
 bool MaterialData::create(Hedgehog::Mirage::CMaterialData& materialData, bool checkForHash)
@@ -419,12 +359,8 @@ void MaterialData::init()
     INSTALL_HOOK(MaterialDataConstructor);
     INSTALL_HOOK(MaterialDataDestructor);
 
-    INSTALL_HOOK(MaterialDataMake);
-
     INSTALL_HOOK(MaterialAnimationEnv);
-    INSTALL_HOOK(TexcoordAnimationEnv);
-
-    INSTALL_HOOK(SingleElementEmplaceMaterialMap);
+    INSTALL_HOOK(SampleTexcoordAnim);
 }
 
 void MaterialData::postInit()

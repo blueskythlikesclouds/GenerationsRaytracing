@@ -8,6 +8,7 @@
 #include "MessageSender.h"
 #include "QuickBoot.h"
 #include "StageSelection.h"
+#include "Logger.h"
 
 struct Stage
 {
@@ -568,6 +569,15 @@ void RaytracingParams::imguiWindow()
 
             if (ImGui::BeginTabItem("Light Editor"))
                 LightData::renderImgui();
+
+            if (ImGui::BeginTabItem("Logs"))
+            {
+                if (ImGui::BeginChild("Child"))
+                    Logger::renderImgui();
+
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
 
             ImGui::EndTabBar();
         }
