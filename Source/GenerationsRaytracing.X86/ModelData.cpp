@@ -244,6 +244,13 @@ HOOK(void, __fastcall, ModelDataDestructor, 0x4FA520, ModelDataEx* This)
     originalModelDataDestructor(This);
 }
 
+HOOK(ModelDataEx*, __cdecl, ModelDataClone, 0xE993C0, ModelDataEx* This)
+{
+    ModelDataEx* clonedModel = originalModelDataClone(This);
+    clonedModel->m_noAoModel = This->m_noAoModel;
+    return clonedModel;
+}
+
 void ModelData::createBottomLevelAccelStructs(TerrainModelDataEx& terrainModelDataEx)
 {
     for (size_t i = 0; i < _countof(s_instanceTypes); i++)
@@ -1054,4 +1061,5 @@ void ModelData::init()
 
     INSTALL_HOOK(ModelDataConstructor);
     INSTALL_HOOK(ModelDataDestructor);
+    INSTALL_HOOK(ModelDataClone);
 }
