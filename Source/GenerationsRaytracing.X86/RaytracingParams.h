@@ -32,8 +32,8 @@ struct RaytracingParams
 
     static inline uint32_t s_toneMapMode;
 
+    // Debug
     static inline bool s_enableNoAoModels = true;
-
     static inline bool s_computeSmoothNormals = true;
     static inline bool s_prevComputeSmoothNormals = true;
 

@@ -791,9 +791,9 @@ public static class RaytracingShaderCompiler
                          {
                             uint32_t type;
                             RaytracingTexture** textures;
-                            uint32_t textureNum;
+                            uint32_t textureCount;
                             RaytracingParameter** parameters;
-                            uint32_t parameterNum;
+                            uint32_t parameterCount;
                          };
 
                          """);
@@ -843,9 +843,8 @@ public static class RaytracingShaderCompiler
 
     private static void WriteMaterialHeaderFile(string solutionDirectoryPath)
     {
-        int textureNum = Shaders.Select(x => x.Textures.Length).Max();
-        int parameterNum = Shaders.Select(x => x.Parameters.Sum(y => y.Size)).Max();
-        int padding = AlignmentHelper.GetAlignedDifference(1 + textureNum + parameterNum, 4);
+        int packedDataSize = AlignmentHelper.Align(1 + 
+            Shaders.Select(x => x.Textures.Length + x.Parameters.Sum(y => y.Size)).Max(), 4) - 1;
 
         using (var writer = new StreamWriter(
                    Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "Material.h")))
@@ -858,16 +857,10 @@ public static class RaytracingShaderCompiler
                                  uint32_t shaderType : 16;
                                  uint32_t flags : 16;
                                  float texCoordOffsets[8];
-                                 uint32_t textures[{0}];
-                                 float parameters[{1}];
+                                 uint32_t packedData[{0}];
+                             }};
                              """,
-                textureNum,
-                parameterNum);
-
-            if (padding > 0)
-                writer.WriteLine("    uint32_t padding[{0}];", padding);
-
-            writer.WriteLine("};");
+                packedDataSize);
         }
 
         using (var writer = new StreamWriter(
@@ -884,16 +877,11 @@ public static class RaytracingShaderCompiler
                                  uint ShaderType : 16;
                                  uint Flags : 16;
                                  float4 TexCoordOffsets[2];
-                                 uint Textures[{0}];
-                                 float Parameters[{1}];
+                                 uint PackedData[{0}];
+                             }};
+
                              """,
-                textureNum,
-                parameterNum);
-
-            if (padding > 0)
-                writer.WriteLine("    uint Padding[{0}];", padding);
-
-            writer.WriteLine("};\n");
+                packedDataSize);
 
             writer.WriteLine("""
                              Material GetMaterial(uint shaderType, MaterialData materialData)
@@ -909,25 +897,29 @@ public static class RaytracingShaderCompiler
             {
                 writer.WriteLine("    case SHADER_TYPE_{0}:", shader.Name);
 
-                for (var i = 0; i < shader.Textures.Length; i++)
-                    writer.WriteLine("        material.{0} = materialData.Textures[{1}];", shader.Textures[i].FieldName, i);
-
                 int index = 0;
+
+                foreach (var texture in shader.Textures)
+                { 
+                    writer.WriteLine("        material.{0} = materialData.PackedData[{1}];", texture.FieldName, index);
+                    ++index;
+                }
+
                 foreach (var parameter in shader.Parameters)
                 {
                     if (parameter.Size > 1)
                     {
-                        for (int j = 0; j < parameter.Size; j++)
+                        for (int i = 0; i < parameter.Size; i++)
                         {
-                            writer.WriteLine("        material.{0}[{1}] = materialData.Parameters[{2}];",
-                                parameter.FieldName, j, index);
+                            writer.WriteLine("        material.{0}[{1}] = asfloat(materialData.PackedData[{2}]);",
+                                parameter.FieldName, i, index);
 
                             ++index;
                         }
                     }
                     else
                     {
-                        writer.WriteLine("        material.{0} = materialData.Parameters[{1}];",
+                        writer.WriteLine("        material.{0} = asfloat(materialData.PackedData[{1}]);",
                             parameter.FieldName, index);
 
                         ++index;

@@ -99,9 +99,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
     }
 
     bool constTexCoord = true;
-    message.textureNum = shader->textureNum;
+    message.textureCount = shader->textureCount;
 
-    for (size_t i = 0; i < shader->textureNum; i++)
+    for (size_t i = 0; i < shader->textureCount; i++)
     {
         const auto texture = shader->textures[i];
         auto& dstTexture = message.textures[i];
@@ -171,10 +171,10 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         }
     }
 
-    message.parameterNum = 0;
+    message.parameterCount = 0;
     float* destParam = message.parameters;
 
-    for (size_t i = 0; i < shader->parameterNum; i++)
+    for (size_t i = 0; i < shader->parameterCount; i++)
     {
         const auto parameter = shader->parameters[i];
         memcpy(destParam, &((&parameter->x)[parameter->index]), parameter->size * sizeof(float));
@@ -209,12 +209,12 @@ static void createMaterial(MaterialDataEx& materialDataEx)
             materialDataEx.m_Float4Params.push_back(float4Param);
         }
 
-        message.parameterNum += parameter->size;
+        message.parameterCount += parameter->size;
         destParam += parameter->size;
     }
 
-    assert(message.textureNum <= _countof(message.textures));
-    assert(message.parameterNum <= _countof(message.parameters));
+    assert(message.textureCount <= _countof(message.textures));
+    assert(message.parameterCount <= _countof(message.parameters));
 
     s_messageSender.endMessage();
 }

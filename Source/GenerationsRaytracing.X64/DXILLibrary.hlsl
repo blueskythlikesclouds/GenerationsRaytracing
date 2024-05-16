@@ -330,6 +330,6 @@ void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in Built
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
     
-    if (SampleMaterialTexture2D(materialData.Textures[0], vertex.TexCoords[0], 2).a < 0.5)
+    if (SampleMaterialTexture2D(materialData.PackedData[0], vertex.TexCoords[0], 2).a < 0.5)
         IgnoreHit();
 }

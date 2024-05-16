@@ -406,7 +406,7 @@ void RaytracingDevice::createTopLevelAccelStructs()
     }
 }
 
-static constexpr size_t s_textureNum = 27;
+static constexpr size_t s_textureCount = 27;
 
 void RaytracingDevice::createRaytracingTextures()
 {
@@ -471,7 +471,7 @@ void RaytracingDevice::createRaytracingTextures()
         { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoBeforeTransparencyTexture, L"Specular Albedo Before Transparency Texture" },
     };
 
-    static_assert(_countof(textureDescs) == s_textureNum);
+    static_assert(_countof(textureDescs) == s_textureCount);
 
     for (const auto& textureDesc : textureDescs)
     {
@@ -1225,9 +1225,9 @@ void RaytracingDevice::procMsgCreateMaterial()
         samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     }
 
-    for (size_t i = 0; i < message.textureNum; i++)
+    for (size_t i = 0; i < message.textureCount; i++)
     {
-        auto& dstTexture = material.textures[i];
+        auto& dstTexture = material.packedData[i];
         auto& srcTexture = message.textures[i];
         dstTexture = NULL;
 
@@ -1251,7 +1251,7 @@ void RaytracingDevice::procMsgCreateMaterial()
         }
     }
 
-    memcpy(material.parameters, message.parameters, message.parameterNum * sizeof(float));
+    memcpy(&material.packedData[message.textureCount], message.parameters, message.parameterCount * sizeof(float));
 }
 
 void RaytracingDevice::procMsgBuildBottomLevelAccelStruct()
@@ -1768,10 +1768,10 @@ RaytracingDevice::RaytracingDevice()
 #endif
 
     CD3DX12_DESCRIPTOR_RANGE1 uavDescriptorRanges[1];
-    uavDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, s_textureNum, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
+    uavDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, s_textureCount, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
 
     CD3DX12_DESCRIPTOR_RANGE1 srvDescriptorRanges[1];
-    srvDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, s_textureNum, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
+    srvDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, s_textureCount, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
 
     CD3DX12_DESCRIPTOR_RANGE1 serDescriptorRanges[1];
     serDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, s_serUavRegister, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
@@ -1961,8 +1961,8 @@ RaytracingDevice::RaytracingDevice()
 #endif
     }
 
-    m_uavId = m_descriptorHeap.allocateMany(s_textureNum);
-    m_srvId = m_descriptorHeap.allocateMany(s_textureNum);
+    m_uavId = m_descriptorHeap.allocateMany(s_textureCount);
+    m_srvId = m_descriptorHeap.allocateMany(s_textureCount);
 
     m_colorRtvId = m_rtvDescriptorHeap.allocate();
     m_diffuseAlbedoRtvId = m_rtvDescriptorHeap.allocate();

@@ -26,9 +26,9 @@ struct RaytracingShader
 {
    uint32_t type;
    RaytracingTexture** textures;
-   uint32_t textureNum;
+   uint32_t textureCount;
    RaytracingParameter** parameters;
-   uint32_t parameterNum;
+   uint32_t parameterCount;
 };
 
 inline RaytracingTexture s_texture_DiffuseTexture = { "diffuse", 0, false };

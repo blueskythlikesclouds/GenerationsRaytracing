@@ -13,6 +13,7 @@
 #include "ShaderType.h"
 #include "Texture.h"
 #include "VertexBuffer.h"
+#include "RaytracingShader.h"
 
 class ReelRendererEx : public Sonic::CObjUpReel::CReelRenderer
 {
@@ -83,8 +84,10 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
             createMsg.shaderType = SHADER_TYPE_COMMON;
             createMsg.flags = MATERIAL_FLAG_CONST_TEX_COORD;
             memset(createMsg.texCoordOffsets, 0, sizeof(createMsg.texCoordOffsets));
+            memset(createMsg.textures, 0, sizeof(createMsg.textures));
+            memset(createMsg.parameters, 0, sizeof(createMsg.parameters));
 
-            createMsg.textureNum = 1;
+            createMsg.textureCount = s_shader_COMMON.textureCount;
             if (reelRendererEx->m_pObjUpReel->m_spDiffusePicture != nullptr &&
                 reelRendererEx->m_pObjUpReel->m_spDiffusePicture->m_pD3DTexture != nullptr)
             {
@@ -98,7 +101,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
             createMsg.textures[0].addressModeU = D3DTADDRESS_WRAP;
             createMsg.textures[0].addressModeV = D3DTADDRESS_WRAP;
 
-            createMsg.parameterNum = 3;
+            createMsg.parameterCount = 3;
             createMsg.parameters[0] = 1.0f;
             createMsg.parameters[1] = 1.0f;
             createMsg.parameters[2] = 1.0f;

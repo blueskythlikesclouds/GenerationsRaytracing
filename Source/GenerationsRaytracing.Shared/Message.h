@@ -406,9 +406,9 @@ struct MsgCreateMaterial
     uint32_t shaderType;
     uint32_t flags;
     float texCoordOffsets[8];
-    uint32_t textureNum;
+    uint32_t textureCount;
     Texture textures[16];
-    uint32_t parameterNum;
+    uint32_t parameterCount;
     float parameters[32];
 };
 

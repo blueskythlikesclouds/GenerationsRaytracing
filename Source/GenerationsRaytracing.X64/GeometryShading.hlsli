@@ -102,7 +102,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
             GeometryDesc geometryDesc = g_GeometryDescs[query.CandidateInstanceID() + query.CandidateGeometryIndex()];
             MaterialData material = g_Materials[geometryDesc.MaterialId];
     
-            if (material.Textures[0] != 0)
+            if (material.PackedData[0] != 0)
             {
                 ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
                 Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
@@ -126,7 +126,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
                 float2 texCoord = texCoord0 * uv.x + texCoord1 * uv.y + texCoord2 * uv.z;
                 texCoord += material.TexCoordOffsets[0].xy;
             
-                if (SampleMaterialTexture2D(material.Textures[0], texCoord, level).a > 0.5)
+                if (SampleMaterialTexture2D(material.PackedData[0], texCoord, level).a > 0.5)
                     query.CommitNonOpaqueTriangleHit();
             }
         }
