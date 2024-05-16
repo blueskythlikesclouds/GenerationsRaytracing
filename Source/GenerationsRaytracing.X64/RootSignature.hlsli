@@ -147,6 +147,17 @@ StructuredBuffer<InstanceDesc> g_InstanceDescs : register(t4);
 StructuredBuffer<InstanceDesc> g_InstanceDescsTransparent : register(t5);
 StructuredBuffer<LocalLight> g_LocalLights : register(t6);
 
+uint InitRandom(uint2 index)
+{
+    return g_RandomSeed + index.y * g_InternalResolution.x + index.x;
+}
+
+float GetExposure()
+{
+    Texture2D texture = ResourceDescriptorHeap[g_AdaptionLuminanceTextureId];
+    return g_MiddleGray / (texture.Load(0).x + 0.001);
+}
+
 #endif
 
 SamplerState g_SamplerState : register(s0);

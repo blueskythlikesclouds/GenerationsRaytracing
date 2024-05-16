@@ -4,6 +4,7 @@
 #include "PackedPrimitives.hlsli"
 #include "RayDifferentials.hlsli"
 #include "SelfIntersectionAvoidance.hlsl"
+#include "SharedDefinitions.hlsli"
 
 struct GeometryDesc
 {
@@ -59,12 +60,6 @@ struct Vertex
     float3 Binormal;
     float4 Color;
 };
-
-float3 NormalizeSafe(float3 value)
-{
-    float lengthSquared = dot(value, value);
-    return select(lengthSquared > 0.0, value * rsqrt(lengthSquared), 0.0);
-}
 
 Vertex LoadVertex(
     GeometryDesc geometryDesc, 

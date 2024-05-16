@@ -4,17 +4,6 @@
 #define FLT_MAX asfloat(0x7f7fffff)
 #define INF asfloat(0x7f800000)
 
-float GetExposure()
-{
-    Texture2D texture = ResourceDescriptorHeap[g_AdaptionLuminanceTextureId];
-    return g_MiddleGray / (texture.Load(0).x + 0.001);
-}
-
-uint InitRandom(uint2 index)
-{
-    return g_RandomSeed + index.y * g_InternalResolution.x + index.x;
-}
-
 uint NextRandomUint(inout uint x)
 {
     x ^= x >> 16;
@@ -69,6 +58,12 @@ float3 GetPerpendicularVector(float3 u)
     uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;
     uint zm = 1 ^ (xm | ym);
     return cross(u, float3(xm, ym, zm));
+}
+
+float3 NormalizeSafe(float3 value)
+{
+    float lengthSquared = dot(value, value);
+    return select(lengthSquared > 0.0, value * rsqrt(lengthSquared), 0.0);
 }
 
 float3 TangentToWorld(float3 normal, float3 value)

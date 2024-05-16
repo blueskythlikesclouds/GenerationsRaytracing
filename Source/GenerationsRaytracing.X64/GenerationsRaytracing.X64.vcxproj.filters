@@ -291,6 +291,9 @@
     <None Include="Reservoir.hlsli">
       <Filter>Shader\Reservoir</Filter>
     </None>
+    <None Include="ProceduralEye.hlsli">
+      <Filter>Shader\Material</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

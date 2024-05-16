@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RootSignature.hlsli"
+#include "ProceduralEye.hlsli"
 
 #define GBUFFER_FLAG_IS_SKY                     (1 << 0)
 #define GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT       (1 << 1)
@@ -198,6 +199,53 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
     gBufferData.RefractionOffset = normal.xy;
 }
 
+void CreateChrEyeFHLGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData, bool isProcedural)
+{
+    float3 direction = mul(instanceDesc.HeadTransform, float4(0.0, 0.0, 1.0, 0.0));
+    direction = NormalizeSafe(mul(float4(direction, 0.0), g_MtxView).xyz);
+    float2 offset = direction.xy * float2(-1.0, 1.0);
+    
+    float2 pupilOffset = -material.ChrEyeFHL1.zw * offset;
+    float2 highLightOffset = material.ChrEyeFHL3.xy + material.ChrEyeFHL3.zw * offset;
+    float2 catchLightOffset = material.ChrEyeFHL1.xy - float2(offset.x < 0 ? material.ChrEyeFHL2.x : material.ChrEyeFHL2.y, 
+        offset.y < 0 ? material.ChrEyeFHL2.z : material.ChrEyeFHL2.w) * offset;
+    
+    float3 diffuse;
+    float pupil;
+    float3 highLight;
+    float catchLight;
+    float4 mask;
+    
+    if (isProcedural)
+    {
+        GenerateProceduralEye(
+            vertex.TexCoords[0],
+            SampleMaterialTexture2D(material.DiffuseTexture, 0.5, 0).rgb,
+            vertex.TexCoords[0] + pupilOffset,
+            vertex.TexCoords[0] + highLightOffset, 
+            SampleMaterialTexture2D(material.LevelTexture, 0.5, 0).rgb,
+            vertex.TexCoords[0] + catchLightOffset,
+            diffuse,
+            pupil,
+            highLight,
+            catchLight,
+            mask);
+    }
+    else
+    {
+        diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex).rgb;
+        pupil = SampleMaterialTexture2D(material.DiffuseTexture, vertex, pupilOffset).w;
+        highLight = SampleMaterialTexture2D(material.LevelTexture, vertex, highLightOffset).rgb;
+        catchLight = SampleMaterialTexture2D(material.LevelTexture, vertex, catchLightOffset).w;
+        mask = SampleMaterialTexture2D(material.DisplacementTexture, vertex);
+    }
+    
+    gBufferData.Diffuse *= diffuse * pupil * (1.0 - catchLight);
+    gBufferData.Specular *= pupil * mask.b * vertex.Color.w * (1.0 - catchLight);
+    gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
+    gBufferData.Emission = (highLight * pupil * mask.w * (1.0 - catchLight) + catchLight) / GetExposure();
+}
+
 float4 ApplyFurParamTransform(float4 value, float furParam)
 {
     value = value * 2.0 - 1.0;
@@ -310,26 +358,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
 
         case SHADER_TYPE_CHR_EYE_FHL:
             {
-                float3 direction = mul(instanceDesc.HeadTransform, float4(0.0, 0.0, 1.0, 0.0));
-                direction = NormalizeSafe(mul(float4(direction, 0.0), g_MtxView).xyz);
-                float2 offset = direction.xy * float2(-1.0, 1.0);
-
-                float2 pupilOffset = -material.ChrEyeFHL1.zw * offset;
-                float2 highLightOffset = material.ChrEyeFHL3.xy + material.ChrEyeFHL3.zw * offset;
-                float2 catchLightOffset = material.ChrEyeFHL1.xy - float2(offset.x < 0 ? material.ChrEyeFHL2.x : material.ChrEyeFHL2.y, 
-                    offset.y < 0 ? material.ChrEyeFHL2.z : material.ChrEyeFHL2.w) * offset;
-
-                float3 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex).rgb;
-                float pupil = SampleMaterialTexture2D(material.DiffuseTexture, vertex, pupilOffset).w;
-                float3 highLight = SampleMaterialTexture2D(material.LevelTexture, vertex, highLightOffset).rgb;
-                float catchLight = SampleMaterialTexture2D(material.LevelTexture, vertex, catchLightOffset).w > 0.5 ? 1.0 : 0.0;
-                float4 mask = SampleMaterialTexture2D(material.DisplacementTexture, vertex);
-
-                gBufferData.Diffuse *= diffuse * pupil * (1.0 - catchLight);
-                gBufferData.Specular *= pupil * mask.b * vertex.Color.w * (1.0 - catchLight);
-                gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
-                gBufferData.Emission = (highLight * pupil * mask.w * (1.0 - catchLight) + catchLight) / GetExposure();
-
+                CreateChrEyeFHLGBufferData(vertex, material, instanceDesc, gBufferData, true);
                 break;
             }
 
