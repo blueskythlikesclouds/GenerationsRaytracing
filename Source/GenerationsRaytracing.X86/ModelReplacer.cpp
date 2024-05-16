@@ -9,8 +9,7 @@
 struct NoAoModel
 {
     std::string name;
-    std::string noAoName;
-    std::vector<std::string> archiveNames;
+    std::vector<std::string> archives;
     std::vector<XXH32_hash_t> hashes;
 };
 
@@ -23,10 +22,9 @@ static void parseJson(json& json)
         auto& noAoModel = s_noAoModels.emplace_back();
 
         noAoModel.name = obj["name"];
-        noAoModel.noAoName = obj["no_ao_name"];
 
-        for (auto& archiveNameObj : obj["archive_names"])
-            noAoModel.archiveNames.push_back(archiveNameObj);
+        for (auto& archiveObj : obj["archives"])
+            noAoModel.archives.push_back(archiveObj);
 
         for (auto& hashObj : obj["hashes"])
         {
@@ -67,28 +65,25 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
 {
     if (data != nullptr)
     {
-        for (size_t i = 0; i < s_noAoModels.size(); i++)
+        Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
+
+        const auto modelData = wrapper.GetModelData(name);
+        if (!modelData->IsMadeOne())
         {
-            auto& noAoModel = s_noAoModels[i];
+            auto& modelDataEx = *reinterpret_cast<ModelDataEx*>(modelData.get());
+            const XXH32_hash_t hash = XXH32(data, dataSize, 0);
 
-            if (noAoModel.name == name.c_str())
+            for (size_t i = 0; i < s_noAoModels.size(); i++)
             {
-                Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
+                auto& noAoModel = s_noAoModels[i];
 
-                const auto modelData = wrapper.GetModelData(name);
-                if (!modelData->IsMadeOne())
+                if (std::find(noAoModel.hashes.begin(), noAoModel.hashes.end(), hash) != noAoModel.hashes.end())
                 {
-                    auto& modelDataEx = *reinterpret_cast<ModelDataEx*>(modelData.get());
-                    const XXH32_hash_t hash = XXH32(data, dataSize, 0);
-
-                    if (std::find(noAoModel.hashes.begin(), noAoModel.hashes.end(), hash) != noAoModel.hashes.end())
-                    {
-                        LockGuard lock(s_mutex);
-                        s_pendingModels.push_back({ i, modelData, database });
-                    }
+                    LockGuard lock(s_mutex);
+                    s_pendingModels.push_back({ i, modelData, database });
+                
+                    break;
                 }
-
-                break;
             }
         }
     }
@@ -112,7 +107,7 @@ void ModelReplacer::createPendingModels()
 
         for (auto& pendingModel : pendingModels)
         {
-            for (auto& archiveName : s_noAoModels[pendingModel.noAoModelIndex].archiveNames)
+            for (auto& archiveName : s_noAoModels[pendingModel.noAoModelIndex].archives)
                 s_archiveNames.emplace(archiveName);
         }
 
@@ -121,26 +116,26 @@ void ModelReplacer::createPendingModels()
         static Hedgehog::Base::CSharedString s_ar(".ar");
         static Hedgehog::Base::CSharedString s_arl(".arl");
 
-        for (const auto& archiveName : s_archiveNames)
+        for (const auto& archive : s_archiveNames)
         {
             loader->CreateArchiveList(
-                archiveName.data() + s_ar,
-                archiveName.data() + s_arl,
+                archive.data() + s_ar,
+                archive.data() + s_arl,
                 { 200, 5 });
         }
 
-        for (const auto& archiveName : s_archiveNames)
-            loader->LoadArchiveList(database, archiveName.data() + s_arl);
+        for (const auto& archive : s_archiveNames)
+            loader->LoadArchiveList(database, archive.data() + s_arl);
 
-        for (const auto& archiveName : s_archiveNames)
-            loader->LoadArchive(database, archiveName.data() + s_ar, {-10, 5}, false, false);
+        for (const auto& archive : s_archiveNames)
+            loader->LoadArchive(database, archive.data() + s_ar, {-10, 5}, false, false);
 
         Hedgehog::Mirage::CMirageDatabaseWrapper wrapper(database.get());
 
         for (auto& pendingModel : pendingModels)
         {
             const auto modelDataEx = reinterpret_cast<ModelDataEx*>(pendingModel.modelData.get());
-            modelDataEx->m_noAoModel = wrapper.GetModelData(s_noAoModels[pendingModel.noAoModelIndex].noAoName.c_str());
+            modelDataEx->m_noAoModel = wrapper.GetModelData(s_noAoModels[pendingModel.noAoModelIndex].name.c_str());
         }
 
         const auto databaseDataNames = database->GetDatabaseDataNames();
