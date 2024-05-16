@@ -142,42 +142,89 @@ void ModelReplacer::createPendingModels()
 
         for (const auto& fhlName : databaseDataNames)
         {
-            static constexpr char s_mirageMaterial[] = "Mirage.material";
+            static constexpr std::string_view s_mirageModel = "Mirage.model ";
+            static constexpr std::string_view s_mirageMaterial = "Mirage.material ";
 
-            if (strstr(fhlName.c_str(), s_mirageMaterial) == fhlName.data())
+            if (strncmp(fhlName.c_str(), s_mirageMaterial.data(), s_mirageMaterial.size()) == 0 &&
+                strcmp(fhlName.c_str() + fhlName.size() - 4, "_fhl") == 0)
             {
-                const char* fhlSuffix = strstr(fhlName.c_str(), "_fhl");
+                const auto name = fhlName.substr(s_mirageMaterial.size(),
+                    fhlName.size() - s_mirageMaterial.size() - 4);
 
-                if (fhlSuffix == (fhlName.data() + fhlName.size() - 4))
+                bool found = false;
+
+                for (auto& pendingModel : pendingModels)
                 {
-                    const auto name = fhlName.substr(sizeof(s_mirageMaterial),
-                        fhlName.size() - sizeof(s_mirageMaterial) - 4);
+                    boost::shared_ptr<Hedgehog::Mirage::CMaterialData> materialData;
 
-                    bool found = false;
+                    std::string_view prefix(
+                        pendingModel.modelData->m_TypeAndName.c_str() + s_mirageModel.size(),
+                        pendingModel.modelData->m_TypeAndName.size() - s_mirageModel.size());
 
-                    for (auto& pendingModel : pendingModels)
+                    if (strncmp(s_noAoModels[pendingModel.noAoModelIndex].name.c_str(), prefix.data(), prefix.size()) == 0)
                     {
-                        const auto materialData = Hedgehog::Mirage::CMirageDatabaseWrapper(
+                        materialData = Hedgehog::Mirage::CMirageDatabaseWrapper(
                             pendingModel.database.get()).GetMaterialData(name);
+                    }
 
-                        if (materialData != nullptr)
+                    if (materialData == nullptr)
+                    {
+                        if (prefix == "chr_Sonic_HD")
+                            prefix = "sonic_gm_eye";
+
+                        else if (prefix == "chr_classic_sonic_HD")
+                            prefix = "CSeyewhite";
+
+                        const char* eyeSubstr = strstr(name.c_str(), "eye");
+
+                        if (eyeSubstr != nullptr)
                         {
-                            auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData.get());
+                            for (auto& materialName : pendingModel.database->GetDatabaseDataNames())
+                            {
+                                if (strncmp(materialName.c_str(), s_mirageMaterial.data(), s_mirageMaterial.size()) == 0 &&
+                                    strncmp(materialName.c_str() + s_mirageMaterial.size(), prefix.data(), prefix.size()) == 0)
+                                {
+                                    const char* eyeSubstrToCompare = strstr(materialName.c_str(), "eye");
+                                    if (eyeSubstrToCompare != nullptr && strncmp(eyeSubstr, eyeSubstrToCompare, 4) == 0)
+                                    {
+                                        materialData = Hedgehog::Mirage::CMirageDatabaseWrapper(
+                                            pendingModel.database.get()).GetMaterialData(materialName.substr(s_mirageMaterial.size()));
 
-                            materialDataEx.m_fhlMaterial = wrapper.GetMaterialData(
-                                fhlName.substr(sizeof(s_mirageMaterial)));
+                                        Logger::logFormatted(LogType::Warning, "Redirecting \"%s.material\" to \"%s.material\"",
+                                            fhlName.c_str() + s_mirageMaterial.size(),
+                                            materialName.c_str() + s_mirageMaterial.size());
 
-                            found = true;
-
-                            break;
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    if (!found)
+                    // Last resort attempt
+                    if (materialData == nullptr)
                     {
-                        Logger::logFormatted(LogType::Error, "Unable to locate \"%s.material\" for \"%s.material\"", 
-                            name.c_str(), fhlName.c_str() + sizeof(s_mirageMaterial));
+                        materialData = Hedgehog::Mirage::CMirageDatabaseWrapper(
+                            pendingModel.database.get()).GetMaterialData(name);
                     }
+
+                    if (materialData != nullptr)
+                    {
+                        auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData.get());
+
+                        materialDataEx.m_fhlMaterial = wrapper.GetMaterialData(
+                            fhlName.substr(s_mirageMaterial.size()));
+
+                        found = true;
+
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    Logger::logFormatted(LogType::Error, "Unable to locate \"%s.material\" for \"%s.material\"", 
+                        name.c_str(), fhlName.c_str() + s_mirageMaterial.size());
                 }
             }
         }
