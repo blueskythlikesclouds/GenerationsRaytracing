@@ -67,11 +67,9 @@ inline RaytracingParameter s_parameter_ChrEyeFHL1 = { "ChrEyeFHL1", 0, 4, 0.03f,
 inline RaytracingParameter s_parameter_ChrEyeFHL2 = { "ChrEyeFHL2", 0, 4, 0.02f, 0.09f, 0.12f, 0.07f };
 inline RaytracingParameter s_parameter_ChrEyeFHL3 = { "ChrEyeFHL3", 0, 4, 0.0f, 0.0f, 0.1f, 0.1f };
 inline RaytracingParameter s_parameter_DistortionParam = { "mrgDistortionParam", 0, 4, 30.0f, 1.0f, 1.0f, 0.03f };
-
-inline RaytracingTexture* s_textures_SYS_ERROR[1] =
-{
-	&s_texture_DiffuseTexture,
-};
+inline RaytracingParameter s_parameter_IrisColor = { "IrisColor", 0, 3, 0.5f, 0.5f, 0.5f, 0.0f };
+inline RaytracingParameter s_parameter_PupilParam = { "PupilParam", 0, 4, 1.03f, 0.47f, 0.0f, 1024.0f };
+inline RaytracingParameter s_parameter_HighLightColor = { "HighLightColor", 0, 3, 0.5f, 0.5f, 0.5f, 0.0f };
 
 inline RaytracingParameter* s_parameters_SYS_ERROR[2] =
 {
@@ -79,7 +77,7 @@ inline RaytracingParameter* s_parameters_SYS_ERROR[2] =
 	&s_parameter_Opacity,
 };
 
-inline RaytracingShader s_shader_SYS_ERROR = { SHADER_TYPE_SYS_ERROR, s_textures_SYS_ERROR, 1, s_parameters_SYS_ERROR, 2 };
+inline RaytracingShader s_shader_SYS_ERROR = { SHADER_TYPE_SYS_ERROR, nullptr, 0, s_parameters_SYS_ERROR, 2 };
 
 inline RaytracingTexture* s_textures_BLEND[9] =
 {
@@ -180,6 +178,22 @@ inline RaytracingParameter* s_parameters_CHR_EYE[6] =
 };
 
 inline RaytracingShader s_shader_CHR_EYE = { SHADER_TYPE_CHR_EYE, s_textures_CHR_EYE, 3, s_parameters_CHR_EYE, 6 };
+
+inline RaytracingParameter* s_parameters_CHR_EYE_FHL_PROCEDURAL[10] =
+{
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_ChrEyeFHL1,
+	&s_parameter_ChrEyeFHL2,
+	&s_parameter_ChrEyeFHL3,
+	&s_parameter_IrisColor,
+	&s_parameter_PupilParam,
+	&s_parameter_HighLightColor,
+};
+
+inline RaytracingShader s_shader_CHR_EYE_FHL_PROCEDURAL = { SHADER_TYPE_CHR_EYE_FHL_PROCEDURAL, nullptr, 0, s_parameters_CHR_EYE_FHL_PROCEDURAL, 10 };
 
 inline RaytracingTexture* s_textures_CHR_EYE_FHL[3] =
 {
@@ -761,6 +775,7 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "Chaos_", &s_shader_SYS_ERROR },
 	{ "ChaosV_", &s_shader_SYS_ERROR },
 	{ "ChrEye_", &s_shader_CHR_EYE },
+	{ "ChrEyeFHLProcedural", &s_shader_CHR_EYE_FHL_PROCEDURAL },
 	{ "ChrEyeFHL", &s_shader_CHR_EYE_FHL },
 	{ "ChrSkin_", &s_shader_CHR_SKIN },
 	{ "ChrSkinHalf_", &s_shader_CHR_SKIN_HALF },

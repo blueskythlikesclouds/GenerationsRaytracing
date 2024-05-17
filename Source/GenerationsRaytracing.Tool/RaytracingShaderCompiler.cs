@@ -77,6 +77,9 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter ChrEyeFHL2 = new("ChrEyeFHL2", 0, 4, "ChrEyeFHL2", 0.02f, 0.09f, 0.12f, 0.07f);
     public static readonly RaytracingParameter ChrEyeFHL3 = new("ChrEyeFHL3", 0, 4, "ChrEyeFHL3", 0.0f, 0.0f, 0.1f, 0.1f);
     public static readonly RaytracingParameter DistortionParam = new("mrgDistortionParam", 0, 4, "DistortionParam", 30.0f, 1.0f, 1.0f, 0.03f);
+    public static readonly RaytracingParameter IrisColor = new("IrisColor", 0, 3, "IrisColor", 0.5f, 0.5f, 0.5f, 0.0f);
+    public static readonly RaytracingParameter PupilParam = new("PupilParam", 0, 4, "PupilParam", 1.03f, 0.47f, 0.0f, 1024.0f);
+    public static readonly RaytracingParameter HighLightColor = new("HighLightColor", 0, 3, "HighLightColor", 0.5f, 0.5f, 0.5f, 0.0f);
 
     public static readonly RaytracingParameter[] AllParameters = [
         Diffuse,
@@ -100,7 +103,10 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
         ChrEyeFHL1,
         ChrEyeFHL2,
         ChrEyeFHL3,
-        DistortionParam];
+        DistortionParam,
+        IrisColor,
+        PupilParam,
+        HighLightColor];
 }
 
 public class RaytracingShader(string name, RaytracingTexture[] textures, RaytracingParameter[] parameters)
@@ -111,7 +117,6 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
 
     public static readonly RaytracingShader SysError = new("SYS_ERROR",
         [
-            RaytracingTexture.Diffuse
         ],
         [
             RaytracingParameter.Diffuse,
@@ -150,6 +155,22 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity, 
             RaytracingParameter.SonicEyeHighLightPosition, 
             RaytracingParameter.SonicEyeHighLightColor
+        ]);
+
+    public static readonly RaytracingShader ChrEyeFHLProcedural = new("CHR_EYE_FHL_PROCEDURAL",
+        [
+        ],
+        [
+            RaytracingParameter.Diffuse,
+            RaytracingParameter.Specular,
+            RaytracingParameter.GlossLevel,
+            RaytracingParameter.Opacity,
+            RaytracingParameter.ChrEyeFHL1,
+            RaytracingParameter.ChrEyeFHL2,
+            RaytracingParameter.ChrEyeFHL3,
+            RaytracingParameter.IrisColor,
+            RaytracingParameter.PupilParam,
+            RaytracingParameter.HighLightColor
         ]);
 
     public static readonly RaytracingShader ChrEyeFHL = new("CHR_EYE_FHL",
@@ -657,6 +678,7 @@ public static class RaytracingShaderCompiler
         ("Chaos_", RaytracingShader.SysError),
         ("ChaosV_", RaytracingShader.SysError),
         ("ChrEye_", RaytracingShader.ChrEye),
+        ("ChrEyeFHLProcedural", RaytracingShader.ChrEyeFHLProcedural),
         ("ChrEyeFHL", RaytracingShader.ChrEyeFHL),
         ("ChrSkin_", RaytracingShader.ChrSkin),
         ("ChrSkinHalf_", RaytracingShader.ChrSkinHalf),
@@ -814,22 +836,34 @@ public static class RaytracingShaderCompiler
 
         foreach (var shader in Shaders)
         {
-            writer.WriteLine("\ninline RaytracingTexture* s_textures_{0}[{1}] =", shader.Name, shader.Textures.Length);
-            writer.WriteLine("{");
+            if (shader.Textures.Length > 0)
+            { 
+                writer.WriteLine("\ninline RaytracingTexture* s_textures_{0}[{1}] =", shader.Name, shader.Textures.Length);
+                writer.WriteLine("{");
 
-            foreach (var texture in shader.Textures)
-                writer.WriteLine("\t&s_texture_{0},", texture.FieldName);
+                foreach (var texture in shader.Textures)
+                    writer.WriteLine("\t&s_texture_{0},", texture.FieldName);
 
-            writer.WriteLine("};");
-            writer.WriteLine("\ninline RaytracingParameter* s_parameters_{0}[{1}] =", shader.Name, shader.Parameters.Length);
-            writer.WriteLine("{");
+                writer.WriteLine("};");
+            }
 
-            foreach (var parameter in shader.Parameters)
-                writer.WriteLine("\t&s_parameter_{0},", parameter.FieldName);
+            if (shader.Parameters.Length > 0)
+            { 
+                writer.WriteLine("\ninline RaytracingParameter* s_parameters_{0}[{1}] =", shader.Name, shader.Parameters.Length);
+                writer.WriteLine("{");
 
-            writer.WriteLine("};");
-            writer.WriteLine("\ninline RaytracingShader s_shader_{0} = {{ SHADER_TYPE_{0}, s_textures_{0}, {1}, s_parameters_{0}, {2} }};",
-                shader.Name, shader.Textures.Length, shader.Parameters.Length);
+                foreach (var parameter in shader.Parameters)
+                    writer.WriteLine("\t&s_parameter_{0},", parameter.FieldName);
+
+                writer.WriteLine("};");
+            }
+
+            writer.WriteLine("\ninline RaytracingShader s_shader_{0} = {{ SHADER_TYPE_{0}, {1}, {2}, {3}, {4} }};",
+                shader.Name,
+                shader.Textures.Length > 0 ? $"s_textures_{shader.Name}" : "nullptr",
+                shader.Textures.Length,
+                shader.Parameters.Length > 0 ? $"s_parameters_{shader.Name}" : "nullptr",
+                shader.Parameters.Length);
         }
 
         writer.WriteLine("\ninline std::pair<std::string_view, RaytracingShader*> s_shaders[] =");

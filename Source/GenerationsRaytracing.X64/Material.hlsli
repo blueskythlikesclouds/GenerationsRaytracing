@@ -41,6 +41,9 @@ struct Material
     float4 ChrEyeFHL2;
     float4 ChrEyeFHL3;
     float4 DistortionParam;
+    float3 IrisColor;
+    float4 PupilParam;
+    float3 HighLightColor;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord, uint level)

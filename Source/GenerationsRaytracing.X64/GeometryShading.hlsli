@@ -102,7 +102,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
             GeometryDesc geometryDesc = g_GeometryDescs[query.CandidateInstanceID() + query.CandidateGeometryIndex()];
             MaterialData material = g_Materials[geometryDesc.MaterialId];
     
-            if (material.PackedData[0] != 0)
+            if (material.Flags & MATERIAL_FLAG_HAS_DIFFUSE_TEXTURE)
             {
                 ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
                 Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];

@@ -8,7 +8,7 @@ struct MaterialData
     uint ShaderType : 16;
     uint Flags : 16;
     float4 TexCoordOffsets[2];
-    uint PackedData[27];
+    uint PackedData[35];
 };
 
 Material GetMaterial(uint shaderType, MaterialData materialData)
@@ -19,12 +19,11 @@ Material GetMaterial(uint shaderType, MaterialData materialData)
    switch (shaderType)
    {
     case SHADER_TYPE_SYS_ERROR:
-        material.DiffuseTexture = materialData.PackedData[0];
-        material.Diffuse[0] = asfloat(materialData.PackedData[1]);
-        material.Diffuse[1] = asfloat(materialData.PackedData[2]);
-        material.Diffuse[2] = asfloat(materialData.PackedData[3]);
-        material.Diffuse[3] = asfloat(materialData.PackedData[4]);
-        material.Opacity = asfloat(materialData.PackedData[5]);
+        material.Diffuse[0] = asfloat(materialData.PackedData[0]);
+        material.Diffuse[1] = asfloat(materialData.PackedData[1]);
+        material.Diffuse[2] = asfloat(materialData.PackedData[2]);
+        material.Diffuse[3] = asfloat(materialData.PackedData[3]);
+        material.Opacity = asfloat(materialData.PackedData[4]);
         break;
     case SHADER_TYPE_BLEND:
         material.DiffuseTexture = materialData.PackedData[0];
@@ -124,6 +123,40 @@ Material GetMaterial(uint shaderType, MaterialData materialData)
         material.SonicEyeHighLightColor[0] = asfloat(materialData.PackedData[16]);
         material.SonicEyeHighLightColor[1] = asfloat(materialData.PackedData[17]);
         material.SonicEyeHighLightColor[2] = asfloat(materialData.PackedData[18]);
+        break;
+    case SHADER_TYPE_CHR_EYE_FHL_PROCEDURAL:
+        material.Diffuse[0] = asfloat(materialData.PackedData[0]);
+        material.Diffuse[1] = asfloat(materialData.PackedData[1]);
+        material.Diffuse[2] = asfloat(materialData.PackedData[2]);
+        material.Diffuse[3] = asfloat(materialData.PackedData[3]);
+        material.Specular[0] = asfloat(materialData.PackedData[4]);
+        material.Specular[1] = asfloat(materialData.PackedData[5]);
+        material.Specular[2] = asfloat(materialData.PackedData[6]);
+        material.GlossLevel[0] = asfloat(materialData.PackedData[7]);
+        material.GlossLevel[1] = asfloat(materialData.PackedData[8]);
+        material.Opacity = asfloat(materialData.PackedData[9]);
+        material.ChrEyeFHL1[0] = asfloat(materialData.PackedData[10]);
+        material.ChrEyeFHL1[1] = asfloat(materialData.PackedData[11]);
+        material.ChrEyeFHL1[2] = asfloat(materialData.PackedData[12]);
+        material.ChrEyeFHL1[3] = asfloat(materialData.PackedData[13]);
+        material.ChrEyeFHL2[0] = asfloat(materialData.PackedData[14]);
+        material.ChrEyeFHL2[1] = asfloat(materialData.PackedData[15]);
+        material.ChrEyeFHL2[2] = asfloat(materialData.PackedData[16]);
+        material.ChrEyeFHL2[3] = asfloat(materialData.PackedData[17]);
+        material.ChrEyeFHL3[0] = asfloat(materialData.PackedData[18]);
+        material.ChrEyeFHL3[1] = asfloat(materialData.PackedData[19]);
+        material.ChrEyeFHL3[2] = asfloat(materialData.PackedData[20]);
+        material.ChrEyeFHL3[3] = asfloat(materialData.PackedData[21]);
+        material.IrisColor[0] = asfloat(materialData.PackedData[22]);
+        material.IrisColor[1] = asfloat(materialData.PackedData[23]);
+        material.IrisColor[2] = asfloat(materialData.PackedData[24]);
+        material.PupilParam[0] = asfloat(materialData.PackedData[25]);
+        material.PupilParam[1] = asfloat(materialData.PackedData[26]);
+        material.PupilParam[2] = asfloat(materialData.PackedData[27]);
+        material.PupilParam[3] = asfloat(materialData.PackedData[28]);
+        material.HighLightColor[0] = asfloat(materialData.PackedData[29]);
+        material.HighLightColor[1] = asfloat(materialData.PackedData[30]);
+        material.HighLightColor[2] = asfloat(materialData.PackedData[31]);
         break;
     case SHADER_TYPE_CHR_EYE_FHL:
         material.DiffuseTexture = materialData.PackedData[0];

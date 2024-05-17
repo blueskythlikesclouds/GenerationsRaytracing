@@ -137,15 +137,17 @@ static void createMaterial(MaterialDataEx& materialDataEx)
                         if (srcTexture->m_spPictureData != nullptr &&
                             srcTexture->m_spPictureData->m_pD3DTexture != nullptr)
                         {
-                            dstTexture.id = reinterpret_cast<const Texture*>(
-                                srcTexture->m_spPictureData->m_pD3DTexture)->getId();
-                        }
-                        dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
-                        dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
-                        dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
+                            if (texture == &s_texture_DiffuseTexture)
+                                message.flags |= MATERIAL_FLAG_HAS_DIFFUSE_TEXTURE;
 
-                        if (dstTexture.texCoordIndex != 0)
-                            constTexCoord = false;
+                            dstTexture.id = reinterpret_cast<const Texture*>(srcTexture->m_spPictureData->m_pD3DTexture)->getId();
+                            dstTexture.addressModeU = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressU);
+                            dstTexture.addressModeV = std::max(D3DTADDRESS_WRAP, srcTexture->m_SamplerState.AddressV);
+                            dstTexture.texCoordIndex = std::min<uint32_t>(srcTexture->m_TexcoordIndex, 3);
+
+                            if (dstTexture.texCoordIndex != 0)
+                                constTexCoord = false;
+                        }
 
                         break;
                     }

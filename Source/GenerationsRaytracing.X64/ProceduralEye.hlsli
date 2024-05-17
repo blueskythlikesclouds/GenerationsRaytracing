@@ -21,6 +21,9 @@ void GenerateProceduralEye(
     in float2 irisTexCoord, 
     in float3 irisColor, 
     in float2 pupilTexCoord,
+	in float2 pupilScale,
+	in float pupilTransitionPosition,
+	in float pupilTransitionStrength,
     in float2 highLightTexCoord,
     in float3 highLightColor,
     in float2 catchLightTexCoord,
@@ -58,17 +61,16 @@ void GenerateProceduralEye(
 
     // Sclera
     float scleraPosition = saturate((irisRadius - 0.17) / (sqrt(2.0) - 0.17));
-    float3 scleraColor = 0.8;
+    float3 scleraColor = 0.82353;
     float3 scleraShadeColor = float3(0.62, 0.67, 0.68);
     float3 scleraGradient = MakeGradient(scleraShadeColor, scleraColor, scleraPosition, -0.027, 16.0);
 
     diffuse = irisRadius > 0.17 ? scleraGradient : irisGradient;
     
     // Pupil
-    const float2 pupilScale = float2(1.03, 0.47);
     float2 pupilOvalCoords = GetOvalCoords(pupilTexCoord.xy, pupilScale);
     float pupilRadius = length(pupilOvalCoords);
-    pupil = pupilRadius > 0.1;
+    pupil = 1.0 - MakeGradient(0.0, 1.0, saturate(1.0 - pupilRadius / 0.1), pupilTransitionPosition, pupilTransitionStrength);
     
     // Highlight
     float2 highLightOvalCoords = GetOvalCoords(highLightTexCoord.xy, float2(1.0, 0.95));
