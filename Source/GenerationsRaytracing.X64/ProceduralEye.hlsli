@@ -37,9 +37,9 @@ void GenerateProceduralEye(
     const float2 irisScale = float2(1.1, 0.5);
     float2 irisOvalCoords = GetOvalCoords(irisTexCoord, irisScale);
     float2 irisOvalCenter = GetOvalCoords(0.5 + irisTexCoord - pupilTexCoord, irisScale);
+    float2 irisOvalEdge = normalize(irisOvalCoords) * 0.17;
+    float parallaxFactor = 0.07 / (distance(irisOvalCenter, irisOvalEdge) - 0.1);
     float irisRadius = length(irisOvalCoords);
-    float parallaxFactor = irisRadius / distance(irisOvalCoords, irisOvalCenter);
-    parallaxFactor *= parallaxFactor;
     float irisPosition = saturate((1.0 - irisRadius / 0.17) * parallaxFactor);
 
     float3 irisGradient = MakeGradient(irisColor * 0.25, irisColor * 0.5, irisPosition, 0.015, 16.0);
