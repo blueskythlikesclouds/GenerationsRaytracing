@@ -55,7 +55,7 @@ void GenerateProceduralEye(
 
     float irisLineFade = frac(irisAngle * irisLineSegments);
     irisLineFade = irisLineFade <= 0.5 ? irisLineFade * 2.0 : (1.0 - irisLineFade) * 2.0;
-    irisLine = lerp(1.0, irisLine, irisLineFade);
+    irisLine = lerp(1.0, irisLine, smoothstep(0.0, 1.0, irisLineFade));
 	
     irisGradient *= irisLine;
 
