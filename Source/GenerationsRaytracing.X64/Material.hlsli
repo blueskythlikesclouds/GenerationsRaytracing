@@ -5,6 +5,7 @@
 struct Material
 {
     uint Flags;
+    float4 TexCoordOffsets[2];
     uint DiffuseTexture;
     uint DiffuseTexture2;
     uint SpecularTexture;

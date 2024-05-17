@@ -15,6 +15,7 @@ Material GetMaterial(uint shaderType, MaterialData materialData)
 {
    Material material = (Material) 0;
    material.Flags = materialData.Flags;
+   material.TexCoordOffsets = materialData.TexCoordOffsets;
    
    switch (shaderType)
    {

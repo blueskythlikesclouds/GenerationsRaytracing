@@ -922,6 +922,7 @@ public static class RaytracingShaderCompiler
                              {
                                 Material material = (Material) 0;
                                 material.Flags = materialData.Flags;
+                                material.TexCoordOffsets = materialData.TexCoordOffsets;
                                 
                                 switch (shaderType)
                                 {

@@ -313,12 +313,13 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, uint shaderType,
             {
                 float3 direction = mul(instanceDesc.HeadTransform, float4(0.0, 0.0, 1.0, 0.0));
                 direction = NormalizeSafe(mul(float4(direction, 0.0), g_MtxView).xyz);
-                float2 offset = direction.xy * float2(-1.0, 1.0);
+                float2 offset = material.TexCoordOffsets[0].xy * 2.0 + direction.xy * float2(-1.0, 1.0);
     
                 float2 pupilOffset = -material.ChrEyeFHL1.zw * offset;
                 float2 highLightOffset = material.ChrEyeFHL3.xy + material.ChrEyeFHL3.zw * offset;
-                float2 catchLightOffset = material.ChrEyeFHL1.xy - float2(offset.x < 0 ? material.ChrEyeFHL2.x : material.ChrEyeFHL2.y, 
-                    offset.y < 0 ? material.ChrEyeFHL2.z : material.ChrEyeFHL2.w) * offset;
+                float2 catchLightOffset = material.ChrEyeFHL1.xy - offset * float2(
+                    offset.x < 0 ? material.ChrEyeFHL2.x : material.ChrEyeFHL2.y, 
+                    offset.y < 0 ? material.ChrEyeFHL2.z : material.ChrEyeFHL2.w);
     
                 float3 diffuse;
                 float pupil;
