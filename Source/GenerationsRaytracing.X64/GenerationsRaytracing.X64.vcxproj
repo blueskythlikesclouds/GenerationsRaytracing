@@ -139,28 +139,63 @@
     <None Update="C:\Repositories\GenerationsRaytracing\Source\GenerationsRaytracing.Shared\SubAllocator.inl">
       <FileType>Document</FileType>
     </None>
+    <None Include="Blend.hlsli" />
+    <None Include="ChrEye.hlsli" />
+    <None Include="ChrEyeFHL.hlsli" />
+    <None Include="ChrSkin.hlsli" />
+    <None Include="ChrSkinHalf.hlsli" />
+    <None Include="ChrSkinIgnore.hlsli" />
+    <None Include="Cloud.hlsli" />
     <None Include="ColorSpace.hlsli" />
+    <None Include="Common.hlsli" />
+    <None Include="Dim.hlsli" />
+    <None Include="Distortion.hlsli" />
+    <None Include="DistortionOverlay.hlsli" />
     <None Include="DXILLibrary.hlsli" />
+    <None Include="EnmEmission.hlsli" />
+    <None Include="EnmGlass.hlsli" />
+    <None Include="EnmIgnore.hlsli" />
+    <None Include="FadeOutNormal.hlsli" />
+    <None Include="FallOff.hlsli" />
+    <None Include="FallOffV.hlsli" />
+    <None Include="Fur.hlsli" />
     <None Include="GBufferData.hlsli" />
+    <None Include="GBufferDataCreator.hlsli" />
     <None Include="GeometryShading.hlsli" />
     <None Include="GeometryDesc.hlsli" />
+    <None Include="Glass.hlsli" />
+    <None Include="Ice.hlsli" />
+    <None Include="IgnoreLight.hlsli" />
+    <None Include="IgnoreLightTwice.hlsli" />
     <None Include="Im3dShared.hlsli" />
     <FxCompile Include="Im3dTrianglesVertexShader.hlsl">
       <FileType>Document</FileType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
+    <None Include="Indirect.hlsli" />
+    <None Include="IndirectNoLight.hlsli" />
+    <None Include="IndirectV.hlsli" />
+    <None Include="Luminescence.hlsli" />
+    <None Include="LuminescenceV.hlsli" />
     <None Include="Material.hlsli" />
     <None Include="MessageReceiver.inl" />
+    <None Include="Metal.hlsli" />
+    <None Include="Mirror.hlsli" />
     <None Include="packages.config" />
     <None Include="MaterialData.hlsli" />
     <None Include="PackedPrimitives.hlsli" />
     <None Include="ProceduralEye.hlsli" />
     <None Include="RayDifferentials.hlsli" />
     <None Include="Reservoir.hlsli" />
+    <None Include="Ring.hlsli" />
     <None Include="RootSignature.hlsli" />
     <None Include="SharedDefinitions.hlsli" />
+    <None Include="Shoe.hlsli" />
     <None Include="SkySharedDefinitions.hlsli" />
+    <None Include="TimeEater.hlsli" />
+    <None Include="TransThin.hlsli" />
+    <None Include="Water.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CommandList.cpp" />

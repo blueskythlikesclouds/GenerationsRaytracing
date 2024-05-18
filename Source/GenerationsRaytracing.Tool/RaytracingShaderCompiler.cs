@@ -666,7 +666,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
 
 public static class RaytracingShaderCompiler
 {
-    private static readonly List<(string ShaderName, RaytracingShader Shader)> ShaderPairs = new()
+    public static readonly List<(string ShaderName, RaytracingShader Shader)> ShaderPairs = new()
     {
         ("BillboardParticle_", RaytracingShader.SysError),
         ("BillboardParticleY_", RaytracingShader.SysError),
@@ -739,7 +739,7 @@ public static class RaytracingShaderCompiler
         ("Water_Opacity", RaytracingShader.WaterOpacity)
     };
 
-    private static readonly List<RaytracingShader> Shaders = ShaderPairs
+    public static readonly List<RaytracingShader> Shaders = ShaderPairs
         .Select(x => x.Shader)
         .Distinct()
         .ToList();
@@ -918,25 +918,26 @@ public static class RaytracingShaderCompiler
                 packedDataSize);
 
             writer.WriteLine("""
-                             Material GetMaterial(uint shaderType, MaterialData materialData)
+                             Material GetMaterial(MaterialData materialData)
                              {
                                 Material material = (Material) 0;
                                 material.Flags = materialData.Flags;
                                 material.TexCoordOffsets = materialData.TexCoordOffsets;
                                 
-                                switch (shaderType)
-                                {
                              """);
+
+            bool shouldWriteElseIf = false;
 
             foreach (var shader in Shaders)
             {
-                writer.WriteLine("    case SHADER_TYPE_{0}:", shader.Name);
+                writer.WriteLine("#{0}if SHADER_TYPE == SHADER_TYPE_{1}", shouldWriteElseIf ? "el" : string.Empty, shader.Name);
+                shouldWriteElseIf = true;
 
                 int index = 0;
 
                 foreach (var texture in shader.Textures)
                 { 
-                    writer.WriteLine("        material.{0} = materialData.PackedData[{1}];", texture.FieldName, index);
+                    writer.WriteLine("    material.{0} = materialData.PackedData[{1}];", texture.FieldName, index);
                     ++index;
                 }
 
@@ -946,7 +947,7 @@ public static class RaytracingShaderCompiler
                     {
                         for (int i = 0; i < parameter.Size; i++)
                         {
-                            writer.WriteLine("        material.{0}[{1}] = asfloat(materialData.PackedData[{2}]);",
+                            writer.WriteLine("    material.{0}[{1}] = asfloat(materialData.PackedData[{2}]);",
                                 parameter.FieldName, i, index);
 
                             ++index;
@@ -954,18 +955,16 @@ public static class RaytracingShaderCompiler
                     }
                     else
                     {
-                        writer.WriteLine("        material.{0} = asfloat(materialData.PackedData[{1}]);",
+                        writer.WriteLine("    material.{0} = asfloat(materialData.PackedData[{1}]);",
                             parameter.FieldName, index);
 
                         ++index;
                     }
                 }
-
-                writer.WriteLine("        break;");
             }
 
             writer.WriteLine("""
-                                }
+                             #endif
                                 return material;
                              }
                              """);
@@ -989,32 +988,37 @@ public static class RaytracingShaderCompiler
                 [shader("anyhit")]
                 void {0}_PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
                 {{
-                	PrimaryAnyHit(SHADER_TYPE_{0}, payload, attributes);
+                	PrimaryAnyHit(VERTEX_FLAG_MULTI_UV, payload, attributes);
                 }}
                 [shader("closesthit")]
                 void {0}_PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
                 {{
-                	PrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);
+                	PrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, payload, attributes);
+                }}
+                [shader("anyhit")]
+                void {0}_PrimaryAnyHit_ConstTexCoord(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	PrimaryAnyHit(VERTEX_FLAG_NONE, payload, attributes);
                 }}
                 [shader("closesthit")]
                 void {0}_PrimaryClosestHit_ConstTexCoord(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
                 {{
-                	PrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);
+                	PrimaryClosestHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, payload, attributes);
                 }}
                 [shader("anyhit")]
                 void {0}_PrimaryTransparentAnyHit(inout PrimaryTransparentRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
                 {{
-                	PrimaryTransparentAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);
+                	PrimaryTransparentAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, payload, attributes);
                 }}
                 [shader("anyhit")]
                 void {0}_PrimaryTransparentAnyHit_ConstTexCoord(inout PrimaryTransparentRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
                 {{
-                	PrimaryTransparentAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, SHADER_TYPE_{0}, payload, attributes);
+                	PrimaryTransparentAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, payload, attributes);
                 }}
                 [shader("closesthit")]
                 void {0}_SecondaryClosestHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
                 {{
-                	SecondaryClosestHit(SHADER_TYPE_{0}, payload, attributes);
+                	SecondaryClosestHit(VERTEX_FLAG_MIPMAP_LOD, payload, attributes);
                 }}
                 TriangleHitGroup {0}_PrimaryHitGroup =
                 {{
@@ -1023,7 +1027,7 @@ public static class RaytracingShaderCompiler
                 }};
                 TriangleHitGroup {0}_PrimaryHitGroup_ConstTexCoord =
                 {{
-                	"{0}_PrimaryAnyHit",
+                	"{0}_PrimaryAnyHit_ConstTexCoord",
                 	"{0}_PrimaryClosestHit_ConstTexCoord"
                 }};
                 TriangleHitGroup {0}_PrimaryTransparentHitGroup =
@@ -1059,6 +1063,7 @@ public static class RaytracingShaderCompiler
             "-all-resources-bound",
             "-Zi",
             null,
+            null
         };
 
         var compiler = new ThreadLocal<IDxcCompiler3>(Dxc.CreateDxcCompiler<IDxcCompiler3>);
@@ -1069,8 +1074,10 @@ public static class RaytracingShaderCompiler
 
         Parallel.For(0, shaderSources.Count, i =>
         {
-            string pdbFilePath = Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "obj", configuration, $"{Shaders[i].Name}.pdb");
+            string shaderName = Shaders[i].Name;
+            string pdbFilePath = Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "obj", configuration, $"{shaderName}.pdb");
             var localArgs = (string[])globalArgs.Clone();
+            localArgs[^2] = $"-D SHADER_TYPE=SHADER_TYPE_{shaderName}";
             localArgs[^1] = $"-Fd {pdbFilePath}";
 
             var dxcResult = compiler.Value.Compile(shaderSources[i], localArgs, includeHandler.Value);

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GBufferData.h"
-#include "GBufferData.hlsli"
+#include "GBufferDataCreator.hlsli"
 #include "GeometryShading.hlsli"
 #include "Reservoir.hlsli"
 #include "ShaderTable.h"
@@ -13,20 +13,20 @@ struct [raypayload] PrimaryRayPayload
     float T : read(caller) : write(closesthit, miss);
 };
 
-void PrimaryAnyHit(uint shaderType,
+void PrimaryAnyHit(uint vertexFlags,
     inout PrimaryRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, vertexFlags);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
 
     if (gBufferData.Alpha < 0.5)
         IgnoreHit();
 }
 
-void PrimaryClosestHit(uint vertexFlags, uint shaderType,
+void PrimaryClosestHit(uint vertexFlags,
     inout PrimaryRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
@@ -34,7 +34,7 @@ void PrimaryClosestHit(uint vertexFlags, uint shaderType,
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
     gBufferData.Alpha = 1.0;
     StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
 
@@ -58,7 +58,7 @@ struct [raypayload] PrimaryTransparentRayPayload
     uint LayerCount : read(caller, anyhit) : write(caller, anyhit);
 };
 
-void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
+void PrimaryTransparentAnyHit(uint vertexFlags,
     inout PrimaryTransparentRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
@@ -78,7 +78,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags, uint shaderType,
     InstanceDesc instanceDesc = g_InstanceDescsTransparent[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
     
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
     gBufferData.Alpha *= instanceDesc.ForceAlphaColor;
             
     if (gBufferData.Alpha > 0.0)
@@ -159,15 +159,15 @@ struct [raypayload] SecondaryRayPayload
     float3 Normal : read(caller) : write(closesthit);
 };
 
-void SecondaryClosestHit(uint shaderType,
+void SecondaryClosestHit(uint vertexFlags,
     inout SecondaryRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_MIPMAP_LOD);
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, vertexFlags);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(shaderType, materialData), shaderType, instanceDesc);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
     
     payload.Color = gBufferData.Emission;
     payload.Diffuse = gBufferData.Diffuse;

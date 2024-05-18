@@ -218,3 +218,16 @@ Vertex LoadVertex(
 
     return vertex;
 }
+
+float3 DecodeNormalMap(Vertex vertex, float3 value)
+{
+    return NormalizeSafe(
+        vertex.Tangent * value.x -
+        vertex.Binormal * value.y +
+        vertex.Normal * value.z);
+}
+
+float3 DecodeNormalMap(Vertex vertex, float4 value)
+{
+    return DecodeNormalMap(vertex, DecodeNormalMap(value));
+}

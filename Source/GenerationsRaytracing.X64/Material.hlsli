@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GeometryDesc.hlsli"
+#include "MaterialFlags.h"
 
 struct Material
 {

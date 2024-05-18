@@ -128,6 +128,21 @@
     <Filter Include="Shader\Reservoir">
       <UniqueIdentifier>{61ef9b3a-832f-484a-b6f2-659629ce794a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader\Material\Shader">
+      <UniqueIdentifier>{acc0a1df-f2cc-4596-8bdf-eff1d1427960}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Material\Shader\Terrain">
+      <UniqueIdentifier>{088d297e-49fe-4106-a90d-214459ea5433}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Material\Shader\Object">
+      <UniqueIdentifier>{6532ead7-270e-4dfc-a8d5-ce8470499a10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Material\Shader\Character">
+      <UniqueIdentifier>{12a24811-7122-46c7-84af-79d5df3f5895}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Material\Shader\Raytracing">
+      <UniqueIdentifier>{d8381a59-f2e7-49b7-8da8-4a1355d6dc73}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MessageReceiver.h">
@@ -293,6 +308,111 @@
     </None>
     <None Include="ProceduralEye.hlsli">
       <Filter>Shader\Material</Filter>
+    </None>
+    <None Include="GBufferDataCreator.hlsli">
+      <Filter>Shader\Material</Filter>
+    </None>
+    <None Include="Blend.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="ChrEye.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
+    <None Include="ChrEyeFHL.hlsli">
+      <Filter>Shader\Material\Shader\Raytracing</Filter>
+    </None>
+    <None Include="ChrSkin.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
+    <None Include="ChrSkinHalf.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
+    <None Include="ChrSkinIgnore.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
+    <None Include="Cloud.hlsli">
+      <Filter>Shader\Material\Shader\Object</Filter>
+    </None>
+    <None Include="Common.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Dim.hlsli">
+      <Filter>Shader\Material\Shader\Object</Filter>
+    </None>
+    <None Include="Distortion.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="DistortionOverlay.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="EnmEmission.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
+    <None Include="EnmGlass.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
+    <None Include="EnmIgnore.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
+    <None Include="FadeOutNormal.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="FallOffV.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="FallOff.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Fur.hlsli">
+      <Filter>Shader\Material\Shader\Raytracing</Filter>
+    </None>
+    <None Include="Glass.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Ice.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="IgnoreLight.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="IgnoreLightTwice.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Indirect.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="IndirectNoLight.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="IndirectV.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Luminescence.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="LuminescenceV.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Metal.hlsli">
+      <Filter>Shader\Material\Shader\Raytracing</Filter>
+    </None>
+    <None Include="Mirror.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Ring.hlsli">
+      <Filter>Shader\Material\Shader\Object</Filter>
+    </None>
+    <None Include="Shoe.hlsli">
+      <Filter>Shader\Material\Shader\Raytracing</Filter>
+    </None>
+    <None Include="TimeEater.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
+    <None Include="TransThin.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Water.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

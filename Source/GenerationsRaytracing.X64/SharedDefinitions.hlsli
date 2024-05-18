@@ -95,3 +95,33 @@ float LinearizeDepth(float depth, float4x4 invProjection)
     float4 position = mul(float4(0, 0, depth, 1), invProjection);
     return position.z / position.w;
 }
+
+float ComputeFresnel(float3 normal)
+{
+    return pow(1.0 - saturate(dot(normal, -WorldRayDirection())), 5.0);
+}
+
+float ComputeFresnel(float3 normal, float2 fresnelParam)
+{
+    return lerp(fresnelParam.x, 1.0, ComputeFresnel(normal)) * fresnelParam.y;
+}
+
+float3 DecodeNormalMap(float4 value)
+{
+    value.x *= value.w;
+
+    float3 normalMap;
+    normalMap.xy = value.xy * 2.0 - 1.0;
+    normalMap.z = sqrt(abs(1.0 - dot(normalMap.xy, normalMap.xy)));
+    return normalMap;
+}
+
+float ComputeFalloff(float3 normal, float3 falloffParam)
+{
+    return pow(1.0 - saturate(dot(normal, -WorldRayDirection())), falloffParam.z) * falloffParam.y + falloffParam.x;
+}
+
+float ConvertSpecularGlossToRoughness(float specularGloss)
+{
+    return 1.0 - pow(specularGloss, 0.2) * 0.25;
+}
