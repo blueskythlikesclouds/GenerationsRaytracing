@@ -902,7 +902,8 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
 
             message.bottomLevelAccelStructId = bottomLevelAccelStructId;
             message.isMirrored = false;
-            message.instanceType = instanceInfoEx.m_enableForceAlphaColor ? INSTANCE_TYPE_TRANSPARENT : s_instanceTypes[i].instanceMask;
+            message.instanceMask = INSTANCE_MASK_OBJECT;
+            message.instanceType = instanceInfoEx.m_enableForceAlphaColor ? INSTANCE_TYPE_TRANSPARENT : s_instanceTypes[i].instanceType;
             message.playableParam = -10001.0f;
             message.chrPlayableMenuParam = instanceInfoEx.m_chrPlayableMenuParam + RaytracingRendering::s_worldShift.y();
             message.forceAlphaColor = instanceInfoEx.m_forceAlphaColor;

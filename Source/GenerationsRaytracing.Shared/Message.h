@@ -356,6 +356,7 @@ struct MsgCreateInstance
     float headTransform[3][4];
     uint32_t bottomLevelAccelStructId;
     bool isMirrored;
+    uint8_t instanceMask;
     uint8_t instanceType;
     float playableParam;
     float chrPlayableMenuParam;
@@ -575,6 +576,25 @@ struct MsgDrawIm3d
 struct MsgCopyHdrTexture
 {
     MSG_DEFINE_MESSAGE(MsgDrawIm3d);
+};
+
+struct MsgComputeGrassInstancer
+{
+    MSG_DEFINE_MESSAGE(MsgCopyHdrTexture);
+
+    struct LodDesc
+    {
+        uint32_t instanceOffset;
+        uint32_t instanceCount;
+        uint32_t vertexOffset;
+    };
+
+    float instanceTypes[32][4];
+    float misc;
+    uint32_t instanceBufferId;
+    uint32_t vertexBufferId;
+    uint32_t dataSize;
+    uint8_t data[1u];
 };
 
 #pragma pack(pop)

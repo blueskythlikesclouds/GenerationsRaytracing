@@ -118,7 +118,8 @@ void InstanceData::createInstances(Hedgehog::Mirage::CRenderingDevice* rendering
                     memcpy(message.prevTransform, copyPrevTransform ? instance->m_prevTransform : transform, sizeof(message.prevTransform));
                     message.bottomLevelAccelStructId = bottomLevelAccelStructId;
                     message.isMirrored = isMirrored;
-                    message.instanceType = s_instanceTypes[i].instanceMask;
+                    message.instanceMask = INSTANCE_MASK_TERRAIN;
+                    message.instanceType = s_instanceTypes[i].instanceType;
                     message.playableParam = playableParam;
                     message.chrPlayableMenuParam = 10000.0f;
                     message.forceAlphaColor = 1.0f;

@@ -92,7 +92,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        INSTANCE_MASK_DEFAULT,
+        INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN,
         ray);
 
     while (query.Proceed())
@@ -152,7 +152,7 @@ float TraceShadowCullNonOpaque(float3 position, float3 direction, float2 random)
     query.TraceRayInline(
         g_BVH,
         RAY_FLAG_NONE,
-        INSTANCE_MASK_DEFAULT,
+        INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN,
         ray);
     
     query.Proceed();
@@ -194,7 +194,7 @@ float TraceLocalLightShadow(float3 position, float3 direction, float2 random, fl
     query.TraceRayInline(
         g_BVH,
         enableBackfaceCulling ? RAY_FLAG_CULL_BACK_FACING_TRIANGLES : RAY_FLAG_NONE,
-        INSTANCE_MASK_DEFAULT,
+        INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN,
         ray);
 
     query.Proceed();

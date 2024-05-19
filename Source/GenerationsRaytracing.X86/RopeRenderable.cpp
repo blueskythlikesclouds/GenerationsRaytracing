@@ -127,6 +127,7 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
 
     message.bottomLevelAccelStructId = ropeRenderableEx->m_bottomLevelAccelStructId;
     message.isMirrored = false;
+    message.instanceMask = INSTANCE_MASK_OBJECT;
     message.instanceType = INSTANCE_TYPE_OPAQUE;
     message.playableParam = -10001.0f;
     message.chrPlayableMenuParam = 10000.0f;

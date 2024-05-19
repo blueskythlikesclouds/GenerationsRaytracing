@@ -30,7 +30,7 @@ void PrimaryRayGeneration()
     TraceRay(
         g_BVH,
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
-        INSTANCE_MASK_DEFAULT,
+        INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN | INSTANCE_MASK_INSTANCER,
         HIT_GROUP_PRIMARY,
         HIT_GROUP_NUM,
         MISS_PRIMARY,
@@ -47,7 +47,7 @@ void PrimaryRayGeneration()
     TraceRay(
         g_BVHTransparent,
         RAY_FLAG_CULL_FRONT_FACING_TRIANGLES | RAY_FLAG_FORCE_NON_OPAQUE | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-        INSTANCE_MASK_DEFAULT,
+        INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN,
         HIT_GROUP_PRIMARY_TRANSPARENT,
         HIT_GROUP_NUM,
         MISS_PRIMARY_TRANSPARENT,
@@ -95,6 +95,7 @@ struct TracePathArgs
 {
     float3 Position;
     float3 Direction;
+    uint InstanceMask;
     uint MissShaderIndex;
     float3 Throughput;
     bool ApplyPower;
@@ -123,7 +124,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
 #endif
             g_BVH,
             bounceIndex != 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
-            INSTANCE_MASK_DEFAULT,
+            bounceIndex != 0 ? INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN : args.InstanceMask,
             HIT_GROUP_SECONDARY,
             HIT_GROUP_NUM,
             bounceIndex != 0 ? MISS_SECONDARY_ENVIRONMENT_COLOR : args.MissShaderIndex,
@@ -267,11 +268,13 @@ void SecondaryRayGeneration()
                     args.ApplyPower = true;
                 }
             
+                args.InstanceMask = INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN | INSTANCE_MASK_INSTANCER;
                 args.Throughput /= 1.0 - giProbability;
             }
             else
             {
                 args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
+                args.InstanceMask = INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN;
                 args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
                 args.Throughput = 1.0 / giProbability;
                 args.ApplyPower = true;

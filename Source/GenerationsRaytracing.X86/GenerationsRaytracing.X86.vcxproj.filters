@@ -141,6 +141,9 @@
     <ClCompile Include="Logger.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
+    <ClCompile Include="MetaInstancer.cpp">
+      <Filter>Raytracing\Renderable</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -290,6 +293,9 @@
     </ClInclude>
     <ClInclude Include="Logger.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="MetaInstancer.h">
+      <Filter>Raytracing\Renderable</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -6,7 +6,7 @@
 inline constexpr struct
 {
     uint32_t geometryMask;
-    uint32_t instanceMask;
+    uint32_t instanceType;
 } s_instanceTypes[] =
 {
     { GEOMETRY_FLAG_OPAQUE | GEOMETRY_FLAG_PUNCH_THROUGH, INSTANCE_TYPE_OPAQUE },

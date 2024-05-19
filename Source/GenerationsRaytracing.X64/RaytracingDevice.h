@@ -206,6 +206,10 @@ protected:
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
     DXGI_FORMAT m_renderTargetFormat{};
 
+    // Grass Instancer
+    ComPtr<ID3D12RootSignature> m_grassInstancerRootSignature;
+    ComPtr<ID3D12PipelineState> m_grassInstancerPipeline;
+
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
@@ -241,6 +245,7 @@ protected:
     void procMsgDispatchUpscaler();
     void procMsgDrawIm3d();
     void procMsgCopyHdrTexture();
+    void procMsgComputeGrassInstancer();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;

@@ -143,6 +143,9 @@
     <Filter Include="Shader\Material\Shader\Raytracing">
       <UniqueIdentifier>{d8381a59-f2e7-49b7-8da8-4a1355d6dc73}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader\Instancer">
+      <UniqueIdentifier>{063382ff-a15d-42ec-a57c-09ee248ec60e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MessageReceiver.h">
@@ -481,6 +484,9 @@
     </FxCompile>
     <FxCompile Include="CopyHdrTexturePixelShader.hlsl">
       <Filter>Shader\Copy</Filter>
+    </FxCompile>
+    <FxCompile Include="GrassInstancerComputeShader.hlsl">
+      <Filter>Shader\Instancer</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

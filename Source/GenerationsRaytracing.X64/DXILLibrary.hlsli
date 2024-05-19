@@ -8,8 +8,8 @@
 
 struct [raypayload] PrimaryRayPayload
 {
-    float3 dDdx : read(closesthit) : write(caller);
-    float3 dDdy : read(closesthit) : write(caller);
+    float3 dDdx : read(anyhit, closesthit) : write(caller);
+    float3 dDdy : read(anyhit, closesthit) : write(caller);
     float T : read(caller) : write(closesthit, miss);
 };
 
@@ -19,7 +19,7 @@ void PrimaryAnyHit(uint vertexFlags,
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
-    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, vertexFlags);
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
     GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
 
     if (gBufferData.Alpha < 0.5)

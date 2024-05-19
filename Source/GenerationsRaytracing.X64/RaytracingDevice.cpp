@@ -33,6 +33,7 @@
 #include "Im3dTrianglesPixelShader.h"
 #include "ReservoirComputeShader.h"
 #include "CopyHdrTexturePixelShader.h"
+#include "GrassInstancerComputeShader.h"
 
 static constexpr uint32_t SCRATCH_BUFFER_SIZE = 32 * 1024 * 1024;
 static constexpr uint32_t CUBE_MAP_RESOLUTION = 1024;
@@ -846,7 +847,7 @@ void RaytracingDevice::procMsgCreateInstance()
             instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
         }
 
-        instanceDesc.InstanceMask = INSTANCE_MASK_DEFAULT;
+        instanceDesc.InstanceMask = message.instanceMask;
         instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
         instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
 
@@ -1705,6 +1706,55 @@ void RaytracingDevice::procMsgCopyHdrTexture()
     underlyingCommandList->DrawInstanced(6, 1, 0, 0);
 }
 
+void RaytracingDevice::procMsgComputeGrassInstancer()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgComputeGrassInstancer>();
+
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
+    PIX_EVENT();
+
+    if (m_curRootSignature != m_grassInstancerRootSignature.Get())
+    {
+        underlyingCommandList->SetComputeRootSignature(m_grassInstancerRootSignature.Get());
+        m_curRootSignature = m_grassInstancerRootSignature.Get();
+    }
+    if (m_curPipeline != m_grassInstancerPipeline.Get())
+    {
+        underlyingCommandList->SetPipelineState(m_grassInstancerPipeline.Get());
+        m_curPipeline = m_grassInstancerPipeline.Get();
+        m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
+    }
+
+    underlyingCommandList->SetComputeRootShaderResourceView(0,
+        createBuffer(message.instanceTypes, sizeof(message.instanceTypes), 0x10));
+
+    underlyingCommandList->SetComputeRoot32BitConstant(1, *reinterpret_cast<const UINT*>(&message.misc), 0);
+
+    const auto& instanceBuffer = m_vertexBuffers[message.instanceBufferId];
+    const auto& vertexBuffer = m_vertexBuffers[message.vertexBufferId];
+
+    auto lodDesc = reinterpret_cast<const MsgComputeGrassInstancer::LodDesc*>(message.data);
+
+    for (size_t i = 0; i < message.dataSize / sizeof(MsgComputeGrassInstancer::LodDesc); i++)
+    {
+        underlyingCommandList->SetComputeRoot32BitConstant(2, lodDesc->instanceCount * 6, 0);
+
+        underlyingCommandList->SetComputeRootShaderResourceView(3,
+            instanceBuffer.allocation->GetResource()->GetGPUVirtualAddress() + lodDesc->instanceOffset);
+
+        underlyingCommandList->SetComputeRootUnorderedAccessView(4,
+            vertexBuffer.allocation->GetResource()->GetGPUVirtualAddress() + lodDesc->vertexOffset);
+
+        underlyingCommandList->Dispatch((lodDesc->instanceCount * 6 + 63) / 64, 1, 1);
+
+        ++lodDesc;
+    }
+
+    commandList.uavBarrier(vertexBuffer.allocation->GetResource());
+}
+
 bool RaytracingDevice::processRaytracingMessage()
 {
     switch (m_messageReceiver.getId())
@@ -1722,6 +1772,7 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgDispatchUpscaler::s_id: procMsgDispatchUpscaler(); break;
     case MsgDrawIm3d::s_id: procMsgDrawIm3d(); break;
     case MsgCopyHdrTexture::s_id: procMsgCopyHdrTexture(); break;
+    case MsgComputeGrassInstancer::s_id: procMsgComputeGrassInstancer(); break;
     default: return false;
     }
 
@@ -2276,6 +2327,31 @@ RaytracingDevice::RaytracingDevice()
     copyHdrPipelineDesc.SampleDesc.Count = 1;
 
     m_pipelineLibrary.createGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
+
+    CD3DX12_ROOT_PARAMETER1 grassInstancerRootParams[5];
+    grassInstancerRootParams[0].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    grassInstancerRootParams[1].InitAsConstants(1, 0);
+    grassInstancerRootParams[2].InitAsConstants(1, 1);
+    grassInstancerRootParams[3].InitAsShaderResourceView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
+    grassInstancerRootParams[4].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
+
+    RootSignature::create(
+        m_device.Get(),
+        grassInstancerRootParams,
+        _countof(grassInstancerRootParams),
+        nullptr,
+        0,
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS,
+        m_grassInstancerRootSignature,
+        "grass_instancer");
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC grassInstancerPipelineDesc{};
+    grassInstancerPipelineDesc.pRootSignature = m_grassInstancerRootSignature.Get();
+    grassInstancerPipelineDesc.CS.pShaderBytecode = GrassInstancerComputeShader;
+    grassInstancerPipelineDesc.CS.BytecodeLength = sizeof(GrassInstancerComputeShader);
+
+    m_pipelineLibrary.createComputePipelineState(&grassInstancerPipelineDesc, IID_PPV_ARGS(m_grassInstancerPipeline.GetAddressOf()));
 }
 
 RaytracingDevice::~RaytracingDevice()

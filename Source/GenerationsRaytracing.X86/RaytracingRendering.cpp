@@ -14,6 +14,8 @@
 #include "ToneMap.h"
 #include "UpReelRenderable.h"
 #include "ModelReplacer.h"
+#include "MetaInstancer.h"
+#include "Logger.h"
 
 static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable)
 {
@@ -74,6 +76,10 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
     else if (const auto ropeRenderable = dynamic_cast<Sonic::CRopeRenderable*>(renderable))
     {
         RopeRenderable::createInstanceAndBottomLevelAccelStruct(ropeRenderable);
+    }
+    else if (const auto instanceRenderObjDX9 = dynamic_cast<Sonic::CInstanceRenderObjDX9*>(renderable))
+    {
+        MetaInstancer::createInstanceAndBottomLevelAccelStruct(instanceRenderObjDX9);
     }
 }
 
@@ -281,7 +287,8 @@ static void __cdecl implOfTraceRays(void* a1)
                 "Object_ZPass",
                 "Object_OverlayZPass",
                 "Object_Overlay",
-                "Player"
+                "Player",
+                "Terrain"
             };
 
             for (const auto& symbol : s_renderCategories)
