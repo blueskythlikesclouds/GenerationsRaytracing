@@ -93,40 +93,16 @@ void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRend
 
     if (objGrassInstancerEx->m_materialId == NULL)
     {
-        objGrassInstancerEx->m_materialId = MaterialData::s_idAllocator.allocate();
-
-        auto& createMsg = s_messageSender.makeMessage<MsgCreateMaterial>();
-        createMsg.materialId = objGrassInstancerEx->m_materialId;
-        createMsg.shaderType = SHADER_TYPE_COMMON;
-        createMsg.flags = MATERIAL_FLAG_CONST_TEX_COORD | MATERIAL_FLAG_DOUBLE_SIDED;
-        memset(createMsg.texCoordOffsets, 0, sizeof(createMsg.texCoordOffsets));
-        memset(createMsg.textures, 0, sizeof(createMsg.textures));
-
-        createMsg.textureCount = s_shader_COMMON.textureCount;
+        uint32_t textureId = NULL;
 
         if (instanceRenderObj->m_aInstanceModelData[0]->m_aTextureData[0] != nullptr &&
             instanceRenderObj->m_aInstanceModelData[0]->m_aTextureData[0]->m_spPictureData != nullptr &&
             instanceRenderObj->m_aInstanceModelData[0]->m_aTextureData[0]->m_spPictureData->m_pD3DTexture != nullptr)
         {
-            createMsg.textures[0].id = reinterpret_cast<Texture*>(instanceRenderObj->m_aInstanceModelData[0]->m_aTextureData[0]->m_spPictureData->m_pD3DTexture)->getId();
-        }
-        else
-        {
-            createMsg.textures[0].id = NULL;
+            textureId = reinterpret_cast<Texture*>(instanceRenderObj->m_aInstanceModelData[0]->m_aTextureData[0]->m_spPictureData->m_pD3DTexture)->getId();
         }
 
-        createMsg.textures[0].addressModeU = D3DTADDRESS_WRAP;
-        createMsg.textures[0].addressModeV = D3DTADDRESS_WRAP;
-
-        createMsg.parameterCount = 0;
-        for (size_t i = 0; i < s_shader_COMMON.parameterCount; i++)
-        {
-            const auto parameter = s_shader_COMMON.parameters[i];
-            memcpy(&createMsg.parameters[createMsg.parameterCount], &(&parameter->x)[parameter->index], parameter->size * sizeof(float));
-            createMsg.parameterCount += parameter->size;
-        }
-
-        s_messageSender.endMessage();
+        RaytracingUtil::createSimpleMaterial(objGrassInstancerEx->m_materialId, MATERIAL_FLAG_DOUBLE_SIDED, textureId);
     }
 
     RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, 

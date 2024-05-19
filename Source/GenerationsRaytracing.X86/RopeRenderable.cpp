@@ -54,36 +54,15 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
 
         if (ropeRenderableEx->m_materialId == NULL)
         {
-            ropeRenderableEx->m_materialId = MaterialData::s_idAllocator.allocate();
+            uint32_t textureId = NULL;
 
-            auto& createMsg = s_messageSender.makeMessage<MsgCreateMaterial>();
-            createMsg.materialId = ropeRenderableEx->m_materialId;
-            createMsg.shaderType = SHADER_TYPE_COMMON;
-            createMsg.flags = MATERIAL_FLAG_CONST_TEX_COORD;
-            memset(createMsg.texCoordOffsets, 0, sizeof(createMsg.texCoordOffsets));
-            memset(createMsg.textures, 0, sizeof(createMsg.textures));
-            memset(createMsg.parameters, 0, sizeof(createMsg.parameters));
-
-            createMsg.textureCount = s_shader_COMMON.textureCount;
             if (ropeRenderableEx->m_spDiffusePicture != nullptr &&
                 ropeRenderableEx->m_spDiffusePicture->m_pD3DTexture != nullptr)
             {
-                createMsg.textures[0].id = reinterpret_cast<Texture*>(ropeRenderableEx->m_spDiffusePicture->m_pD3DTexture)->getId();
-            }
-            else
-            {
-                createMsg.textures[0].id = NULL;
+                textureId = reinterpret_cast<Texture*>(ropeRenderableEx->m_spDiffusePicture->m_pD3DTexture)->getId();
             }
 
-            createMsg.textures[0].addressModeU = D3DTADDRESS_WRAP;
-            createMsg.textures[0].addressModeV = D3DTADDRESS_WRAP;
-
-            createMsg.parameterCount = 3;
-            createMsg.parameters[0] = 1.0f;
-            createMsg.parameters[1] = 1.0f;
-            createMsg.parameters[2] = 1.0f;
-
-            s_messageSender.endMessage();
+            RaytracingUtil::createSimpleMaterial(ropeRenderableEx->m_materialId, MATERIAL_FLAG_NONE, textureId);
         }
 
         RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, ropeRenderableEx->m_bottomLevelAccelStructId);
