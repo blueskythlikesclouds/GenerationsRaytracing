@@ -38,6 +38,17 @@ void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRend
     if (objGrassInstancer == nullptr)
         return;
 
+    uint32_t lodCount = 0;
+
+    for (auto& instanceCount : instanceRenderObj->m_aInstanceNum)
+    {
+        if (instanceCount != 0)
+            ++lodCount;
+    }
+
+    if (lodCount == 0)
+        return;
+
     const auto objGrassInstancerEx = reinterpret_cast<ObjGrassInstancerEx*>(objGrassInstancer);
 
     if (objGrassInstancerEx->m_vertexBuffer == nullptr)
@@ -52,14 +63,6 @@ void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRend
         message.length = vertexByteSize;
         message.allowUnorderedAccess = true;
         s_messageSender.endMessage();
-    }
-
-    uint32_t lodCount = 0;
-
-    for (auto& instanceCount : instanceRenderObj->m_aInstanceNum)
-    {
-        if (instanceCount != 0)
-            ++lodCount;
     }
 
     auto& computeMsg = s_messageSender.makeMessage<MsgComputeGrassInstancer>(
