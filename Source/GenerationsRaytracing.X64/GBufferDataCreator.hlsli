@@ -168,6 +168,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
 
     if (material.Flags & MATERIAL_FLAG_REFLECTION)
         gBufferData.Flags |= GBUFFER_FLAG_IS_MIRROR_REFLECTION;
+    
+    if (material.Flags & MATERIAL_FLAG_FULBRIGHT)
+        gBufferData.Flags |= GBUFFER_FLAG_FULBRIGHT;
 
     float playableParam = saturate(64.0 * (ComputeNdcPosition(vertex.Position, g_MtxView, g_MtxProjection).y - instanceDesc.PlayableParam));
     playableParam *= saturate((instanceDesc.ChrPlayableMenuParam - vertex.Position.y + 0.05) * 10);

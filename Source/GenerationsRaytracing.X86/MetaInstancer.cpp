@@ -102,7 +102,7 @@ void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRend
             textureId = reinterpret_cast<Texture*>(instanceRenderObj->m_aInstanceModelData[0]->m_aTextureData[0]->m_spPictureData->m_pD3DTexture)->getId();
         }
 
-        RaytracingUtil::createSimpleMaterial(objGrassInstancerEx->m_materialId, MATERIAL_FLAG_DOUBLE_SIDED, textureId);
+        RaytracingUtil::createSimpleMaterial(objGrassInstancerEx->m_materialId, MATERIAL_FLAG_DOUBLE_SIDED | MATERIAL_FLAG_FULBRIGHT, textureId);
     }
 
     RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, 
