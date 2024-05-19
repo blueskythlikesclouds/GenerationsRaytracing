@@ -11,9 +11,6 @@ static std::unordered_set<TerrainInstanceInfoDataEx*> s_instances;
 static std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*> s_instanceSubsets;
 static Mutex s_terrainInstanceMutex;
 
-static std::unordered_set<InstanceInfoEx*> s_trackedInstances;
-static Mutex s_instanceMutex;
-
 HOOK(TerrainInstanceInfoDataEx*, __fastcall, TerrainInstanceInfoDataConstructor, 0x717350, TerrainInstanceInfoDataEx* This)
 {
     const auto result = originalTerrainInstanceInfoDataConstructor(This);
@@ -59,10 +56,6 @@ HOOK(InstanceInfoEx*, __fastcall, InstanceInfoConstructor, 0x7036A0, InstanceInf
 
 HOOK(void, __fastcall, InstanceInfoDestructor, 0x7030B0, InstanceInfoEx* This)
 {
-    s_instanceMutex.lock();
-    s_trackedInstances.erase(This);
-    s_instanceMutex.unlock();
-
     This->m_effectMap.~unordered_map();
     This->m_poseVertexBuffer.~ComPtr();
 
@@ -228,6 +221,17 @@ HOOK(void, __fastcall, ProcMsgRestartStage, 0xD50E30, Sonic::CTerrainManager2nd*
     }
 }
 
+static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoDataEx* This)
+{
+    if (strncmp(This->m_TypeAndName.c_str() + sizeof("Mirage.terrain-instanceinfo"), "ins", 3) == 0)
+    {
+        LockGuard lock(s_terrainInstanceMutex);
+        s_instances.insert(This);
+    }
+
+    This->SetMadeOne();
+}
+
 void InstanceData::init()
 {
     WRITE_MEMORY(0x7176AC, uint32_t, sizeof(TerrainInstanceInfoDataEx));
@@ -248,4 +252,11 @@ void InstanceData::init()
     INSTALL_HOOK(ProcMsgHideTerrainInstanceSubset);
     INSTALL_HOOK(ProcMsgChangeTerrainInstanceSubsetVisibilityState);
     INSTALL_HOOK(ProcMsgRestartStage);
+
+    WRITE_JUMP(0x73A382, terrainInstanceInfoDataSetMadeOne);
+    WRITE_JUMP(0x738221, terrainInstanceInfoDataSetMadeOne);
+    WRITE_JUMP(0x738891, terrainInstanceInfoDataSetMadeOne);
+    WRITE_JUMP(0x738AA5, terrainInstanceInfoDataSetMadeOne);
+    WRITE_JUMP(0x736990, terrainInstanceInfoDataSetMadeOne);
+    WRITE_JUMP(0x738F6B, terrainInstanceInfoDataSetMadeOne);
 }
