@@ -468,10 +468,13 @@ public class ShaderConverter
             if (!disassembly.Contains("oC2"))
                 stringBuilder.AppendLine("\toC2 = float4(0.0, 0.0, 0.0, oC0.w);");
 
-            stringBuilder.AppendLine("\n\tif (g_ExposureTextureId != 0) {");
-            stringBuilder.AppendLine("\t\tTexture2D<float> exposure = ResourceDescriptorHeap[g_ExposureTextureId];");
-            stringBuilder.AppendLine("\t\toC0.rgb /= max(0.0001, exposure[uint2(0, 0)] * 0.5);");
-            stringBuilder.AppendLine("\t}");
+            if (!constants.Any(x => x.Name == "g_Far_NearFadeRange_FarFadeRange"))
+            { 
+                stringBuilder.AppendLine("\n\tif (g_ExposureTextureId != 0) {");
+                stringBuilder.AppendLine("\t\tTexture2D<float> exposure = ResourceDescriptorHeap[g_ExposureTextureId];");
+                stringBuilder.AppendLine("\t\toC0.rgb /= max(0.0001, exposure[uint2(0, 0)] * 0.5);");
+                stringBuilder.AppendLine("\t}");
+            }
         }
 
         // Prevent half-pixel correction in CSD shaders

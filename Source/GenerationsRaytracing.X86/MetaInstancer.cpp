@@ -201,10 +201,25 @@ HOOK(void, __fastcall, ObjGrassInstancerDestructor, 0x11B4EB0, ObjGrassInstancer
     originalObjGrassInstancerDestructor(This);
 }
 
+HOOK(void, __stdcall, ParseInstancerAsset, 0xCDAB00, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4)
+{
+    originalParseInstancerAsset(a1, a2, a3, a4);
+
+    static Hedgehog::Base::CStringSymbol s_grassSymbol("Grass");
+    static Hedgehog::Base::CStringSymbol s_effectSymbol("Effect");
+
+    auto desc = *reinterpret_cast<uintptr_t*>(a1 + 32);
+
+    if (*reinterpret_cast<Hedgehog::Base::CStringSymbol*>(desc + 4) != s_grassSymbol)
+        *reinterpret_cast<Hedgehog::Base::CStringSymbol*>(desc + 32) = s_effectSymbol;
+}
+
 void MetaInstancer::init()
 {
     WRITE_MEMORY(0x11B55AC, uint32_t, sizeof(ObjGrassInstancerEx));
 
     WRITE_JUMP(0x11B5575, objGrassInstancerConstructorTrampoline);
     INSTALL_HOOK(ObjGrassInstancerDestructor);
+
+    INSTALL_HOOK(ParseInstancerAsset);
 }
