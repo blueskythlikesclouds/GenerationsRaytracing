@@ -64,12 +64,11 @@ static const float2 s_texCoords[] =
 static const uint s_indices[] =
 {
     0, 1, 2,
-    1, 2, 3
+    1, 3, 2
 };
 
 float3 GrassInstanceDecompiled(
 	float4 v0,
-	float4 v1,
 	float4 v2,
 	uint4 v3,
 	float4 v4,
@@ -140,33 +139,20 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     
     uint instanceId = dispatchThreadId.x / 6;
     Instance instance = g_Instances[instanceId];
-    
     InstanceType instanceType = g_InstanceTypes[instance.Type];
+    uint vertexId = dispatchThreadId.x % 6;    
+    float3 position = s_positions[s_indices[vertexId]];
+    float2 texCoord = s_texCoords[s_indices[vertexId]];
+    float4 v2 = float4(instance.Position, 1.0);
+    uint4 v3 = uint4(instance.Type, instance.Sway, instance.PitchAfterSway, instance.YawAfterSway);
+    float4 v4 = float4(instance.PitchBeforeSway / 32768.0, instance.YawBeforeSway / 32768.0, 0.0, 0.0);
     
-    float sway = instance.Sway / 255.0;
-    
-    float pitchAfterSway = (2.0 * PI) * (instance.PitchAfterSway / 255.0);
-    float yawAfterSway = (2.0 * PI) * (instance.YawAfterSway / 255.0);
-    
-    float pitchBeforeSway = PI * (instance.PitchBeforeSway / 32768.0);
-    float yawBeforeSway = PI * (instance.YawBeforeSway / 32768.0);
-    
-    uint vertexId = dispatchThreadId.x % 6;
     Vertex vertex = (Vertex) 0;
     
-    float2 texCoord = s_texCoords[s_indices[vertexId]];
-    
-    vertex.Position = GrassInstanceDecompiled(
-        float4(s_positions[s_indices[vertexId]], 1.0),
-        float4(texCoord, 0.0, 1.0),
-        float4(instance.Position, 1.0),
-        uint4(instance.Type, instance.Sway, instance.PitchAfterSway, instance.YawAfterSway),
-        float4(instance.PitchBeforeSway / 32768.0, instance.YawBeforeSway / 32768.0, 0.0, 0.0),
-        instanceType);
-    
+    vertex.Position = GrassInstanceDecompiled(float4(position, 1.0), v2, v3, v4, instanceType);
     vertex.Color = 0xFFFFFFFF;
     vertex.Normal = EncodeSnorm10(float3(0.0, 1.0, 0.0));
-    vertex.TexCoord = EncodeHalf2((instanceType.TexTrimCoords.zw - instanceType.TexTrimCoords.xy) * texCoord + instanceType.TexTrimCoords.xy);
+    vertex.TexCoord = EncodeHalf2(lerp(instanceType.TexTrimCoords.xy, instanceType.TexTrimCoords.zw, texCoord));
     
     g_Vertices[dispatchThreadId.x] = vertex;
 
