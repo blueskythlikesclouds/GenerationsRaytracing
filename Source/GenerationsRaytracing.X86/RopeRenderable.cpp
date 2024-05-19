@@ -31,7 +31,6 @@ public:
     float m_prevTransform[3][4];
     uint32_t m_bottomLevelAccelStructId;
     uint32_t m_vertexBufferId;
-    ComPtr<IndexBuffer> m_indexBuffer;
     uint32_t m_frame;
 };
 
@@ -51,30 +50,6 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
 
     if (ropeRenderableEx->m_vertexBufferId != vertexBuffer->getId())
     {
-        const size_t indexByteSize = ropeRenderableEx->m_VertexNum * sizeof(uint16_t);
-
-        if (ropeRenderableEx->m_indexBuffer == nullptr || 
-            ropeRenderableEx->m_indexBuffer->getByteSize() != indexByteSize)
-        {
-            ropeRenderableEx->m_indexBuffer = new IndexBuffer(indexByteSize);
-
-            auto& createMsg = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
-            createMsg.length = indexByteSize;
-            createMsg.format = D3DFMT_INDEX16;
-            createMsg.indexBufferId = ropeRenderableEx->m_indexBuffer->getId();
-            s_messageSender.endMessage();
-
-            auto& writeMsg = s_messageSender.makeMessage<MsgWriteIndexBuffer>(indexByteSize);
-            writeMsg.indexBufferId = ropeRenderableEx->m_indexBuffer->getId();
-            writeMsg.offset = 0;
-            writeMsg.initialWrite = true;
-
-            for (size_t i = 0; i < ropeRenderableEx->m_VertexNum; i++)
-                *(reinterpret_cast<uint16_t*>(writeMsg.data) + i) = static_cast<uint16_t>(i);
-
-            s_messageSender.endMessage();
-        }
-
         ropeRenderableEx->m_vertexBufferId = vertexBuffer->getId();
 
         if (ropeRenderableEx->m_materialId == NULL)
@@ -126,8 +101,6 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
         const auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(createMsg.data);
 
         memset(geometryDesc, 0, sizeof(*geometryDesc));
-        geometryDesc->indexBufferId = ropeRenderableEx->m_indexBuffer->getId();
-        geometryDesc->indexCount = ropeRenderableEx->m_VertexNum;
         geometryDesc->vertexBufferId = vertexBuffer->getId();
         geometryDesc->vertexStride = sizeof(Vertex);
         geometryDesc->vertexCount = ropeRenderableEx->m_VertexNum;
@@ -176,13 +149,11 @@ void __fastcall ropeRenderableConstructor(RopeRenderableEx* This)
     This->m_materialId = NULL;
     This->m_bottomLevelAccelStructId = NULL;
     This->m_vertexBufferId = 0;
-    new (std::addressof(This->m_indexBuffer)) ComPtr<IndexBuffer>();
     This->m_frame = 0;
 }
 
 HOOK(void*, __fastcall, RopeRenderableDestructor, 0x5007A0, RopeRenderableEx* This, void* _, uint8_t flags)
 {
-    This->m_indexBuffer.~ComPtr();
     RaytracingUtil::releaseResource(RaytracingResourceType::BottomLevelAccelStruct, This->m_bottomLevelAccelStructId);
     RaytracingUtil::releaseResource(RaytracingResourceType::Material, This->m_materialId);
 

@@ -105,12 +105,15 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
             if (material.Flags & MATERIAL_FLAG_HAS_DIFFUSE_TEXTURE)
             {
                 ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
-                Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
-            
-                uint3 indices;
-                indices.x = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 0];
-                indices.y = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 1];
-                indices.z = indexBuffer[geometryDesc.IndexOffset + query.CandidatePrimitiveIndex() * 3 + 2];
+
+                uint3 indices = query.CandidatePrimitiveIndex() * 3 + uint3(0, 1, 2);
+                if (geometryDesc.IndexBufferId != 0)
+                {
+                    Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
+                    indices.x = indexBuffer[geometryDesc.IndexOffset + indices.x];
+                    indices.y = indexBuffer[geometryDesc.IndexOffset + indices.y];
+                    indices.z = indexBuffer[geometryDesc.IndexOffset + indices.z];
+                }
             
                 uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
             

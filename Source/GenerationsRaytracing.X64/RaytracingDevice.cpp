@@ -670,10 +670,16 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
         const auto& geometryDesc =
             reinterpret_cast<const MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data)[i];
 
-        assert((geometryDesc.indexCount % 3) == 0);
-        assert(m_indexBuffers[geometryDesc.indexBufferId].byteSize >= geometryDesc.indexCount * sizeof(uint16_t));
-        assert(m_vertexBuffers[geometryDesc.vertexBufferId].byteSize - geometryDesc.vertexOffset >= geometryDesc.vertexCount * geometryDesc.vertexStride);
+        auto& vertexBuffer = m_vertexBuffers[geometryDesc.vertexBufferId];
+
+        assert(vertexBuffer.byteSize - geometryDesc.vertexOffset >= geometryDesc.vertexCount * geometryDesc.vertexStride);
         assert((geometryDesc.vertexOffset % 4) == 0);
+
+        if (geometryDesc.indexBufferId != NULL)
+        {
+            assert((geometryDesc.indexCount % 3) == 0);
+            assert(m_indexBuffers[geometryDesc.indexBufferId].byteSize - geometryDesc.indexOffset * sizeof(uint16_t) >= geometryDesc.indexCount * sizeof(uint16_t));
+        }
 
         // BVH GeometryDesc
         {
@@ -684,15 +690,21 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
                 dstGeometryDesc.Flags |= D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
             auto& triangles = dstGeometryDesc.Triangles;
+            memset(&triangles, 0, sizeof(triangles));
 
-            triangles.Transform3x4 = NULL;
-            triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
             triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-            triangles.IndexCount = geometryDesc.indexCount;
             triangles.VertexCount = geometryDesc.vertexCount;
-            triangles.IndexBuffer = m_indexBuffers[geometryDesc.indexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc.indexOffset * sizeof(uint16_t);
-            triangles.VertexBuffer.StartAddress = m_vertexBuffers[geometryDesc.vertexBufferId].allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc.vertexOffset;
+            triangles.VertexBuffer.StartAddress = vertexBuffer.allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc.vertexOffset;
             triangles.VertexBuffer.StrideInBytes = geometryDesc.vertexStride;
+
+            if (geometryDesc.indexBufferId != NULL)
+            {
+                auto& indexBuffer = m_indexBuffers[geometryDesc.indexBufferId];
+
+                triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
+                triangles.IndexCount = geometryDesc.indexCount;
+                triangles.IndexBuffer = indexBuffer.allocation->GetResource()->GetGPUVirtualAddress() + geometryDesc.indexOffset * sizeof(uint16_t);
+            }
         }
 
         // GPU GeometryDesc
@@ -700,9 +712,9 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
             auto& dstGeometryDesc = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
 
             dstGeometryDesc.flags = geometryDesc.flags;
-            dstGeometryDesc.indexBufferId = m_indexBuffers[geometryDesc.indexBufferId].srvIndex;
+            dstGeometryDesc.indexBufferId = geometryDesc.indexBufferId != NULL ? m_indexBuffers[geometryDesc.indexBufferId].srvIndex : NULL;
             dstGeometryDesc.indexOffset = geometryDesc.indexOffset;
-            dstGeometryDesc.vertexBufferId = m_vertexBuffers[geometryDesc.vertexBufferId].srvIndex;
+            dstGeometryDesc.vertexBufferId = vertexBuffer.srvIndex;
             dstGeometryDesc.vertexStride = geometryDesc.vertexStride;
             dstGeometryDesc.vertexCount = geometryDesc.vertexCount;
             dstGeometryDesc.vertexOffset = geometryDesc.vertexOffset;

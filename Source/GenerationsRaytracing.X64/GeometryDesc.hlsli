@@ -71,17 +71,20 @@ Vertex LoadVertex(
     uint flags)
 {
     ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
-    Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
 
     float3 uv = float3(
         1.0 - attributes.barycentrics.x - attributes.barycentrics.y,
         attributes.barycentrics.x,
         attributes.barycentrics.y);
 
-    uint3 indices;
-    indices.x = indexBuffer[geometryDesc.IndexOffset + PrimitiveIndex() * 3 + 0];
-    indices.y = indexBuffer[geometryDesc.IndexOffset + PrimitiveIndex() * 3 + 1];
-    indices.z = indexBuffer[geometryDesc.IndexOffset + PrimitiveIndex() * 3 + 2];
+    uint3 indices = PrimitiveIndex() * 3 + uint3(0, 1, 2);
+    if (geometryDesc.IndexBufferId != 0)
+    {
+        Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
+        indices.x = indexBuffer[geometryDesc.IndexOffset + indices.x];
+        indices.y = indexBuffer[geometryDesc.IndexOffset + indices.y];
+        indices.z = indexBuffer[geometryDesc.IndexOffset + indices.z];
+    }
 
     uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride;
     uint3 normalOffsets = offsets + geometryDesc.NormalOffset;

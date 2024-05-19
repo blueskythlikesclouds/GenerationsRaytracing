@@ -42,8 +42,6 @@ static uint16_t s_indices[] =
     11, 13, 12
 };
 
-static ComPtr<IndexBuffer> s_indexBuffer;
-
 void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel::CReelRenderer* reelRenderer)
 {
     const auto reelRendererEx = reinterpret_cast<ReelRendererEx*>(reelRenderer);
@@ -55,24 +53,6 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
 
     if (vertexHash != reelRendererEx->m_vertexHash)
     {
-        if (s_indexBuffer == nullptr)
-        {
-            s_indexBuffer.Attach(new IndexBuffer(sizeof(s_indices)));
-
-            auto& createMsg = s_messageSender.makeMessage<MsgCreateIndexBuffer>();
-            createMsg.length = sizeof(s_indices);
-            createMsg.format = D3DFMT_INDEX16;
-            createMsg.indexBufferId = s_indexBuffer->getId();
-            s_messageSender.endMessage();
-
-            auto& writeMsg = s_messageSender.makeMessage<MsgWriteIndexBuffer>(sizeof(s_indices));
-            writeMsg.indexBufferId = s_indexBuffer->getId();
-            writeMsg.offset = 0;
-            writeMsg.initialWrite = true;
-            memcpy(writeMsg.data, s_indices, sizeof(s_indices));
-            s_messageSender.endMessage();
-        }
-
         reelRendererEx->m_vertexHash = vertexHash;
 
         if (reelRendererEx->m_materialId == NULL)
@@ -119,7 +99,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
             uint16_t texCoord[2];
         };
 
-        constexpr size_t vertexByteSize = sizeof(Vertex) * _countof(reelRendererEx->m_aVertexData);
+        constexpr size_t vertexByteSize = sizeof(Vertex) * _countof(s_indices);
         const bool initialWrite = reelRendererEx->m_vertexBuffer == nullptr;
 
         if (initialWrite)
@@ -139,8 +119,10 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         writeMsg.initialWrite = initialWrite;
 
         Vertex* vertex = reinterpret_cast<Vertex*>(writeMsg.data);
-        for (auto& vertexData : reelRendererEx->m_aVertexData)
+        for (const auto index : s_indices)
         {
+            const auto& vertexData = reelRenderer->m_aVertexData[index];
+
             vertex->position[0] = vertexData.Position.x();
             vertex->position[1] = vertexData.Position.y();
             vertex->position[2] = vertexData.Position.z();
@@ -172,11 +154,9 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         const auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(createMsg.data);
 
         memset(geometryDesc, 0, sizeof(*geometryDesc));
-        geometryDesc->indexBufferId = s_indexBuffer->getId();
-        geometryDesc->indexCount = _countof(s_indices);
         geometryDesc->vertexBufferId = reelRendererEx->m_vertexBuffer->getId();
         geometryDesc->vertexStride = sizeof(Vertex);
-        geometryDesc->vertexCount = _countof(reelRendererEx->m_aVertexData);
+        geometryDesc->vertexCount = _countof(s_indices);
         geometryDesc->normalOffset = offsetof(Vertex, normal);
         geometryDesc->texCoordOffsets[0] = offsetof(Vertex, texCoord);
         geometryDesc->colorOffset = offsetof(Vertex, color);
