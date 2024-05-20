@@ -31,6 +31,7 @@
 #include "UpReelRenderable.h"
 #include "SampleChunkResource.h"
 #include "MetaInstancer.h"
+#include "WallJumpBlock.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
 
@@ -102,6 +103,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     LightData::init(modInfo);
     SampleChunkResource::init();
     MetaInstancer::init();
+    WallJumpBlock::init();
 
 #ifdef _DEBUG
 #if 0

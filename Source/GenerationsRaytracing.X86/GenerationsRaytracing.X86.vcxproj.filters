@@ -144,6 +144,9 @@
     <ClCompile Include="MetaInstancer.cpp">
       <Filter>Raytracing\Renderable</Filter>
     </ClCompile>
+    <ClCompile Include="WallJumpBlock.cpp">
+      <Filter>Raytracing\Renderable</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -295,6 +298,12 @@
       <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="MetaInstancer.h">
+      <Filter>Raytracing\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="WallJumpBlock.h">
+      <Filter>Raytracing\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="OptimizedVertexData.h">
       <Filter>Raytracing\Renderable</Filter>
     </ClInclude>
   </ItemGroup>

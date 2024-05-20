@@ -13,16 +13,7 @@
 #include "Texture.h"
 #include "VertexBuffer.h"
 #include "RaytracingShader.h"
-
-struct Vertex
-{
-    float position[3];
-    uint32_t color;
-    uint32_t normal;
-    uint32_t tangent;
-    uint32_t binormal;
-    uint16_t texCoord[2];
-};
+#include "OptimizedVertexData.h"
 
 class RopeRenderableEx : public Sonic::CRopeRenderable
 {
@@ -81,11 +72,11 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
 
         memset(geometryDesc, 0, sizeof(*geometryDesc));
         geometryDesc->vertexBufferId = vertexBuffer->getId();
-        geometryDesc->vertexStride = sizeof(Vertex);
+        geometryDesc->vertexStride = sizeof(OptimizedVertexData);
         geometryDesc->vertexCount = ropeRenderableEx->m_VertexNum;
-        geometryDesc->normalOffset = offsetof(Vertex, normal);
-        geometryDesc->texCoordOffsets[0] = offsetof(Vertex, texCoord);
-        geometryDesc->colorOffset = offsetof(Vertex, color);
+        geometryDesc->normalOffset = offsetof(OptimizedVertexData, normal);
+        geometryDesc->texCoordOffsets[0] = offsetof(OptimizedVertexData, texCoord);
+        geometryDesc->colorOffset = offsetof(OptimizedVertexData, color);
         geometryDesc->materialId = ropeRenderableEx->m_materialId;
 
         s_messageSender.endMessage();
@@ -140,14 +131,12 @@ HOOK(void*, __fastcall, RopeRenderableDestructor, 0x5007A0, RopeRenderableEx* Th
     return originalRopeRenderableDestructor(This, _, flags);
 }
 
-static void __cdecl implOfMemCpy(Vertex* dest, const Sonic::CRopeRenderable::SVertexData* src, uint32_t numBytes)
+static void __cdecl implOfMemCpy(OptimizedVertexData* dest, const Sonic::CRopeRenderable::SVertexData* src, uint32_t numBytes)
 {
-    const size_t numVertices = numBytes / sizeof(Vertex);
+    const size_t numVertices = numBytes / sizeof(OptimizedVertexData);
     for (size_t i = 0; i < numVertices; i++)
     {
-        dest->position[0] = src->Position.x();
-        dest->position[1] = src->Position.y();
-        dest->position[2] = src->Position.z();
+        dest->position = src->Position;
         dest->color = src->Color;
         dest->normal = quantizeSnorm10(src->Normal.normalized());
         dest->texCoord[0] = quantizeHalf(src->TexCoord.x());
@@ -172,25 +161,25 @@ void RopeRenderable::init()
     INSTALL_HOOK(RopeRenderableDestructor);
 
     // Pulley
-    WRITE_MEMORY(0x11212F3, uint8_t, 0x6B, 0xFE, sizeof(Vertex), 0x83, 0xFF, 0x00, 0x90);
+    WRITE_MEMORY(0x11212F3, uint8_t, 0x6B, 0xFE, sizeof(OptimizedVertexData), 0x83, 0xFF, 0x00, 0x90);
     WRITE_CALL(0x1121341, implOfMemCpy);
 
     // Generic
-    WRITE_MEMORY(0x1122AB0, uint8_t, 0x6B, 0xFE, sizeof(Vertex), 0x83, 0xFF, 0x00, 0x90);
+    WRITE_MEMORY(0x1122AB0, uint8_t, 0x6B, 0xFE, sizeof(OptimizedVertexData), 0x83, 0xFF, 0x00, 0x90);
     WRITE_CALL(0x1122AFE, implOfMemCpy);
 
     // Espio
-    WRITE_MEMORY(0x1122C30, uint8_t, 0x6B, 0xFE, sizeof(Vertex), 0x83, 0xFF, 0x00, 0x90);
+    WRITE_MEMORY(0x1122C30, uint8_t, 0x6B, 0xFE, sizeof(OptimizedVertexData), 0x83, 0xFF, 0x00, 0x90);
     WRITE_CALL(0x1122C7A, implOfMemCpy);
 
     // Rooftop Run
-    WRITE_MEMORY(0x1122D38, uint8_t, 0x6B, 0xFE, sizeof(Vertex), 0x83, 0xFF, 0x00, 0x90);
+    WRITE_MEMORY(0x1122D38, uint8_t, 0x6B, 0xFE, sizeof(OptimizedVertexData), 0x83, 0xFF, 0x00, 0x90);
     WRITE_CALL(0x1122D82, implOfMemCpy);
 
-    WRITE_MEMORY(0x112054B, uint32_t, offsetof(Vertex, texCoord));
-    WRITE_MEMORY(0x1120557, uint32_t, offsetof(Vertex, color));
-    WRITE_MEMORY(0x112055D, uint32_t, offsetof(Vertex, normal));
+    WRITE_MEMORY(0x112054B, uint32_t, offsetof(OptimizedVertexData, texCoord));
+    WRITE_MEMORY(0x1120557, uint32_t, offsetof(OptimizedVertexData, color));
+    WRITE_MEMORY(0x112055D, uint32_t, offsetof(OptimizedVertexData, normal));
     WRITE_MEMORY(0x1120598, uint8_t, D3DDECLTYPE_FLOAT16_4);
     WRITE_MEMORY(0x11205AA, uint8_t, D3DDECLTYPE_DEC3N);
-    WRITE_MEMORY(0x11207D3, uint8_t, sizeof(Vertex));
+    WRITE_MEMORY(0x11207D3, uint8_t, sizeof(OptimizedVertexData));
 }

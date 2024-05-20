@@ -14,6 +14,7 @@
 #include "Texture.h"
 #include "VertexBuffer.h"
 #include "RaytracingShader.h"
+#include "OptimizedVertexData.h"
 
 class ReelRendererEx : public Sonic::CObjUpReel::CReelRenderer
 {
@@ -68,17 +69,7 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
             RaytracingUtil::createSimpleMaterial(reelRendererEx->m_materialId, MATERIAL_FLAG_NONE, textureId);
         }
 
-        struct Vertex
-        {
-            float position[3];
-            uint32_t color;
-            uint32_t normal;
-            uint32_t tangent;
-            uint32_t binormal;
-            uint16_t texCoord[2];
-        };
-
-        constexpr size_t vertexByteSize = sizeof(Vertex) * _countof(s_indices);
+        constexpr size_t vertexByteSize = sizeof(OptimizedVertexData) * _countof(s_indices);
         const bool initialWrite = reelRendererEx->m_vertexBuffer == nullptr;
 
         if (initialWrite)
@@ -97,14 +88,12 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
         writeMsg.offset = 0;
         writeMsg.initialWrite = initialWrite;
 
-        Vertex* vertex = reinterpret_cast<Vertex*>(writeMsg.data);
+        OptimizedVertexData* vertex = reinterpret_cast<OptimizedVertexData*>(writeMsg.data);
         for (const auto index : s_indices)
         {
             const auto& vertexData = reelRenderer->m_aVertexData[index];
 
-            vertex->position[0] = vertexData.Position.x();
-            vertex->position[1] = vertexData.Position.y();
-            vertex->position[2] = vertexData.Position.z();
+            vertex->position = vertexData.Position;
             vertex->color = 0xFFFFFFFF;
             vertex->normal = quantizeSnorm10(vertexData.Normal.normalized());
             vertex->texCoord[0] = quantizeHalf(vertexData.TexCoord.x());
@@ -134,11 +123,11 @@ void UpReelRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CObjUpReel
 
         memset(geometryDesc, 0, sizeof(*geometryDesc));
         geometryDesc->vertexBufferId = reelRendererEx->m_vertexBuffer->getId();
-        geometryDesc->vertexStride = sizeof(Vertex);
+        geometryDesc->vertexStride = sizeof(OptimizedVertexData);
         geometryDesc->vertexCount = _countof(s_indices);
-        geometryDesc->normalOffset = offsetof(Vertex, normal);
-        geometryDesc->texCoordOffsets[0] = offsetof(Vertex, texCoord);
-        geometryDesc->colorOffset = offsetof(Vertex, color);
+        geometryDesc->normalOffset = offsetof(OptimizedVertexData, normal);
+        geometryDesc->texCoordOffsets[0] = offsetof(OptimizedVertexData, texCoord);
+        geometryDesc->colorOffset = offsetof(OptimizedVertexData, color);
         geometryDesc->materialId = reelRendererEx->m_materialId;
 
         s_messageSender.endMessage();

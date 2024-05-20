@@ -988,7 +988,7 @@ public static class RaytracingShaderCompiler
                 [shader("anyhit")]
                 void {0}_PrimaryAnyHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
                 {{
-                	PrimaryAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV, payload, attributes);
+                	PrimaryAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, payload, attributes);
                 }}
                 [shader("closesthit")]
                 void {0}_PrimaryClosestHit(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
@@ -998,7 +998,7 @@ public static class RaytracingShaderCompiler
                 [shader("anyhit")]
                 void {0}_PrimaryAnyHit_ConstTexCoord(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
                 {{
-                	PrimaryAnyHit(VERTEX_FLAG_MIPMAP, payload, attributes);
+                	PrimaryAnyHit(VERTEX_FLAG_MIPMAP | VERTEX_FLAG_SAFE_POSITION, payload, attributes);
                 }}
                 [shader("closesthit")]
                 void {0}_PrimaryClosestHit_ConstTexCoord(inout PrimaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)

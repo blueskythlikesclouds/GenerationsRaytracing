@@ -10,6 +10,7 @@
 #include "RaytracingShader.h"
 #include "Texture.h"
 #include "RaytracingRendering.h"
+#include "OptimizedVertexData.h"
 
 class ObjGrassInstancerEx : public Sonic::CObjGrassInstancer
 {
@@ -19,16 +20,6 @@ public:
     uint32_t m_bottomLevelAccelStructId;
     uint32_t m_materialId;
     uint32_t m_frame;
-};
-
-struct Vertex
-{
-    float position[3];
-    uint32_t color;
-    uint32_t normal;
-    uint32_t tangent;
-    uint32_t binormal;
-    uint16_t texCoord[2];
 };
 
 void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRenderObjDX9* instanceRenderObj)
@@ -54,7 +45,7 @@ void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRend
     if (objGrassInstancerEx->m_vertexBuffer == nullptr)
     {
         const size_t vertexByteSize = (reinterpret_cast<VertexBuffer*>(instanceRenderObj->m_pD3DVertexBuffers[0])->getByteSize() /
-            instanceRenderObj->m_VertexSize) * sizeof(Vertex) * 6;
+            instanceRenderObj->m_VertexSize) * sizeof(OptimizedVertexData) * 6;
 
         objGrassInstancerEx->m_vertexBuffer.Attach(new VertexBuffer(vertexByteSize));
 
@@ -84,7 +75,7 @@ void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRend
 
             lodDesc->instanceOffset = vertexOffset;
             lodDesc->instanceCount = instanceCount;
-            lodDesc->vertexOffset = (vertexOffset / instanceRenderObj->m_VertexSize) * sizeof(Vertex) * 6;
+            lodDesc->vertexOffset = (vertexOffset / instanceRenderObj->m_VertexSize) * sizeof(OptimizedVertexData) * 6;
             ++lodDesc;
         }
     }
@@ -131,14 +122,14 @@ void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRend
 
             geometryDesc->flags = GEOMETRY_FLAG_PUNCH_THROUGH;
             geometryDesc->vertexBufferId = objGrassInstancerEx->m_vertexBuffer->getId();
-            geometryDesc->vertexStride = sizeof(Vertex);
+            geometryDesc->vertexStride = sizeof(OptimizedVertexData);
             geometryDesc->vertexCount = instanceCount * 6;
-            geometryDesc->vertexOffset = (instanceRenderObj->m_VertexOffsets[i] / instanceRenderObj->m_VertexSize) * sizeof(Vertex) * 6;
-            geometryDesc->normalOffset = offsetof(Vertex, normal);
-            geometryDesc->tangentOffset = offsetof(Vertex, tangent);
-            geometryDesc->binormalOffset = offsetof(Vertex, binormal);
-            geometryDesc->colorOffset = offsetof(Vertex, color);
-            geometryDesc->texCoordOffsets[0] = offsetof(Vertex, texCoord);
+            geometryDesc->vertexOffset = (instanceRenderObj->m_VertexOffsets[i] / instanceRenderObj->m_VertexSize) * sizeof(OptimizedVertexData) * 6;
+            geometryDesc->normalOffset = offsetof(OptimizedVertexData, normal);
+            geometryDesc->tangentOffset = offsetof(OptimizedVertexData, tangent);
+            geometryDesc->binormalOffset = offsetof(OptimizedVertexData, binormal);
+            geometryDesc->colorOffset = offsetof(OptimizedVertexData, color);
+            geometryDesc->texCoordOffsets[0] = offsetof(OptimizedVertexData, texCoord);
             geometryDesc->materialId = objGrassInstancerEx->m_materialId;
 
             ++geometryDesc;

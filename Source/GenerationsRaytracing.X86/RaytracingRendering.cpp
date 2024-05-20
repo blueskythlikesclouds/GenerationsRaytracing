@@ -16,6 +16,7 @@
 #include "ModelReplacer.h"
 #include "MetaInstancer.h"
 #include "Logger.h"
+#include "WallJumpBlock.h"
 
 static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable)
 {
@@ -80,6 +81,10 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
     else if (const auto instanceRenderObjDX9 = dynamic_cast<Sonic::CInstanceRenderObjDX9*>(renderable))
     {
         MetaInstancer::createInstanceAndBottomLevelAccelStruct(instanceRenderObjDX9);
+    }
+    else if (const auto wallJumpBlockRender = dynamic_cast<Sonic::CObjWallJumpBlock::CRender*>(renderable))
+    {
+        WallJumpBlock::createInstanceAndBottomLevelAccelStruct(wallJumpBlockRender);
     }
 }
 

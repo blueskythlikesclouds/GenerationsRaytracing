@@ -159,6 +159,7 @@
     <ClCompile Include="VertexBuffer.cpp" />
     <ClCompile Include="VertexDeclaration.cpp" />
     <ClCompile Include="VertexShader.cpp" />
+    <ClCompile Include="WallJumpBlock.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -172,6 +173,7 @@
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="MeshOpt.h" />
     <ClInclude Include="MetaInstancer.h" />
+    <ClInclude Include="OptimizedVertexData.h" />
     <ClInclude Include="ModelReplacer.h" />
     <ClInclude Include="MotionData.h" />
     <ClInclude Include="PlayableParam.h" />
@@ -212,6 +214,7 @@
     <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VertexDeclaration.h" />
     <ClInclude Include="VertexShader.h" />
+    <ClInclude Include="WallJumpBlock.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
