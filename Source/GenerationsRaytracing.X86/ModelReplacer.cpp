@@ -92,6 +92,31 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
 }
 
 static std::unordered_set<std::string_view> s_archiveNames;
+static std::vector<boost::shared_ptr<Hedgehog::Mirage::CModelData>> s_models;
+
+template<typename T>
+static void traverseModelData(const Hedgehog::Mirage::CModelData& modelData, const T& function)
+{
+    for (const auto& meshData : modelData.m_OpaqueMeshes) if (function(*meshData)) return;
+    for (const auto& meshData : modelData.m_PunchThroughMeshes) if (function(*meshData)) return;
+    for (const auto& meshData : modelData.m_TransparentMeshes) if (function(*meshData)) return;
+    
+    for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
+    {
+        for (const auto& meshData : nodeGroupModelData->m_OpaqueMeshes) if (function(*meshData)) return;
+        for (const auto& meshData : nodeGroupModelData->m_PunchThroughMeshes) if (function(*meshData)) return;
+        for (const auto& meshData : nodeGroupModelData->m_TransparentMeshes) if (function(*meshData)) return;
+
+        for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
+        {
+            for (const auto& meshData : specialMeshGroup)
+            {
+                if (function(*meshData)) 
+                    return;
+            }
+        }
+    }
+}
 
 void ModelReplacer::createPendingModels()
 {
@@ -136,100 +161,70 @@ void ModelReplacer::createPendingModels()
         {
             const auto modelDataEx = reinterpret_cast<ModelDataEx*>(pendingModel.modelData.get());
             modelDataEx->m_noAoModel = wrapper.GetModelData(s_noAoModels[pendingModel.noAoModelIndex].name.c_str());
-        }
 
-        const auto databaseDataNames = database->GetDatabaseDataNames();
-
-        for (const auto& fhlName : databaseDataNames)
-        {
-            static constexpr std::string_view s_mirageModel = "Mirage.model ";
-            static constexpr std::string_view s_mirageMaterial = "Mirage.material ";
-
-            if (strncmp(fhlName.c_str(), s_mirageMaterial.data(), s_mirageMaterial.size()) == 0 &&
-                strcmp(fhlName.c_str() + fhlName.size() - 4, "_fhl") == 0)
-            {
-                const auto name = fhlName.substr(s_mirageMaterial.size(),
-                    fhlName.size() - s_mirageMaterial.size() - 4);
-
-                bool found = false;
-
-                for (auto& pendingModel : pendingModels)
-                {
-                    boost::shared_ptr<Hedgehog::Mirage::CMaterialData> materialData;
-
-                    std::string_view prefix(
-                        pendingModel.modelData->m_TypeAndName.c_str() + s_mirageModel.size(),
-                        pendingModel.modelData->m_TypeAndName.size() - s_mirageModel.size());
-
-                    if (strncmp(s_noAoModels[pendingModel.noAoModelIndex].name.c_str(), prefix.data(), prefix.size()) == 0)
-                    {
-                        materialData = Hedgehog::Mirage::CMirageDatabaseWrapper(
-                            pendingModel.database.get()).GetMaterialData(name);
-                    }
-
-                    if (materialData == nullptr)
-                    {
-                        if (prefix == "chr_Sonic_HD")
-                            prefix = "sonic_gm_eye";
-
-                        else if (prefix == "chr_classic_sonic_HD")
-                            prefix = "CSeyewhite";
-
-                        const char* eyeSubstr = strstr(name.c_str(), "eye");
-
-                        if (eyeSubstr != nullptr)
-                        {
-                            for (auto& materialName : pendingModel.database->GetDatabaseDataNames())
-                            {
-                                if (strncmp(materialName.c_str(), s_mirageMaterial.data(), s_mirageMaterial.size()) == 0 &&
-                                    strncmp(materialName.c_str() + s_mirageMaterial.size(), prefix.data(), prefix.size()) == 0)
-                                {
-                                    const char* eyeSubstrToCompare = strstr(materialName.c_str(), "eye");
-                                    if (eyeSubstrToCompare != nullptr && strncmp(eyeSubstr, eyeSubstrToCompare, 4) == 0)
-                                    {
-                                        materialData = Hedgehog::Mirage::CMirageDatabaseWrapper(
-                                            pendingModel.database.get()).GetMaterialData(materialName.substr(s_mirageMaterial.size()));
-
-                                        Logger::logFormatted(LogType::Warning, "Redirecting \"%s.material\" to \"%s.material\"",
-                                            fhlName.c_str() + s_mirageMaterial.size(),
-                                            materialName.c_str() + s_mirageMaterial.size());
-
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Last resort attempt
-                    if (materialData == nullptr)
-                    {
-                        materialData = Hedgehog::Mirage::CMirageDatabaseWrapper(
-                            pendingModel.database.get()).GetMaterialData(name);
-                    }
-
-                    if (materialData != nullptr)
-                    {
-                        auto& materialDataEx = *reinterpret_cast<MaterialDataEx*>(materialData.get());
-
-                        materialDataEx.m_fhlMaterial = wrapper.GetMaterialData(
-                            fhlName.substr(s_mirageMaterial.size()));
-
-                        found = true;
-
-                        break;
-                    }
-                }
-
-                if (!found)
-                {
-                    Logger::logFormatted(LogType::Error, "Unable to locate \"%s.material\" for \"%s.material\"", 
-                        name.c_str(), fhlName.c_str() + s_mirageMaterial.size());
-                }
-            }
+            if (modelDataEx->m_noAoModel != nullptr)
+                s_models.push_back(pendingModel.modelData);
         }
 
         s_archiveNames.clear();
+    }
+
+    for (auto it = s_models.begin(); it != s_models.end();)
+    {
+        bool shouldRemove = false;
+
+        if ((*it)->IsMadeAll())
+        {
+            const auto modelDataEx = reinterpret_cast<ModelDataEx*>(it->get());
+            if (modelDataEx->m_noAoModel->IsMadeAll())
+            {
+                traverseModelData(*modelDataEx->m_noAoModel, [&](const Hedgehog::Mirage::CMeshData& meshData)
+                {
+                    static constexpr const char* s_suffixes[] =
+                    {
+                        "_eye",
+                        "hite",
+                        "Teye"
+                    };
+
+                    const char* eyePart = nullptr;
+                    for (const auto suffix : s_suffixes)
+                    {
+                        eyePart = strstr(meshData.m_MaterialName.c_str(), suffix);
+                        if (eyePart != nullptr)
+                        {
+                            traverseModelData(**it, [&](const Hedgehog::Mirage::CMeshData& meshDataToCompare)
+                            {
+                                if (meshDataToCompare.m_spMaterial != nullptr)
+                                {
+                                    const char* eyePartToCompare = strstr(meshDataToCompare.m_MaterialName.c_str(), suffix);
+                            
+                                    if (eyePartToCompare != nullptr && strncmp(eyePart, eyePartToCompare, 5) == 0)
+                                    {
+                                        reinterpret_cast<MaterialDataEx*>(
+                                            meshDataToCompare.m_spMaterial.get())->m_fhlMaterial = meshData.m_spMaterial;
+                            
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            });
+
+                            break;
+                        }
+                    }
+
+                    return false;
+                });
+
+                shouldRemove = true;
+            }
+        }
+
+        if (shouldRemove)
+            it = s_models.erase(it);
+        else
+            ++it;
     }
 }
 
