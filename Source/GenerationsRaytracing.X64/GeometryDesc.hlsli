@@ -159,30 +159,42 @@ Vertex LoadVertex(
     {
         vertex.PrevPosition = vertex.Position;
     }
-
-    float3 outWldNormal = 0.0;
+    
+    float3 triangleNormal = cross(position1 - position0, position2 - position0);
+    bool isBackFace = dot(triangleNormal, vertex.Normal) < 0.0;
+    
+    vertex.Position = mul(ObjectToWorld3x4(), float4(vertex.Position, 1.0)).xyz;
+    vertex.PrevPosition = mul(instanceDesc.PrevTransform, float4(vertex.PrevPosition, 1.0)).xyz;
+    vertex.Normal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
+    vertex.Tangent = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
+    vertex.Binormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
+    vertex.TexCoords[0] += texCoordOffset[0].xy;
+    vertex.TexCoords[1] += texCoordOffset[0].zw;
+    vertex.TexCoords[2] += texCoordOffset[1].xy;
+    vertex.TexCoords[3] += texCoordOffset[1].zw;
+    
     if (flags & VERTEX_FLAG_SAFE_POSITION)
     {
-        // Some models have correct normals but flipped triangle order
-        // Could check for view direction but that makes plants look bad
-        // as they have spherical normals
-        bool isBackFace = dot(cross(position0 - position2, position0 - position1), vertex.Normal) > 0.0;
-
         float3 outObjPosition;
         float3 outWldPosition;
         float3 outObjNormal;
         float outWldOffset;
         safeSpawnPoint(
             outObjPosition, outWldPosition,
-            outObjNormal, outWldNormal,
+            outObjNormal, triangleNormal,
             outWldOffset,
             position0, isBackFace ? position2 : position1, isBackFace ? position1 : position2,
             isBackFace ? attributes.barycentrics.yx : attributes.barycentrics.xy,
             ObjectToWorld3x4(),
             WorldToObject3x4());
 
-        vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, outWldNormal, outWldOffset);
+        vertex.SafeSpawnPoint = safeSpawnPoint(outWldPosition, triangleNormal, outWldOffset);
     }
+    else
+    {
+        triangleNormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(isBackFace ? -triangleNormal : triangleNormal, 0.0)).xyz);
+        vertex.SafeSpawnPoint = vertex.Position + triangleNormal * 0.001;
+    }    
 
     if (flags & VERTEX_FLAG_MIPMAP)
     {
@@ -193,11 +205,11 @@ Vertex LoadVertex(
         float2 dBarydx;
         float2 dBarydy;
         ComputeBarycentricDifferentials(
-            PropagateRayDifferentials(rayDiff, 0.0, WorldRayDirection(), RayTCurrent(), outWldNormal),
+            PropagateRayDifferentials(rayDiff, WorldRayOrigin(), WorldRayDirection(), RayTCurrent(), triangleNormal),
             WorldRayDirection(),
             mul(ObjectToWorld3x4(), float4(position1 - position0, 0.0)).xyz,
             mul(ObjectToWorld3x4(), float4(position2 - position0, 0.0)).xyz,
-            outWldNormal,
+            triangleNormal,
             dBarydx,
             dBarydy);
 
@@ -205,19 +217,6 @@ Vertex LoadVertex(
         for (uint i = 0; i < 4; i++)
             InterpolateDifferentials(dBarydx, dBarydy, texCoords[i][0], texCoords[i][1], texCoords[i][2], vertex.TexCoordsDdx[i], vertex.TexCoordsDdy[i]);
     }
-
-    vertex.Position = mul(ObjectToWorld3x4(), float4(vertex.Position, 1.0)).xyz;
-    vertex.PrevPosition = mul(instanceDesc.PrevTransform, float4(vertex.PrevPosition, 1.0)).xyz;
-    vertex.Normal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Normal, 0.0)).xyz);
-    vertex.Tangent = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Tangent, 0.0)).xyz);
-    vertex.Binormal = NormalizeSafe(mul(ObjectToWorld3x4(), float4(vertex.Binormal, 0.0)).xyz);
-    vertex.TexCoords[0] += texCoordOffset[0].xy;
-    vertex.TexCoords[1] += texCoordOffset[0].zw;
-    vertex.TexCoords[2] += texCoordOffset[1].xy;
-    vertex.TexCoords[3] += texCoordOffset[1].zw;
-
-    if (!(flags & VERTEX_FLAG_SAFE_POSITION))
-        vertex.SafeSpawnPoint = vertex.Position + vertex.Normal * 0.001;
 
     return vertex;
 }

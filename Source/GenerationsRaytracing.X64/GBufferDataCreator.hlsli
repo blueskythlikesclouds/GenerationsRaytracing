@@ -72,11 +72,11 @@
 #include "Water.hlsli"
 #endif
 
-GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc)
+GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, bool storeSafeSpawnPoint)
 {
     GBufferData gBufferData = (GBufferData) 0;
 
-    gBufferData.Position = vertex.SafeSpawnPoint;
+    gBufferData.Position = storeSafeSpawnPoint ? vertex.SafeSpawnPoint : vertex.Position;
     gBufferData.Diffuse = material.Diffuse.rgb;
     gBufferData.Alpha = material.Diffuse.a * material.Opacity.x;
     gBufferData.Specular = material.Specular.rgb;

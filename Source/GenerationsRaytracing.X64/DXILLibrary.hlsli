@@ -20,7 +20,7 @@ void PrimaryAnyHit(uint vertexFlags,
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc, false);
 
     if (gBufferData.Alpha < 0.5)
         IgnoreHit();
@@ -34,7 +34,7 @@ void PrimaryClosestHit(uint vertexFlags,
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc, true);
     gBufferData.Alpha = 1.0;
     StoreGBufferData(uint3(DispatchRaysIndex().xy, 0), gBufferData);
 
@@ -78,7 +78,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags,
     InstanceDesc instanceDesc = g_InstanceDescsTransparent[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, payload.dDdx, payload.dDdy, vertexFlags);
     
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc, false);
     gBufferData.Alpha *= instanceDesc.ForceAlphaColor;
             
     if (gBufferData.Alpha > 0.0)
@@ -167,7 +167,7 @@ void SecondaryClosestHit(uint vertexFlags,
     InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, vertexFlags);
 
-    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc);
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc, true);
     
     payload.Color = gBufferData.Emission;
     payload.Diffuse = gBufferData.Diffuse;
