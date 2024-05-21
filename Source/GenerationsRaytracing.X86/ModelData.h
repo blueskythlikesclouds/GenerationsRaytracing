@@ -20,6 +20,7 @@ public:
     uint32_t m_hashFrame;
     bool m_enableSkinning;
     boost::shared_ptr<CModelData> m_noAoModel;
+    bool m_checkForEdgeEmission;
 };
 
 using MaterialMap = hh::map<Hedgehog::Mirage::CMaterialData*, boost::shared_ptr<Hedgehog::Mirage::CMaterialData>>;

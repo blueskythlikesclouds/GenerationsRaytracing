@@ -236,6 +236,7 @@ HOOK(ModelDataEx*, __fastcall, ModelDataConstructor, 0x4FA400, ModelDataEx* This
     This->m_hashFrame = 0;
     This->m_enableSkinning = false;
     new (&This->m_noAoModel) boost::shared_ptr<Hedgehog::Mirage::CModelData>();
+    This->m_checkForEdgeEmission = false;
 
     return result;
 }

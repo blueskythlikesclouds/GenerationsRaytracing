@@ -72,6 +72,7 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
         {
             auto& modelDataEx = *reinterpret_cast<ModelDataEx*>(modelData.get());
             const XXH32_hash_t hash = XXH32(data, dataSize, 0);
+            modelDataEx.m_checkForEdgeEmission = (hash == 0xBAFA3FA1);
 
             for (size_t i = 0; i < s_noAoModels.size(); i++)
             {

@@ -27,21 +27,25 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
     {
         const auto instanceInfoEx = reinterpret_cast<InstanceInfoEx*>(element->m_spInstanceInfo.get());
 
+        instanceInfoEx->m_chrPlayableMenuParam = 10000.0f;
+        instanceInfoEx->m_enableForceAlphaColor = false;
+        instanceInfoEx->m_forceAlphaColor = 1.0f;
+        instanceInfoEx->m_edgeEmissionParam = 0.0f;
+
         if (instanceInfoEx->m_hashFrame != RaytracingRendering::s_frame && 
             element->m_spModel != nullptr && element->m_spModel->IsMadeOne() &&
             (element->m_spInstanceInfo->m_Flags & Hedgehog::Mirage::eInstanceInfoFlags_Invisible) == 0)
         {
             auto modelDataEx = reinterpret_cast<ModelDataEx*>(element->m_spModel.get());
+
+            if (modelDataEx->m_checkForEdgeEmission && modelDataEx->m_NodeGroupModels.size() >= 2 && modelDataEx->m_NodeGroupModels[1]->m_Visible)
+                instanceInfoEx->m_edgeEmissionParam = 1.0f;
+
             if (modelDataEx->m_noAoModel != nullptr && RaytracingParams::s_enableNoAoModels)
                 modelDataEx = reinterpret_cast<ModelDataEx*>(modelDataEx->m_noAoModel.get());
 
             if (modelDataEx->IsMadeAll())
             {
-                instanceInfoEx->m_chrPlayableMenuParam = 10000.0f;
-                instanceInfoEx->m_enableForceAlphaColor = false;
-                instanceInfoEx->m_forceAlphaColor = 1.0f;
-                instanceInfoEx->m_edgeEmissionParam = 0.0f;
-
                 if (element->m_spSingleElementEffect != nullptr)
                 {
                     ModelData::processSingleElementEffect(
