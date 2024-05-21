@@ -807,7 +807,7 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "ChrSkinHalf_", &s_shader_CHR_SKIN_HALF },
 	{ "ChrSkinIgnore_", &s_shader_CHR_SKIN_IGNORE },
 	{ "Cloak_", &s_shader_SYS_ERROR },
-	{ "Cloth_", &s_shader_SYS_ERROR },
+	{ "Cloth_", &s_shader_COMMON },
 	{ "Cloud_", &s_shader_CLOUD },
 	{ "Common_", &s_shader_COMMON },
 	{ "Deformation_", &s_shader_SYS_ERROR },

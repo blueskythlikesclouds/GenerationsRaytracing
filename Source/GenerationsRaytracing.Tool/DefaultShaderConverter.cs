@@ -128,15 +128,15 @@ public class DefaultShaderConverter
         }
 
         var compressedBlock = new byte[LZ4Codec.MaximumOutputSize(uncompressedBlock.Length)];
-        Array.Resize(ref compressedBlock, LZ4Codec.Encode(uncompressedBlock, compressedBlock, LZ4Level.L12_MAX));
+        int compressedSize = LZ4Codec.Encode(uncompressedBlock, compressedBlock, LZ4Level.L12_MAX);
 
         using (var stream = File.Create(Path.Combine(destinationDirectoryPath, "pregenerated_shader_cache.bin")))
         using (var writer = new BinaryWriter(stream))
         {
             writer.Write(0);
             writer.Write(uncompressedBlock.Length);
-            writer.Write(compressedBlock.Length);
-            writer.Write(compressedBlock);
+            writer.Write(compressedSize);
+            writer.Write(compressedBlock, 0, compressedSize);
         }
     }
 }
