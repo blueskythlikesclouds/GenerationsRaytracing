@@ -707,7 +707,7 @@ public static class RaytracingShaderCompiler
         ("ChrSkinHalf_", RaytracingShader.ChrSkinHalf),
         ("ChrSkinIgnore_", RaytracingShader.ChrSkinIgnore),
         ("Cloak_", RaytracingShader.SysError),
-        ("Cloth_", RaytracingShader.SysError),
+        ("Cloth_", RaytracingShader.Common),
         ("Cloud_", RaytracingShader.Cloud),
         ("Common_", RaytracingShader.Common),
         ("Deformation_", RaytracingShader.SysError),
