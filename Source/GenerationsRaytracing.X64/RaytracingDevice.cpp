@@ -810,6 +810,7 @@ void RaytracingDevice::procMsgCreateInstance()
         alsoInstanceDesc.playableParam = message.playableParam;
         alsoInstanceDesc.chrPlayableMenuParam = message.chrPlayableMenuParam;
         alsoInstanceDesc.forceAlphaColor = message.forceAlphaColor;
+        alsoInstanceDesc.edgeEmissionParam = message.edgeEmissionParam;
 
         if (message.dataSize > 0)
         {

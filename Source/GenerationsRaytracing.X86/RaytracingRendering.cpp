@@ -40,6 +40,7 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                 instanceInfoEx->m_chrPlayableMenuParam = 10000.0f;
                 instanceInfoEx->m_enableForceAlphaColor = false;
                 instanceInfoEx->m_forceAlphaColor = 1.0f;
+                instanceInfoEx->m_edgeEmissionParam = 0.0f;
 
                 if (element->m_spSingleElementEffect != nullptr)
                 {

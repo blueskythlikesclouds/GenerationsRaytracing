@@ -207,6 +207,7 @@ void WallJumpBlock::createInstanceAndBottomLevelAccelStruct(Sonic::CObjWallJumpB
     instanceMsg.playableParam = -10001.0f;
     instanceMsg.chrPlayableMenuParam = 10000.0f;
     instanceMsg.forceAlphaColor = 1.0f;
+    instanceMsg.edgeEmissionParam = 0.0f;
 
     memcpy(wallJumpBlockRenderEx->m_prevTransform, instanceMsg.transform, sizeof(wallJumpBlockRenderEx->m_prevTransform));
 

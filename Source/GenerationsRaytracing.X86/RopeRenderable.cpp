@@ -102,6 +102,7 @@ void RopeRenderable::createInstanceAndBottomLevelAccelStruct(Sonic::CRopeRendera
     message.playableParam = -10001.0f;
     message.chrPlayableMenuParam = 10000.0f;
     message.forceAlphaColor = 1.0f;
+    message.edgeEmissionParam = 0.0f;
 
     memcpy(ropeRenderableEx->m_prevTransform, message.transform, sizeof(ropeRenderableEx->m_prevTransform));
 

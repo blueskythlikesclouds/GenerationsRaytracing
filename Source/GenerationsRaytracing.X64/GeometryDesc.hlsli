@@ -37,7 +37,7 @@ struct InstanceDesc
     float PlayableParam;
     float ChrPlayableMenuParam;
     float ForceAlphaColor;
-    uint Padding2;
+    float EdgeEmissionParam;
 };
 
 #define VERTEX_FLAG_NONE                  (0 << 0)

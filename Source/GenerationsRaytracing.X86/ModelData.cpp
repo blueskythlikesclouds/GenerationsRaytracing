@@ -539,6 +539,10 @@ void ModelData::processSingleElementEffect(InstanceInfoEx& instanceInfoEx, Hedge
         for (const auto& materialMotion : singleElementEffectMatMotion->m_MaterialMotionList)
             processMaterialMotion(instanceInfoEx, materialMotion);
     }
+    else if (const auto objectEdgeEmissionEffect = dynamic_cast<Sonic::CObjectEdgeEmissionEffect*>(singleElementEffect))
+    {
+        instanceInfoEx.m_edgeEmissionParam = objectEdgeEmissionEffect->m_EdgeEmissionParam;
+    }
 }
 
 static std::vector<Hedgehog::Mirage::CMaterialData*> s_materialsToClone;
@@ -913,6 +917,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             message.playableParam = -10001.0f;
             message.chrPlayableMenuParam = instanceInfoEx.m_chrPlayableMenuParam + RaytracingRendering::s_worldShift.y();
             message.forceAlphaColor = instanceInfoEx.m_forceAlphaColor;
+            message.edgeEmissionParam = instanceInfoEx.m_edgeEmissionParam;
 
             auto materialIds = reinterpret_cast<uint32_t*>(message.data);
 

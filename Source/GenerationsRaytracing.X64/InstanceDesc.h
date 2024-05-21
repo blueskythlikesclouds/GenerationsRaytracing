@@ -7,5 +7,5 @@ struct InstanceDesc
     float playableParam;
     float chrPlayableMenuParam;
     float forceAlphaColor;
-    uint32_t padding2;
+    float edgeEmissionParam;
 };

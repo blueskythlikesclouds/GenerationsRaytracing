@@ -361,6 +361,7 @@ struct MsgCreateInstance
     float playableParam;
     float chrPlayableMenuParam;
     float forceAlphaColor;
+    float edgeEmissionParam;
     uint32_t dataSize;
     uint8_t data[1u];
 };

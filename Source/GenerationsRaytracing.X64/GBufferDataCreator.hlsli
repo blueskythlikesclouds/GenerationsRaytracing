@@ -175,6 +175,9 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
     
     if (material.Flags & MATERIAL_FLAG_FULBRIGHT)
         gBufferData.Flags |= GBUFFER_FLAG_FULBRIGHT;
+    
+    gBufferData.Emission += instanceDesc.EdgeEmissionParam * float3(0.0, 0.8, 0.5) *
+        (1.0 - sqrt(saturate(dot(gBufferData.Normal, -WorldRayDirection()))));
 
     float playableParam = saturate(64.0 * (ComputeNdcPosition(vertex.Position, g_MtxView, g_MtxProjection).y - instanceDesc.PlayableParam));
     playableParam *= saturate((instanceDesc.ChrPlayableMenuParam - vertex.Position.y + 0.05) * 10);

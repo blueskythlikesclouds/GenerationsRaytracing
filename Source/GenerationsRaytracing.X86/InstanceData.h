@@ -30,6 +30,7 @@ public:
     XXH32_hash_t m_prevMatrixHash;
     bool m_enableForceAlphaColor;
     float m_forceAlphaColor;
+    float m_edgeEmissionParam;
 };
 
 struct InstanceData
