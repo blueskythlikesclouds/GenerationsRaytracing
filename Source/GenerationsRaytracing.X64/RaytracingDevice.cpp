@@ -1126,6 +1126,14 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
     m_scissorRect.right = static_cast<LONG>(m_upscaler->getWidth());
     m_scissorRect.bottom = static_cast<LONG>(m_upscaler->getHeight());
     m_dirtyFlags |= DIRTY_FLAG_SCISSOR_RECT;
+
+    const float mipLodBias = log2f(static_cast<float>(m_upscaler->getWidth()) / static_cast<float>(m_width)) - 1.0f;
+
+    for (auto& samplerDesc : m_samplerDescs)
+        samplerDesc.MipLODBias = mipLodBias;
+
+    m_samplerDescsFirst = 0;
+    m_samplerDescsLast = _countof(m_samplerDescs) - 1;
 }
 
 void RaytracingDevice::procMsgDispatchUpscaler()
@@ -1205,6 +1213,12 @@ void RaytracingDevice::procMsgDispatchUpscaler()
     m_scissorRect.right = static_cast<LONG>(m_width);
     m_scissorRect.bottom = static_cast<LONG>(m_height);
     m_dirtyFlags |= DIRTY_FLAG_SCISSOR_RECT;
+
+    for (auto& samplerDesc : m_samplerDescs)
+        samplerDesc.MipLODBias = 0.0f;
+
+    m_samplerDescsFirst = 0;
+    m_samplerDescsLast = _countof(m_samplerDescs) - 1;
 }
 
 void RaytracingDevice::procMsgCreateMaterial()
