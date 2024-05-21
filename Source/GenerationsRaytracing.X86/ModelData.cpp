@@ -1069,4 +1069,7 @@ void ModelData::init()
     INSTALL_HOOK(ModelDataConstructor);
     INSTALL_HOOK(ModelDataDestructor);
     INSTALL_HOOK(ModelDataClone);
+
+    // Classic Sonic Vector mission line
+    WRITE_MEMORY(0xB46652, uint32_t, 0x1E66BF0);
 }
