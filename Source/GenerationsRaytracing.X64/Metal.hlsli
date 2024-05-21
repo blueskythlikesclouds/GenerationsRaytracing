@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateMetalGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateMetalGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags = GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_IS_METALLIC;
     

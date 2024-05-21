@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateIndirectGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateIndirectGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     float4 offset = SampleMaterialTexture2D(material.DisplacementTexture, vertex);
     offset.xy = (offset.wx * 2.0 - 1.0) * material.OffsetParam.xy;

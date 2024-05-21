@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateIgnoreLightGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateIgnoreLightGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags =
         GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |

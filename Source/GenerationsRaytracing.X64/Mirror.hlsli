@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateMirrorGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateMirrorGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags = GBUFFER_FLAG_IS_MIRROR_REFLECTION;
     

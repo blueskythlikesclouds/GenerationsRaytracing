@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateBlendGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateBlendGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     float blendFactor = material.OpacityTexture != 0 ?
         SampleMaterialTexture2D(material.OpacityTexture, vertex).x : vertex.Color.x;

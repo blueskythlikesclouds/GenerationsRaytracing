@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateLuminescenceGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateLuminescenceGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex);
     gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;

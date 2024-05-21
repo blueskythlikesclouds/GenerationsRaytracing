@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateTimeEaterGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateTimeEaterGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags = GBUFFER_FLAG_REFRACTION_OPACITY | GBUFFER_FLAG_MUL_BY_REFRACTION;
     

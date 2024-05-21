@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateChrSkinIgnoreGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateChrSkinIgnoreGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags = GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT;
 

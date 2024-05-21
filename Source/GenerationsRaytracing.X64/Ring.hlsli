@@ -26,7 +26,7 @@ float2 ComputeEnvMapTexCoord(float3 eyeDirection, float3 normal)
     return r3.xy;
 }
 
-void CreateRingGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateRingGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags = GBUFFER_FLAG_MUL_BY_SPEC_GLOSS;
     

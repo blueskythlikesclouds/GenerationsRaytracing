@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateLuminescenceVGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateLuminescenceVGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex);
     if (material.DiffuseTexture2 != 0)

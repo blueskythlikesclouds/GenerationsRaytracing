@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateWaterGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags = GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
         GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_WATER;

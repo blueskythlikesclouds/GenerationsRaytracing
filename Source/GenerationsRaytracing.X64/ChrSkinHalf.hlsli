@@ -2,7 +2,7 @@
 
 #include "GBufferData.hlsli"
 
-void CreateChrSkinHalfGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, inout GBufferData gBufferData)
+void CreateChrSkinHalfGBufferData(Vertex vertex, Material material, inout GBufferData gBufferData)
 {
     gBufferData.Flags = GBUFFER_FLAG_HALF_LAMBERT;
 

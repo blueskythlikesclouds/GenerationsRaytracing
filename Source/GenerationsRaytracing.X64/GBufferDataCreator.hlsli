@@ -89,75 +89,75 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
     gBufferData.Normal = vertex.Normal;
 
 #if SHADER_TYPE == SHADER_TYPE_BLEND
-    CreateBlendGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateBlendGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_COMMON
-    CreateCommonGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateCommonGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_INDIRECT
-    CreateIndirectGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateIndirectGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_LUMINESCENCE
-    CreateLuminescenceGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateLuminescenceGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_CHR_EYE
     CreateChrEyeGBufferData(vertex, material, instanceDesc, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_CHR_EYE_FHL || SHADER_TYPE == SHADER_TYPE_CHR_EYE_FHL_PROCEDURAL
     CreateChrEyeFHLGBufferData(vertex, material, instanceDesc, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_CHR_SKIN
-    CreateChrSkinGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateChrSkinGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_CHR_SKIN_HALF
-    CreateChrSkinHalfGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateChrSkinHalfGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_CHR_SKIN_IGNORE
-    CreateChrSkinIgnoreGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateChrSkinIgnoreGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_CLOUD
-    CreateCloudGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateCloudGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_DIM
-    CreateDimGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateDimGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_DISTORTION
-    CreateDistortionGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateDistortionGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_DISTORTION_OVERLAY
-    CreateDistortionOverlayGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateDistortionOverlayGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_ENM_EMISSION
-    CreateEnmEmissionGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateEnmEmissionGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_ENM_GLASS
-    CreateEnmGlassGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateEnmGlassGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_ENM_IGNORE
-    CreateEnmIgnoreGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateEnmIgnoreGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_FADE_OUT_NORMAL
-    CreateFadeOutNormalGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateFadeOutNormalGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_FALLOFF
-    CreateFallOffGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateFallOffGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_FALLOFF_V
-    CreateFallOffVGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateFallOffVGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_FUR
-    CreateFurGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateFurGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_GLASS
-    CreateGlassGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateGlassGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_ICE
-    CreateIceGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateIceGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_IGNORE_LIGHT
-    CreateIgnoreLightGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateIgnoreLightGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_IGNORE_LIGHT_TWICE
-    CreateIgnoreLightTwiceGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateIgnoreLightTwiceGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_INDIRECT_NO_LIGHT
-    CreateIndirectNoLightGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateIndirectNoLightGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_INDIRECT_V
-    CreateIndirectVGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateIndirectVGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_LUMINESCENCE_V
-    CreateLuminescenceVGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateLuminescenceVGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_METAL
-    CreateMetalGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateMetalGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_MIRROR
-    CreateMirrorGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateMirrorGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_RING
-    CreateRingGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateRingGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_SHOE
-    CreateShoeGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateShoeGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_TIME_EATER
-    CreateTimeEaterGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateTimeEaterGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_TRANS_THIN
-    CreateTransThinGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateTransThinGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_WATER_ADD || SHADER_TYPE == SHADER_TYPE_WATER_MUL || SHADER_TYPE == SHADER_TYPE_WATER_OPACITY
-    CreateWaterGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateWaterGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_CHAOS
-    CreateChaosGBufferData(vertex, material, instanceDesc, gBufferData);
+    CreateChaosGBufferData(vertex, material, gBufferData);
 #else
     gBufferData.Flags =
         GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
