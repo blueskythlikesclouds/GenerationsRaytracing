@@ -54,8 +54,14 @@ static void traverseModelData(const TModelData& modelData, uint32_t geometryMask
 
         for (const auto& nodeGroupModelData : modelData.m_NodeGroupModels)
         {
-            for (const auto& specialMeshGroup : nodeGroupModelData->m_SpecialMeshGroups)
-                traverseMeshGroup(specialMeshGroup, GEOMETRY_FLAG_TRANSPARENT, nodeGroupModelData->m_Visible, function);
+            for (size_t i = 0; i < nodeGroupModelData->m_SpecialMeshGroups.size(); i++)
+            {
+                uint32_t geometryFlags = GEOMETRY_FLAG_TRANSPARENT;
+                if (nodeGroupModelData->m_SpecialMeshGroupModes[i] != 0)
+                    geometryFlags |= GEOMETRY_FLAG_SPECIAL;
+
+                traverseMeshGroup(nodeGroupModelData->m_SpecialMeshGroups[i], geometryFlags, nodeGroupModelData->m_Visible, function);
+            }
         }
     }
 }

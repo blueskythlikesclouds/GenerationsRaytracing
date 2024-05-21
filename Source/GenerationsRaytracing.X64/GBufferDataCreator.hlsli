@@ -70,6 +70,8 @@
 #include "TransThin.hlsli"
 #elif SHADER_TYPE == SHADER_TYPE_WATER_ADD || SHADER_TYPE == SHADER_TYPE_WATER_MUL || SHADER_TYPE == SHADER_TYPE_WATER_OPACITY
 #include "Water.hlsli"
+#elif SHADER_TYPE == SHADER_TYPE_CHAOS
+#include "Chaos.hlsli"
 #endif
 
 GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, bool storeSafeSpawnPoint)
@@ -154,6 +156,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
     CreateTransThinGBufferData(vertex, material, instanceDesc, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_WATER_ADD || SHADER_TYPE == SHADER_TYPE_WATER_MUL || SHADER_TYPE == SHADER_TYPE_WATER_OPACITY
     CreateWaterGBufferData(vertex, material, instanceDesc, gBufferData);
+#elif SHADER_TYPE == SHADER_TYPE_CHAOS
+    CreateChaosGBufferData(vertex, material, instanceDesc, gBufferData);
 #else
     gBufferData.Flags =
         GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |

@@ -80,6 +80,7 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter IrisColor = new("IrisColor", 0, 3, "IrisColor", 0.5f, 0.5f, 0.5f, 0.0f);
     public static readonly RaytracingParameter PupilParam = new("PupilParam", 0, 4, "PupilParam", 1.03f, 0.47f, 0.0f, 1024.0f);
     public static readonly RaytracingParameter HighLightColor = new("HighLightColor", 0, 3, "HighLightColor", 0.5f, 0.5f, 0.5f, 0.0f);
+    public static readonly RaytracingParameter ChaosWaveParamEx = new("g_ChaosWaveParamEx", 1, 1, "ChaosWaveParamEx", 0.0f, 0.0f, 0.0f, 0.0f);
 
     public static readonly RaytracingParameter[] AllParameters = [
         Diffuse,
@@ -106,7 +107,8 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
         DistortionParam,
         IrisColor,
         PupilParam,
-        HighLightColor];
+        HighLightColor,
+        ChaosWaveParamEx];
 }
 
 public class RaytracingShader(string name, RaytracingTexture[] textures, RaytracingParameter[] parameters)
@@ -140,6 +142,23 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Specular, 
             RaytracingParameter.GlossLevel,
             RaytracingParameter.Opacity,
+        ]);
+
+    public static readonly RaytracingShader Chaos = new("CHAOS",
+        [
+            RaytracingTexture.Diffuse,
+            RaytracingTexture.Specular,
+            RaytracingTexture.Opacity,
+            RaytracingTexture.Normal,
+            RaytracingTexture.Normal2,
+        ],
+        [
+            RaytracingParameter.Diffuse,
+            RaytracingParameter.Specular,
+            RaytracingParameter.GlossLevel,
+            RaytracingParameter.Opacity,
+            RaytracingParameter.SonicSkinFalloffParam,
+            RaytracingParameter.ChaosWaveParamEx
         ]);
 
     public static readonly RaytracingShader ChrEye = new("CHR_EYE",
@@ -597,14 +616,16 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingTexture.Specular,
             RaytracingTexture.Opacity,
             RaytracingTexture.Normal,
-            RaytracingTexture.Normal2,
+            RaytracingTexture.Normal2
         ],
         [
             RaytracingParameter.Diffuse,
             RaytracingParameter.Specular,
             RaytracingParameter.Opacity,
             RaytracingParameter.GlossLevel,
+            RaytracingParameter.LuminanceRange,
             RaytracingParameter.SonicSkinFalloffParam,
+            RaytracingParameter.ChaosWaveParamEx
         ]);
 
     public static readonly RaytracingShader TransThin = new("TRANS_THIN",
@@ -675,7 +696,9 @@ public static class RaytracingShaderCompiler
         ("BlbIndirect_", RaytracingShader.Indirect),
         ("BlbLuminescence_", RaytracingShader.Luminescence),
         ("Blend_", RaytracingShader.Blend),
-        ("Chaos_", RaytracingShader.SysError),
+        ("Chaos_da", RaytracingShader.Common),
+        ("Chaos_dsae1", RaytracingShader.Common),
+        ("Chaos_", RaytracingShader.Chaos),
         ("ChaosV_", RaytracingShader.SysError),
         ("ChrEye_", RaytracingShader.ChrEye),
         ("ChrEyeFHLProcedural", RaytracingShader.ChrEyeFHLProcedural),

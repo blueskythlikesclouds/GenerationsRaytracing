@@ -144,6 +144,7 @@
       <FileType>Document</FileType>
     </None>
     <None Include="Blend.hlsli" />
+    <None Include="Chaos.hlsli" />
     <None Include="ChrEye.hlsli" />
     <None Include="ChrEyeFHL.hlsli" />
     <None Include="ChrSkin.hlsli" />

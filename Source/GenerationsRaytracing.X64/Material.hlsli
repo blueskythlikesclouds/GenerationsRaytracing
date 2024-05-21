@@ -46,6 +46,7 @@ struct Material
     float3 IrisColor;
     float4 PupilParam;
     float3 HighLightColor;
+    float ChaosWaveParamEx;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord, uint level)

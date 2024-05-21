@@ -417,6 +417,9 @@
     <None Include="Water.hlsli">
       <Filter>Shader\Material\Shader\Terrain</Filter>
     </None>
+    <None Include="Chaos.hlsli">
+      <Filter>Shader\Material\Shader\Object</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

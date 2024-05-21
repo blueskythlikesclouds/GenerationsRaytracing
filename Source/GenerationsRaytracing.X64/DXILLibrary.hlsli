@@ -62,8 +62,8 @@ void PrimaryTransparentAnyHit(uint vertexFlags,
     inout PrimaryTransparentRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
-    bool isXluObject = !(geometryDesc.Flags & GEOMETRY_FLAG_TRANSPARENT);
-    
+    bool isXluObject = !(geometryDesc.Flags & GEOMETRY_FLAG_TRANSPARENT) || (geometryDesc.Flags & GEOMETRY_FLAG_SPECIAL) != 0;
+
     // Ignore duplicate any hit invocations or XLU objects that fail the depth test
     for (uint i = 1; i < payload.LayerCount; i++)
     {
@@ -127,7 +127,7 @@ void PrimaryTransparentAnyHit(uint vertexFlags,
             payload.T[layerIndex] = isXluObject ? -RayTCurrent() : RayTCurrent();
             payload.LayerCount = max(payload.LayerCount, layerIndex + 1);
             
-            bool canWriteMotionVectorsAndDepth = !(gBufferData.Flags & (
+            bool canWriteMotionVectorsAndDepth = isXluObject || !(gBufferData.Flags & (
                 GBUFFER_FLAG_IS_ADDITIVE |
                 GBUFFER_FLAG_REFRACTION_ADD |
                 GBUFFER_FLAG_REFRACTION_MUL |
@@ -139,6 +139,9 @@ void PrimaryTransparentAnyHit(uint vertexFlags,
                 
                 if (linearDepth < g_LinearDepth[DispatchRaysIndex().xy])
                 {
+                    if (isXluObject)
+                        g_Depth[DispatchRaysIndex().xy] = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
+                    
                     g_MotionVectors[DispatchRaysIndex().xy] = 
                         ComputePixelPosition(vertex.PrevPosition, g_MtxPrevView, g_MtxPrevProjection) - (DispatchRaysIndex().xy - g_PixelJitter + 0.5);
                     

@@ -42,6 +42,9 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
         
         if (!(gBufferData.Flags & GBUFFER_FLAG_FULBRIGHT))
             diffuseColor *= saturate(cosTheta);
+        
+        if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_REFRACTION)
+            diffuseColor *= gBufferData.Refraction;
     }
     else
     {
@@ -212,8 +215,12 @@ float ComputeReservoirWeight(GBufferData gBufferData, float3 eyeDirection, Local
 float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
 {
     globalIllumination *= gBufferData.Diffuse + gBufferData.Falloff;
+    
     if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
         globalIllumination *= 1.0 - gBufferData.SpecularFresnel;
+    
+    if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_REFRACTION)
+        globalIllumination *= gBufferData.Refraction;
 
     return globalIllumination;
 }

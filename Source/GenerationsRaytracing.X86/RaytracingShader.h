@@ -70,6 +70,7 @@ inline RaytracingParameter s_parameter_DistortionParam = { "mrgDistortionParam",
 inline RaytracingParameter s_parameter_IrisColor = { "IrisColor", 0, 3, 0.5f, 0.5f, 0.5f, 0.0f };
 inline RaytracingParameter s_parameter_PupilParam = { "PupilParam", 0, 4, 1.03f, 0.47f, 0.0f, 1024.0f };
 inline RaytracingParameter s_parameter_HighLightColor = { "HighLightColor", 0, 3, 0.5f, 0.5f, 0.5f, 0.0f };
+inline RaytracingParameter s_parameter_ChaosWaveParamEx = { "g_ChaosWaveParamEx", 1, 1, 0.0f, 0.0f, 0.0f, 0.0f };
 
 inline RaytracingParameter* s_parameters_SYS_ERROR[2] =
 {
@@ -159,6 +160,27 @@ inline RaytracingParameter* s_parameters_LUMINESCENCE[6] =
 };
 
 inline RaytracingShader s_shader_LUMINESCENCE = { SHADER_TYPE_LUMINESCENCE, s_textures_LUMINESCENCE, 4, s_parameters_LUMINESCENCE, 6 };
+
+inline RaytracingTexture* s_textures_CHAOS[5] =
+{
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_OpacityTexture,
+	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
+};
+
+inline RaytracingParameter* s_parameters_CHAOS[6] =
+{
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_SonicSkinFalloffParam,
+	&s_parameter_ChaosWaveParamEx,
+};
+
+inline RaytracingShader s_shader_CHAOS = { SHADER_TYPE_CHAOS, s_textures_CHAOS, 5, s_parameters_CHAOS, 6 };
 
 inline RaytracingTexture* s_textures_CHR_EYE[3] =
 {
@@ -680,16 +702,18 @@ inline RaytracingTexture* s_textures_TIME_EATER[5] =
 	&s_texture_NormalTexture2,
 };
 
-inline RaytracingParameter* s_parameters_TIME_EATER[5] =
+inline RaytracingParameter* s_parameters_TIME_EATER[7] =
 {
 	&s_parameter_Diffuse,
 	&s_parameter_Specular,
 	&s_parameter_Opacity,
 	&s_parameter_GlossLevel,
+	&s_parameter_LuminanceRange,
 	&s_parameter_SonicSkinFalloffParam,
+	&s_parameter_ChaosWaveParamEx,
 };
 
-inline RaytracingShader s_shader_TIME_EATER = { SHADER_TYPE_TIME_EATER, s_textures_TIME_EATER, 5, s_parameters_TIME_EATER, 5 };
+inline RaytracingShader s_shader_TIME_EATER = { SHADER_TYPE_TIME_EATER, s_textures_TIME_EATER, 5, s_parameters_TIME_EATER, 7 };
 
 inline RaytracingTexture* s_textures_TRANS_THIN[3] =
 {
@@ -772,7 +796,9 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "BlbIndirect_", &s_shader_INDIRECT },
 	{ "BlbLuminescence_", &s_shader_LUMINESCENCE },
 	{ "Blend_", &s_shader_BLEND },
-	{ "Chaos_", &s_shader_SYS_ERROR },
+	{ "Chaos_da", &s_shader_COMMON },
+	{ "Chaos_dsae1", &s_shader_COMMON },
+	{ "Chaos_", &s_shader_CHAOS },
 	{ "ChaosV_", &s_shader_SYS_ERROR },
 	{ "ChrEye_", &s_shader_CHR_EYE },
 	{ "ChrEyeFHLProcedural", &s_shader_CHR_EYE_FHL_PROCEDURAL },
