@@ -257,6 +257,13 @@ Material GetMaterial(MaterialData materialData)
     material.ChrEmissionParam[1] = asfloat(materialData.PackedData[21]);
     material.ChrEmissionParam[2] = asfloat(materialData.PackedData[22]);
     material.ChrEmissionParam[3] = asfloat(materialData.PackedData[23]);
+#elif SHADER_TYPE == SHADER_TYPE_CLOAK
+    material.DiffuseTexture = materialData.PackedData[0];
+    material.DisplacementTexture = materialData.PackedData[1];
+    material.Ambient[0] = asfloat(materialData.PackedData[2]);
+    material.Ambient[1] = asfloat(materialData.PackedData[3]);
+    material.Ambient[2] = asfloat(materialData.PackedData[4]);
+    material.CloakParam = asfloat(materialData.PackedData[5]);
 #elif SHADER_TYPE == SHADER_TYPE_CLOUD
     material.NormalTexture = materialData.PackedData[0];
     material.DisplacementTexture = materialData.PackedData[1];

@@ -71,6 +71,7 @@ inline RaytracingParameter s_parameter_IrisColor = { "IrisColor", 0, 3, 0.5f, 0.
 inline RaytracingParameter s_parameter_PupilParam = { "PupilParam", 0, 4, 1.03f, 0.47f, 0.0f, 1024.0f };
 inline RaytracingParameter s_parameter_HighLightColor = { "HighLightColor", 0, 3, 0.5f, 0.5f, 0.5f, 0.0f };
 inline RaytracingParameter s_parameter_ChaosWaveParamEx = { "g_ChaosWaveParamEx", 1, 1, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_CloakParam = { "g_CloakParam", 0, 1, 0.0f, 0.0f, 0.0f, 0.0f };
 
 inline RaytracingParameter* s_parameters_SYS_ERROR[2] =
 {
@@ -295,6 +296,20 @@ inline RaytracingParameter* s_parameters_CHR_SKIN_IGNORE[7] =
 };
 
 inline RaytracingShader s_shader_CHR_SKIN_IGNORE = { SHADER_TYPE_CHR_SKIN_IGNORE, s_textures_CHR_SKIN_IGNORE, 4, s_parameters_CHR_SKIN_IGNORE, 7 };
+
+inline RaytracingTexture* s_textures_CLOAK[2] =
+{
+	&s_texture_DiffuseTexture,
+	&s_texture_DisplacementTexture,
+};
+
+inline RaytracingParameter* s_parameters_CLOAK[2] =
+{
+	&s_parameter_Ambient,
+	&s_parameter_CloakParam,
+};
+
+inline RaytracingShader s_shader_CLOAK = { SHADER_TYPE_CLOAK, s_textures_CLOAK, 2, s_parameters_CLOAK, 2 };
 
 inline RaytracingTexture* s_textures_CLOUD[3] =
 {
@@ -806,7 +821,7 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "ChrSkin_", &s_shader_CHR_SKIN },
 	{ "ChrSkinHalf_", &s_shader_CHR_SKIN_HALF },
 	{ "ChrSkinIgnore_", &s_shader_CHR_SKIN_IGNORE },
-	{ "Cloak_", &s_shader_SYS_ERROR },
+	{ "Cloak_", &s_shader_CLOAK },
 	{ "Cloth_", &s_shader_COMMON },
 	{ "Cloud_", &s_shader_CLOUD },
 	{ "Common_", &s_shader_COMMON },

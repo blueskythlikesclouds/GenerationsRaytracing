@@ -420,6 +420,9 @@
     <None Include="Chaos.hlsli">
       <Filter>Shader\Material\Shader\Object</Filter>
     </None>
+    <None Include="Cloak.hlsli">
+      <Filter>Shader\Material\Shader\Character</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

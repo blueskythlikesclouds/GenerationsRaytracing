@@ -81,6 +81,7 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter PupilParam = new("PupilParam", 0, 4, "PupilParam", 1.03f, 0.47f, 0.0f, 1024.0f);
     public static readonly RaytracingParameter HighLightColor = new("HighLightColor", 0, 3, "HighLightColor", 0.5f, 0.5f, 0.5f, 0.0f);
     public static readonly RaytracingParameter ChaosWaveParamEx = new("g_ChaosWaveParamEx", 1, 1, "ChaosWaveParamEx", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter CloakParam = new("g_CloakParam", 0, 1, "CloakParam", 0.0f, 0.0f, 0.0f, 0.0f);
 
     public static readonly RaytracingParameter[] AllParameters = [
         Diffuse,
@@ -108,7 +109,8 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
         IrisColor,
         PupilParam,
         HighLightColor,
-        ChaosWaveParamEx];
+        ChaosWaveParamEx,
+        CloakParam];
 }
 
 public class RaytracingShader(string name, RaytracingTexture[] textures, RaytracingParameter[] parameters)
@@ -253,6 +255,16 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Opacity,
             RaytracingParameter.SonicSkinFalloffParam,
             RaytracingParameter.ChrEmissionParam,
+        ]);
+
+    public static readonly RaytracingShader Cloak = new("CLOAK",
+        [
+            RaytracingTexture.Diffuse,
+            RaytracingTexture.Displacement
+        ],
+        [
+            RaytracingParameter.Ambient,
+            RaytracingParameter.CloakParam
         ]);
 
     public static readonly RaytracingShader Cloud = new("CLOUD",
@@ -706,7 +718,7 @@ public static class RaytracingShaderCompiler
         ("ChrSkin_", RaytracingShader.ChrSkin),
         ("ChrSkinHalf_", RaytracingShader.ChrSkinHalf),
         ("ChrSkinIgnore_", RaytracingShader.ChrSkinIgnore),
-        ("Cloak_", RaytracingShader.SysError),
+        ("Cloak_", RaytracingShader.Cloak),
         ("Cloth_", RaytracingShader.Common),
         ("Cloud_", RaytracingShader.Cloud),
         ("Common_", RaytracingShader.Common),

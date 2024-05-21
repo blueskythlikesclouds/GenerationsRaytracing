@@ -150,6 +150,7 @@
     <None Include="ChrSkin.hlsli" />
     <None Include="ChrSkinHalf.hlsli" />
     <None Include="ChrSkinIgnore.hlsli" />
+    <None Include="Cloak.hlsli" />
     <None Include="Cloud.hlsli" />
     <None Include="ColorSpace.hlsli" />
     <None Include="Common.hlsli" />
