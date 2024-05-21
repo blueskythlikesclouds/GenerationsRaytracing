@@ -17,7 +17,10 @@ void CreateDistortionOverlayGBufferData(Vertex vertex, Material material, Instan
     if (material.NormalTexture2 != 0)
         gBufferData.Normal = NormalizeSafe(gBufferData.Normal + DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex)));
     
-    float depth = ComputeDepth(vertex.Position, g_MtxView, g_MtxProjection);
+    float3 viewPosition = mul(float4(vertex.Position, 0.0), g_MtxView).xyz;
+    viewPosition.z -= material.DistortionParam.x;
+    
+    float depth = ComputeDepth(viewPosition, g_MtxProjection);
     gBufferData.Refraction = max(0.0, g_Depth[DispatchRaysIndex().xy] - depth) * (material.DistortionParam.y / (1.0 - depth));
     
     float3 viewNormal = mul(float4(gBufferData.Normal, 0.0), g_MtxView).xyz;

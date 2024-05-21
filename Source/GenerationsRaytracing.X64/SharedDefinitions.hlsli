@@ -84,10 +84,15 @@ float2 ComputePixelPosition(float3 position, float4x4 view, float4x4 projection)
     return ComputeNdcPosition(position, view, projection) * DispatchRaysDimensions().xy;
 }
 
+float ComputeDepth(float3 position, float4x4 projection)
+{
+    float4 projectedPosition = mul(float4(position, 1.0), projection);
+    return projectedPosition.z / projectedPosition.w;
+}
+
 float ComputeDepth(float3 position, float4x4 view, float4x4 projection)
 {
-    float4 projectedPosition = mul(float4(mul(float4(position, 0.0), view).xyz, 1.0), projection);
-    return projectedPosition.z / projectedPosition.w;
+    return ComputeDepth(mul(float4(position, 0.0), view).xyz, projection);
 }
 
 float LinearizeDepth(float depth, float4x4 invProjection)
