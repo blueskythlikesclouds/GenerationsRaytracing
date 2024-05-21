@@ -82,6 +82,7 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter HighLightColor = new("HighLightColor", 0, 3, "HighLightColor", 0.5f, 0.5f, 0.5f, 0.0f);
     public static readonly RaytracingParameter ChaosWaveParamEx = new("g_ChaosWaveParamEx", 1, 1, "ChaosWaveParamEx", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter CloakParam = new("g_CloakParam", 0, 1, "CloakParam", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter GlassRefractionParam = new("mrgGlassRefractionParam", 0, 1, "GlassRefractionParam", 0.0f, 0.0f, 0.0f, 0.0f);
 
     public static readonly RaytracingParameter[] AllParameters = [
         Diffuse,
@@ -110,7 +111,8 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
         PupilParam,
         HighLightColor,
         ChaosWaveParamEx,
-        CloakParam];
+        CloakParam,
+        GlassRefractionParam];
 }
 
 public class RaytracingShader(string name, RaytracingTexture[] textures, RaytracingParameter[] parameters)
@@ -459,6 +461,20 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.FresnelParam,
         ]);
 
+    public static readonly RaytracingShader GlassRefraction = new("GLASS_REFRACTION",
+        [
+            RaytracingTexture.Diffuse,
+        ],
+        [
+            RaytracingParameter.Diffuse,
+            RaytracingParameter.Specular,
+            RaytracingParameter.GlossLevel,
+            RaytracingParameter.Opacity,
+            RaytracingParameter.LuminanceRange,
+            RaytracingParameter.FresnelParam,
+            RaytracingParameter.GlassRefractionParam,
+        ]);
+
     public static readonly RaytracingShader Ice = new("ICE",
         [
             RaytracingTexture.Diffuse,
@@ -740,7 +756,7 @@ public static class RaytracingShaderCompiler
         ("FallOffV_", RaytracingShader.FallOffV),
         ("Fur", RaytracingShader.Fur),
         ("Glass_", RaytracingShader.Glass),
-        ("GlassRefraction_", RaytracingShader.SysError),
+        ("GlassRefraction_", RaytracingShader.GlassRefraction),
         ("Ice_", RaytracingShader.Ice),
         ("IgnoreLight_", RaytracingShader.IgnoreLight),
         ("IgnoreLightTwice_", RaytracingShader.IgnoreLightTwice),

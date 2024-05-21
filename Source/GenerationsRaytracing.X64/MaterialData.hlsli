@@ -481,6 +481,22 @@ Material GetMaterial(MaterialData materialData)
     material.Opacity = asfloat(materialData.PackedData[13]);
     material.FresnelParam[0] = asfloat(materialData.PackedData[14]);
     material.FresnelParam[1] = asfloat(materialData.PackedData[15]);
+#elif SHADER_TYPE == SHADER_TYPE_GLASS_REFRACTION
+    material.DiffuseTexture = materialData.PackedData[0];
+    material.Diffuse[0] = asfloat(materialData.PackedData[1]);
+    material.Diffuse[1] = asfloat(materialData.PackedData[2]);
+    material.Diffuse[2] = asfloat(materialData.PackedData[3]);
+    material.Diffuse[3] = asfloat(materialData.PackedData[4]);
+    material.Specular[0] = asfloat(materialData.PackedData[5]);
+    material.Specular[1] = asfloat(materialData.PackedData[6]);
+    material.Specular[2] = asfloat(materialData.PackedData[7]);
+    material.GlossLevel[0] = asfloat(materialData.PackedData[8]);
+    material.GlossLevel[1] = asfloat(materialData.PackedData[9]);
+    material.Opacity = asfloat(materialData.PackedData[10]);
+    material.LuminanceRange = asfloat(materialData.PackedData[11]);
+    material.FresnelParam[0] = asfloat(materialData.PackedData[12]);
+    material.FresnelParam[1] = asfloat(materialData.PackedData[13]);
+    material.GlassRefractionParam = asfloat(materialData.PackedData[14]);
 #elif SHADER_TYPE == SHADER_TYPE_ICE
     material.DiffuseTexture = materialData.PackedData[0];
     material.GlossTexture = materialData.PackedData[1];

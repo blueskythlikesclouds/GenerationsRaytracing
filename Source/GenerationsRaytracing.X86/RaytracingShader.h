@@ -72,6 +72,7 @@ inline RaytracingParameter s_parameter_PupilParam = { "PupilParam", 0, 4, 1.03f,
 inline RaytracingParameter s_parameter_HighLightColor = { "HighLightColor", 0, 3, 0.5f, 0.5f, 0.5f, 0.0f };
 inline RaytracingParameter s_parameter_ChaosWaveParamEx = { "g_ChaosWaveParamEx", 1, 1, 0.0f, 0.0f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_CloakParam = { "g_CloakParam", 0, 1, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_GlassRefractionParam = { "mrgGlassRefractionParam", 0, 1, 0.0f, 0.0f, 0.0f, 0.0f };
 
 inline RaytracingParameter* s_parameters_SYS_ERROR[2] =
 {
@@ -536,6 +537,24 @@ inline RaytracingParameter* s_parameters_GLASS[5] =
 
 inline RaytracingShader s_shader_GLASS = { SHADER_TYPE_GLASS, s_textures_GLASS, 4, s_parameters_GLASS, 5 };
 
+inline RaytracingTexture* s_textures_GLASS_REFRACTION[1] =
+{
+	&s_texture_DiffuseTexture,
+};
+
+inline RaytracingParameter* s_parameters_GLASS_REFRACTION[7] =
+{
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_LuminanceRange,
+	&s_parameter_FresnelParam,
+	&s_parameter_GlassRefractionParam,
+};
+
+inline RaytracingShader s_shader_GLASS_REFRACTION = { SHADER_TYPE_GLASS_REFRACTION, s_textures_GLASS_REFRACTION, 1, s_parameters_GLASS_REFRACTION, 7 };
+
 inline RaytracingTexture* s_textures_ICE[3] =
 {
 	&s_texture_DiffuseTexture,
@@ -843,7 +862,7 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "FallOffV_", &s_shader_FALLOFF_V },
 	{ "Fur", &s_shader_FUR },
 	{ "Glass_", &s_shader_GLASS },
-	{ "GlassRefraction_", &s_shader_SYS_ERROR },
+	{ "GlassRefraction_", &s_shader_GLASS_REFRACTION },
 	{ "Ice_", &s_shader_ICE },
 	{ "IgnoreLight_", &s_shader_IGNORE_LIGHT },
 	{ "IgnoreLightTwice_", &s_shader_IGNORE_LIGHT_TWICE },

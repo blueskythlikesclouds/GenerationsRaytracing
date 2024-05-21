@@ -170,6 +170,7 @@
     <None Include="GeometryShading.hlsli" />
     <None Include="GeometryDesc.hlsli" />
     <None Include="Glass.hlsli" />
+    <None Include="GlassRefraction.hlsli" />
     <None Include="Ice.hlsli" />
     <None Include="IgnoreLight.hlsli" />
     <None Include="IgnoreLightTwice.hlsli" />

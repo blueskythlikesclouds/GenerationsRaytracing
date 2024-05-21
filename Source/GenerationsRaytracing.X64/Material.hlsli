@@ -48,6 +48,7 @@ struct Material
     float3 HighLightColor;
     float ChaosWaveParamEx;
     float CloakParam;
+    float GlassRefractionParam;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord, uint level)

@@ -423,6 +423,9 @@
     <None Include="Cloak.hlsli">
       <Filter>Shader\Material\Shader\Character</Filter>
     </None>
+    <None Include="GlassRefraction.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
