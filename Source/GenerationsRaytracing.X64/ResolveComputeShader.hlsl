@@ -49,7 +49,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
                     GBufferData neighborGBufferData = LoadGBufferData(uint3(neighborIndex, 0));
 
                     if (!(neighborGBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT)) &&
-                        abs(linearDepth - g_LinearDepth_SRV[neighborIndex]) <= 0.05 &&
+                        abs(linearDepth - g_LinearDepth_SRV[neighborIndex]) <= 1.0 &&
                         dot(gBufferData.Normal, neighborGBufferData.Normal.xyz) >= 0.9063)
                     {
                         Reservoir neighborReservoir = LoadReservoir(g_Reservoir_SRV[neighborIndex]);
