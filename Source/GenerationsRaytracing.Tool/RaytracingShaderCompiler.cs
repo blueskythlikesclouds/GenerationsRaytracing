@@ -25,6 +25,7 @@ public class RaytracingTexture(string name, int index, string fieldName)
 
     public static readonly RaytracingTexture Displacement = new("displacement", 0, "DisplacementTexture");
     public static readonly RaytracingTexture Displacement2 = new("displacement", 1, "DisplacementTexture2");
+    public static readonly RaytracingTexture Displacement3 = new("displacement", 2, "DisplacementTexture3");
 
     public static readonly RaytracingTexture Level = new("level", 0, "LevelTexture");
 
@@ -41,6 +42,7 @@ public class RaytracingTexture(string name, int index, string fieldName)
         Opacity,
         Displacement,
         Displacement2,
+        Displacement3,
         Level];
 }
 
@@ -69,7 +71,7 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter ChrEmissionParam = new("mrgChrEmissionParam", 0, 4, "ChrEmissionParam", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter TransColorMask = new("g_TransColorMask", 0, 3, "TransColorMask", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter EmissionParam = new("g_EmissionParam", 0, 4, "EmissionParam", 0.0f, 0.0f, 0.0f, 1.0f);
-    public static readonly RaytracingParameter OffsetParam = new("g_OffsetParam", 0, 2, "OffsetParam", 0.1f, 0.1f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter OffsetParam = new("g_OffsetParam", 0, 4, "OffsetParam", 0.1f, 0.1f, 0.0f, 0.0f);
     public static readonly RaytracingParameter WaterParam = new("g_WaterParam", 0, 4, "WaterParam", 1.0f, 0.5f, 0.0f, 8.0f);
     public static readonly RaytracingParameter FurParam = new("FurParam", 0, 4, "FurParam", 0.1f, 8.0f, 8.0f, 1.0f);
     public static readonly RaytracingParameter FurParam2 = new("FurParam2", 0, 4, "FurParam2", 0.0f, 0.6f, 0.5f, 1.0f);
@@ -83,6 +85,7 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter ChaosWaveParamEx = new("g_ChaosWaveParamEx", 1, 1, "ChaosWaveParamEx", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter CloakParam = new("g_CloakParam", 0, 1, "CloakParam", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter GlassRefractionParam = new("mrgGlassRefractionParam", 0, 1, "GlassRefractionParam", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter HeightParam = new("g_HeightParam", 0, 2, "HeightParam", 0.0f, 0.0f, 0.0f, 0.0f);
 
     public static readonly RaytracingParameter[] AllParameters = [
         Diffuse,
@@ -112,7 +115,8 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
         HighLightColor,
         ChaosWaveParamEx,
         CloakParam,
-        GlassRefractionParam];
+        GlassRefractionParam,
+        HeightParam];
 }
 
 public class RaytracingShader(string name, RaytracingTexture[] textures, RaytracingParameter[] parameters)
@@ -553,6 +557,23 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.OffsetParam,
         ]);
 
+    public static readonly RaytracingShader Lava = new("LAVA",
+        [
+            RaytracingTexture.Diffuse,
+            RaytracingTexture.Normal,
+            RaytracingTexture.Displacement,
+            RaytracingTexture.Displacement2,
+            RaytracingTexture.Displacement3,
+        ],
+        [
+            RaytracingParameter.Diffuse,
+            RaytracingParameter.Specular,
+            RaytracingParameter.GlossLevel,
+            RaytracingParameter.Opacity,
+            RaytracingParameter.OffsetParam,
+            RaytracingParameter.HeightParam
+        ]);
+
     public static readonly RaytracingShader Luminescence = new("LUMINESCENCE",
         [
             RaytracingTexture.Diffuse,
@@ -765,7 +786,7 @@ public static class RaytracingShaderCompiler
         ("IndirectNoLight_", RaytracingShader.IndirectNoLight),
         ("IndirectV_", RaytracingShader.IndirectV),
         ("IndirectVnoGIs_", RaytracingShader.IndirectV),
-        ("Lava_", RaytracingShader.SysError),
+        ("Lava_", RaytracingShader.Lava),
         ("Luminescence_", RaytracingShader.Luminescence),
         ("LuminescenceV_", RaytracingShader.LuminescenceV),
         ("MeshParticle_", RaytracingShader.SysError),

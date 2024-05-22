@@ -76,6 +76,8 @@ Material GetMaterial(MaterialData materialData)
     material.Opacity = asfloat(materialData.PackedData[13]);
     material.OffsetParam[0] = asfloat(materialData.PackedData[14]);
     material.OffsetParam[1] = asfloat(materialData.PackedData[15]);
+    material.OffsetParam[2] = asfloat(materialData.PackedData[16]);
+    material.OffsetParam[3] = asfloat(materialData.PackedData[17]);
 #elif SHADER_TYPE == SHADER_TYPE_LUMINESCENCE
     material.DiffuseTexture = materialData.PackedData[0];
     material.GlossTexture = materialData.PackedData[1];
@@ -545,6 +547,8 @@ Material GetMaterial(MaterialData materialData)
     material.Opacity = asfloat(materialData.PackedData[7]);
     material.OffsetParam[0] = asfloat(materialData.PackedData[8]);
     material.OffsetParam[1] = asfloat(materialData.PackedData[9]);
+    material.OffsetParam[2] = asfloat(materialData.PackedData[10]);
+    material.OffsetParam[3] = asfloat(materialData.PackedData[11]);
 #elif SHADER_TYPE == SHADER_TYPE_INDIRECT_V
     material.DiffuseTexture = materialData.PackedData[0];
     material.OpacityTexture = materialData.PackedData[1];
@@ -563,6 +567,30 @@ Material GetMaterial(MaterialData materialData)
     material.Opacity = asfloat(materialData.PackedData[14]);
     material.OffsetParam[0] = asfloat(materialData.PackedData[15]);
     material.OffsetParam[1] = asfloat(materialData.PackedData[16]);
+    material.OffsetParam[2] = asfloat(materialData.PackedData[17]);
+    material.OffsetParam[3] = asfloat(materialData.PackedData[18]);
+#elif SHADER_TYPE == SHADER_TYPE_LAVA
+    material.DiffuseTexture = materialData.PackedData[0];
+    material.NormalTexture = materialData.PackedData[1];
+    material.DisplacementTexture = materialData.PackedData[2];
+    material.DisplacementTexture2 = materialData.PackedData[3];
+    material.DisplacementTexture3 = materialData.PackedData[4];
+    material.Diffuse[0] = asfloat(materialData.PackedData[5]);
+    material.Diffuse[1] = asfloat(materialData.PackedData[6]);
+    material.Diffuse[2] = asfloat(materialData.PackedData[7]);
+    material.Diffuse[3] = asfloat(materialData.PackedData[8]);
+    material.Specular[0] = asfloat(materialData.PackedData[9]);
+    material.Specular[1] = asfloat(materialData.PackedData[10]);
+    material.Specular[2] = asfloat(materialData.PackedData[11]);
+    material.GlossLevel[0] = asfloat(materialData.PackedData[12]);
+    material.GlossLevel[1] = asfloat(materialData.PackedData[13]);
+    material.Opacity = asfloat(materialData.PackedData[14]);
+    material.OffsetParam[0] = asfloat(materialData.PackedData[15]);
+    material.OffsetParam[1] = asfloat(materialData.PackedData[16]);
+    material.OffsetParam[2] = asfloat(materialData.PackedData[17]);
+    material.OffsetParam[3] = asfloat(materialData.PackedData[18]);
+    material.HeightParam[0] = asfloat(materialData.PackedData[19]);
+    material.HeightParam[1] = asfloat(materialData.PackedData[20]);
 #elif SHADER_TYPE == SHADER_TYPE_LUMINESCENCE_V
     material.DiffuseTexture = materialData.PackedData[0];
     material.GlossTexture = materialData.PackedData[1];

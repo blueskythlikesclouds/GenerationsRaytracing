@@ -43,6 +43,7 @@ inline RaytracingTexture s_texture_ReflectionTexture = { "reflection", 0, false 
 inline RaytracingTexture s_texture_OpacityTexture = { "opacity", 0, true };
 inline RaytracingTexture s_texture_DisplacementTexture = { "displacement", 0, false };
 inline RaytracingTexture s_texture_DisplacementTexture2 = { "displacement", 1, false };
+inline RaytracingTexture s_texture_DisplacementTexture3 = { "displacement", 2, false };
 inline RaytracingTexture s_texture_LevelTexture = { "level", 0, false };
 
 inline RaytracingParameter s_parameter_Diffuse = { "diffuse", 0, 4, 1.0f, 1.0f, 1.0f, 1.0f };
@@ -59,7 +60,7 @@ inline RaytracingParameter s_parameter_SonicSkinFalloffParam = { "g_SonicSkinFal
 inline RaytracingParameter s_parameter_ChrEmissionParam = { "mrgChrEmissionParam", 0, 4, 0.0f, 0.0f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_TransColorMask = { "g_TransColorMask", 0, 3, 0.0f, 0.0f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_EmissionParam = { "g_EmissionParam", 0, 4, 0.0f, 0.0f, 0.0f, 1.0f };
-inline RaytracingParameter s_parameter_OffsetParam = { "g_OffsetParam", 0, 2, 0.1f, 0.1f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_OffsetParam = { "g_OffsetParam", 0, 4, 0.1f, 0.1f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_WaterParam = { "g_WaterParam", 0, 4, 1.0f, 0.5f, 0.0f, 8.0f };
 inline RaytracingParameter s_parameter_FurParam = { "FurParam", 0, 4, 0.1f, 8.0f, 8.0f, 1.0f };
 inline RaytracingParameter s_parameter_FurParam2 = { "FurParam2", 0, 4, 0.0f, 0.6f, 0.5f, 1.0f };
@@ -73,6 +74,7 @@ inline RaytracingParameter s_parameter_HighLightColor = { "HighLightColor", 0, 3
 inline RaytracingParameter s_parameter_ChaosWaveParamEx = { "g_ChaosWaveParamEx", 1, 1, 0.0f, 0.0f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_CloakParam = { "g_CloakParam", 0, 1, 0.0f, 0.0f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_GlassRefractionParam = { "mrgGlassRefractionParam", 0, 1, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_HeightParam = { "g_HeightParam", 0, 2, 0.0f, 0.0f, 0.0f, 0.0f };
 
 inline RaytracingParameter* s_parameters_SYS_ERROR[2] =
 {
@@ -638,6 +640,27 @@ inline RaytracingParameter* s_parameters_INDIRECT_V[5] =
 
 inline RaytracingShader s_shader_INDIRECT_V = { SHADER_TYPE_INDIRECT_V, s_textures_INDIRECT_V, 5, s_parameters_INDIRECT_V, 5 };
 
+inline RaytracingTexture* s_textures_LAVA[5] =
+{
+	&s_texture_DiffuseTexture,
+	&s_texture_NormalTexture,
+	&s_texture_DisplacementTexture,
+	&s_texture_DisplacementTexture2,
+	&s_texture_DisplacementTexture3,
+};
+
+inline RaytracingParameter* s_parameters_LAVA[6] =
+{
+	&s_parameter_Diffuse,
+	&s_parameter_Specular,
+	&s_parameter_GlossLevel,
+	&s_parameter_Opacity,
+	&s_parameter_OffsetParam,
+	&s_parameter_HeightParam,
+};
+
+inline RaytracingShader s_shader_LAVA = { SHADER_TYPE_LAVA, s_textures_LAVA, 5, s_parameters_LAVA, 6 };
+
 inline RaytracingTexture* s_textures_LUMINESCENCE_V[6] =
 {
 	&s_texture_DiffuseTexture,
@@ -871,7 +894,7 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "IndirectNoLight_", &s_shader_INDIRECT_NO_LIGHT },
 	{ "IndirectV_", &s_shader_INDIRECT_V },
 	{ "IndirectVnoGIs_", &s_shader_INDIRECT_V },
-	{ "Lava_", &s_shader_SYS_ERROR },
+	{ "Lava_", &s_shader_LAVA },
 	{ "Luminescence_", &s_shader_LUMINESCENCE },
 	{ "LuminescenceV_", &s_shader_LUMINESCENCE_V },
 	{ "MeshParticle_", &s_shader_SYS_ERROR },

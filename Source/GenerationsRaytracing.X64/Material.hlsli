@@ -19,6 +19,7 @@ struct Material
     uint OpacityTexture;
     uint DisplacementTexture;
     uint DisplacementTexture2;
+    uint DisplacementTexture3;
     uint LevelTexture;
 
     float4 Diffuse;
@@ -49,6 +50,7 @@ struct Material
     float ChaosWaveParamEx;
     float CloakParam;
     float GlassRefractionParam;
+    float2 HeightParam;
 };
 
 float4 SampleMaterialTexture2D(uint materialTexture, float2 texCoord, uint level)

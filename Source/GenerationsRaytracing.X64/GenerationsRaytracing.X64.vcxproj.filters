@@ -426,6 +426,9 @@
     <None Include="GlassRefraction.hlsli">
       <Filter>Shader\Material\Shader\Terrain</Filter>
     </None>
+    <None Include="Lava.hlsli">
+      <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

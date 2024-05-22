@@ -183,6 +183,7 @@
     <None Include="Indirect.hlsli" />
     <None Include="IndirectNoLight.hlsli" />
     <None Include="IndirectV.hlsli" />
+    <None Include="Lava.hlsli" />
     <None Include="Luminescence.hlsli" />
     <None Include="LuminescenceV.hlsli" />
     <None Include="Material.hlsli" />

@@ -76,6 +76,8 @@
 #include "Cloak.hlsli"
 #elif SHADER_TYPE == SHADER_TYPE_GLASS_REFRACTION
 #include "GlassRefraction.hlsli"
+#elif SHADER_TYPE == SHADER_TYPE_LAVA
+#include "Lava.hlsli"
 #endif
 
 GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc instanceDesc, bool storeSafeSpawnPoint)
@@ -166,6 +168,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
     CreateCloakGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_GLASS_REFRACTION
     CreateGlassRefractionGBufferData(vertex, material, gBufferData);
+#elif SHADER_TYPE == SHADER_TYPE_LAVA
+    CreateLavaGBufferData(vertex, material, gBufferData);
 #else
     gBufferData.Flags =
         GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT | GBUFFER_FLAG_IGNORE_LOCAL_LIGHT |
