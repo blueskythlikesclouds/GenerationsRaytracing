@@ -344,6 +344,29 @@ void MaterialData::createPendingMaterials()
     }
 }
 
+static boost::shared_ptr<Hedgehog::Mirage::CShaderListData>* __fastcall implOfGetShaderListData(
+    Hedgehog::Mirage::CMirageDatabaseWrapper* This,
+    void* _,
+    boost::shared_ptr<Hedgehog::Mirage::CShaderListData>* result,
+    const Hedgehog::Base::CSharedString& name,
+    size_t unknown)
+{
+    auto shaderList = This->GetShaderListData(name, unknown);
+    if (shaderList == nullptr)
+    {
+        static Hedgehog::Base::CSharedString s_sysError("SysError");
+
+        shaderList = boost::make_shared<Hedgehog::Mirage::CShaderListData>(
+            *This->GetShaderListData(s_sysError, unknown));
+
+        shaderList->m_TypeAndName = "Mirage.shader-list " + name;
+
+        shaderList->SetMadeOne();
+    }
+
+    return new (result) boost::shared_ptr<Hedgehog::Mirage::CShaderListData>(shaderList);
+}
+
 void MaterialData::init()
 {
     WRITE_MEMORY(0x6C6301, uint8_t, sizeof(MaterialDataEx));
@@ -363,6 +386,8 @@ void MaterialData::init()
 
     INSTALL_HOOK(MaterialAnimationEnv);
     INSTALL_HOOK(SampleTexcoordAnim);
+
+    WRITE_CALL(0x741188, implOfGetShaderListData);
 }
 
 void MaterialData::postInit()
