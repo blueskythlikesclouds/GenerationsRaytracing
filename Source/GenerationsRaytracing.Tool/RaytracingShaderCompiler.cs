@@ -1130,10 +1130,11 @@ public static class RaytracingShaderCompiler
             $"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64")}",
             $"-I {Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.Shared")}",
             $"-I {Path.Combine(solutionDirectoryPath, "..", "Dependencies", "self-intersection-avoidance")}",
-            "-T lib_6_7",
+            "-T lib_6_6",
             "-HV 2021",
             "-all-resources-bound",
             "-Zi",
+            "-enable-payload-qualifiers",
             null,
             null
         };
