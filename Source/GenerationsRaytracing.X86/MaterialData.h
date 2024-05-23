@@ -7,7 +7,7 @@ public:
     uint32_t m_materialId;
     XXH32_hash_t m_materialHash;
     uint32_t m_hashFrame;
-    boost::shared_ptr<CMaterialData> m_fhlMaterial;
+    std::vector<boost::shared_ptr<CMaterialData>> m_fhlMaterials;
 };
 
 struct MaterialData

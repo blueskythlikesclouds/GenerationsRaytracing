@@ -20,7 +20,7 @@ HOOK(MaterialDataEx*, __fastcall, MaterialDataConstructor, 0x704CA0, MaterialDat
     This->m_materialId = NULL;
     This->m_materialHash = 0;
     This->m_hashFrame = 0;
-    new (&This->m_fhlMaterial) boost::shared_ptr<Hedgehog::Mirage::CMaterialData>();
+    new (&This->m_fhlMaterials) decltype(This->m_fhlMaterials) ();
 
     return result;
 }
@@ -31,7 +31,7 @@ HOOK(void, __fastcall, MaterialDataDestructor, 0x704B80, MaterialDataEx* This)
     s_materialsToCreate.erase(This);
     s_matCreateMutex.unlock();
 
-    This->m_fhlMaterial.~shared_ptr();
+    This->m_fhlMaterials.~vector();
     RaytracingUtil::releaseResource(RaytracingResourceType::Material, This->m_materialId);
 
     originalMaterialDataDestructor(This);
@@ -244,31 +244,33 @@ HOOK(void, __cdecl, SampleTexcoordAnim, 0x757E50, MaterialDataEx* materialData, 
     s_materialsToCreate.emplace(materialData);
     s_matCreateMutex.unlock();
 
-    if (materialData->m_fhlMaterial != nullptr &&
-        materialData->m_fhlMaterial->IsMadeOne())
+    for (auto& fhlMaterial : materialData->m_fhlMaterials)
     {
-        static Hedgehog::Base::CStringSymbol s_texcoordOffsetSymbol("mrgTexcoordOffset");
-
-        for (auto& sourceParam : materialData->m_Float4Params)
+        if (fhlMaterial->IsMadeOne())
         {
-            if (sourceParam->m_Name == s_texcoordOffsetSymbol)
+            static Hedgehog::Base::CStringSymbol s_texcoordOffsetSymbol("mrgTexcoordOffset");
+
+            for (auto& sourceParam : materialData->m_Float4Params)
             {
-                bool found = false;
-
-                for (auto& destParam : materialData->m_fhlMaterial->m_Float4Params)
+                if (sourceParam->m_Name == s_texcoordOffsetSymbol)
                 {
-                    if (destParam->m_Name == s_texcoordOffsetSymbol)
+                    bool found = false;
+
+                    for (auto& destParam : fhlMaterial->m_Float4Params)
                     {
-                        destParam = sourceParam;
-                        found = true;
-                        break;
+                        if (destParam->m_Name == s_texcoordOffsetSymbol)
+                        {
+                            destParam = sourceParam;
+                            found = true;
+                            break;
+                        }
                     }
+
+                    if (!found)
+                        fhlMaterial->m_Float4Params.push_back(sourceParam);
+
+                    break;
                 }
-
-                if (!found)
-                    materialData->m_fhlMaterial->m_Float4Params.push_back(sourceParam);
-
-                break;
             }
         }
     }

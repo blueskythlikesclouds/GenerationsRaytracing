@@ -202,8 +202,8 @@ void ModelReplacer::createPendingModels()
                             
                                     if (eyePartToCompare != nullptr && strncmp(eyePart, eyePartToCompare, 5) == 0)
                                     {
-                                        reinterpret_cast<MaterialDataEx*>(
-                                            meshDataToCompare.m_spMaterial.get())->m_fhlMaterial = meshData.m_spMaterial;
+                                        reinterpret_cast<MaterialDataEx*>(meshDataToCompare.m_spMaterial.get())->
+                                            m_fhlMaterials.push_back(meshData.m_spMaterial);
                             
                                         return true;
                                     }
@@ -241,15 +241,15 @@ void ModelReplacer::processFhlMaterials(InstanceInfoEx& instanceInfoEx, const Ma
     for (auto& [key, value] : instanceInfoEx.m_effectMap)
     {
         auto& keyEx = *reinterpret_cast<MaterialDataEx*>(key);
-        if (keyEx.m_fhlMaterial != nullptr)
-            s_fhlMaterials.emplace(keyEx.m_fhlMaterial.get(), key);
+        for (auto& fhlMaterial : keyEx.m_fhlMaterials)
+            s_fhlMaterials.emplace(fhlMaterial.get(), key);
     }
 
     for (auto& [key, value] : materialMap)
     {
         auto& keyEx = *reinterpret_cast<MaterialDataEx*>(key);
-        if (keyEx.m_fhlMaterial != nullptr)
-            s_fhlMaterials.emplace(keyEx.m_fhlMaterial.get(), key);
+        for (auto& fhlMaterial : keyEx.m_fhlMaterials)
+            s_fhlMaterials.emplace(fhlMaterial.get(), key);
     }
 
     for (auto& [fhlMaterial, material] : s_fhlMaterials)
