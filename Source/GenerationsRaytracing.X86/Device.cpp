@@ -281,6 +281,9 @@ void Device::renderImgui()
 
 void Device::beginIm3d()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     auto& appData = Im3d::GetAppData();
     m_im3d.render = true;
 
@@ -320,7 +323,7 @@ void Device::beginIm3d()
 
 void Device::endIm3d()
 {
-    if (m_im3d.render)
+    if (Configuration::s_enableRaytracing && m_im3d.render)
     {
         Im3d::EndFrame();
         m_im3d.render = false;
@@ -329,6 +332,9 @@ void Device::endIm3d()
 
 void Device::renderIm3d()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     const uint32_t drawListCount = Im3d::GetDrawListCount();
     if (drawListCount == 0 || m_im3d.depthStencil == nullptr)
         return;

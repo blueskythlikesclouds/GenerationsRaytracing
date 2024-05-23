@@ -7,6 +7,7 @@
 #include "ModelData.h"
 #include "MaterialData.h"
 #include "RaytracingRendering.h"
+#include "Configuration.h"
 
 class WallJumpBlockRenderEx : public Sonic::CObjWallJumpBlock::CRender
 {
@@ -234,6 +235,9 @@ HOOK(void, __fastcall, WallJumpBlockRenderDestructor, 0x4673E0, WallJumpBlockRen
 
 void WallJumpBlock::init()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     WRITE_MEMORY(0x1001535, uint32_t, sizeof(WallJumpBlockRenderEx));
 
     WRITE_CALL(0x1001549, wallJumpBlockRenderConstructor);

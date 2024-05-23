@@ -10,6 +10,7 @@ void Configuration::init()
     }
     else
     {
+        s_enableRaytracing = iniFile.getBool("Mod", "EnableRaytracing", true);
         s_displayMode = static_cast<DisplayMode>(iniFile.get<uint32_t>("Mod", "DisplayMode", static_cast<uint32_t>(DisplayMode::BorderlessFullscreen)));
         s_allowResizeInWindowed = iniFile.getBool("Mod", "AllowResizeInWindowed", false);
         s_upscaler = iniFile.get<uint32_t>("Mod", "Upscaler", 2);

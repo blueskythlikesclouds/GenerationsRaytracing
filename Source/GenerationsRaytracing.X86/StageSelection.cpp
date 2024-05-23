@@ -1,4 +1,5 @@
 #include "StageSelection.h"
+#include "Configuration.h"
 
 struct Selection
 {
@@ -71,6 +72,9 @@ static void save()
 
 void StageSelection::init(ModInfo_t* modInfo)
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     s_saveFilePath = modInfo->CurrentMod->Path;
     s_saveFilePath.erase(s_saveFilePath.find_last_of("\\/") + 1);
     s_saveFilePath += "stage_selections.json";

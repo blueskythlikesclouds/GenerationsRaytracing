@@ -8,6 +8,8 @@
 #include "AlignmentUtil.h"
 #include "RootSignature.h"
 #include "ToneMapPixelShader.h"
+#include "CopyHdrTexturePixelShader.h"
+#include "CopyTextureVertexShader.h"
 
 void Device::createBuffer(
     D3D12_HEAP_TYPE type,
@@ -1892,7 +1894,28 @@ void Device::procMsgShowCursor()
     m_swapChain.getWindow().procMsgShowCursor(message);
 }
 
-Device::Device()
+void Device::procMsgCopyHdrTexture()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgCopyHdrTexture>();
+
+    auto& commandList = getGraphicsCommandList();
+    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
+
+    const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_viewport.Width), static_cast<LONG>(m_viewport.Height) };
+
+    underlyingCommandList->OMSetRenderTargets(1, m_renderTargetViews, FALSE, nullptr);
+    underlyingCommandList->SetGraphicsRootSignature(m_copyHdrTextureRootSignature.Get());
+    underlyingCommandList->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_globalsPS.textureIndices[0]));
+    underlyingCommandList->SetPipelineState(m_copyHdrTexturePipeline.Get());
+    underlyingCommandList->RSSetScissorRects(1, &scissorRect);
+    underlyingCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    commandList.commitBarriers();
+
+    underlyingCommandList->DrawInstanced(6, 1, 0, 0);
+}
+
+Device::Device(const IniFile& iniFile)
 {
     HRESULT hr;
 
@@ -1910,6 +1933,8 @@ Device::Device()
     if (factory == nullptr)
         return;
 
+    const bool enableRaytracing = iniFile.getBool("Mod", "EnableRaytracing", true);
+
     ComPtr<IDXGIAdapter1> adapter;
 
     for (uint32_t i = 0; SUCCEEDED(factory->EnumAdapters1(i, adapter.ReleaseAndGetAddressOf())); i++)
@@ -1924,7 +1949,7 @@ Device::Device()
 
             hr = D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_device.GetAddressOf()));
 
-            if (SUCCEEDED(hr) && FeatureCaps::ensureMinimumCapability(m_device.Get(), m_gpuUploadHeapSupported))
+            if (SUCCEEDED(hr) && FeatureCaps::ensureMinimumCapability(m_device.Get(), enableRaytracing, m_gpuUploadHeapSupported))
                 break;
 
             m_device = nullptr;
@@ -1933,12 +1958,23 @@ Device::Device()
 
     if (m_device == nullptr)
     {
-        MessageBox(nullptr,
-            TEXT("A Direct3D 12 compatible GPU with raytracing support is required.\n"
-                "Ensure your graphics drivers and OS are up to date.\n"
-                "If you are on a laptop, configure GenerationsRaytracing.X64.exe located inside mod folder to use the discrete GPU in graphics settings."),
-            TEXT("Generations Raytracing"),
-            MB_ICONERROR);
+        if (enableRaytracing)
+        {
+            MessageBox(nullptr,
+                TEXT("A Direct3D 12 compatible GPU with raytracing support is required.\n"
+                    "Ensure your graphics drivers and OS are up to date.\n"
+                    "If you are on a laptop, configure GenerationsRaytracing.X64.exe located inside the mod folder to use the discrete GPU in graphics settings."),
+                TEXT("Generations Raytracing"),
+                MB_ICONERROR);
+        }
+        else
+        {
+            MessageBox(nullptr,
+                TEXT("A Direct3D 12 compatible GPU is required.\n"
+                    "Ensure your graphics drivers and OS are up to date."),
+                TEXT("Generations Raytracing"),
+                MB_ICONERROR);
+        }
 
         return;
     }
@@ -2041,6 +2077,51 @@ Device::Device()
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.Texture2D.MipLevels = 1;
     m_device->CreateShaderResourceView(nullptr, &srvDesc, m_descriptorHeap.getCpuHandle(0));
+
+    if (iniFile.getBool("Mod", "HDR", false))
+    {
+        CD3DX12_DESCRIPTOR_RANGE1 copyHdrDescriptorRanges[1];
+        copyHdrDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE);
+
+        CD3DX12_ROOT_PARAMETER1 copyHdrRootParams[1];
+        copyHdrRootParams[0].InitAsDescriptorTable(_countof(copyHdrDescriptorRanges), copyHdrDescriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
+
+        D3D12_STATIC_SAMPLER_DESC copyHdrStaticSamplers[1]{};
+        copyHdrStaticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        copyHdrStaticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        copyHdrStaticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        copyHdrStaticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        RootSignature::create(
+            m_device.Get(),
+            copyHdrRootParams,
+            _countof(copyHdrRootParams),
+            copyHdrStaticSamplers,
+            _countof(copyHdrStaticSamplers),
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS,
+            m_copyHdrTextureRootSignature, "copy_hdr");
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC copyHdrPipelineDesc{};
+        copyHdrPipelineDesc.pRootSignature = m_copyHdrTextureRootSignature.Get();
+        copyHdrPipelineDesc.VS.pShaderBytecode = CopyTextureVertexShader;
+        copyHdrPipelineDesc.VS.BytecodeLength = sizeof(CopyTextureVertexShader);
+        copyHdrPipelineDesc.PS.pShaderBytecode = CopyHdrTexturePixelShader;
+        copyHdrPipelineDesc.PS.BytecodeLength = sizeof(CopyHdrTexturePixelShader);
+        copyHdrPipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+        copyHdrPipelineDesc.SampleMask = ~0;
+        copyHdrPipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        copyHdrPipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+        copyHdrPipelineDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        copyHdrPipelineDesc.DepthStencilState.DepthEnable = FALSE;
+        copyHdrPipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        copyHdrPipelineDesc.NumRenderTargets = 1;
+        copyHdrPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        copyHdrPipelineDesc.SampleDesc.Count = 1;
+
+        m_pipelineLibrary.createGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
+    }
+
+    m_anisotropicFiltering = iniFile.get<uint32_t>("Mod", "AnisotropicFiltering", 0);
 }
 
 Device::~Device()
@@ -2114,6 +2195,7 @@ void Device::processMessages()
         case MsgSaveShaderCache::s_id: procMsgSaveShaderCache(); break;
         case MsgDrawIndexedPrimitiveUP::s_id: procMsgDrawIndexedPrimitiveUP(); break;
         case MsgShowCursor::s_id: procMsgShowCursor(); break;
+        case MsgCopyHdrTexture::s_id: procMsgCopyHdrTexture(); break;
 
         }
     }

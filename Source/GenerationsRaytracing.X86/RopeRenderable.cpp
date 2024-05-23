@@ -14,6 +14,7 @@
 #include "VertexBuffer.h"
 #include "RaytracingShader.h"
 #include "OptimizedVertexData.h"
+#include "Configuration.h"
 
 class RopeRenderableEx : public Sonic::CRopeRenderable
 {
@@ -150,16 +151,19 @@ static void __cdecl implOfMemCpy(OptimizedVertexData* dest, const Sonic::CRopeRe
 
 void RopeRenderable::init()
 {
-    WRITE_CALL(0xB4F443, allocRopeRenderable);
-    WRITE_CALL(0xF03B84, allocRopeRenderable);
-    WRITE_CALL(0xF0CF2B, allocRopeRenderable);
-    WRITE_CALL(0x101CFF3, allocRopeRenderable);
+    if (Configuration::s_enableRaytracing)
+    {
+        WRITE_CALL(0xB4F443, allocRopeRenderable);
+        WRITE_CALL(0xF03B84, allocRopeRenderable);
+        WRITE_CALL(0xF0CF2B, allocRopeRenderable);
+        WRITE_CALL(0x101CFF3, allocRopeRenderable);
 
-    WRITE_CALL(0xF03B96, ropeRenderableConstructor);
-    WRITE_CALL(0xF0CF3B, ropeRenderableConstructor);
-    WRITE_CALL(0x11204A2, ropeRenderableConstructor);
+        WRITE_CALL(0xF03B96, ropeRenderableConstructor);
+        WRITE_CALL(0xF0CF3B, ropeRenderableConstructor);
+        WRITE_CALL(0x11204A2, ropeRenderableConstructor);
 
-    INSTALL_HOOK(RopeRenderableDestructor);
+        INSTALL_HOOK(RopeRenderableDestructor);
+    }
 
     // Pulley
     WRITE_MEMORY(0x11212F3, uint8_t, 0x6B, 0xFE, sizeof(OptimizedVertexData), 0x83, 0xFF, 0x00, 0x90);

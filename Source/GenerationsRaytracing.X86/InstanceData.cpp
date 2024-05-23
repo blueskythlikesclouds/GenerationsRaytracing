@@ -6,6 +6,7 @@
 #include "PlayableParam.h"
 #include "RaytracingRendering.h"
 #include "RaytracingUtil.h"
+#include "Configuration.h"
 
 static std::unordered_set<TerrainInstanceInfoDataEx*> s_instances;
 static std::unordered_multimap<uint32_t, TerrainInstanceInfoDataEx*> s_instanceSubsets;
@@ -236,6 +237,9 @@ static void __fastcall terrainInstanceInfoDataSetMadeOne(TerrainInstanceInfoData
 
 void InstanceData::init()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     WRITE_MEMORY(0x7176AC, uint32_t, sizeof(TerrainInstanceInfoDataEx));
     WRITE_MEMORY(0x725593, uint32_t, sizeof(TerrainInstanceInfoDataEx));
     WRITE_MEMORY(0X72FC7C, uint32_t, sizeof(TerrainInstanceInfoDataEx));

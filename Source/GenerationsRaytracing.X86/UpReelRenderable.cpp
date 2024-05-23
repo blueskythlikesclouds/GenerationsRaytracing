@@ -15,6 +15,7 @@
 #include "VertexBuffer.h"
 #include "RaytracingShader.h"
 #include "OptimizedVertexData.h"
+#include "Configuration.h"
 
 class ReelRendererEx : public Sonic::CObjUpReel::CReelRenderer
 {
@@ -189,6 +190,9 @@ HOOK(void*, __fastcall, ReelRendererDestructor, 0x458890, ReelRendererEx* This, 
 
 void UpReelRenderable::init()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     WRITE_MEMORY(0x102FDB7, uint32_t, sizeof(ReelRendererEx));
 
     INSTALL_HOOK(ReelRendererConstructor);

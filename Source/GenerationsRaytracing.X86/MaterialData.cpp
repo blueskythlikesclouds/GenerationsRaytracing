@@ -9,6 +9,7 @@
 #include "RaytracingUtil.h"
 #include "ShaderType.h"
 #include "Texture.h"
+#include "Configuration.h"
 
 static std::unordered_set<Hedgehog::Mirage::CMaterialData*> s_materialsToCreate;
 static Mutex s_matCreateMutex;
@@ -371,6 +372,9 @@ static boost::shared_ptr<Hedgehog::Mirage::CShaderListData>* __fastcall implOfGe
 
 void MaterialData::init()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     WRITE_MEMORY(0x6C6301, uint8_t, sizeof(MaterialDataEx));
     WRITE_MEMORY(0x72FB5C, uint8_t, sizeof(MaterialDataEx));
     WRITE_MEMORY(0xDD8B46, uint8_t, sizeof(MaterialDataEx));
@@ -394,6 +398,9 @@ void MaterialData::init()
 
 void MaterialData::postInit()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     // Better FxPipeline overrides those addresses, patch in PostInit to ensure priority
     WRITE_JUMP(0x74170C, materialDataSetMadeOne);
     WRITE_JUMP(0x741E00, materialDataSetMadeOne);

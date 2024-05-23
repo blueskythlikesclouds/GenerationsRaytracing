@@ -238,52 +238,55 @@ void RaytracingParams::imguiWindow()
         {
             if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::MenuItem("Save Raytracing.prm.xml"))
+                if (Configuration::s_enableRaytracing)
                 {
-                    FILE* file = fopen("work/Raytracing.prm.xml", "wb");
-                    if (file)
+                    if (ImGui::MenuItem("Save Raytracing.prm.xml"))
                     {
-                        fputs("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n", file);
-                        fputs("<Raytracing.prm.xml>\n", file);
-                        fputs("  <Default>\n", file);
-                        fputs("    <Category>\n", file);
+                        FILE* file = fopen("work/Raytracing.prm.xml", "wb");
+                        if (file)
+                        {
+                            fputs("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n", file);
+                            fputs("<Raytracing.prm.xml>\n", file);
+                            fputs("  <Default>\n", file);
+                            fputs("    <Category>\n", file);
 
-                        fputs("      <GI>\n", file);
-                        fputs("        <Param>\n", file);
-                        fprintf(file, "          <DiffusePower>%g</DiffusePower>\n", s_diffusePower);
-                        fprintf(file, "          <LightPower>%g</LightPower>\n", s_lightPower);
-                        fprintf(file, "          <EmissivePower>%g</EmissivePower>\n", s_emissivePower);
-                        fprintf(file, "          <SkyPower>%g</SkyPower>\n", s_skyPower);
-                        fputs("        </Param>\n", file);
-                        fputs("      </GI>\n", file);
+                            fputs("      <GI>\n", file);
+                            fputs("        <Param>\n", file);
+                            fprintf(file, "          <DiffusePower>%g</DiffusePower>\n", s_diffusePower);
+                            fprintf(file, "          <LightPower>%g</LightPower>\n", s_lightPower);
+                            fprintf(file, "          <EmissivePower>%g</EmissivePower>\n", s_emissivePower);
+                            fprintf(file, "          <SkyPower>%g</SkyPower>\n", s_skyPower);
+                            fputs("        </Param>\n", file);
+                            fputs("      </GI>\n", file);
 
-                        fputs("      <Environment>\n", file);
-                        fputs("        <Param>\n", file);
-                        fprintf(file, "          <Mode>%d</Mode>\n", s_envMode);
-                        fprintf(file, "          <SkyColorR>%g</SkyColorR>\n", s_skyColor.x());
-                        fprintf(file, "          <SkyColorG>%g</SkyColorG>\n", s_skyColor.y());
-                        fprintf(file, "          <SkyColorB>%g</SkyColorB>\n", s_skyColor.z());
-                        fprintf(file, "          <GroundColorR>%g</GroundColorR>\n", s_groundColor.x());
-                        fprintf(file, "          <GroundColorG>%g</GroundColorG>\n", s_groundColor.y());
-                        fprintf(file, "          <GroundColorB>%g</GroundColorB>\n", s_groundColor.z());
-                        fprintf(file, "          <SkyInRoughReflection>%s</SkyInRoughReflection>\n", s_skyInRoughReflection ? "true" : "false");
-                        fputs("        </Param>\n", file);
-                        fputs("      </Environment>\n", file);
+                            fputs("      <Environment>\n", file);
+                            fputs("        <Param>\n", file);
+                            fprintf(file, "          <Mode>%d</Mode>\n", s_envMode);
+                            fprintf(file, "          <SkyColorR>%g</SkyColorR>\n", s_skyColor.x());
+                            fprintf(file, "          <SkyColorG>%g</SkyColorG>\n", s_skyColor.y());
+                            fprintf(file, "          <SkyColorB>%g</SkyColorB>\n", s_skyColor.z());
+                            fprintf(file, "          <GroundColorR>%g</GroundColorR>\n", s_groundColor.x());
+                            fprintf(file, "          <GroundColorG>%g</GroundColorG>\n", s_groundColor.y());
+                            fprintf(file, "          <GroundColorB>%g</GroundColorB>\n", s_groundColor.z());
+                            fprintf(file, "          <SkyInRoughReflection>%s</SkyInRoughReflection>\n", s_skyInRoughReflection ? "true" : "false");
+                            fputs("        </Param>\n", file);
+                            fputs("      </Environment>\n", file);
 
-                        fputs("      <ToneMap>\n", file);
-                        fputs("        <Param>\n", file);
-                        fprintf(file, "          <Mode>%d</Mode>\n", s_toneMapMode);
-                        fputs("        </Param>\n", file);
-                        fputs("      </ToneMap>\n", file);
+                            fputs("      <ToneMap>\n", file);
+                            fputs("        <Param>\n", file);
+                            fprintf(file, "          <Mode>%d</Mode>\n", s_toneMapMode);
+                            fputs("        </Param>\n", file);
+                            fputs("      </ToneMap>\n", file);
 
-                        fputs("    </Category>\n", file);
-                        fputs("  </Default>\n", file);
-                        fputs("</Raytracing.prm.xml>\n", file);
+                            fputs("    </Category>\n", file);
+                            fputs("  </Default>\n", file);
+                            fputs("</Raytracing.prm.xml>\n", file);
 
-                        fclose(file);
+                            fclose(file);
+                        }
                     }
+                    ImGui::Separator();
                 }
-                ImGui::Separator();
 
                 if (ImGui::MenuItem("Close"))
                     Configuration::s_enableImgui = false;
@@ -296,7 +299,7 @@ void RaytracingParams::imguiWindow()
 
         if (ImGui::BeginTabBar("TabBar"))
         {
-            if (ImGui::BeginTabItem("Upscaling"))
+            if (Configuration::s_enableRaytracing && ImGui::BeginTabItem("Upscaling"))
             {
                 if (ImGui::BeginChild("Child"))
                 {
@@ -329,7 +332,7 @@ void RaytracingParams::imguiWindow()
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Stage"))
+            if (Configuration::s_enableRaytracing && ImGui::BeginTabItem("Stage"))
             {
                 if (StageSelection::s_rememberSelection != nullptr)
                 {
@@ -370,58 +373,61 @@ void RaytracingParams::imguiWindow()
                         ImGui::RadioButton("Enable##Tone Mapping", reinterpret_cast<int*>(&s_toneMapMode), TONE_MAP_MODE_ENABLE);
                         ImGui::RadioButton("Disable", reinterpret_cast<int*>(&s_toneMapMode), TONE_MAP_MODE_DISABLE);
 
-                        static constexpr float s_speed = 0.01f;
-                        static constexpr float s_min = 1.0f;
-                        static constexpr float s_max = FLT_MAX;
-                        static constexpr const char* s_format = "%g";
+                        if (Configuration::s_enableRaytracing)
+                        {
+                            static constexpr float s_speed = 0.01f;
+                            static constexpr float s_min = 1.0f;
+                            static constexpr float s_max = FLT_MAX;
+                            static constexpr const char* s_format = "%g";
 
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Diffuse Power");
-                        ImGui::TableNextColumn();
-                        ImGui::SetNextItemWidth(-FLT_MIN);
-                        ImGui::DragFloat("##Diffuse Power", &s_diffusePower, s_speed, s_min, s_max, s_format);
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted("Diffuse Power");
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-FLT_MIN);
+                            ImGui::DragFloat("##Diffuse Power", &s_diffusePower, s_speed, s_min, s_max, s_format);
 
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Light Power");
-                        ImGui::TableNextColumn();
-                        ImGui::SetNextItemWidth(-FLT_MIN);
-                        ImGui::DragFloat("##Light Power", &s_lightPower, s_speed, s_min, s_max, s_format);
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted("Light Power");
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-FLT_MIN);
+                            ImGui::DragFloat("##Light Power", &s_lightPower, s_speed, s_min, s_max, s_format);
 
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Emissive Power");
-                        ImGui::TableNextColumn();
-                        ImGui::SetNextItemWidth(-FLT_MIN);
-                        ImGui::DragFloat("##Emissive Power", &s_emissivePower, s_speed, s_min, s_max, s_format);
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted("Emissive Power");
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-FLT_MIN);
+                            ImGui::DragFloat("##Emissive Power", &s_emissivePower, s_speed, s_min, s_max, s_format);
 
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Sky Power");
-                        ImGui::TableNextColumn();
-                        ImGui::SetNextItemWidth(-FLT_MIN);
-                        ImGui::DragFloat("##Sky Power", &s_skyPower, s_speed, s_min, s_max, s_format);
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted("Sky Power");
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-FLT_MIN);
+                            ImGui::DragFloat("##Sky Power", &s_skyPower, s_speed, s_min, s_max, s_format);
 
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Environment Mode");
-                        ImGui::TableNextColumn();
-                        ImGui::RadioButton("Auto", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_AUTO);
-                        ImGui::RadioButton("Sky", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_SKY);
-                        ImGui::RadioButton("Color", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_COLOR);
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted("Environment Mode");
+                            ImGui::TableNextColumn();
+                            ImGui::RadioButton("Auto", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_AUTO);
+                            ImGui::RadioButton("Sky", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_SKY);
+                            ImGui::RadioButton("Color", reinterpret_cast<int*>(&s_envMode), ENVIRONMENT_MODE_COLOR);
 
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Sky Color");
-                        ImGui::TableNextColumn();
-                        ImGui::SetNextItemWidth(-FLT_MIN);
-                        ImGui::ColorEdit3("##Sky Color", s_skyColor.data());
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted("Sky Color");
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-FLT_MIN);
+                            ImGui::ColorEdit3("##Sky Color", s_skyColor.data());
 
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Ground Color");
-                        ImGui::TableNextColumn();
-                        ImGui::SetNextItemWidth(-FLT_MIN);
-                        ImGui::ColorEdit3("##Ground Color", s_groundColor.data());
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted("Ground Color");
+                            ImGui::TableNextColumn();
+                            ImGui::SetNextItemWidth(-FLT_MIN);
+                            ImGui::ColorEdit3("##Ground Color", s_groundColor.data());
 
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted("Sky in Rough Reflection");
-                        ImGui::TableNextColumn();
-                        ImGui::Checkbox("##Sky in Rough Reflection", &RaytracingParams::s_skyInRoughReflection);
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted("Sky in Rough Reflection");
+                            ImGui::TableNextColumn();
+                            ImGui::Checkbox("##Sky in Rough Reflection", &RaytracingParams::s_skyInRoughReflection);
+                        }
 
                         ImGui::EndTable();
                     }
@@ -429,7 +435,7 @@ void RaytracingParams::imguiWindow()
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Debug"))
+            if (Configuration::s_enableRaytracing && ImGui::BeginTabItem("Debug"))
             {
                 if (ImGui::BeginChild("Child"))
                 {
@@ -567,7 +573,7 @@ void RaytracingParams::imguiWindow()
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Light Editor"))
+            if (Configuration::s_enableRaytracing && ImGui::BeginTabItem("Light Editor"))
                 LightData::renderImgui();
 
             if (ImGui::BeginTabItem("Logs"))

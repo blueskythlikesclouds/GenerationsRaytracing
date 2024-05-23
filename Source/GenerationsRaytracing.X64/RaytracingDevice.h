@@ -198,10 +198,6 @@ protected:
     // Reservoir
     ComPtr<ID3D12PipelineState> m_reservoirPipeline;
 
-    // HDR
-    ComPtr<ID3D12RootSignature> m_copyHdrTextureRootSignature;
-    ComPtr<ID3D12PipelineState> m_copyHdrTexturePipeline;
-
     // Prepare For Upscaler
     D3D12_CPU_DESCRIPTOR_HANDLE m_renderTargetView{};
     DXGI_FORMAT m_renderTargetFormat{};
@@ -244,13 +240,12 @@ protected:
     void procMsgComputeSmoothNormal();
     void procMsgDispatchUpscaler();
     void procMsgDrawIm3d();
-    void procMsgCopyHdrTexture();
     void procMsgComputeGrassInstancer();
 
     bool processRaytracingMessage() override;
     void releaseRaytracingResources() override;
 
 public:
-    RaytracingDevice();
+    RaytracingDevice(const IniFile& iniFile);
     ~RaytracingDevice() override;
 };

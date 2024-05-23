@@ -1,5 +1,6 @@
 #include "LightData.h"
 #include "Logger.h"
+#include "Configuration.h"
 
 static XXH32_hash_t s_currentHash = 0;
 static xxHashMap<std::vector<Light>> s_serializedLights;
@@ -102,6 +103,9 @@ HOOK(void, __cdecl, LightDataMake, 0x740920, Hedgehog::Mirage::CLightData* light
 
 void LightData::init(ModInfo_t* modInfo)
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     INSTALL_HOOK(LightDataMake);
 
     s_saveFilePath = modInfo->CurrentMod->Path;

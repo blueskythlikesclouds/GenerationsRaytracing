@@ -6,6 +6,7 @@
 #include "MeshOpt.h"
 #include "ModelReplacer.h"
 #include "SampleChunkResource.h"
+#include "Configuration.h"
 
 HOOK(MeshDataEx*, __fastcall, MeshDataConstructor, 0x722860, MeshDataEx* This)
 {
@@ -320,6 +321,9 @@ static IndexBuffer* createIndexBuffer()
 
 static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshResource)
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     assert(meshData.m_indices == nullptr);
     
     const uint32_t indexNum = _byteswap_ulong(meshResource->indexCount);
@@ -360,7 +364,7 @@ static void convertToTriangles(MeshDataEx& meshData, const MeshResource* meshRes
 
 static void generateAdjacencyData(MeshDataEx& meshData, MeshResource* meshResource)
 {
-    if (strstr(meshResource->materialName, "_smooth_normal") != nullptr)
+    if (Configuration::s_enableRaytracing && strstr(meshResource->materialName, "_smooth_normal") != nullptr)
     {
         std::vector<std::vector<uint32_t>> adjacentTriangles(_byteswap_ulong(meshResource->vertexCount));
 
@@ -480,35 +484,38 @@ HOOK(void, __cdecl, MakeMeshData2, 0x744CC0,
 
 void MeshData::init()
 {
-    WRITE_MEMORY(0x72294D, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x739511, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x739641, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x7397D1, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73C763, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73C873, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73C9EA, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73D063, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73D173, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73D2EA, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73D971, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73DA86, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73DBFE, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73E383, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73E493, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73E606, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73EF23, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73F033, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x73F1A6, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x745661, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x745771, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x7458E4, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0x745D01, uint32_t, sizeof(MeshDataEx));
-    WRITE_MEMORY(0xCD9A99, uint32_t, sizeof(MeshDataEx));
+    if (Configuration::s_enableRaytracing)
+    {
+        WRITE_MEMORY(0x72294D, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x739511, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x739641, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x7397D1, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73C763, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73C873, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73C9EA, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73D063, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73D173, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73D2EA, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73D971, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73DA86, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73DBFE, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73E383, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73E493, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73E606, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73EF23, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73F033, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x73F1A6, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x745661, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x745771, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x7458E4, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0x745D01, uint32_t, sizeof(MeshDataEx));
+        WRITE_MEMORY(0xCD9A99, uint32_t, sizeof(MeshDataEx));
 
-    INSTALL_HOOK(MeshDataConstructor);
-    INSTALL_HOOK(MeshDataDestructor);
+        INSTALL_HOOK(MeshDataConstructor);
+        INSTALL_HOOK(MeshDataDestructor);
 
-    INSTALL_HOOK(ProcessShareVertexBuffer);
+        INSTALL_HOOK(ProcessShareVertexBuffer);
+    }
 
     INSTALL_HOOK(MakeMeshData);
     INSTALL_HOOK(MakeMeshData2);

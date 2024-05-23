@@ -7,7 +7,7 @@
 
 static constexpr LPCTSTR s_gensProcessName = TEXT("SonicGenerations.exe");
 
-static std::unique_ptr<RaytracingDevice> s_device;
+static std::unique_ptr<Device> s_device;
 
 static struct ThreadHolder
 {
@@ -99,8 +99,13 @@ int main()
         onProcessNotFound();
         return -1;
     }
+    
+    IniFile iniFile;
+    iniFile.read("GenerationsRaytracing.ini");
 
-    s_device = std::make_unique<RaytracingDevice>();
+    s_device = iniFile.getBool("Mod", "EnableRaytracing", true) ?
+        std::make_unique<RaytracingDevice>(iniFile) : 
+        std::make_unique<Device>(iniFile);
 
     if (s_device->getUnderlyingDevice() != nullptr)
     {

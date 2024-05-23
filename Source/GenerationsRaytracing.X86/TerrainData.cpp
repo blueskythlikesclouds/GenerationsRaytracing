@@ -2,6 +2,7 @@
 
 #include "LightData.h"
 #include "StageSelection.h"
+#include "Configuration.h"
 
 HOOK(void, __cdecl, MakeTerrainData, 0x7346F0,
      const Hedgehog::Base::CSharedString& name,
@@ -20,5 +21,6 @@ HOOK(void, __cdecl, MakeTerrainData, 0x7346F0,
 
 void TerrainData::init()
 {
-    INSTALL_HOOK(MakeTerrainData);
+    if (Configuration::s_enableRaytracing)
+        INSTALL_HOOK(MakeTerrainData);
 }

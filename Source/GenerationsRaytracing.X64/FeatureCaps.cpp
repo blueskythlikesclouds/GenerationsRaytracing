@@ -9,12 +9,12 @@ extern "C"
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 
-bool FeatureCaps::ensureMinimumCapability(ID3D12Device* device, bool& gpuUploadHeapSupported)
+bool FeatureCaps::ensureMinimumCapability(ID3D12Device* device, bool enableRaytracing, bool& gpuUploadHeapSupported)
 {
     CD3DX12FeatureSupport features;
     features.Init(device);
 
-    const bool result = features.RaytracingTier() >= D3D12_RAYTRACING_TIER_1_1 &&
+    const bool result = (!enableRaytracing || features.RaytracingTier() >= D3D12_RAYTRACING_TIER_1_1) &&
         features.HighestShaderModel() >= D3D_SHADER_MODEL_6_7 &&
         features.ResourceBindingTier() >= D3D12_RESOURCE_BINDING_TIER_2 &&
         features.HighestRootSignatureVersion() >= D3D_ROOT_SIGNATURE_VERSION_1_1;

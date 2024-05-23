@@ -143,6 +143,9 @@ protected:
     SwapChain m_swapChain;
     uint32_t m_swapChainTextureId = 0;
 
+    ComPtr<ID3D12RootSignature> m_copyHdrTextureRootSignature;
+    ComPtr<ID3D12PipelineState> m_copyHdrTexturePipeline;
+
     // Place chonky variables at the end.
     GlobalsVS m_globalsVS{};
     GlobalsPS m_globalsPS{};
@@ -212,13 +215,14 @@ protected:
     void procMsgSaveShaderCache();
     void procMsgDrawIndexedPrimitiveUP();
     void procMsgShowCursor();
+    void procMsgCopyHdrTexture();
 
     void processMessages();
-    virtual bool processRaytracingMessage() = 0;
-    virtual void releaseRaytracingResources() = 0;
+    virtual bool processRaytracingMessage() { return false; }
+    virtual void releaseRaytracingResources() {}
 
 public:
-    Device();
+    Device(const IniFile& iniFile);
     virtual ~Device();
 
     void runLoop();

@@ -478,6 +478,9 @@ void RaytracingRendering::init()
 
 void RaytracingRendering::postInit()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     s_particleChildCount = *reinterpret_cast<uint32_t*>(0x13DD790);
     s_renderBeforeParticleChildren = *reinterpret_cast<uint32_t*>(0x13DDDDC);
     s_renderBeforeParticleChildCount = *reinterpret_cast<uint32_t*>(0x13DDDE0);

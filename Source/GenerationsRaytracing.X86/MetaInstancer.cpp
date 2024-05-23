@@ -11,6 +11,7 @@
 #include "Texture.h"
 #include "RaytracingRendering.h"
 #include "OptimizedVertexData.h"
+#include "Configuration.h"
 
 class ObjGrassInstancerEx : public Sonic::CObjGrassInstancer
 {
@@ -208,6 +209,9 @@ HOOK(void, __stdcall, ParseInstancerAsset, 0xCDAB00, uintptr_t a1, uintptr_t a2,
 
 void MetaInstancer::init()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     WRITE_MEMORY(0x11B55AC, uint32_t, sizeof(ObjGrassInstancerEx));
 
     WRITE_JUMP(0x11B5575, objGrassInstancerConstructorTrampoline);

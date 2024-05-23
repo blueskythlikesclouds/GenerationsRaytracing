@@ -13,6 +13,7 @@
 #include "VertexBuffer.h"
 #include "VertexDeclaration.h"
 #include "RaytracingParams.h"
+#include "Configuration.h"
 
 template<typename T>
 static void traverseMeshGroup(const hh::vector<boost::shared_ptr<Hedgehog::Mirage::CMeshData>>& meshGroup, uint32_t flags, bool visible, const T& function)
@@ -1073,6 +1074,9 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
 
 void ModelData::init()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     WRITE_CALL(0x72FCDD, allocTerrainModelData);
 
     INSTALL_HOOK(TerrainModelDataConstructor);

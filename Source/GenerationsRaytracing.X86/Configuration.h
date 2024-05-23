@@ -16,6 +16,8 @@ enum class FurStyle
 class Configuration
 {
 public:
+    static inline bool s_enableRaytracing = true;
+
     static inline DisplayMode s_displayMode = DisplayMode::BorderlessFullscreen;
     static inline bool s_allowResizeInWindowed = false;
 

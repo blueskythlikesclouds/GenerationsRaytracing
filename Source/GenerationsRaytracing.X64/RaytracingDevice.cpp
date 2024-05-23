@@ -1698,29 +1698,6 @@ void RaytracingDevice::procMsgDrawIm3d()
         DIRTY_FLAG_VIEWPORT;
 }
 
-void RaytracingDevice::procMsgCopyHdrTexture()
-{
-    const auto& message = m_messageReceiver.getMessage<MsgCopyHdrTexture>();
-
-    auto& commandList = getGraphicsCommandList();
-    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
-
-    PIX_EVENT();
-
-    const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_viewport.Width), static_cast<LONG>(m_viewport.Height) };
-
-    underlyingCommandList->OMSetRenderTargets(1, m_renderTargetViews, FALSE, nullptr);
-    underlyingCommandList->SetGraphicsRootSignature(m_copyHdrTextureRootSignature.Get());
-    underlyingCommandList->SetGraphicsRootDescriptorTable(0, m_descriptorHeap.getGpuHandle(m_globalsPS.textureIndices[0]));
-    underlyingCommandList->SetPipelineState(m_copyHdrTexturePipeline.Get());
-    underlyingCommandList->RSSetScissorRects(1, &scissorRect);
-    underlyingCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    commandList.commitBarriers();
-
-    underlyingCommandList->DrawInstanced(6, 1, 0, 0);
-}
-
 void RaytracingDevice::procMsgComputeGrassInstancer()
 {
     const auto& message = m_messageReceiver.getMessage<MsgComputeGrassInstancer>();
@@ -1786,7 +1763,6 @@ bool RaytracingDevice::processRaytracingMessage()
     case MsgComputeSmoothNormal::s_id: procMsgComputeSmoothNormal(); break;
     case MsgDispatchUpscaler::s_id: procMsgDispatchUpscaler(); break;
     case MsgDrawIm3d::s_id: procMsgDrawIm3d(); break;
-    case MsgCopyHdrTexture::s_id: procMsgCopyHdrTexture(); break;
     case MsgComputeGrassInstancer::s_id: procMsgComputeGrassInstancer(); break;
     default: return false;
     }
@@ -1824,7 +1800,7 @@ void RaytracingDevice::releaseRaytracingResources()
 
 static constexpr size_t s_serUavRegister = 0;
 
-RaytracingDevice::RaytracingDevice()
+RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
 {
     if (m_device == nullptr)
         return;
@@ -2112,46 +2088,40 @@ RaytracingDevice::RaytracingDevice()
     for (size_t i = 0; i < _countof(m_upscalerOverride); i++)
         m_upscalerOverride[i] = static_cast<UpscalerType>(i);
 
-    IniFile iniFile;
-    if (iniFile.read("GenerationsRaytracing.ini"))
+    m_qualityMode = static_cast<QualityMode>(
+        iniFile.get<uint32_t>("Mod", "QualityMode", static_cast<uint32_t>(QualityMode::Balanced)));
+    
+    const auto upscalerType = static_cast<UpscalerType>(iniFile.get<uint32_t>("Mod", "Upscaler", static_cast<uint32_t>(UpscalerType::FSR3)));
+    
+    if (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD)
     {
-        m_qualityMode = static_cast<QualityMode>(
-            iniFile.get<uint32_t>("Mod", "QualityMode", static_cast<uint32_t>(QualityMode::Balanced)));
-
-        const auto upscalerType = static_cast<UpscalerType>(iniFile.get<uint32_t>("Mod", "Upscaler", static_cast<uint32_t>(UpscalerType::FSR3)));
-
-        if (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD)
+        auto ngx = std::make_unique<NGX>(*this);
+        std::unique_ptr<DLSS> upscaler;
+    
+        if (ngx->valid())
         {
-            auto ngx = std::make_unique<NGX>(*this);
-            std::unique_ptr<DLSS> upscaler;
-
-            if (ngx->valid())
-            {
-                if (upscalerType == UpscalerType::DLSSD && DLSSD::valid(*ngx))
-                    upscaler = std::make_unique<DLSSD>(*ngx);
-                else if (upscalerType == UpscalerType::DLSS && DLSS::valid(*ngx))
-                    upscaler = std::make_unique<DLSS>(*ngx);
-            }
-
-            if (upscaler == nullptr)
-            {
-                MessageBox(nullptr,
-                    TEXT("An NVIDIA GPU with up to date drivers is required for DLSS. FSR3 will be used instead as a fallback."),
-                    TEXT("Generations Raytracing"),
-                    MB_ICONERROR);
-
-                m_upscalerOverride[static_cast<size_t>(upscalerType)] = UpscalerType::FSR3;
-            }
-            else
-            {
-                m_ngx = std::move(ngx);
-                m_upscaler = std::move(upscaler);
-            }
+            if (upscalerType == UpscalerType::DLSSD && DLSSD::valid(*ngx))
+                upscaler = std::make_unique<DLSSD>(*ngx);
+            else if (upscalerType == UpscalerType::DLSS && DLSS::valid(*ngx))
+                upscaler = std::make_unique<DLSS>(*ngx);
         }
-
-        m_anisotropicFiltering = iniFile.get<uint32_t>("Mod", "AnisotropicFiltering", 0);
+    
+        if (upscaler == nullptr)
+        {
+            MessageBox(nullptr,
+                TEXT("An NVIDIA GPU with up to date drivers is required for DLSS. FSR3 will be used instead as a fallback."),
+                TEXT("Generations Raytracing"),
+                MB_ICONERROR);
+    
+            m_upscalerOverride[static_cast<size_t>(upscalerType)] = UpscalerType::FSR3;
+        }
+        else
+        {
+            m_ngx = std::move(ngx);
+            m_upscaler = std::move(upscaler);
+        }
     }
-
+    
     if (m_upscaler == nullptr)
         m_upscaler = std::make_unique<FSR3>(*this);
 
@@ -2302,46 +2272,6 @@ RaytracingDevice::RaytracingDevice()
     reservoirPipelineDesc.CS.pShaderBytecode = ReservoirComputeShader;
     reservoirPipelineDesc.CS.BytecodeLength = sizeof(ReservoirComputeShader);
     m_pipelineLibrary.createComputePipelineState(&reservoirPipelineDesc, IID_PPV_ARGS(m_reservoirPipeline.GetAddressOf()));
-
-    CD3DX12_DESCRIPTOR_RANGE1 copyHdrDescriptorRanges[1];
-    copyHdrDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE);
-
-    CD3DX12_ROOT_PARAMETER1 copyHdrRootParams[1];
-    copyHdrRootParams[0].InitAsDescriptorTable(_countof(copyHdrDescriptorRanges), copyHdrDescriptorRanges, D3D12_SHADER_VISIBILITY_PIXEL);
-
-    D3D12_STATIC_SAMPLER_DESC copyHdrStaticSamplers[1]{};
-    copyHdrStaticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    copyHdrStaticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    copyHdrStaticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    copyHdrStaticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-    RootSignature::create(
-        m_device.Get(),
-        copyHdrRootParams,
-        _countof(copyHdrRootParams),
-        copyHdrStaticSamplers,
-        _countof(copyHdrStaticSamplers),
-        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS,
-        m_copyHdrTextureRootSignature, "copy_hdr");
-
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC copyHdrPipelineDesc{};
-    copyHdrPipelineDesc.pRootSignature = m_copyHdrTextureRootSignature.Get();
-    copyHdrPipelineDesc.VS.pShaderBytecode = CopyTextureVertexShader;
-    copyHdrPipelineDesc.VS.BytecodeLength = sizeof(CopyTextureVertexShader);
-    copyHdrPipelineDesc.PS.pShaderBytecode = CopyHdrTexturePixelShader;
-    copyHdrPipelineDesc.PS.BytecodeLength = sizeof(CopyHdrTexturePixelShader);
-    copyHdrPipelineDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    copyHdrPipelineDesc.SampleMask = ~0;
-    copyHdrPipelineDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    copyHdrPipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    copyHdrPipelineDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-    copyHdrPipelineDesc.DepthStencilState.DepthEnable = FALSE;
-    copyHdrPipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    copyHdrPipelineDesc.NumRenderTargets = 1;
-    copyHdrPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    copyHdrPipelineDesc.SampleDesc.Count = 1;
-
-    m_pipelineLibrary.createGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
 
     CD3DX12_ROOT_PARAMETER1 grassInstancerRootParams[5];
     grassInstancerRootParams[0].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);

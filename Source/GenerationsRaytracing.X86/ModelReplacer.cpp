@@ -5,6 +5,7 @@
 #include "InstanceData.h"
 #include "MaterialData.h"
 #include "Logger.h"
+#include "Configuration.h"
 
 struct NoAoModel
 {
@@ -300,6 +301,9 @@ void ModelReplacer::processFhlMaterials(InstanceInfoEx& instanceInfoEx, const Ma
 
 void ModelReplacer::init()
 {
+    if (!Configuration::s_enableRaytracing)
+        return;
+
     INSTALL_HOOK(ModelDataMake);
 
     std::ifstream stream("no_ao_models.json");
