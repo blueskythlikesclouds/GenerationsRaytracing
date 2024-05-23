@@ -137,8 +137,8 @@ static void createLocalLight(Hedgehog::Mirage::CLightData& lightData, size_t loc
     memcpy(message.color, lightData.m_Color.data(), sizeof(message.color));
     message.inRange = lightData.m_Range.z();
     message.outRange = lightData.m_Range.w();
-    message.castShadow = false;
-    message.enableBackfaceCulling = false;
+    message.castShadow = true;
+    message.enableBackfaceCulling = true;
     message.shadowRange = 1.0f / lightData.m_Range.w();
     
     s_messageSender.endMessage();
