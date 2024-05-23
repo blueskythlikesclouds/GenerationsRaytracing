@@ -167,7 +167,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
             
             color += directLighting;
 
-            if (bounceIndex == 0 && g_LocalLightCount > 0)
+            if (g_LocalLightCount > 0)
             {
                 uint sample = min(uint(NextRandomFloat(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
                 LocalLight localLight = g_LocalLights[sample];
