@@ -9,7 +9,6 @@ void LightData::update(XXH32_hash_t hash)
 {
     s_currentHash = hash;
     s_lights = s_serializedLights[hash];
-    s_dirty = true;
 }
 
 static std::string s_saveFilePath;
@@ -183,9 +182,7 @@ void LightData::renderImgui()
                 light.name = name;
 
                 const auto camera = gameDocument->GetWorld()->GetCamera();
-                const auto position = camera->m_MyCamera.m_Position + camera->m_MyCamera.m_Direction;
-                memcpy(light.position, position.data(), sizeof(light.position));
-
+                light.position = camera->m_MyCamera.m_Position + camera->m_MyCamera.m_Direction;
                 light.color[0] = 1.0f;
                 light.color[1] = 1.0f;
                 light.color[2] = 1.0f;
@@ -196,8 +193,6 @@ void LightData::renderImgui()
                 light.enableBackfaceCulling = false;
                 light.shadowRange = 0.0f;
             }
-
-            s_dirty = true;
         }
         ImGui::SameLine();
 
@@ -207,8 +202,6 @@ void LightData::renderImgui()
 
             if (s_selectedLightIndex >= s_lights.size())
                 s_selectedLightIndex = s_lights.size() - 1;
-
-            s_dirty = true;
         }
         ImGui::SameLine();
 
@@ -220,8 +213,6 @@ void LightData::renderImgui()
             char name[0x100];
             makeName(light.name.c_str(), name, sizeof(name));
             light.name = name;
-
-            s_dirty = true;
         }
 
         if (s_selectedLightIndex < s_lights.size())
@@ -249,49 +240,49 @@ void LightData::renderImgui()
                 ImGui::TextUnformatted("Position");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                s_dirty |= ImGui::DragFloat3("##Position", light.position, 0.1f, 0.0f, 0.0f, s_format);
+                ImGui::DragFloat3("##Position", light.position.data(), 0.1f, 0.0f, 0.0f, s_format);
 
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted("Color");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                s_dirty |= ImGui::ColorEdit3("##Color", light.color);
+                ImGui::ColorEdit3("##Color", light.color);
 
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted("Color Intensity");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                s_dirty |= ImGui::DragFloat("##Color Intensity", &light.colorIntensity, 0.01f, 1.0f, FLT_MAX, s_format);
+                ImGui::DragFloat("##Color Intensity", &light.colorIntensity, 0.01f, 1.0f, FLT_MAX, s_format);
 
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted("In Range");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                s_dirty |= ImGui::DragFloat("##In Range", &light.inRange, 0.1f, 0.0f, light.outRange, s_format);
+                ImGui::DragFloat("##In Range", &light.inRange, 0.1f, 0.0f, light.outRange, s_format);
 
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted("Out Range");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                s_dirty |= ImGui::DragFloat("##Out Range", &light.outRange, 0.1f, light.inRange, FLT_MAX, s_format);
+                ImGui::DragFloat("##Out Range", &light.outRange, 0.1f, light.inRange, FLT_MAX, s_format);
 
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted("Shadow Range");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                s_dirty |= ImGui::DragFloat("##Shadow Range", &light.shadowRange, 0.001f, 0.0f, FLT_MAX, s_format);
+                ImGui::DragFloat("##Shadow Range", &light.shadowRange, 0.001f, 0.0f, FLT_MAX, s_format);
 
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted("Cast Shadow");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                s_dirty |= ImGui::Checkbox("##Cast Shadow", &light.castShadow);
+                ImGui::Checkbox("##Cast Shadow", &light.castShadow);
 
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted("Backface Culling");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                s_dirty |= ImGui::Checkbox("##Backface Culling", &light.enableBackfaceCulling);
+                ImGui::Checkbox("##Backface Culling", &light.enableBackfaceCulling);
 
                 ImGui::EndTable();
             }
@@ -302,18 +293,14 @@ void LightData::renderImgui()
             for (size_t i = 0; i < s_lights.size(); i++)
             {
                 auto& light = s_lights[i];
-                if (Im3d::GizmoTranslation(reinterpret_cast<Im3d::Id>(&light), light.position))
-                {
+                if (Im3d::GizmoTranslation(reinterpret_cast<Im3d::Id>(&light), light.position.data()))
                     s_selectedLightIndex = i;
-                    s_dirty = true;
-                }
             }
         }
         else if (s_selectedLightIndex < s_lights.size())
         {
             auto& light = s_lights[s_selectedLightIndex];
-            if (Im3d::GizmoTranslation(reinterpret_cast<Im3d::Id>(&light), light.position))
-                s_dirty = true;
+            Im3d::GizmoTranslation(reinterpret_cast<Im3d::Id>(&light), light.position.data());
         }
 
         if (s_selectedLightIndex < s_lights.size())
@@ -324,10 +311,7 @@ void LightData::renderImgui()
     }
 
     if (s_currentHash != 0 && ImGui::Button("Revert Changes"))
-    {
         s_lights = s_serializedLights[s_currentHash];
-        s_dirty = true;
-    }
 
     ImGui::SameLine();
 

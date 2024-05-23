@@ -31,29 +31,6 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     
         ComputeReservoirWeight(reservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[reservoir.Y]));
     
-        // Temporal reuse
-        if (g_CurrentFrame > 0)
-        {
-            int2 prevIndex = (float2) dispatchThreadId - g_PixelJitter + 0.5 + g_MotionVectors_SRV[dispatchThreadId];
-    
-            // TODO: Check for previous normal and depth
-    
-            Reservoir prevReservoir = LoadReservoir(g_PrevReservoir[prevIndex]);
-            prevReservoir.M = min(reservoir.M * 20, prevReservoir.M);
-    
-            Reservoir temporalReservoir = (Reservoir) 0;
-    
-            UpdateReservoir(temporalReservoir, reservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
-                g_LocalLights[reservoir.Y]) * reservoir.W * reservoir.M, reservoir.M, NextRandomFloat(randSeed));
-    
-            UpdateReservoir(temporalReservoir, prevReservoir.Y, ComputeReservoirWeight(gBufferData, eyeDirection, 
-                g_LocalLights[prevReservoir.Y]) * prevReservoir.W * prevReservoir.M, prevReservoir.M, NextRandomFloat(randSeed));
-    
-            ComputeReservoirWeight(temporalReservoir, ComputeReservoirWeight(gBufferData, eyeDirection, g_LocalLights[temporalReservoir.Y]));
-    
-            reservoir = temporalReservoir;
-        }
-    
         g_Reservoir[dispatchThreadId] = StoreReservoir(reservoir);
     }
 }

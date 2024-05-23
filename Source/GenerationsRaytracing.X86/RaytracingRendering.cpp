@@ -128,20 +128,23 @@ static boost::shared_ptr<Hedgehog::Mirage::CModelData> findSky(Hedgehog::Mirage:
     return nullptr;
 }
 
-static void createLocalLight(Hedgehog::Mirage::CLightData& lightData, size_t localLightId)
+static void createLocalLight(Hedgehog::Mirage::CLightData& lightData)
 {
-    auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
-    
-    message.localLightId = localLightId;
-    memcpy(message.position, lightData.m_Position.data(), sizeof(message.position));
-    memcpy(message.color, lightData.m_Color.data(), sizeof(message.color));
-    message.inRange = lightData.m_Range.z();
-    message.outRange = lightData.m_Range.w();
-    message.castShadow = true;
-    message.enableBackfaceCulling = true;
-    message.shadowRange = 1.0f / lightData.m_Range.w();
-    
-    s_messageSender.endMessage();
+    const auto position = lightData.m_Position + RaytracingRendering::s_worldShift;
+    if (position.squaredNorm() < 1000000.0f)
+    {
+        auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+
+        memcpy(message.position, position.data(), sizeof(message.position));
+        memcpy(message.color, lightData.m_Color.data(), sizeof(message.color));
+        message.inRange = lightData.m_Range.z();
+        message.outRange = lightData.m_Range.w();
+        message.castShadow = true;
+        message.enableBackfaceCulling = true;
+        message.shadowRange = 1.0f / lightData.m_Range.w();
+
+        s_messageSender.endMessage();
+    }
 }
 
 // 2 elements for post processing on particles
@@ -214,8 +217,6 @@ static FUNCTION_PTR(void, __cdecl, setSceneSurface, 0x64E960, void*, void*);
 static boost::shared_ptr<Hedgehog::Mirage::CModelData> s_curSky;
 static float s_curBackGroundScale;
 
-static Hedgehog::Mirage::CLightListData* s_curLightList;
-static size_t s_localLightCount;
 static uint32_t s_prevDebugView;
 static uint32_t s_prevEnvMode;
 static Hedgehog::Math::CVector s_prevSkyColor;
@@ -232,6 +233,8 @@ static void __cdecl implOfTraceRays(void* a1)
     s_resetAccumulation = RaytracingParams::update();
     const bool shouldRender = s_prevRaytracingEnable;
     initRaytracingPatches(RaytracingParams::s_enable);
+
+    const auto time = std::chrono::high_resolution_clock::now();
 
     if (shouldRender)
     {
@@ -308,8 +311,6 @@ static void __cdecl implOfTraceRays(void* a1)
                     createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get());
             }
 
-            size_t localLightCount = 0;
-
             if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
             {
                 const auto& lightManager = gameDocument->m_pMember->m_spLightManager;
@@ -321,54 +322,39 @@ static void __cdecl implOfTraceRays(void* a1)
                     {
                         const auto& lightListData = lightManager->m_pStaticLightContext->m_spLightListData;
 
-                        if (s_curLightList != lightListData.get() || LightData::s_dirty)
+                        for (const auto& lightData : lightListData->m_Lights)
                         {
-                            s_curLightList = lightListData.get();
-                            s_localLightCount = 0;
-
-                            for (const auto& lightData : lightListData->m_Lights)
-                            {
-                                if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
-                                {
-                                    createLocalLight(*lightData, s_localLightCount);
-                                    ++s_localLightCount;
-                                }
-                            }
-
-                            for (const auto& light : LightData::s_lights)
-                            {
-                                auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
-
-                                message.localLightId = s_localLightCount;
-                                memcpy(message.position, light.position, sizeof(message.position));
-                                message.color[0] = light.color[0] * light.colorIntensity;
-                                message.color[1] = light.color[1] * light.colorIntensity;
-                                message.color[2] = light.color[2] * light.colorIntensity;
-                                message.inRange = light.inRange;
-                                message.outRange = light.outRange;
-                                message.castShadow = light.castShadow;
-                                message.enableBackfaceCulling = light.enableBackfaceCulling;
-                                message.shadowRange = light.shadowRange;
-
-                                s_messageSender.endMessage();
-
-                                ++s_localLightCount;
-                            }
-
-                            LightData::s_dirty = false;
+                            if (lightData->IsMadeAll() && lightData->m_Type == Hedgehog::Mirage::eLightType_Point)
+                                createLocalLight(*lightData);
                         }
                     }
-
-                    localLightCount = s_localLightCount;
 
                     if (lightManager->m_pLocalLightContext != nullptr)
                     {
                         for (auto& localLight : lightManager->m_pLocalLightContext->m_LocalLights)
-                        {
-                            createLocalLight(*localLight->m_spLight, localLightCount);
-                            ++localLightCount;
-                        }
+                            createLocalLight(*localLight->m_spLight);
                     }
+                }
+            }
+
+            for (const auto& light : LightData::s_lights)
+            {
+                auto position = light.position + RaytracingRendering::s_worldShift;
+                if (position.squaredNorm() < 1000000.0f)
+                {
+                    auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+
+                    memcpy(message.position, position.data(), sizeof(message.position));
+                    message.color[0] = light.color[0] * light.colorIntensity;
+                    message.color[1] = light.color[1] * light.colorIntensity;
+                    message.color[2] = light.color[2] * light.colorIntensity;
+                    message.inRange = light.inRange;
+                    message.outRange = light.outRange;
+                    message.castShadow = light.castShadow;
+                    message.enableBackfaceCulling = light.enableBackfaceCulling;
+                    message.shadowRange = light.shadowRange;
+
+                    s_messageSender.endMessage();
                 }
             }
 
@@ -390,7 +376,6 @@ static void __cdecl implOfTraceRays(void* a1)
             traceRaysMessage.width = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 4);
             traceRaysMessage.height = *reinterpret_cast<uint16_t*>(**static_cast<uintptr_t**>(a1) + 6);
             traceRaysMessage.resetAccumulation = s_resetAccumulation;
-            traceRaysMessage.localLightCount = localLightCount;
             traceRaysMessage.diffusePower = RaytracingParams::s_diffusePower;
             traceRaysMessage.lightPower = RaytracingParams::s_lightPower;
             traceRaysMessage.emissivePower = RaytracingParams::s_emissivePower;
@@ -444,6 +429,9 @@ static void __cdecl implOfTraceRays(void* a1)
     }
 
     ++RaytracingRendering::s_frame;
+
+    RaytracingRendering::s_duration = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+        std::chrono::high_resolution_clock::now() - time).count();
 }
 
 static void implOfDispatchUpscaler(void* A1)

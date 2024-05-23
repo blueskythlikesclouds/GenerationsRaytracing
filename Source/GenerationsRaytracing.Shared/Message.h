@@ -373,7 +373,6 @@ struct MsgTraceRays
     uint16_t width;
     uint16_t height;
     bool resetAccumulation;
-    uint32_t localLightCount;
     float diffusePower;
     float lightPower;
     float emissivePower;
@@ -492,7 +491,6 @@ struct MsgCreateLocalLight
 {
     MSG_DEFINE_MESSAGE(MsgRenderSky);
 
-    uint32_t localLightId;
     float position[3];
     float color[3];
     float inRange;

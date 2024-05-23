@@ -359,7 +359,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     m_globalsRT.internalResolutionWidth = m_upscaler->getWidth();
     m_globalsRT.internalResolutionHeight = m_upscaler->getHeight();
     m_globalsRT.randomSeed = m_globalsRT.internalResolutionWidth * m_globalsRT.internalResolutionHeight * m_globalsRT.currentFrame;
-    m_globalsRT.localLightCount = message.localLightCount;
+    m_globalsRT.localLightCount = static_cast<uint32_t>(m_localLights.size());
     m_globalsRT.diffusePower = message.diffusePower;
     m_globalsRT.lightPower = message.lightPower;
     m_globalsRT.emissivePower = message.emissivePower;
@@ -946,7 +946,7 @@ void RaytracingDevice::procMsgTraceRays()
         static_cast<uint32_t>(m_topLevelAccelStructs[INSTANCE_TYPE_TRANSPARENT].alsoInstanceDescs.size() * sizeof(InstanceDesc)), 0x10);
 
     const auto localLights = createBuffer(m_localLights.data(),
-        message.localLightCount * sizeof(LocalLight), 0x10);
+        static_cast<uint32_t>(m_localLights.size() * sizeof(LocalLight)), 0x10);
 
     auto& commandList = getGraphicsCommandList();
     const auto underlyingCommandList = commandList.getUnderlyingCommandList();
@@ -1027,7 +1027,7 @@ void RaytracingDevice::procMsgTraceRays()
     underlyingCommandList->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
 
-    if (message.localLightCount > 0)
+    if (!m_localLights.empty())
     {
         PIX_BEGIN_EVENT("Reservoir");
 
@@ -1557,10 +1557,7 @@ void RaytracingDevice::procMsgCreateLocalLight()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCreateLocalLight>();
 
-    if (m_localLights.size() <= message.localLightId)
-        m_localLights.resize(message.localLightId + 1);
-
-    auto& localLight = m_localLights[message.localLightId];
+    auto& localLight = m_localLights.emplace_back();
 
     memcpy(localLight.position, message.position, sizeof(localLight.position));
     localLight.inRange = message.inRange;
@@ -1796,6 +1793,8 @@ void RaytracingDevice::releaseRaytracingResources()
         freeGeometryDescs(geometryId, geometryCount);
 
     m_tempGeometryRanges[m_frame].clear();
+
+    m_localLights.clear();
 }
 
 static constexpr size_t s_serUavRegister = 0;

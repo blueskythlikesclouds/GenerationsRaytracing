@@ -171,7 +171,7 @@ float ComputeLocalLightFalloff(float distance, float inRange, float outRange)
 
 float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
-    float3 direction = (localLight.Position - g_EyePosition.xyz) - gBufferData.Position;
+    float3 direction = localLight.Position - gBufferData.Position;
     float distance = length(direction);
 
     if (distance > 0.0)

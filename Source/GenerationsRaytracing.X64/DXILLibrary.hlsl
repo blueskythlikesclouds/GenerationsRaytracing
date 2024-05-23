@@ -172,7 +172,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
                 uint sample = min(uint(NextRandomFloat(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
                 LocalLight localLight = g_LocalLights[sample];
 
-                float3 lightDirection = (localLight.Position - g_EyePosition.xyz) - payload.Position;
+                float3 lightDirection = localLight.Position - payload.Position;
                 float distance = length(lightDirection);
 
                 if (distance > 0.0)

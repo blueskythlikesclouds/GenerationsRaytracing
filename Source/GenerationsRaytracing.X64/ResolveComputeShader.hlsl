@@ -67,7 +67,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     
             if ((localLight.Flags & LOCAL_LIGHT_FLAG_CAST_SHADOW) && reservoir.W > 0.0001)
             {
-                float3 direction = (localLight.Position - g_EyePosition.xyz) - gBufferData.Position;
+                float3 direction = localLight.Position - gBufferData.Position;
                 float distance = length(direction);
                 if (distance > 0.0)
                     direction /= distance;
