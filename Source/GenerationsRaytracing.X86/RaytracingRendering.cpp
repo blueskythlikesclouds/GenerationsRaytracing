@@ -429,7 +429,7 @@ static void __cdecl implOfTraceRays(void* a1)
 
             traceRaysMessage.middleGray = *reinterpret_cast<float*>(0x1A572D0);
             traceRaysMessage.skyInRoughReflection = RaytracingParams::s_skyInRoughReflection;
-            traceRaysMessage.enableExposureTexture = !Configuration::s_hdr;
+            traceRaysMessage.enableExposureTexture = !Configuration::s_hdr && s_particleChildCount != 2;
 
             s_messageSender.endMessage();
         }
