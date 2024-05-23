@@ -401,7 +401,7 @@ static boost::shared_ptr<Hedgehog::Mirage::CParameterFloat4Element> createFloat4
     return float4Param;
 }
 
-static std::unordered_map<Hedgehog::Mirage::CMaterialData*, float*> s_tmpMaterialCnt;
+static std::unordered_map<Hedgehog::Mirage::CMaterialData*, float*> s_texcoordOffsets;
 
 static void processTexcoordMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog::Motion::CTexcoordMotion& texcoordMotion)
 {
@@ -413,7 +413,7 @@ static void processTexcoordMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog
         if (materialClone == nullptr)
             materialClone = cloneMaterial(*texcoordMotion.m_pMaterialData);
 
-        auto& offsets = s_tmpMaterialCnt[texcoordMotion.m_pMaterialData];
+        auto& offsets = s_texcoordOffsets[texcoordMotion.m_pMaterialData];
         if (offsets == nullptr)
         {
             offsets = createFloat4Param(*materialClone, s_texCoordOffsetSymbol, 2, nullptr)->m_spValue.get();
@@ -428,9 +428,12 @@ static void processTexcoordMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog
     }
 }
 
+static std::unordered_set<Hedgehog::Mirage::CMaterialData*> s_matMotionProcessedMats;
+
 static void processMaterialMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog::Motion::CMaterialMotion& materialMotion)
 {
-    if (materialMotion.m_pMaterialData != nullptr && materialMotion.m_pMaterialData->IsMadeAll())
+    if (materialMotion.m_pMaterialData != nullptr && materialMotion.m_pMaterialData->IsMadeAll() && 
+        s_matMotionProcessedMats.find(materialMotion.m_pMaterialData) == s_matMotionProcessedMats.end())
     {
         static Hedgehog::Base::CStringSymbol s_diffuseSymbol("diffuse");
         static Hedgehog::Base::CStringSymbol s_ambientSymbol("ambient");
@@ -443,7 +446,7 @@ static void processMaterialMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog
         if (material == nullptr)
             material = cloneMaterial(*materialMotion.m_pMaterialData);
 
-        const auto& matMotionData = (materialMotion.m_Field4 & 0x2) == 0 ? 
+        const auto& matMotionData = (materialMotion.m_Field4 & 0x2) == 0 ?
             materialMotion.m_MaterialMotionData : materialMotion.m_DefaultMaterialMotionData;
 
         for (const auto& float4Param : material->m_Float4Params)
@@ -466,6 +469,9 @@ static void processMaterialMotion(InstanceInfoEx& instanceInfoEx, const Hedgehog
             else if (float4Param->m_Name == s_opacityReflectionRefractionSpectypeSymbol)
                 memcpy(float4Param->m_spValue.get(), matMotionData.OpacityReflectionRefractionSpectype, sizeof(float[4]));
         }
+
+        if ((materialMotion.m_Field4 & 0x2) == 0)
+            s_matMotionProcessedMats.emplace(materialMotion.m_pMaterialData);
     }
 }
 
@@ -526,19 +532,22 @@ void ModelData::processSingleElementEffect(InstanceInfoEx& instanceInfoEx, Hedge
                 instanceInfoEx.m_chrPlayableMenuParam = npcSingleElementEffectMotionAll->m_ChrPlayableMenuParam.x();
         }
 
-        s_tmpMaterialCnt.clear();
+        s_texcoordOffsets.clear();
+        s_matMotionProcessedMats.clear();
     }
     else if (const auto singleElementEffectUvMotion = dynamic_cast<Hedgehog::Motion::CSingleElementEffectUvMotion*>(singleElementEffect))
     {
         for (const auto& texcoordMotion : singleElementEffectUvMotion->m_TexcoordMotionList)
             processTexcoordMotion(instanceInfoEx, texcoordMotion);
 
-        s_tmpMaterialCnt.clear();
+        s_texcoordOffsets.clear();
     }
     else if (const auto singleElementEffectMatMotion = dynamic_cast<Hedgehog::Motion::CSingleElementEffectMatMotion*>(singleElementEffect))
     {
         for (const auto& materialMotion : singleElementEffectMatMotion->m_MaterialMotionList)
             processMaterialMotion(instanceInfoEx, materialMotion);
+
+        s_matMotionProcessedMats.clear();
     }
     else if (const auto objectEdgeEmissionEffect = dynamic_cast<Sonic::CObjectEdgeEmissionEffect*>(singleElementEffect))
     {
