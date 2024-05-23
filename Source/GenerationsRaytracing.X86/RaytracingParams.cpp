@@ -532,6 +532,10 @@ void RaytracingParams::imguiWindow()
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
+
+            if (Configuration::s_enableRaytracing && ImGui::BeginTabItem("Light Editor"))
+                LightData::renderImgui();
+
             if (ImGui::BeginTabItem("Quick Boot"))
             {
                 if (ImGui::BeginChild("Child"))
@@ -585,9 +589,6 @@ void RaytracingParams::imguiWindow()
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
-
-            if (Configuration::s_enableRaytracing && ImGui::BeginTabItem("Light Editor"))
-                LightData::renderImgui();
 
             if (ImGui::BeginTabItem("Logs"))
             {
