@@ -17,6 +17,7 @@
 #include "MetaInstancer.h"
 #include "Logger.h"
 #include "WallJumpBlock.h"
+#include "Frustum.h"
 
 static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRenderable* renderable)
 {
@@ -128,22 +129,27 @@ static boost::shared_ptr<Hedgehog::Mirage::CModelData> findSky(Hedgehog::Mirage:
     return nullptr;
 }
 
+static Frustum s_frustum;
+
 static void createLocalLight(Hedgehog::Mirage::CLightData& lightData)
 {
-    const auto position = lightData.m_Position + RaytracingRendering::s_worldShift;
-    if (position.squaredNorm() < 1000000.0f)
+    if (s_frustum.intersects(lightData.m_Position, lightData.m_Range.w()))
     {
-        auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+        const auto position = lightData.m_Position + RaytracingRendering::s_worldShift;
+        if (position.squaredNorm() < 1000000.0f)
+        {
+            auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
 
-        memcpy(message.position, position.data(), sizeof(message.position));
-        memcpy(message.color, lightData.m_Color.data(), sizeof(message.color));
-        message.inRange = lightData.m_Range.z();
-        message.outRange = lightData.m_Range.w();
-        message.castShadow = true;
-        message.enableBackfaceCulling = true;
-        message.shadowRange = 1.0f / lightData.m_Range.w();
+            memcpy(message.position, position.data(), sizeof(message.position));
+            memcpy(message.color, lightData.m_Color.data(), sizeof(message.color));
+            message.inRange = lightData.m_Range.z();
+            message.outRange = lightData.m_Range.w();
+            message.castShadow = true;
+            message.enableBackfaceCulling = true;
+            message.shadowRange = 1.0f / lightData.m_Range.w();
 
-        s_messageSender.endMessage();
+            s_messageSender.endMessage();
+        }
     }
 }
 
@@ -287,7 +293,8 @@ static void __cdecl implOfTraceRays(void* a1)
                 s_resetAccumulation = true;
             }
 
-            RaytracingRendering::s_worldShift = -world->GetCamera()->m_MyCamera.m_Position;
+            const auto camera = world->GetCamera();
+            RaytracingRendering::s_worldShift = -camera->m_MyCamera.m_Position;
 
             ModelReplacer::createPendingModels();
             MaterialData::createPendingMaterials();
@@ -310,6 +317,8 @@ static void __cdecl implOfTraceRays(void* a1)
                 if (categoryFindResult != renderScene->m_BundleMap.end())
                     createInstancesAndBottomLevelAccelStructs(categoryFindResult->second.get());
             }
+
+            s_frustum.set(camera->m_MyCamera.m_Projection * camera->m_MyCamera.m_View.matrix());
 
             if (const auto gameDocument = Sonic::CGameDocument::GetInstance())
             {
@@ -339,22 +348,25 @@ static void __cdecl implOfTraceRays(void* a1)
 
             for (const auto& light : LightData::s_lights)
             {
-                auto position = light.position + RaytracingRendering::s_worldShift;
-                if (position.squaredNorm() < 1000000.0f)
+                if (s_frustum.intersects(light.position, light.outRange))
                 {
-                    auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
+                    auto position = light.position + RaytracingRendering::s_worldShift;
+                    if (position.squaredNorm() < 1000000.0f)
+                    {
+                        auto& message = s_messageSender.makeMessage<MsgCreateLocalLight>();
 
-                    memcpy(message.position, position.data(), sizeof(message.position));
-                    message.color[0] = light.color[0] * light.colorIntensity;
-                    message.color[1] = light.color[1] * light.colorIntensity;
-                    message.color[2] = light.color[2] * light.colorIntensity;
-                    message.inRange = light.inRange;
-                    message.outRange = light.outRange;
-                    message.castShadow = light.castShadow;
-                    message.enableBackfaceCulling = light.enableBackfaceCulling;
-                    message.shadowRange = light.shadowRange;
+                        memcpy(message.position, position.data(), sizeof(message.position));
+                        message.color[0] = light.color[0] * light.colorIntensity;
+                        message.color[1] = light.color[1] * light.colorIntensity;
+                        message.color[2] = light.color[2] * light.colorIntensity;
+                        message.inRange = light.inRange;
+                        message.outRange = light.outRange;
+                        message.castShadow = light.castShadow;
+                        message.enableBackfaceCulling = light.enableBackfaceCulling;
+                        message.shadowRange = light.shadowRange;
 
-                    s_messageSender.endMessage();
+                        s_messageSender.endMessage();
+                    }
                 }
             }
 

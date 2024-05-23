@@ -165,6 +165,7 @@
   <ItemGroup>
     <ClInclude Include="BaseTexture.h" />
     <ClInclude Include="FileBinder.h" />
+    <ClInclude Include="Frustum.h" />
     <ClInclude Include="GroundSmokeParticle.h" />
     <ClInclude Include="InstanceType.h" />
     <ClInclude Include="LightData.h" />

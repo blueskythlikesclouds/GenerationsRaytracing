@@ -306,6 +306,9 @@
     <ClInclude Include="OptimizedVertexData.h">
       <Filter>Raytracing\Renderable</Filter>
     </ClInclude>
+    <ClInclude Include="Frustum.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">
