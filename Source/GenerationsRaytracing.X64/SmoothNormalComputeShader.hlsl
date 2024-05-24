@@ -7,6 +7,7 @@ cbuffer GeometryDesc : register(b0)
     uint g_VertexStride;
     uint g_VertexCount;
     uint g_NormalOffset;
+    bool g_IsMirrored;
 }
 
 RWByteAddressBuffer g_Vertices : register(u0);
@@ -39,6 +40,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         if (!isnan(posA.x) && !isnan(posB.x) && !isnan(posC.x))
             normal += normalize(cross(posA - posC, posA - posB));
     }
+    
+    if (g_IsMirrored)
+        normal *= -1.0;
 
     g_Vertices.Store(g_NormalOffset + dispatchThreadId.x * g_VertexStride, EncodeSnorm10(normalize(normal)));
 }

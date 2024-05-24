@@ -264,13 +264,15 @@ void RaytracingDevice::handlePendingSmoothNormalCommands()
             uint32_t vertexStride;
             uint32_t vertexCount;
             uint32_t normalOffset;
+            uint32_t isMirrored;
         } geometryDesc = 
         {
             m_indexBuffers[cmd.indexBufferId].srvIndex,
             cmd.indexOffset,
             cmd.vertexStride,
             cmd.vertexCount,
-            cmd.normalOffset
+            cmd.normalOffset,
+            cmd.isMirrored
         };
 
         underlyingCommandList->SetComputeRootConstantBufferView(0,
@@ -1581,7 +1583,8 @@ void RaytracingDevice::procMsgComputeSmoothNormal()
         message.vertexOffset,
         message.normalOffset,
         message.vertexBufferId,
-        message.adjacencyBufferId
+        message.adjacencyBufferId,
+        message.isMirrored
     });
 }
 

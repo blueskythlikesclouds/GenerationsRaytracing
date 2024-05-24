@@ -806,6 +806,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
                         smoothNormalMsg.normalOffset = geometryDesc->normalOffset;
                         smoothNormalMsg.vertexBufferId = instanceInfoEx.m_poseVertexBuffer->getId();
                         smoothNormalMsg.adjacencyBufferId = meshDataEx.m_adjacency->getId();
+                        smoothNormalMsg.isMirrored = matrixList[meshDataEx.m_pNodeIndices[0]].matrix().determinant() < 0.0f;
 
                         s_messageSender.endMessage();
                     }

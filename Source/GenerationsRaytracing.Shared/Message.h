@@ -524,6 +524,7 @@ struct MsgComputeSmoothNormal
     uint8_t normalOffset;
     uint32_t vertexBufferId;
     uint32_t adjacencyBufferId;
+    bool isMirrored;
 };
 
 struct MsgDrawIndexedPrimitiveUP

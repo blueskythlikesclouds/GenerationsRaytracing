@@ -65,6 +65,7 @@ struct SmoothNormalCmd
     uint32_t normalOffset;
     uint32_t vertexBufferId;
     uint32_t adjacencyBufferId;
+    bool isMirrored;
 };
 
 class RaytracingDevice final : public Device
