@@ -409,7 +409,7 @@ void RaytracingDevice::createTopLevelAccelStructs()
     }
 }
 
-static constexpr size_t s_textureCount = 27;
+static constexpr size_t s_textureCount = 26;
 
 void RaytracingDevice::createRaytracingTextures()
 {
@@ -459,7 +459,6 @@ void RaytracingDevice::createRaytracingTextures()
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16_FLOAT, m_gBufferTexture8, L"Geometry Buffer Texture 8" },
 
         { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture, L"Reservoir Texture" },
-        { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_prevReservoirTexture, L"Previous Reservoir Texture" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, L"GI Texture" },
         { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture, L"Reflection Texture" },
 

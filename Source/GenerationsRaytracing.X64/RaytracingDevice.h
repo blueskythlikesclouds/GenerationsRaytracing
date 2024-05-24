@@ -149,7 +149,6 @@ protected:
     ComPtr<D3D12MA::Allocation> m_gBufferTexture8;
 
     ComPtr<D3D12MA::Allocation> m_reservoirTexture;
-    ComPtr<D3D12MA::Allocation> m_prevReservoirTexture;
 
     ComPtr<D3D12MA::Allocation> m_giTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
