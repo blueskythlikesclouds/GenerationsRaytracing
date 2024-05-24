@@ -9,6 +9,23 @@ cbuffer Globals : register(b0)
 #define EXCLUDE_RAYTRACING_DEFINITIONS
 #include "GBufferData.hlsli"
 
+#define MAKE_DEBUG_VIEW(VALUE) \
+    do { \
+        uint layerNum = g_LayerNum_SRV[index.xy]; \
+        color.rgb = 0.0; \
+        for (uint i = 0; i < layerNum; i++) \
+        { \
+            index.z = i; \
+            float3 value = VALUE; \
+            float alpha = LoadGBufferData(index).Alpha; \
+            if (!(LoadGBufferData(index).Flags & GBUFFER_FLAG_IS_ADDITIVE)) \
+            { \
+                color.rgb *= 1.0 - alpha; \
+            } \
+            color.rgb += value * alpha; \
+        } \
+    } while (0)
+
 void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD, 
     out float4 color : SV_Target0, out float depth : SV_Depth)
 {
@@ -21,66 +38,66 @@ void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD,
             break;
         
         case DEBUG_VIEW_DIFFUSE:
-            color.rgb = LoadGBufferData(index).Diffuse;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).Diffuse);
             break;
         
         case DEBUG_VIEW_SPECULAR:
-            color.rgb = LoadGBufferData(index).Specular;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).Specular);
             break;
         
         case DEBUG_VIEW_SPECULAR_TINT:
-            color.rgb = LoadGBufferData(index).SpecularTint;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).SpecularTint);
             break;
         
         case DEBUG_VIEW_SPECULAR_ENVIRONMENT:
-            color.rgb = LoadGBufferData(index).SpecularEnvironment.xxx;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).SpecularEnvironment.xxx);
             break;
         
         case DEBUG_VIEW_SPECULAR_GLOSS:
-            color.rgb = LoadGBufferData(index).SpecularGloss.xxx / 1024.0;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).SpecularGloss.xxx / 1024.0);
             break;
         case DEBUG_VIEW_SPECULAR_LEVEL:
-            color.rgb = LoadGBufferData(index).SpecularLevel / 5.0;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).SpecularLevel / 5.0);
             break;
         
         case DEBUG_VIEW_SPECULAR_FRESNEL:
-            color.rgb = LoadGBufferData(index).SpecularFresnel;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).SpecularFresnel);
             break;
         
         case DEBUG_VIEW_NORMAL:
-            color.rgb = LoadGBufferData(index).Normal * 0.5 + 0.5;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).Normal * 0.5 + 0.5);
             break;
         
         case DEBUG_VIEW_FALLOFF:
-            color.rgb = LoadGBufferData(index).Falloff;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).Falloff);
             break;
         
         case DEBUG_VIEW_EMISSION:
-            color.rgb = LoadGBufferData(index).Emission;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).Emission);
             break;
         
         case DEBUG_VIEW_TRANS_COLOR:
-            color.rgb = LoadGBufferData(index).TransColor;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).TransColor);
             break;
         
         case DEBUG_VIEW_REFRACTION:
-            color.rgb = LoadGBufferData(index).Refraction.xxx;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).Refraction.xxx);
             break;
         
         case DEBUG_VIEW_REFRACTION_OVERLAY:
-            color.rgb = LoadGBufferData(index).RefractionOverlay.xxx;
+            MAKE_DEBUG_VIEW(LoadGBufferData(index).RefractionOverlay.xxx);
             break;
         
         case DEBUG_VIEW_REFRACTION_OFFSET:
-            color.rgb = float3(LoadGBufferData(index).RefractionOffset * 0.5 + 0.5, 0.0);
+            MAKE_DEBUG_VIEW(float3(LoadGBufferData(index).RefractionOffset * 0.5 + 0.5, 0.0));
             break;
 
         case DEBUG_VIEW_GI:
-            color.rgb = !(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)) ? g_GlobalIllumination_SRV[index].rgb : 0.0;
+            MAKE_DEBUG_VIEW(!(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)) ? g_GlobalIllumination_SRV[index].rgb : 0.0);
             break;
         
         case DEBUG_VIEW_REFLECTION:
-            color.rgb = !(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)) ? g_Reflection_SRV[index].rgb : 0.0;
+            MAKE_DEBUG_VIEW(!(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)) ? g_Reflection_SRV[index].rgb : 0.0);
             break;
     }
     
