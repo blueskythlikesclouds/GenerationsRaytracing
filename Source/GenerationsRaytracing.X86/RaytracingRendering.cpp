@@ -43,7 +43,28 @@ static void createInstancesAndBottomLevelAccelStructs(Hedgehog::Mirage::CRendera
                 instanceInfoEx->m_edgeEmissionParam = 1.0f;
 
             if (modelDataEx->m_noAoModel != nullptr && RaytracingParams::s_enableNoAoModels)
+            {
+                // Sync visibility states
+                if (modelDataEx->m_noAoModel->IsMadeOne())
+                {
+                    for (auto& nodeGroupModelData : modelDataEx->m_noAoModel->m_NodeGroupModels)
+                    {
+                        if (!nodeGroupModelData->m_Name.empty())
+                        {
+                            for (auto& nodeGroupModelDataToCompare : modelDataEx->m_NodeGroupModels)
+                            {
+                                if (nodeGroupModelData->m_Name == nodeGroupModelDataToCompare->m_Name)
+                                {
+                                    nodeGroupModelData->m_Visible = nodeGroupModelDataToCompare->m_Visible;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 modelDataEx = reinterpret_cast<ModelDataEx*>(modelDataEx->m_noAoModel.get());
+            }
 
             if (modelDataEx->IsMadeAll())
             {
