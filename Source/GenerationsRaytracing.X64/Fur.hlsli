@@ -76,7 +76,7 @@ void CreateFurGBufferData(Vertex vertex, Material material, inout GBufferData gB
         furTexture.GetDimensions(0, width, height, numberOfLevels);
     
         furColor = furTexture.Load(int3(0, 0, max(0, int(numberOfLevels) - 1))).rgb;
-        furColor = 1.0 / pow(saturate(furColor), 1.0 / 2.2);
+        furColor = select(furColor > 0.0, 1.0 / pow(saturate(furColor), 1.0 / 2.2), 1.0);
     
         gBufferData.Diffuse = saturate(gBufferData.Diffuse * furColor.rgb);
         gBufferData.SpecularTint = saturate(gBufferData.SpecularTint * furColor.rgb);
