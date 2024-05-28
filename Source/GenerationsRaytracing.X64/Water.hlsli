@@ -31,7 +31,7 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
     if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
     {
         float3 viewPosition = mul(float4(vertex.Position, 0.0), g_MtxView).xyz;
-        gBufferData.Alpha *= saturate(viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection));
+        gBufferData.Alpha *= smoothstep(0.0, 1.0, saturate(viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection)));
     }
 
     gBufferData.Refraction = 1.0;
@@ -43,7 +43,7 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
     if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
     {
         float3 viewPosition = mul(float4(vertex.Position, 0.0), g_MtxView).xyz;
-        gBufferData.Alpha *= saturate(viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection));
+        gBufferData.Alpha *= smoothstep(0.0, 1.0, saturate(viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection)));
     }
     
     gBufferData.RefractionOffset *= 0.05;
@@ -55,7 +55,7 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
     if (material.Flags & MATERIAL_FLAG_SOFT_EDGE)
     {
         float3 viewPosition = mul(float4(vertex.Position, 0.0), g_MtxView).xyz;
-        gBufferData.Alpha = saturate((viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection)) / material.WaterParam.w);
+        gBufferData.Alpha = smoothstep(0.0, 1.0, saturate((viewPosition.z - LinearizeDepth(g_Depth[DispatchRaysIndex().xy], g_MtxInvProjection)) / material.WaterParam.w));
     }
     
     gBufferData.RefractionOffset *= 0.05 + material.WaterParam.z;   
