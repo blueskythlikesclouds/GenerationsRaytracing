@@ -71,8 +71,11 @@ void CreateFurGBufferData(Vertex vertex, Material material, inout GBufferData gB
         // Divide by last mip map to neutralize the color.
         Texture2D furTexture = ResourceDescriptorHeap[
             NonUniformResourceIndex(material.DiffuseTexture2 & 0xFFFFF)];
+        
+        uint width, height, numberOfLevels;
+        furTexture.GetDimensions(0, width, height, numberOfLevels);
     
-        furColor = furTexture.Load(int3(0, 0, 8)).rgb;
+        furColor = furTexture.Load(int3(0, 0, max(0, int(numberOfLevels) - 1))).rgb;
         furColor = 1.0 / pow(saturate(furColor), 1.0 / 2.2);
     
         gBufferData.Diffuse = saturate(gBufferData.Diffuse * furColor.rgb);
