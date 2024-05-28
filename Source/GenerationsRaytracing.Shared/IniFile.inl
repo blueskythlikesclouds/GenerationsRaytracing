@@ -87,7 +87,7 @@ inline bool IniFile::read(const char* filePath)
                 while (*endPtr != '\0' && !isNewLine(*endPtr) && !isWhitespace(*endPtr) && *endPtr != '=')
                     ++endPtr;
 
-                if (!isWhitespace(*endPtr) && *endPtr != '=')
+                if (!isNewLine(*endPtr) && !isWhitespace(*endPtr) && *endPtr != '=')
                     return false;
             }
 
@@ -99,35 +99,35 @@ inline bool IniFile::read(const char* filePath)
             while (*dataPtr != '\0' && !isNewLine(*dataPtr) && *dataPtr != '=')
                 ++dataPtr;
 
-            if (*dataPtr != '=')
-                return false;
-
-            ++dataPtr;
-            
-            while (*dataPtr != '\0' && isWhitespace(*dataPtr))
-                ++dataPtr;
-
-            if (*dataPtr == '"')
+            if (*dataPtr == '=')
             {
                 ++dataPtr;
-                endPtr = dataPtr;
 
-                while (*endPtr != '\0' && !isNewLine(*endPtr) && *endPtr != '"')
-                    ++endPtr;
+                while (*dataPtr != '\0' && isWhitespace(*dataPtr))
+                    ++dataPtr;
 
-                if (*endPtr != '"')
-                    return false;
+                if (*dataPtr == '"')
+                {
+                    ++dataPtr;
+                    endPtr = dataPtr;
+
+                    while (*endPtr != '\0' && !isNewLine(*endPtr) && *endPtr != '"')
+                        ++endPtr;
+
+                    if (*endPtr != '"')
+                        return false;
+                }
+                else
+                {
+                    endPtr = dataPtr;
+
+                    while (*endPtr != '\0' && !isNewLine(*endPtr) && !isWhitespace(*endPtr))
+                        ++endPtr;
+                }
+
+                property.value = std::string(dataPtr, endPtr - dataPtr);
+                dataPtr = endPtr + 1;
             }
-            else
-            {
-                endPtr = dataPtr;
-
-                while (*endPtr != '\0' && !isNewLine(*endPtr) && !isWhitespace(*endPtr))
-                    ++endPtr;
-            }
-
-            property.value = std::string(dataPtr, endPtr - dataPtr);
-            dataPtr = endPtr + 1;
         }
         else
         {
@@ -222,6 +222,16 @@ T IniFile::get(const std::string_view& sectionName, const std::string_view& prop
         }
     }
     return defaultValue;
+}
+
+template<typename T>
+inline void IniFile::enumerate(const T& function) const
+{
+    for (const auto& [_, section] : m_sections)
+    {
+        for (auto& property : section.properties)
+            function(section.name, property.second.name, property.second.value);
+    }
 }
 
 template <typename T>

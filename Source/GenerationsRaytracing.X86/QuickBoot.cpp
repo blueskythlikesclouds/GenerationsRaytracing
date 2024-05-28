@@ -36,6 +36,7 @@ struct Mod
     std::string guid;
     std::string filePath;
     std::string name;
+    std::vector<std::string> iniFilePaths;
     std::bitset<_countof(s_stages)> stages;
 };
 
@@ -86,7 +87,17 @@ static void loadModsDb()
     {
         IniFile modIni;
         if (modIni.read(value.c_str()))
-            s_mods.push_back({ name, value, modIni.getString("Desc", "Title", "") });
+        {
+            auto& mod = s_mods.emplace_back();
+            mod.guid = name;
+            mod.filePath = value;
+            mod.name = modIni.getString("Desc", "Title", "");
+
+            modIni.enumerate("CPKs", [&](const std::string& name, const std::string& value)
+            {
+                mod.iniFilePaths.push_back(value);
+            });
+        }
     });
         
     std::sort(s_mods.begin(), s_mods.end(), 
@@ -119,6 +130,37 @@ static void loadModsDb()
                    const auto stageIndex = stageIndices.find(fileName);
                    if (stageIndex != stageIndices.end())
                        mod.stages[stageIndex->second] = true;
+               }
+           }
+
+           if (!mod.iniFilePaths.empty())
+           {
+               std::string absoluteIniFilePath(directoryPath);
+               absoluteIniFilePath += '\\';
+
+               for (const auto& iniFilePath : mod.iniFilePaths)
+               {
+                   absoluteIniFilePath += iniFilePath;
+
+                   IniFile iniFile;
+                   if (iniFile.read(absoluteIniFilePath.c_str()))
+                   {
+                       iniFile.enumerate([&](const std::string& section, const std::string& name, const std::string& value)
+                       {
+                           size_t firstSepIndex = name.find_first_of("\\/");
+                           size_t lastSepIndex = name.find_last_of("\\/");
+                       
+                           if (firstSepIndex != std::string::npos && firstSepIndex != lastSepIndex)
+                           {
+                               auto stageName = std::string_view(name).substr(firstSepIndex + 1, lastSepIndex - firstSepIndex - 1);
+                               const auto stageIndex = stageIndices.find(stageName);
+                               if (stageIndex != stageIndices.end())
+                                   mod.stages[stageIndex->second] = true;
+                           }
+                       });
+                   }
+
+                   absoluteIniFilePath.resize(directoryPath.size() + 1);
                }
            }
        }

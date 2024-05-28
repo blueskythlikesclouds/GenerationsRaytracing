@@ -45,6 +45,9 @@ public:
     T get(const std::string_view& sectionName, const std::string_view& propertyName, T defaultValue) const;
 
     template<typename T>
+    void enumerate(const T& function) const;
+
+    template<typename T>
     void enumerate(const std::string_view& sectionName, const T& function) const;
 
     void setString(const std::string_view& sectionName, const std::string_view& propertyName, std::string value);
