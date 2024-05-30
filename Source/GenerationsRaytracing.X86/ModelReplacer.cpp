@@ -184,7 +184,9 @@ void ModelReplacer::createPendingModels()
                 {
                     static constexpr const char* s_suffixes[] =
                     {
+                        "eye_",
                         "_eye",
+                        "_Eye",
                         "hite",
                         "Teye"
                     };
