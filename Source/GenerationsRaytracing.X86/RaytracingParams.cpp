@@ -465,6 +465,9 @@ void RaytracingParams::imguiWindow()
                         ImGui::TextUnformatted("View");
                         ImGui::TableNextColumn();
                         ImGui::RadioButton("None", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_NONE);
+                        ImGui::RadioButton("Color", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_COLOR);
+                        ImGui::RadioButton("Depth", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_DEPTH);
+                        ImGui::RadioButton("Motion Vectors", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_MOTION_VECTORS);
                         ImGui::RadioButton("Diffuse", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_DIFFUSE);
                         ImGui::RadioButton("Specular", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR);
                         ImGui::RadioButton("Specular Tint", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR_TINT);

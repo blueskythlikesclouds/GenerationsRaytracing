@@ -37,6 +37,18 @@ void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD,
             color.rgb = min(g_Output_SRV[position.xy], 4.0).rgb;
             break;
         
+        case DEBUG_VIEW_COLOR:
+            color.rgb = g_Color_SRV[index.xy].rgb;
+            break;
+        
+        case DEBUG_VIEW_DEPTH:
+            color.rgb = g_Depth_SRV[index.xy];
+            break;
+        
+        case DEBUG_VIEW_MOTION_VECTORS:
+            color.rgb = float3((g_MotionVectors_SRV[index.xy] / g_InternalResolution) * 0.5 + 0.5, 1.0);
+            break;
+        
         case DEBUG_VIEW_DIFFUSE:
             MAKE_DEBUG_VIEW(LoadGBufferData(index).Diffuse);
             break;
@@ -89,7 +101,7 @@ void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD,
             break;
         
         case DEBUG_VIEW_REFRACTION_OFFSET:
-            MAKE_DEBUG_VIEW(float3(LoadGBufferData(index).RefractionOffset * 0.5 + 0.5, 0.0));
+            MAKE_DEBUG_VIEW(float3(LoadGBufferData(index).RefractionOffset * 0.5 + 0.5, 1.0));
             break;
 
         case DEBUG_VIEW_GI:
