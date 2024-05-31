@@ -40,4 +40,6 @@ struct RaytracingParams
     static bool update();
 
     static void imguiWindow();
+
+    static void init();
 };

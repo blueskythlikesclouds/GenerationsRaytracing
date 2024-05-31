@@ -607,3 +607,55 @@ void RaytracingParams::imguiWindow()
     }
     ImGui::End();
 }
+
+static bool* s_postProcessingToggles[] =
+{
+    reinterpret_cast<bool*>(0x1A4358E), // HDR
+    reinterpret_cast<bool*>(0x1A43102), // BoostBlur3D
+    reinterpret_cast<bool*>(0x1AD6198), // BoostBlur2D
+    reinterpret_cast<bool*>(0x1A43103), // MotionBlur
+    reinterpret_cast<bool*>(0x1A4323D), // BloomStar
+    reinterpret_cast<bool*>(0x1E5E333), // LightShaft
+    reinterpret_cast<bool*>(0x1A4358D), // DepthOfField
+    reinterpret_cast<bool*>(0x1AD6277), // FadeOut
+    reinterpret_cast<bool*>(0x1B22E78), // ReflectionMap
+    reinterpret_cast<bool*>(0x1B22E8C), // ColorCorrection
+    reinterpret_cast<bool*>(0x1A46DE7), // AfterImage
+    reinterpret_cast<bool*>(0x1B22EA8), // CrossFade
+};
+
+HOOK(void, __stdcall, LoadSceneEffect, 0x579050, void* A1, void* A2)
+{
+    if (RaytracingParams::s_debugView != DEBUG_VIEW_NONE)
+    {
+        // Disable post processing when debug view mode in on.
+        bool toggleHistory[_countof(s_postProcessingToggles)]{};
+
+        // Keep tonemapping on for certain debug views.
+        const size_t index =
+            RaytracingParams::s_debugView == DEBUG_VIEW_COLOR ||
+            RaytracingParams::s_debugView == DEBUG_VIEW_GI ||
+            RaytracingParams::s_debugView == DEBUG_VIEW_REFLECTION ? 1 : 0;
+
+        for (size_t i = index; i < _countof(s_postProcessingToggles); i++)
+        {
+            toggleHistory[i] = *s_postProcessingToggles[i];
+            *s_postProcessingToggles[i] = false;
+        }
+
+        originalLoadSceneEffect(A1, A2);
+
+        // Restore
+        for (size_t i = index; i < _countof(s_postProcessingToggles); i++)
+            *s_postProcessingToggles[i] = toggleHistory[i];
+    }
+    else
+    {
+        originalLoadSceneEffect(A1, A2);
+    }
+}
+
+void RaytracingParams::init()
+{
+    INSTALL_HOOK(LoadSceneEffect);
+}

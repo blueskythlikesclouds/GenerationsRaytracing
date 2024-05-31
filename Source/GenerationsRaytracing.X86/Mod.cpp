@@ -104,6 +104,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     SampleChunkResource::init();
     MetaInstancer::init();
     WallJumpBlock::init();
+    RaytracingParams::init();
 
 #ifdef _DEBUG
 #if 0
