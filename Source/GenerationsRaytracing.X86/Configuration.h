@@ -1,5 +1,8 @@
 #pragma once
 
+#include "QualityMode.h"
+#include "UpscalerType.h"
+
 enum class DisplayMode
 {
     Borderless = 0,
@@ -21,8 +24,8 @@ public:
     static inline DisplayMode s_displayMode = DisplayMode::BorderlessFullscreen;
     static inline bool s_allowResizeInWindowed = false;
 
-    static inline uint32_t s_upscaler;
-    static inline uint32_t s_qualityMode;
+    static inline UpscalerType s_upscaler;
+    static inline QualityMode s_qualityMode;
 
     static inline bool s_gachaLighting;
 

@@ -1,23 +1,9 @@
 #pragma once
 
+#include "UpscalerType.h"
+#include "QualityMode.h"
+
 class Device;
-
-enum class QualityMode
-{
-    Native,
-    Quality,
-    Balanced,
-    Performance,
-    UltraPerformance
-};
-
-enum class UpscalerType
-{
-    DLSS,
-    DLSSD,
-    FSR3,
-    Max
-};
 
 class Upscaler
 {

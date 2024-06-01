@@ -125,6 +125,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         g_NormalsRoughness[dispatchThreadId] = normalsRoughnessComposite;
         g_SpecularHitDistance[dispatchThreadId] = specularHitDistanceComposite;
     }
+    
+    if (g_EnableAccumulation)
+        colorComposite = lerp(g_Color[dispatchThreadId], colorComposite, 1.0 / float(g_CurrentFrame + 1));
 
     g_Color[dispatchThreadId] = colorComposite;
     g_DiffuseAlbedo[dispatchThreadId] = diffuseAlbedoComposite;

@@ -439,8 +439,11 @@ static void __cdecl implOfTraceRays(void* a1)
                 memset(traceRaysMessage.backgroundColor, 0, sizeof(traceRaysMessage.backgroundColor));
             }
 
-            traceRaysMessage.upscaler = RaytracingParams::s_upscaler == 0 ? Configuration::s_upscaler + 1 : RaytracingParams::s_upscaler;
-            traceRaysMessage.qualityMode = RaytracingParams::s_qualityMode == 0 ? Configuration::s_qualityMode + 1 : RaytracingParams::s_qualityMode;
+            traceRaysMessage.upscaler = static_cast<uint32_t>(RaytracingParams::s_upscaler == UpscalerType::Unspecified ? 
+                Configuration::s_upscaler : RaytracingParams::s_upscaler);
+
+            traceRaysMessage.qualityMode = static_cast<uint32_t>(RaytracingParams::s_qualityMode == QualityMode::Unspecified ?
+                Configuration::s_qualityMode : RaytracingParams::s_qualityMode);
 
             traceRaysMessage.adaptionLuminanceTextureId = (*reinterpret_cast<Texture**>(
                 *reinterpret_cast<uint8_t**>(static_cast<uint8_t*>(a1) + 20) + 0x658))->getId();

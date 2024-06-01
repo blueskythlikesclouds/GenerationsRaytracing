@@ -328,8 +328,11 @@ void RaytracingDevice::writeHitGroupShaderTable(size_t geometryIndex, size_t sha
 
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& message)
 {
-    if (message.resetAccumulation || message.debugView != DEBUG_VIEW_NONE)
+    if (message.resetAccumulation || message.debugView != DEBUG_VIEW_NONE || 
+        (m_upscaler == nullptr && memcmp(m_globalsRT.prevProj, m_globalsVS.floatConstants, 0x80) != 0))
+    {
         m_globalsRT.currentFrame = 0;
+    }
 
     switch (message.envMode)
     {
@@ -356,10 +359,10 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     }
 
     ffxFsr3GetJitterOffset(&m_globalsRT.pixelJitterX, &m_globalsRT.pixelJitterY, static_cast<int32_t>(m_globalsRT.currentFrame),
-        ffxFsr3GetJitterPhaseCount(static_cast<int32_t>(m_upscaler->getWidth()), static_cast<int32_t>(m_width)));
+        ffxFsr3GetJitterPhaseCount(static_cast<int32_t>(m_renderWidth), static_cast<int32_t>(m_width)));
 
-    m_globalsRT.internalResolutionWidth = m_upscaler->getWidth();
-    m_globalsRT.internalResolutionHeight = m_upscaler->getHeight();
+    m_globalsRT.internalResolutionWidth = m_renderWidth;
+    m_globalsRT.internalResolutionHeight = m_renderHeight;
     m_globalsRT.randomSeed = m_globalsRT.internalResolutionWidth * m_globalsRT.internalResolutionHeight * m_globalsRT.currentFrame;
     m_globalsRT.localLightCount = static_cast<uint32_t>(m_localLights.size());
     m_globalsRT.diffusePower = message.diffusePower;
@@ -371,6 +374,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     m_globalsRT.adaptionLuminanceTextureId = m_textures[message.adaptionLuminanceTextureId].srvIndex;
     m_globalsRT.middleGray = message.middleGray;
     m_globalsRT.skyInRoughReflection = message.skyInRoughReflection;
+    m_globalsRT.enableAccumulation = m_globalsRT.currentFrame > 0 && m_upscaler == nullptr;
 
     getGraphicsCommandList().transitionBarrier(m_textures[message.adaptionLuminanceTextureId].allocation->GetResource(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -413,146 +417,168 @@ static constexpr size_t s_textureCount = 26;
 
 void RaytracingDevice::createRaytracingTextures()
 {
-    m_upscaler->init({ *this, m_width, m_height, m_qualityMode });
+    bool shouldCreateTextures = false;
 
-    setDescriptorHeaps();
-    m_curRootSignature = nullptr;
+    if (m_upscaler != nullptr)
+    {
+        m_upscaler->init({ *this, m_width, m_height, m_qualityMode });
+        
+        shouldCreateTextures =
+            m_renderWidth != m_upscaler->getWidth() ||
+            m_renderHeight != m_upscaler->getHeight();
+
+        m_renderWidth = m_upscaler->getWidth();
+        m_renderHeight = m_upscaler->getHeight();
+
+        setDescriptorHeaps();
+        m_curRootSignature = nullptr;
+    }
+    else
+    {
+        shouldCreateTextures = m_renderWidth != m_width || m_renderHeight != m_height;
+        m_renderWidth = m_width;
+        m_renderHeight = m_height;
+    }
+
     m_globalsRT.currentFrame = 0;
 
-    D3D12MA::ALLOCATION_DESC allocDesc{};
-    allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-    allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
-
-    auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-        DXGI_FORMAT_UNKNOWN,
-        0, 0, 1, 1, 1, 0,
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-
-    struct
+    if (shouldCreateTextures)
     {
-        uint16_t depthOrArraySize{};
-        DXGI_FORMAT format{};
-        ComPtr<D3D12MA::Allocation>& allocation;
-        const wchar_t* name{};
-        uint32_t width{};
-        uint32_t height{};
-        D3D12_RESOURCE_FLAGS flags{};
-    }
-    const textureDescs[] =
-    {
-        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture, L"Color Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
-        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_outputTexture, L"Output Texture", m_width, m_height },
-        { 1, DXGI_FORMAT_R32_FLOAT, m_depthTexture, L"Depth Texture" },
-        { 1, DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture, L"Motion Vectors Texture" },
-        { 1, DXGI_FORMAT_R32_FLOAT, m_exposureTexture, L"Exposure Texture", 1, 1 },
+        D3D12MA::ALLOCATION_DESC allocDesc{};
+        allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
-        { 1, DXGI_FORMAT_R8_UINT, m_layerNumTexture, L"Layer Num Texture" },
+        auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+            DXGI_FORMAT_UNKNOWN,
+            0, 0, 1, 1, 1, 0,
+            D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0, L"Geometry Buffer Texture 0" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1, L"Geometry Buffer Texture 1" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2, L"Geometry Buffer Texture 2" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3, L"Geometry Buffer Texture 3" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5, L"Geometry Buffer Texture 5" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6, L"Geometry Buffer Texture 6" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7, L"Geometry Buffer Texture 7" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16_FLOAT, m_gBufferTexture8, L"Geometry Buffer Texture 8" },
+        struct
+        {
+            uint16_t depthOrArraySize{};
+            DXGI_FORMAT format{};
+            ComPtr<D3D12MA::Allocation>& allocation;
+            const wchar_t* name{};
+            uint32_t width{};
+            uint32_t height{};
+            D3D12_RESOURCE_FLAGS flags{};
+        }
+        const textureDescs[] =
+        {
+            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture, L"Color Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
+            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_outputTexture, L"Output Texture", m_width, m_height },
+            { 1, DXGI_FORMAT_R32_FLOAT, m_depthTexture, L"Depth Texture" },
+            { 1, DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture, L"Motion Vectors Texture" },
+            { 1, DXGI_FORMAT_R32_FLOAT, m_exposureTexture, L"Exposure Texture", 1, 1 },
 
-        { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture, L"Reservoir Texture" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, L"GI Texture" },
-        { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture, L"Reflection Texture" },
+            { 1, DXGI_FORMAT_R8_UINT, m_layerNumTexture, L"Layer Num Texture" },
 
-        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoTexture, L"Diffuse Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
-        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture, L"Specular Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
-        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_normalsRoughnessTexture, L"Normals Roughness Texture" },
-        { 1, DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture, L"Linear Depth Texture" },
-        { 1, DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture, L"Specular Hit Distance Texture" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0, L"Geometry Buffer Texture 0" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1, L"Geometry Buffer Texture 1" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2, L"Geometry Buffer Texture 2" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3, L"Geometry Buffer Texture 3" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5, L"Geometry Buffer Texture 5" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6, L"Geometry Buffer Texture 6" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7, L"Geometry Buffer Texture 7" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16_FLOAT, m_gBufferTexture8, L"Geometry Buffer Texture 8" },
 
-        { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
-        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoBeforeTransparencyTexture, L"Diffuse Albedo Before Transparency Texture" },
-        { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoBeforeTransparencyTexture, L"Specular Albedo Before Transparency Texture" },
-    };
+            { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture, L"Reservoir Texture" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, L"GI Texture" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture, L"Reflection Texture" },
 
-    static_assert(_countof(textureDescs) == s_textureCount);
+            { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoTexture, L"Diffuse Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
+            { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture, L"Specular Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
+            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_normalsRoughnessTexture, L"Normals Roughness Texture" },
+            { 1, DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture, L"Linear Depth Texture" },
+            { 1, DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture, L"Specular Hit Distance Texture" },
 
-    for (const auto& textureDesc : textureDescs)
-    {
-        resourceDesc.Width = textureDesc.width > 0 ? textureDesc.width : m_upscaler->getWidth();
-        resourceDesc.Height = textureDesc.height > 0 ? textureDesc.height : m_upscaler->getHeight();
-        resourceDesc.DepthOrArraySize = textureDesc.depthOrArraySize;
-        resourceDesc.Format = textureDesc.format;
-        resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | textureDesc.flags;
+            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
+            { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoBeforeTransparencyTexture, L"Diffuse Albedo Before Transparency Texture" },
+            { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoBeforeTransparencyTexture, L"Specular Albedo Before Transparency Texture" },
+        };
 
-        const HRESULT hr = m_allocator->CreateResource(
-            &allocDesc,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            nullptr,
-            textureDesc.allocation.ReleaseAndGetAddressOf(),
-            IID_ID3D12Resource,
-            nullptr);
+        static_assert(_countof(textureDescs) == s_textureCount);
 
-        assert(SUCCEEDED(hr) && textureDesc.allocation != nullptr);
+        for (const auto& textureDesc : textureDescs)
+        {
+            resourceDesc.Width = textureDesc.width > 0 ? textureDesc.width : m_renderWidth;
+            resourceDesc.Height = textureDesc.height > 0 ? textureDesc.height : m_renderHeight;
+            resourceDesc.DepthOrArraySize = textureDesc.depthOrArraySize;
+            resourceDesc.Format = textureDesc.format;
+            resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | textureDesc.flags;
+
+            const HRESULT hr = m_allocator->CreateResource(
+                &allocDesc,
+                &resourceDesc,
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                nullptr,
+                textureDesc.allocation.ReleaseAndGetAddressOf(),
+                IID_ID3D12Resource,
+                nullptr);
+
+            assert(SUCCEEDED(hr) && textureDesc.allocation != nullptr);
 
 #ifdef _DEBUG
-        textureDesc.allocation->GetResource()->SetName(textureDesc.name);
+            textureDesc.allocation->GetResource()->SetName(textureDesc.name);
 #endif
-    }
-
-    assert(m_uavId != NULL && m_srvId != NULL);
-    
-    auto uavHandle = m_descriptorHeap.getCpuHandle(m_uavId);
-    auto srvHandle = m_descriptorHeap.getCpuHandle(m_srvId);
-    
-    for (const auto& textureDesc : textureDescs)
-    {
-        auto resource = textureDesc.allocation->GetResource();
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = textureDesc.format;
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = textureDesc.format;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-        if (textureDesc.depthOrArraySize > 1)
-        {
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-            uavDesc.Texture2DArray.ArraySize = textureDesc.depthOrArraySize;
-
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-            srvDesc.Texture2DArray.MipLevels = 1;
-            srvDesc.Texture2DArray.ArraySize = textureDesc.depthOrArraySize;
         }
-        else
+
+        assert(m_uavId != NULL && m_srvId != NULL);
+
+        auto uavHandle = m_descriptorHeap.getCpuHandle(m_uavId);
+        auto srvHandle = m_descriptorHeap.getCpuHandle(m_srvId);
+
+        for (const auto& textureDesc : textureDescs)
         {
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+            auto resource = textureDesc.allocation->GetResource();
 
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Texture2D.MipLevels = 1;
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+            uavDesc.Format = textureDesc.format;
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.Format = textureDesc.format;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+            if (textureDesc.depthOrArraySize > 1)
+            {
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                uavDesc.Texture2DArray.ArraySize = textureDesc.depthOrArraySize;
+
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                srvDesc.Texture2DArray.MipLevels = 1;
+                srvDesc.Texture2DArray.ArraySize = textureDesc.depthOrArraySize;
+            }
+            else
+            {
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                srvDesc.Texture2D.MipLevels = 1;
+            }
+
+            m_device->CreateUnorderedAccessView(
+                resource,
+                nullptr,
+                &uavDesc,
+                uavHandle);
+
+            m_device->CreateShaderResourceView(
+                resource,
+                &srvDesc,
+                srvHandle);
+
+            if (m_exposureTexture == textureDesc.allocation)
+                m_exposureTextureId = m_descriptorHeap.getIndex(srvHandle);
+
+            uavHandle.ptr += m_descriptorHeap.getIncrementSize();
+            srvHandle.ptr += m_descriptorHeap.getIncrementSize();
         }
-    
-        m_device->CreateUnorderedAccessView(
-            resource,
-            nullptr,
-            &uavDesc,
-            uavHandle);
 
-        m_device->CreateShaderResourceView(
-            resource,
-            &srvDesc,
-            srvHandle);
-
-        if (m_exposureTexture == textureDesc.allocation)
-            m_exposureTextureId = m_descriptorHeap.getIndex(srvHandle);
-    
-        uavHandle.ptr += m_descriptorHeap.getIncrementSize();
-        srvHandle.ptr += m_descriptorHeap.getIncrementSize();
+        m_device->CreateRenderTargetView(m_colorTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_colorRtvId));
+        m_device->CreateRenderTargetView(m_diffuseAlbedoTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_diffuseAlbedoRtvId));
+        m_device->CreateRenderTargetView(m_specularAlbedoTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_specularAlbedoRtvId));
     }
-
-    m_device->CreateRenderTargetView(m_colorTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_colorRtvId));
-    m_device->CreateRenderTargetView(m_diffuseAlbedoTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_diffuseAlbedoRtvId));
-    m_device->CreateRenderTargetView(m_specularAlbedoTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_specularAlbedoRtvId));
 }
 
 void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
@@ -565,8 +591,8 @@ void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
     underlyingCommandList->SetPipelineState(m_resolvePipeline.Get());
 
     underlyingCommandList->Dispatch(
-        (m_upscaler->getWidth() + 7) / 8,
-        (m_upscaler->getHeight() + 7) / 8,
+        (m_renderWidth + 7) / 8,
+        (m_renderHeight + 7) / 8,
         1);
 
     commandList.uavBarrier(m_normalsRoughnessTexture->GetResource());
@@ -588,8 +614,8 @@ void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
     underlyingCommandList->SetPipelineState(m_resolveTransparencyPipeline.Get());
 
     underlyingCommandList->Dispatch(
-        (m_upscaler->getWidth() + 7) / 8,
-        (m_upscaler->getHeight() + 7) / 8,
+        (m_renderWidth + 7) / 8,
+        (m_renderHeight + 7) / 8,
         1);
 
     PIX_END_EVENT();
@@ -612,9 +638,9 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscal
         uint32_t debugView;
     } globals =
     {
-        m_upscaler->getWidth(),
-        m_upscaler->getHeight(),
-        message.debugView
+        m_renderWidth,
+        m_renderHeight,
+        m_upscaler != nullptr ? message.debugView : DEBUG_VIEW_COLOR
     };
 
     underlyingCommandList->OMSetRenderTargets(1, m_renderTargetViews, FALSE, &m_depthStencilView);
@@ -872,9 +898,12 @@ void RaytracingDevice::procMsgTraceRays()
         return;
     }
 
+    const auto upscalerType = static_cast<UpscalerType>(message.upscaler);
+    const auto qualityMode = static_cast<QualityMode>(message.qualityMode);
+
     const bool resolutionMismatch = m_width != message.width || m_height != message.height;
-    const bool upscalerMismatch = message.upscaler != 0 && m_upscaler->getType() != m_upscalerOverride[message.upscaler - 1];
-    const bool qualityModeMismatch = message.qualityMode != 0 && m_qualityMode != static_cast<QualityMode>(message.qualityMode - 1);
+    const bool upscalerMismatch = (m_upscaler != nullptr ? m_upscaler->getType() : UpscalerType::None) != m_upscalerOverride[message.upscaler];
+    const bool qualityModeMismatch = upscalerType != UpscalerType::None && m_qualityMode != qualityMode;
 
     if (resolutionMismatch || upscalerMismatch || qualityModeMismatch)
     {
@@ -885,28 +914,31 @@ void RaytracingDevice::procMsgTraceRays()
 
         if (upscalerMismatch)
         {
-            if (m_ngx == nullptr && 
-                ((message.upscaler == static_cast<uint32_t>(UpscalerType::DLSS) + 1) || 
-                (message.upscaler == static_cast<uint32_t>(UpscalerType::DLSSD) + 1)))
-            {
+            if (m_ngx == nullptr && (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD))
                 m_ngx = std::make_unique<NGX>(*this);
-            }
 
             std::unique_ptr<DLSS> upscaler;
 
             if (m_ngx != nullptr && m_ngx->valid())
             {
-                if ((message.upscaler == static_cast<uint32_t>(UpscalerType::DLSS) + 1) && DLSS::valid(*m_ngx))
+                if (upscalerType == UpscalerType::DLSS && DLSS::valid(*m_ngx))
                     upscaler = std::make_unique<DLSS>(*m_ngx);
 
-                else if ((message.upscaler == static_cast<uint32_t>(UpscalerType::DLSSD) + 1) && DLSSD::valid(*m_ngx))
+                else if (upscalerType == UpscalerType::DLSSD && DLSSD::valid(*m_ngx))
                     upscaler = std::make_unique<DLSSD>(*m_ngx);
             }
 
             if (upscaler == nullptr)
             {
-                m_upscaler = std::make_unique<FSR3>(*this);
-                m_upscalerOverride[message.upscaler - 1] = UpscalerType::FSR3;
+                if (upscalerType != UpscalerType::None)
+                {
+                    m_upscaler = std::make_unique<FSR3>(*this);
+                    m_upscalerOverride[message.upscaler] = UpscalerType::FSR3;
+                }
+                else
+                {
+                    m_upscaler = nullptr;
+                }
             }
             else
             {
@@ -915,7 +947,7 @@ void RaytracingDevice::procMsgTraceRays()
         }
 
         if (qualityModeMismatch)
-            m_qualityMode = static_cast<QualityMode>(message.qualityMode - 1);
+            m_qualityMode = qualityMode;
 
         createRaytracingTextures();
     }
@@ -993,8 +1025,8 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.HitGroupTable.StartAddress = hitGroupShaderTable;
     dispatchRaysDesc.HitGroupTable.SizeInBytes = m_hitGroupShaderTable.size();
     dispatchRaysDesc.HitGroupTable.StrideInBytes = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-    dispatchRaysDesc.Width = m_upscaler->getWidth();
-    dispatchRaysDesc.Height = m_upscaler->getHeight();
+    dispatchRaysDesc.Width = m_renderWidth;
+    dispatchRaysDesc.Height = m_renderHeight;
     dispatchRaysDesc.Depth = 1;
 
     PIX_BEGIN_EVENT("PrimaryRayGeneration");
@@ -1035,8 +1067,8 @@ void RaytracingDevice::procMsgTraceRays()
         underlyingCommandList->SetPipelineState(m_reservoirPipeline.Get());
 
         underlyingCommandList->Dispatch(
-            (m_upscaler->getWidth() + 7) / 8,
-            (m_upscaler->getHeight() + 7) / 8,
+            (m_renderWidth + 7) / 8,
+            (m_renderHeight + 7) / 8,
             1);
 
         PIX_END_EVENT();
@@ -1111,8 +1143,8 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
     m_pipelineDesc.NumRenderTargets = 3;
     m_dirtyFlags |= DIRTY_FLAG_PIPELINE_DESC;
 
-    m_globalsVS.floatConstants[3][0] += 2.0f * m_globalsRT.pixelJitterX / static_cast<float>(m_upscaler->getWidth());
-    m_globalsVS.floatConstants[3][1] += -2.0f * m_globalsRT.pixelJitterY / static_cast<float>(m_upscaler->getHeight());
+    m_globalsVS.floatConstants[3][0] += 2.0f * m_globalsRT.pixelJitterX / static_cast<float>(m_renderWidth);
+    m_globalsVS.floatConstants[3][1] += -2.0f * m_globalsRT.pixelJitterY / static_cast<float>(m_renderHeight);
     m_dirtyFlags |= DIRTY_FLAG_GLOBALS_VS;
 
     if (message.enableExposureTexture)
@@ -1121,15 +1153,15 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
         m_dirtyFlags |= DIRTY_FLAG_GLOBALS_PS;
     }
 
-    m_viewport.Width = static_cast<FLOAT>(m_upscaler->getWidth());
-    m_viewport.Height = static_cast<FLOAT>(m_upscaler->getHeight());
+    m_viewport.Width = static_cast<FLOAT>(m_renderWidth);
+    m_viewport.Height = static_cast<FLOAT>(m_renderHeight);
     m_dirtyFlags |= DIRTY_FLAG_VIEWPORT;
 
-    m_scissorRect.right = static_cast<LONG>(m_upscaler->getWidth());
-    m_scissorRect.bottom = static_cast<LONG>(m_upscaler->getHeight());
+    m_scissorRect.right = static_cast<LONG>(m_renderWidth);
+    m_scissorRect.bottom = static_cast<LONG>(m_renderHeight);
     m_dirtyFlags |= DIRTY_FLAG_SCISSOR_RECT;
 
-    const float mipLodBias = log2f(static_cast<float>(m_upscaler->getWidth()) / static_cast<float>(m_width)) - 1.0f;
+    const float mipLodBias = log2f(static_cast<float>(m_renderWidth) / static_cast<float>(m_width)) - 1.0f;
 
     for (auto& samplerDesc : m_samplerDescs)
         samplerDesc.MipLODBias = mipLodBias;
@@ -1148,7 +1180,7 @@ void RaytracingDevice::procMsgDispatchUpscaler()
         return;
     }
 
-    if (message.debugView == DEBUG_VIEW_NONE)
+    if (m_upscaler != nullptr && message.debugView == DEBUG_VIEW_NONE)
     {
         auto& commandList = getGraphicsCommandList();
 
@@ -2090,9 +2122,10 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
         m_upscalerOverride[i] = static_cast<UpscalerType>(i);
 
     m_qualityMode = static_cast<QualityMode>(
-        iniFile.get<uint32_t>("Mod", "QualityMode", static_cast<uint32_t>(QualityMode::Balanced)));
+        iniFile.get<uint32_t>("Mod", "QualityMode", static_cast<uint32_t>(QualityMode::Auto)));
     
-    const auto upscalerType = static_cast<UpscalerType>(iniFile.get<uint32_t>("Mod", "Upscaler", static_cast<uint32_t>(UpscalerType::FSR3)));
+    const auto upscalerType = static_cast<UpscalerType>(
+        iniFile.get<uint32_t>("Mod", "Upscaler", static_cast<uint32_t>(UpscalerType::FSR3)));
     
     if (upscalerType == UpscalerType::DLSS || upscalerType == UpscalerType::DLSSD)
     {

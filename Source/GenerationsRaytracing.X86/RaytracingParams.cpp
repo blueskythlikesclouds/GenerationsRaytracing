@@ -313,20 +313,48 @@ void RaytracingParams::imguiWindow()
                         ImGui::TableNextColumn();
                         ImGui::TextUnformatted("Upscaler");
                         ImGui::TableNextColumn();
-                        ImGui::RadioButton("Unspecified##Upscaler", reinterpret_cast<int*>(&s_upscaler), 0);
-                        ImGui::RadioButton("DLSS", reinterpret_cast<int*>(&s_upscaler), 1);
-                        ImGui::RadioButton("DLSS Ray Reconstruction", reinterpret_cast<int*>(&s_upscaler), 2);
-                        ImGui::RadioButton("FSR3", reinterpret_cast<int*>(&s_upscaler), 3);
+                        ImGui::RadioButton("Unspecified##Upscaler", reinterpret_cast<int*>(&s_upscaler), static_cast<int>(UpscalerType::Unspecified));
+                        ImGui::RadioButton("None", reinterpret_cast<int*>(&s_upscaler), static_cast<int>(UpscalerType::None));
+                        ImGui::RadioButton("DLSS", reinterpret_cast<int*>(&s_upscaler), static_cast<int>(UpscalerType::DLSS));
+                        ImGui::RadioButton("DLSS Ray Reconstruction", reinterpret_cast<int*>(&s_upscaler), static_cast<int>(UpscalerType::DLSSD));
+                        ImGui::RadioButton("FSR3", reinterpret_cast<int*>(&s_upscaler), static_cast<int>(UpscalerType::FSR3));
 
                         ImGui::TableNextColumn();
                         ImGui::TextUnformatted("Quality Mode");
                         ImGui::TableNextColumn();
-                        ImGui::RadioButton("Unspecified##Quality Mode", reinterpret_cast<int*>(&s_qualityMode), 0);
-                        ImGui::RadioButton("Native", reinterpret_cast<int*>(&s_qualityMode), 1);
-                        ImGui::RadioButton("Quality", reinterpret_cast<int*>(&s_qualityMode), 2);
-                        ImGui::RadioButton("Balanced", reinterpret_cast<int*>(&s_qualityMode), 3);
-                        ImGui::RadioButton("Performance", reinterpret_cast<int*>(&s_qualityMode), 4);
-                        ImGui::RadioButton("Ultra Performance", reinterpret_cast<int*>(&s_qualityMode), 5);
+                        ImGui::RadioButton("Unspecified##Quality Mode", reinterpret_cast<int*>(&s_qualityMode), static_cast<int>(QualityMode::Unspecified));
+                        ImGui::RadioButton("Auto", reinterpret_cast<int*>(&s_qualityMode), static_cast<int>(QualityMode::Auto));
+                        ImGui::RadioButton("Native", reinterpret_cast<int*>(&s_qualityMode), static_cast<int>(QualityMode::Native));
+                        ImGui::RadioButton("Quality", reinterpret_cast<int*>(&s_qualityMode), static_cast<int>(QualityMode::Quality));
+                        ImGui::RadioButton("Balanced", reinterpret_cast<int*>(&s_qualityMode), static_cast<int>(QualityMode::Balanced));
+                        ImGui::RadioButton("Performance", reinterpret_cast<int*>(&s_qualityMode), static_cast<int>(QualityMode::Performance));
+                        ImGui::RadioButton("Ultra Performance", reinterpret_cast<int*>(&s_qualityMode), static_cast<int>(QualityMode::UltraPerformance));
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted("Render Resolution");
+                        ImGui::TableNextColumn();
+
+                        auto upscaler = RaytracingParams::s_upscaler;
+                        if (upscaler == UpscalerType::Unspecified)
+                            upscaler = Configuration::s_upscaler;
+
+                        if (upscaler != UpscalerType::None)
+                        {
+                            auto qualityMode = RaytracingParams::s_qualityMode;
+                            if (qualityMode == QualityMode::Unspecified)
+                                qualityMode = Configuration::s_qualityMode;
+
+                            if (qualityMode == QualityMode::Auto)
+                                qualityMode = getAutoQualityMode(*reinterpret_cast<uint32_t*>(0x1DFDDE0));
+
+                            ImGui::Text("%dx%d",
+                                getRenderResolutionFromQualityMode(qualityMode, *reinterpret_cast<uint32_t*>(0x1DFDDDC)),
+                                getRenderResolutionFromQualityMode(qualityMode, *reinterpret_cast<uint32_t*>(0x1DFDDE0)));
+                        }
+                        else
+                        {
+                            ImGui::Text("%dx%d", *reinterpret_cast<uint32_t*>(0x1DFDDDC), *reinterpret_cast<uint32_t*>(0x1DFDDE0));
+                        }
 
                         ImGui::EndTable();
                     }

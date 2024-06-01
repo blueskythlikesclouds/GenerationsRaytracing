@@ -41,6 +41,7 @@ struct alignas(0x10) GlobalsRT
     uint32_t adaptionLuminanceTextureId;
     float middleGray;
     uint32_t skyInRoughReflection;
+    uint32_t enableAccumulation;
 };
 
 struct GlobalsSB
@@ -116,11 +117,13 @@ protected:
     std::unique_ptr<NGX> m_ngx;
     std::unique_ptr<Upscaler> m_upscaler;
     QualityMode m_qualityMode = QualityMode::Balanced;
-    UpscalerType m_upscalerOverride[static_cast<size_t>(UpscalerType::Max)];
+    UpscalerType m_upscalerOverride[static_cast<size_t>(UpscalerType::Max)]{};
 
     // Textures
     uint32_t m_width = 0;
     uint32_t m_height = 0;
+    uint32_t m_renderWidth = 0;
+    uint32_t m_renderHeight = 0;
 
     uint32_t m_uavId = 0;
     uint32_t m_srvId = 0;

@@ -123,6 +123,7 @@ cbuffer GlobalsRT : register(b2)
     uint g_AdaptionLuminanceTextureId;
     float g_MiddleGray;
     bool g_SkyInRoughReflection;
+    bool g_EnableAccumulation;
 }
 
 struct LocalLight

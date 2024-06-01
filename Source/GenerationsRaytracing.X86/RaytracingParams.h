@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include "DebugView.h"
+#include "QualityMode.h"
+#include "UpscalerType.h"
 
 enum ToneMapMode
 {
@@ -27,8 +29,8 @@ struct RaytracingParams
     static inline Hedgehog::Math::CVector s_groundColor;
     static inline bool s_skyInRoughReflection = true;
 
-    static inline uint32_t s_upscaler;
-    static inline uint32_t s_qualityMode;
+    static inline UpscalerType s_upscaler;
+    static inline QualityMode s_qualityMode;
 
     static inline uint32_t s_toneMapMode;
 
