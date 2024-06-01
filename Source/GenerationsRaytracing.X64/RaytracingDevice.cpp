@@ -454,6 +454,9 @@ void RaytracingDevice::createRaytracingTextures()
             0, 0, 1, 1, 1, 0,
             D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
+        const auto colorTextureFormat = m_upscaler != nullptr ? 
+            DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R32G32B32A32_FLOAT;
+
         struct
         {
             uint16_t depthOrArraySize{};
@@ -466,7 +469,7 @@ void RaytracingDevice::createRaytracingTextures()
         }
         const textureDescs[] =
         {
-            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorTexture, L"Color Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
+            { 1, colorTextureFormat, m_colorTexture, L"Color Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
             { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_outputTexture, L"Output Texture", m_width, m_height },
             { 1, DXGI_FORMAT_R32_FLOAT, m_depthTexture, L"Depth Texture" },
             { 1, DXGI_FORMAT_R16G16_FLOAT, m_motionVectorsTexture, L"Motion Vectors Texture" },
@@ -494,7 +497,7 @@ void RaytracingDevice::createRaytracingTextures()
             { 1, DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture, L"Linear Depth Texture" },
             { 1, DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture, L"Specular Hit Distance Texture" },
 
-            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
+            { 1, colorTextureFormat, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
             { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoBeforeTransparencyTexture, L"Diffuse Albedo Before Transparency Texture" },
             { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoBeforeTransparencyTexture, L"Specular Albedo Before Transparency Texture" },
         };
