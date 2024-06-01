@@ -644,7 +644,7 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscal
     {
         m_renderWidth,
         m_renderHeight,
-        m_upscaler != nullptr ? message.debugView : DEBUG_VIEW_COLOR
+        m_upscaler != nullptr || message.debugView != DEBUG_VIEW_NONE ? message.debugView : DEBUG_VIEW_COLOR
     };
 
     underlyingCommandList->OMSetRenderTargets(1, m_renderTargetViews, FALSE, &m_depthStencilView);
