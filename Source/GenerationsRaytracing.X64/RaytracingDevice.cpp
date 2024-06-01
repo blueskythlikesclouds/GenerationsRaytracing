@@ -421,7 +421,8 @@ void RaytracingDevice::createRaytracingTextures()
 
     if (m_upscaler != nullptr)
     {
-        m_upscaler->init({ *this, m_width, m_height, m_qualityMode });
+        m_upscaler->init({ *this, m_width, m_height, 
+            m_qualityMode == QualityMode::Auto ? getAutoQualityMode(m_height) : m_qualityMode });
         
         shouldCreateTextures =
             m_renderWidth != m_upscaler->getWidth() ||
