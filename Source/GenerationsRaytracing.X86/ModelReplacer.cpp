@@ -46,6 +46,21 @@ static void parseJson(json& json)
     }
 }
 
+static bool loadJson(const char* path)
+{
+    std::ifstream stream(path);
+    if (stream.is_open())
+    {
+        json json;
+        stream >> json;
+        parseJson(json);
+
+        stream.close();
+        return true;
+    }
+    return false;
+}
+
 static Mutex s_mutex;
 
 struct PendingModel
@@ -301,27 +316,22 @@ void ModelReplacer::processFhlMaterials(InstanceInfoEx& instanceInfoEx, const Ma
     s_fhlMaterials.clear();
 }
 
-void ModelReplacer::init()
+void ModelReplacer::init(ModInfo_t* modInfo)
 {
     if (!Configuration::s_enableRaytracing)
         return;
 
     INSTALL_HOOK(ModelDataMake);
 
-    std::ifstream stream("no_ao_models.json");
-    if (stream.is_open())
-    {
-        json json;
-        stream >> json;
-        parseJson(json);
+    std::string path;
 
-        stream.close();
-    }
-    else
+    for (const auto mod : *modInfo->ModList)
     {
-        MessageBox(nullptr, 
-            TEXT("Unable to open \"no_ao_models.json\" in mod directory."), 
-            TEXT("Generations Raytracing"), 
-            MB_ICONERROR);
+        path.assign(mod->Path);
+        path.erase(path.find_last_of("\\/") + 1);
+        path += "no_ao_models.json";
+
+        loadJson(path.c_str());
     }
+
 }

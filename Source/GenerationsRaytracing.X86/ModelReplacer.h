@@ -8,5 +8,5 @@ struct ModelReplacer
 
     static void processFhlMaterials(InstanceInfoEx& instanceInfoEx, const MaterialMap& materialMap);
 
-    static void init();
+    static void init(ModInfo_t* modInfo);
 };

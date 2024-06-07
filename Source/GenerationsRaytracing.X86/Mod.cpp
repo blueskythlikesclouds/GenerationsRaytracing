@@ -92,7 +92,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     MeshData::init();
     FileBinder::init(modInfo);
     QuickBoot::init();
-    ModelReplacer::init();
+    ModelReplacer::init(modInfo);
     ShareVertexBuffer::init();
     UpReelRenderable::init();
     RopeRenderable::init();
