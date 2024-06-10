@@ -512,6 +512,8 @@ void RaytracingParams::imguiWindow()
                         ImGui::RadioButton("Refraction Offset", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION_OFFSET);
                         ImGui::RadioButton("GI", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_GI);
                         ImGui::RadioButton("Reflection", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFLECTION);
+                        ImGui::RadioButton("Diffuse Albedo", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_DIFFUSE_ALBEDO);
+                        ImGui::RadioButton("Specular Albedo", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR_ALBEDO);
 
                         ImGui::EndTable();
                     }

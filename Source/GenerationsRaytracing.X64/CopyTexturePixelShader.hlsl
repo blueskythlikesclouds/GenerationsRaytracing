@@ -111,6 +111,14 @@ void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD,
         case DEBUG_VIEW_REFLECTION:
             MAKE_DEBUG_VIEW(!(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)) ? g_Reflection_SRV[index].rgb : 0.0);
             break;
+        
+        case DEBUG_VIEW_DIFFUSE_ALBEDO:
+            color.rgb = g_DiffuseAlbedo_SRV[index.xy].rgb;
+            break;
+        
+        case DEBUG_VIEW_SPECULAR_ALBEDO:
+            color.rgb = g_SpecularAlbedo_SRV[index.xy].rgb;
+            break;
     }
     
     color.a = 1.0;
