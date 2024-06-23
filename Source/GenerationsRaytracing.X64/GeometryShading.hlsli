@@ -254,6 +254,15 @@ float3 ComputeSpecularAlbedo(GBufferData gBufferData, float3 eyeDirection)
     
     if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
     {
+        float cosTheta = dot(gBufferData.Normal, eyeDirection);
+        
+        if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
+            specularFresnel *= ComputeWaterFresnel(cosTheta);
+        else
+            specularFresnel *= ComputeFresnel(specularFresnel, cosTheta);
+    }
+    else
+    {
         Texture2D texture = ResourceDescriptorHeap[g_EnvBrdfTextureId];
     
         float2 envBRDF = texture.SampleLevel(g_SamplerState, float2(
@@ -261,15 +270,6 @@ float3 ComputeSpecularAlbedo(GBufferData gBufferData, float3 eyeDirection)
         
         specularFresnel *= envBRDF.x;
         specularFresnel += envBRDF.y;
-    }
-    else
-    {
-        float cosTheta = dot(gBufferData.Normal, eyeDirection);
-        
-        if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
-            specularFresnel *= ComputeWaterFresnel(cosTheta);
-        else
-            specularFresnel *= ComputeFresnel(specularFresnel, cosTheta);
     }
     
     return ComputeReflection(gBufferData, specularFresnel);
