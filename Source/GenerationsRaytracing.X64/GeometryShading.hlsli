@@ -228,17 +228,11 @@ float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
     return globalIllumination;
 }
 
-float3 ComputeDiffuseAlbedo(GBufferData gBufferData)
-{
-    return ComputeGI(gBufferData, 1.0);
-}
-
-float3 ComputeReflection(GBufferData gBufferData, float3 eyeDirection, float3 reflection)
+float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
 {
     if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
     {
-        float3 specularFresnel = ComputeFresnel(gBufferData.SpecularFresnel, dot(gBufferData.Normal, eyeDirection));
-        reflection *= gBufferData.SpecularTint * gBufferData.SpecularEnvironment * specularFresnel;
+        reflection *= gBufferData.SpecularTint * gBufferData.SpecularEnvironment;
     }
     else if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
     {
@@ -254,25 +248,31 @@ float3 ComputeReflection(GBufferData gBufferData, float3 eyeDirection, float3 re
 }
 
 float3 ComputeSpecularAlbedo(GBufferData gBufferData, float3 eyeDirection)
-{
+{    
+    float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ? 
+        gBufferData.SpecularTint : gBufferData.SpecularFresnel;
+    
     if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
-    {
-        return ComputeReflection(gBufferData, eyeDirection, 1.0);
-    }
-    else
     {
         Texture2D texture = ResourceDescriptorHeap[g_EnvBrdfTextureId];
     
         float2 envBRDF = texture.SampleLevel(g_SamplerState, float2(
             saturate(dot(gBufferData.Normal, eyeDirection)), (gBufferData.SpecularGloss - 1.0) / 1023.0), 0).xy;
-    
-        float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ? 
-            gBufferData.SpecularTint : gBufferData.SpecularFresnel;
         
-        float3 specularLighting = specularFresnel * envBRDF.x + envBRDF.y;
-        
-        return ComputeReflection(gBufferData, eyeDirection, specularLighting);
+        specularFresnel *= envBRDF.x;
+        specularFresnel += envBRDF.y;
     }
+    else
+    {
+        float cosTheta = dot(gBufferData.Normal, eyeDirection);
+        
+        if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
+            specularFresnel *= ComputeWaterFresnel(cosTheta);
+        else
+            specularFresnel *= ComputeFresnel(specularFresnel, cosTheta);
+    }
+    
+    return ComputeReflection(gBufferData, specularFresnel);
 }
 
 float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)
@@ -320,7 +320,7 @@ float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingPara
         resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]) * shadingParams.Reservoir.W;
 
     resultShading += ComputeGI(gBufferData, shadingParams.GlobalIllumination);
-    resultShading += ComputeReflection(gBufferData, shadingParams.EyeDirection, shadingParams.Reflection);
+    resultShading += ComputeReflection(gBufferData, shadingParams.Reflection);
     resultShading += ComputeRefraction(gBufferData, shadingParams.Refraction);
     resultShading += gBufferData.Emission;
 
@@ -336,14 +336,16 @@ float3 ComputeWaterShading(GBufferData gBufferData, ShadingParams shadingParams,
     float3 specularLight = mrgGlobalLight_Specular.rgb * cosTheta * gBufferData.Specular * gBufferData.SpecularGloss * gBufferData.SpecularLevel;
     float shadow = TraceShadow(gBufferData.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 0);
     resultShading += specularLight * shadow;
+    
+    float specularFresnel = ComputeWaterFresnel(dot(gBufferData.Normal, shadingParams.EyeDirection));
 
-    float diffuseFresnel = (1.0 - gBufferData.SpecularFresnel) * 
+    float diffuseFresnel = (1.0 - specularFresnel) * 
         pow(abs(dot(gBufferData.Normal, g_EyeDirection.xyz)), gBufferData.SpecularGloss);
 
     resultShading += shadingParams.GlobalIllumination * diffuseFresnel;
 
     float luminance = dot(resultShading, float3(0.2126, 0.7152, 0.0722));
-    resultShading += shadingParams.Reflection * gBufferData.SpecularFresnel * (1.0 - saturate(luminance));
+    resultShading += shadingParams.Reflection * specularFresnel * (1.0 - saturate(luminance));
 
     float3 diffuseLight = 0.0;
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))

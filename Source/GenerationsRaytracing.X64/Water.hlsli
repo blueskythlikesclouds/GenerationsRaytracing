@@ -18,10 +18,6 @@ void CreateWaterGBufferData(Vertex vertex, Material material, inout GBufferData 
     float3 normal = NormalizeSafe((normal1 + normal2) * 0.5);
     
     gBufferData.Normal = NormalizeSafe(DecodeNormalMap(vertex, normal));
-   
-    gBufferData.SpecularFresnel = 1.0 - abs(dot(gBufferData.Normal, -WorldRayDirection()));
-    gBufferData.SpecularFresnel *= gBufferData.SpecularFresnel;
-    gBufferData.SpecularFresnel *= gBufferData.SpecularFresnel;
     
     gBufferData.RefractionOffset = normal.xy;
     

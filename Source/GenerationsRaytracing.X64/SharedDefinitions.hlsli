@@ -106,6 +106,14 @@ float3 ComputeFresnel(float3 specularFresnel, float cosTheta)
     return lerp(specularFresnel, 1.0, pow(saturate(1.0 - cosTheta), 5.0));
 }
 
+float ComputeWaterFresnel(float cosTheta)
+{
+    float specularFresnel = 1.0 - abs(cosTheta);
+    specularFresnel *= specularFresnel;
+    specularFresnel *= specularFresnel;
+    return specularFresnel;
+}
+
 float3 DecodeNormalMap(float4 value)
 {
     value.x *= value.w;

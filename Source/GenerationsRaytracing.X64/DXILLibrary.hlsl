@@ -239,9 +239,20 @@ void SecondaryRayGeneration()
             
             float giProbability;
             if (traceGlobalIllumination ^ traceReflection)
+            {
                 giProbability = traceGlobalIllumination ? 1.0 : 0.0;
+            }
             else
-                giProbability = 1.0 - saturate(dot(ComputeReflection(gBufferData, eyeDirection, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114)));
+            {
+                float reflectionProbability;
+                
+                if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
+                    reflectionProbability = ComputeWaterFresnel(dot(gBufferData.Normal, eyeDirection));
+                else
+                    reflectionProbability = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
+                
+                giProbability = saturate(1.0 - reflectionProbability);
+            }
         
             bool shouldTraceReflection = NextRandomFloat(randSeed) > giProbability;
         
@@ -250,23 +261,33 @@ void SecondaryRayGeneration()
         
             if (shouldTraceReflection)
             {    
+                float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ?
+                    gBufferData.SpecularTint : gBufferData.SpecularFresnel;
+                
                 if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
                 {
                     args.Direction = reflect(-eyeDirection, gBufferData.Normal);
                     args.MissShaderIndex = MISS_SECONDARY;
-                    args.Throughput = 1.0;
+                    
+                    float cosTheta = dot(gBufferData.Normal, eyeDirection);
+                    
+                    if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
+                        args.Throughput = ComputeWaterFresnel(cosTheta);
+                    else
+                        args.Throughput = ComputeFresnel(specularFresnel, cosTheta);
+                    
                     args.ApplyPower = false;
                 }
                 else
                 {
                     float4 sampleDirection = GetPowerCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), gBufferData.SpecularGloss);
                     float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
-                    float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ? gBufferData.SpecularTint : gBufferData.SpecularFresnel;
                     
                     args.Direction = reflect(-eyeDirection, halfwayDirection);
                     args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
-                    args.Throughput = ComputeFresnel(specularFresnel, dot(halfwayDirection, eyeDirection));
-                    args.Throughput *= pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                    args.Throughput = ComputeFresnel(specularFresnel, dot(halfwayDirection, eyeDirection)) *
+                        pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                    
                     args.ApplyPower = true;
                 }
             
