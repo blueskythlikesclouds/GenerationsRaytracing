@@ -23,7 +23,7 @@ void CreateFallOffGBufferData(Vertex vertex, Material material, inout GBufferDat
         gBufferData.Specular = 0.0;
     }
                 
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+    gBufferData.SpecularFresnel = 0.4;
 
     float3 viewNormal = mul(float4(vertex.Normal, 0.0), g_MtxView).xyz;
     gBufferData.Emission = SampleMaterialTexture2D(material.DisplacementTexture, viewNormal.xy * float2(0.5, -0.5) + 0.5, 0).rgb;

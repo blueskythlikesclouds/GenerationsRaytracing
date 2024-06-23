@@ -39,6 +39,8 @@ void CreateBlendGBufferData(Vertex vertex, Material material, inout GBufferData 
         gBufferData.Specular = 0.0;
     }
     
+    gBufferData.SpecularFresnel = 0.4;
+    
     if (material.NormalTexture != 0)
     {
         float4 normal = SampleMaterialTexture2D(material.NormalTexture, vertex);
@@ -47,5 +49,4 @@ void CreateBlendGBufferData(Vertex vertex, Material material, inout GBufferData 
     
         gBufferData.Normal = DecodeNormalMap(vertex, normal);
     }
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 }

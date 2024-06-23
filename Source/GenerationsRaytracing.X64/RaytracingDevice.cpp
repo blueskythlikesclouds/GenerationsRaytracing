@@ -375,6 +375,7 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     m_globalsRT.middleGray = message.middleGray;
     m_globalsRT.skyInRoughReflection = message.skyInRoughReflection;
     m_globalsRT.enableAccumulation = m_globalsRT.currentFrame > 0 && m_upscaler == nullptr;
+    m_globalsRT.envBrdfTextureId = m_textures[message.envBrdfTextureId].srvIndex;
 
     getGraphicsCommandList().transitionBarrier(m_textures[message.adaptionLuminanceTextureId].allocation->GetResource(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

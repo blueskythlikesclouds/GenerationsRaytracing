@@ -13,7 +13,8 @@ void CreateGlassGBufferData(Vertex vertex, Material material, inout GBufferData 
     if (material.NormalTexture != 0)
         gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
     
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal, material.FresnelParam.xy);
+    gBufferData.SpecularTint *= material.FresnelParam.y;
+    gBufferData.SpecularFresnel = material.FresnelParam.x;
     
     if (material.SpecularTexture != 0)
     {
@@ -42,6 +43,8 @@ void CreateGlassGBufferData(Vertex vertex, Material material, inout GBufferData 
         gBufferData.Specular = 0.0;
     }
     
-    float3 visibilityFactor = gBufferData.SpecularTint * gBufferData.SpecularEnvironment * gBufferData.SpecularFresnel * 0.5;
+    float3 specularFresnel = ComputeFresnel(gBufferData.SpecularFresnel, dot(gBufferData.Normal, -WorldRayDirection()));
+    
+    float3 visibilityFactor = gBufferData.SpecularTint * gBufferData.SpecularEnvironment * specularFresnel * 0.5;
     gBufferData.Alpha = sqrt(max(gBufferData.Alpha * gBufferData.Alpha, dot(visibilityFactor, visibilityFactor)));
 }

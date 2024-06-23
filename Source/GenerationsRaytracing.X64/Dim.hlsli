@@ -15,11 +15,11 @@ void CreateDimGBufferData(Vertex vertex, Material material, inout GBufferData gB
         gBufferData.SpecularEnvironment *= gloss;
         gBufferData.SpecularGloss *= gloss;
     }
+    
+    gBufferData.SpecularFresnel = 0.4;
 
     if (material.NormalTexture != 0)
         gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
-
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 
     float3 viewNormal = mul(float4(gBufferData.Normal, 0.0), g_MtxView).xyz;
 

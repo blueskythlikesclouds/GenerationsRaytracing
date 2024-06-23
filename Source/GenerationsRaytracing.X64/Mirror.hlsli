@@ -10,6 +10,6 @@ void CreateMirrorGBufferData(Vertex vertex, Material material, inout GBufferData
     gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
     gBufferData.Alpha *= diffuse.a * vertex.Color.a;
     
-    gBufferData.Specular = 0.0;
-    gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal, material.FresnelParam.xy);
+    gBufferData.SpecularTint *= material.FresnelParam.y;
+    gBufferData.SpecularFresnel = material.FresnelParam.x;
 }

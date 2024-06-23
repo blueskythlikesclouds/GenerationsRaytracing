@@ -54,9 +54,14 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT))
     {
+        float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
+        
         if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
         {
-            specularColor *= lerp(gBufferData.Specular * gBufferData.SpecularTint, 1.0, gBufferData.SpecularFresnel);
+            specularColor *= gBufferData.Specular;
+            
+            specularColor *= ComputeFresnel(gBufferData.SpecularTint,
+                dot(halfwayDirection, eyeDirection));
         }
         else
         {
@@ -65,10 +70,11 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
             if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_SPEC_GLOSS)
                 specularColor *= gBufferData.SpecularGloss;
 
-            specularColor *= gBufferData.SpecularLevel * gBufferData.SpecularFresnel;
+            specularColor *= gBufferData.SpecularLevel;
+            
+            specularColor *= ComputeFresnel(gBufferData.SpecularFresnel,
+                dot(halfwayDirection, eyeDirection));
         }
-
-        float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
 
         float cosTheta = dot(gBufferData.Normal, halfwayDirection);
         cosTheta = pow(saturate(cosTheta), gBufferData.SpecularGloss);
@@ -216,34 +222,57 @@ float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
 {
     globalIllumination *= gBufferData.Diffuse + gBufferData.Falloff;
     
-    if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
-        globalIllumination *= 1.0 - gBufferData.SpecularFresnel;
-    
     if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_REFRACTION)
         globalIllumination *= gBufferData.Refraction;
 
     return globalIllumination;
 }
 
-float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
+float3 ComputeDiffuseAlbedo(GBufferData gBufferData)
+{
+    return ComputeGI(gBufferData, 1.0);
+}
+
+float3 ComputeReflection(GBufferData gBufferData, float3 eyeDirection, float3 reflection)
 {
     if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
     {
-        reflection *= gBufferData.SpecularTint * gBufferData.SpecularEnvironment * gBufferData.SpecularFresnel;
+        float3 specularFresnel = ComputeFresnel(gBufferData.SpecularFresnel, dot(gBufferData.Normal, eyeDirection));
+        reflection *= gBufferData.SpecularTint * gBufferData.SpecularEnvironment * specularFresnel;
     }
-
     else if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
     {
-        reflection *= lerp(gBufferData.Specular * gBufferData.SpecularTint, 1.0, gBufferData.SpecularFresnel);
+        reflection *= gBufferData.Specular;
     }
-
     else
     {
         float specularIntensity = 1.0 - exp2(-gBufferData.SpecularLevel);
-        reflection *= gBufferData.Specular * gBufferData.SpecularTint * specularIntensity * gBufferData.SpecularFresnel;
+        reflection *= gBufferData.Specular * gBufferData.SpecularTint * specularIntensity;
     }
 
     return reflection;
+}
+
+float3 ComputeSpecularAlbedo(GBufferData gBufferData, float3 eyeDirection)
+{
+    if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
+    {
+        return ComputeReflection(gBufferData, eyeDirection, 1.0);
+    }
+    else
+    {
+        Texture2D texture = ResourceDescriptorHeap[g_EnvBrdfTextureId];
+    
+        float2 envBRDF = texture.SampleLevel(g_SamplerState, float2(
+            saturate(dot(gBufferData.Normal, eyeDirection)), (gBufferData.SpecularGloss - 1.0) / 1023.0), 0).xy;
+    
+        float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ? 
+            gBufferData.SpecularTint : gBufferData.SpecularFresnel;
+        
+        float3 specularLighting = specularFresnel * envBRDF.x + envBRDF.y;
+        
+        return ComputeReflection(gBufferData, eyeDirection, specularLighting);
+    }
 }
 
 float3 ComputeRefraction(GBufferData gBufferData, float3 refraction)
@@ -291,7 +320,7 @@ float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingPara
         resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]) * shadingParams.Reservoir.W;
 
     resultShading += ComputeGI(gBufferData, shadingParams.GlobalIllumination);
-    resultShading += ComputeReflection(gBufferData, shadingParams.Reflection);
+    resultShading += ComputeReflection(gBufferData, shadingParams.EyeDirection, shadingParams.Reflection);
     resultShading += ComputeRefraction(gBufferData, shadingParams.Refraction);
     resultShading += gBufferData.Emission;
 

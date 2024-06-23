@@ -124,6 +124,7 @@ cbuffer GlobalsRT : register(b2)
     float g_MiddleGray;
     bool g_SkyInRoughReflection;
     bool g_EnableAccumulation;
+    uint g_EnvBrdfTextureId;
 }
 
 struct LocalLight

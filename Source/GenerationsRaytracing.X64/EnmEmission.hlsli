@@ -24,7 +24,7 @@ void CreateEnmEmissionGBufferData(Vertex vertex, Material material, inout GBuffe
         gBufferData.Specular = 0.0;
     }
             
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
+    gBufferData.SpecularFresnel = 0.3;
 
     gBufferData.Emission = material.ChrEmissionParam.rgb;
 

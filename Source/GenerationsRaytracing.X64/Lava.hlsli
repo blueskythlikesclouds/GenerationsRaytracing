@@ -23,8 +23,8 @@ void CreateLavaGBufferData(Vertex vertex, Material material, inout GBufferData g
     float4 normal = SampleMaterialTexture2D(material.NormalTexture, vertex, offset);
     
     gBufferData.Diffuse *= diffuse.rgb;
+    gBufferData.SpecularFresnel = 0.4;
     gBufferData.Normal = DecodeNormalMap(vertex, normal);
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
     
     offset = SampleMaterialTexture2D(material.DisplacementTexture2, vertex).wx;
     offset *= material.OffsetParam.zw;

@@ -13,10 +13,10 @@ void CreateChrEyeGBufferData(Vertex vertex, Material material, InstanceDesc inst
     float3 lightDirection = NormalizeSafe(vertex.Position - highlightPosition);
     float3 halfwayDirection = NormalizeSafe(-WorldRayDirection() + lightDirection);
     
-    float highlightSpecular = saturate(dot(highlightNormal, halfwayDirection));
+    float3 highlightSpecular = saturate(dot(highlightNormal, halfwayDirection));
     highlightSpecular = pow(highlightSpecular, max(1.0, min(1024.0, gBufferData.SpecularGloss * gloss.x)));
     highlightSpecular *= gBufferData.SpecularLevel * gloss.x;
-    highlightSpecular *= ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
+    highlightSpecular *= ComputeFresnel(0.3, dot(vertex.Normal, -WorldRayDirection()));
     
     gBufferData.Diffuse *= diffuse.rgb * vertex.Color.rgb;
     gBufferData.Alpha *= diffuse.a;
@@ -24,6 +24,7 @@ void CreateChrEyeGBufferData(Vertex vertex, Material material, InstanceDesc inst
     gBufferData.Specular *= gloss.y * vertex.Color.a;
     gBufferData.SpecularEnvironment *= gloss.y * vertex.Color.a;
     gBufferData.SpecularGloss *= gloss.y;
-    gBufferData.SpecularFresnel = ComputeFresnel(DecodeNormalMap(vertex, float4(normalMap.zw, 0.0, 1.0))) * 0.7 + 0.3;
+    gBufferData.SpecularFresnel = 0.3;
+    gBufferData.Normal = DecodeNormalMap(vertex, float4(normalMap.zw, 0.0, 1.0));
     gBufferData.Emission = highlightSpecular * material.SonicEyeHighLightColor.rgb;
 }

@@ -13,12 +13,12 @@ void CreateChaosGBufferData(Vertex vertex, Material material, inout GBufferData 
     float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex);
     gBufferData.SpecularTint *= specular.rgb;
     gBufferData.SpecularEnvironment *= specular.a;
+    gBufferData.SpecularFresnel = 0.3;
 
     gBufferData.Normal = NormalizeSafe(
         DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex)) +
         DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex)));
 
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
     gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz);
     
     if (material.OpacityTexture != 0)

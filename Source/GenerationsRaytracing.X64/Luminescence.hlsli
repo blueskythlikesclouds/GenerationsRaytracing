@@ -23,7 +23,7 @@ void CreateLuminescenceGBufferData(Vertex vertex, Material material, inout GBuff
         gBufferData.Specular = 0.0;
     }
     
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+    gBufferData.SpecularFresnel = 0.4;
     
     gBufferData.Emission = material.DisplacementTexture != 0 ?
         SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb : material.Emissive.rgb;

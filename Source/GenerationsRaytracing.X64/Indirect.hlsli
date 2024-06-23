@@ -16,9 +16,8 @@ void CreateIndirectGBufferData(Vertex vertex, Material material, inout GBufferDa
     gBufferData.Specular *= gloss;
     gBufferData.SpecularEnvironment *= gloss;
     gBufferData.SpecularGloss *= gloss;
+    gBufferData.SpecularFresnel = 0.4;
     
     if (material.NormalTexture != 0)
         gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex, offset.xy));
-    
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
 }

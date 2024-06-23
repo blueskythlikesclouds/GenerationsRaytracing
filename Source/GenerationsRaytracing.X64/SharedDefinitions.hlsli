@@ -101,14 +101,9 @@ float LinearizeDepth(float depth, float4x4 invProjection)
     return position.z / position.w;
 }
 
-float ComputeFresnel(float3 normal)
+float3 ComputeFresnel(float3 specularFresnel, float cosTheta)
 {
-    return pow(1.0 - saturate(dot(normal, -WorldRayDirection())), 5.0);
-}
-
-float ComputeFresnel(float3 normal, float2 fresnelParam)
-{
-    return lerp(fresnelParam.x, 1.0, ComputeFresnel(normal)) * fresnelParam.y;
+    return lerp(specularFresnel, 1.0, pow(saturate(1.0 - cosTheta), 5.0));
 }
 
 float3 DecodeNormalMap(float4 value)

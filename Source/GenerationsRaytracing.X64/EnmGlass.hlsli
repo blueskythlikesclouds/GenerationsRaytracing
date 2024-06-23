@@ -20,11 +20,11 @@ void CreateEnmGlassGBufferData(Vertex vertex, Material material, inout GBufferDa
         gBufferData.SpecularTint *= specular.rgb * vertex.Color.rgb;
         gBufferData.SpecularEnvironment *= specular.a;
     }
+    
+    gBufferData.SpecularFresnel = 0.3;
 
     if (material.NormalTexture != 0)
         gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
-
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
 
     float3 viewNormal = mul(float4(gBufferData.Normal, 0.0), g_MtxView).xyz;
     float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture, viewNormal.xy * float2(0.5, -0.5) + 0.5, 0);

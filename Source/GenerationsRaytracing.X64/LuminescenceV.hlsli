@@ -29,7 +29,7 @@ void CreateLuminescenceVGBufferData(Vertex vertex, Material material, inout GBuf
         gBufferData.Specular = 0.0;
     }
     
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+    gBufferData.SpecularFresnel = 0.4;
     
     gBufferData.Emission = vertex.Color.rgb * material.Ambient.rgb;
     

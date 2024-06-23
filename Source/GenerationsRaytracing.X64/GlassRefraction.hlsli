@@ -10,8 +10,9 @@ void CreateGlassRefractionGBufferData(Vertex vertex, Material material, inout GB
     gBufferData.Diffuse *= diffuse.rgb;
     gBufferData.Alpha = material.Opacity;
     
+    gBufferData.SpecularTint *= material.FresnelParam.y;
     gBufferData.SpecularEnvironment *= 1.0 - material.Diffuse.w * diffuse.w;
-    gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal, material.FresnelParam);
+    gBufferData.SpecularFresnel = material.FresnelParam.x;
         
     float r2w = material.GlassRefractionParam * material.GlassRefractionParam;
     float3 r3 = mul(float4(vertex.Normal, 0.0), g_MtxView).xyz;

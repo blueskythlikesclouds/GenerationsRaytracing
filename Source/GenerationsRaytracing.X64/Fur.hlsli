@@ -24,9 +24,9 @@ void CreateFurGBufferData(Vertex vertex, Material material, inout GBufferData gB
     float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex);
     gBufferData.SpecularTint *= specular.rgb * vertex.Color.rgb;
     gBufferData.SpecularEnvironment *= specular.a;
+    gBufferData.SpecularFresnel = 0.3;
     
     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture2, vertex));
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
     
     gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
     gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb; 

@@ -15,8 +15,8 @@ void CreateTimeEaterGBufferData(Vertex vertex, Material material, inout GBufferD
     gBufferData.Alpha *= diffuse.a * vertex.Color.a;
     gBufferData.SpecularTint *= specular.rgb;
     gBufferData.SpecularEnvironment *= specular.a;
+    gBufferData.SpecularFresnel = 0.3;
     gBufferData.Normal = NormalizeSafe(DecodeNormalMap(vertex, normal) + DecodeNormalMap(vertex, normal2));
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
     gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam);
 
     float3 viewNormal = mul(float4(gBufferData.Normal, 0.0), g_MtxView).xyz;

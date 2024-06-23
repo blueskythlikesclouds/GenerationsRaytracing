@@ -42,6 +42,7 @@ struct alignas(0x10) GlobalsRT
     float middleGray;
     uint32_t skyInRoughReflection;
     uint32_t enableAccumulation;
+    uint32_t envBrdfTextureId;
 };
 
 struct GlobalsSB

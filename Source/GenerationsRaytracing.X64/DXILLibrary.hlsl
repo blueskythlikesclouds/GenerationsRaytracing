@@ -235,11 +235,13 @@ void SecondaryRayGeneration()
         
         if (traceGlobalIllumination || traceReflection)
         {
+            float3 eyeDirection = NormalizeSafe(-gBufferData.Position);
+            
             float giProbability;
             if (traceGlobalIllumination ^ traceReflection)
                 giProbability = traceGlobalIllumination ? 1.0 : 0.0;
             else
-                giProbability = 1.0 - saturate(dot(ComputeReflection(gBufferData, 1.0), float3(0.299, 0.587, 0.114)));
+                giProbability = 1.0 - saturate(dot(ComputeReflection(gBufferData, eyeDirection, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114)));
         
             bool shouldTraceReflection = NextRandomFloat(randSeed) > giProbability;
         
@@ -247,9 +249,7 @@ void SecondaryRayGeneration()
             args.Position = gBufferData.Position;
         
             if (shouldTraceReflection)
-            {
-                float3 eyeDirection = NormalizeSafe(-gBufferData.Position);
-    
+            {    
                 if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
                 {
                     args.Direction = reflect(-eyeDirection, gBufferData.Normal);
@@ -261,10 +261,12 @@ void SecondaryRayGeneration()
                 {
                     float4 sampleDirection = GetPowerCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), gBufferData.SpecularGloss);
                     float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
-    
+                    float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ? gBufferData.SpecularTint : gBufferData.SpecularFresnel;
+                    
                     args.Direction = reflect(-eyeDirection, halfwayDirection);
                     args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
-                    args.Throughput = pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                    args.Throughput = ComputeFresnel(specularFresnel, dot(halfwayDirection, eyeDirection));
+                    args.Throughput *= pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
                     args.ApplyPower = true;
                 }
             

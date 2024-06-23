@@ -37,7 +37,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
             {
                 shadingParams.GlobalIllumination = g_GlobalIllumination_SRV[uint3(dispatchThreadId, i)].rgb;
-                diffuseAlbedo += ComputeGI(gBufferData, 1.0);
+                diffuseAlbedo += ComputeDiffuseAlbedo(gBufferData);
             }
 
             float3 specularAlbedo = 0.0;
@@ -47,7 +47,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             {
                 float4 reflectionAndHitDistance = g_Reflection_SRV[uint3(dispatchThreadId, i)];
                 shadingParams.Reflection = reflectionAndHitDistance.rgb;
-                specularAlbedo = ComputeReflection(gBufferData, 1.0);
+                specularAlbedo = ComputeSpecularAlbedo(gBufferData, shadingParams.EyeDirection);
                 specularHitDistance = reflectionAndHitDistance.w;
             }
             

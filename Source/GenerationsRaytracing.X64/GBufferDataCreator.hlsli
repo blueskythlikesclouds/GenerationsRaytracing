@@ -206,8 +206,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
     if (diffuseMask)
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION;
 
-    bool specularMask = (or(all(gBufferData.Specular == 0.0), all(gBufferData.SpecularTint == 0.0)) || gBufferData.SpecularLevel == 0.0 ||
-        gBufferData.SpecularFresnel == 0.0) && !(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION);
+    bool specularMask = (or(all(gBufferData.Specular == 0.0), all(gBufferData.SpecularTint == 0.0)) || 
+        gBufferData.SpecularLevel == 0.0) && !(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION);
 
     if (specularMask)
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT | GBUFFER_FLAG_IGNORE_REFLECTION;

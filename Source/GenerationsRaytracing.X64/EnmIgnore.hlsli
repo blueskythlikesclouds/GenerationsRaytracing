@@ -19,7 +19,8 @@ void CreateEnmIgnoreGBufferData(Vertex vertex, Material material, inout GBufferD
         gBufferData.SpecularTint *= specular.rgb * vertex.Color.rgb;
         gBufferData.SpecularEnvironment *= specular.a;
     }
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
+    
+    gBufferData.SpecularFresnel = 0.3;
 
     gBufferData.Emission = material.ChrEmissionParam.rgb;
 

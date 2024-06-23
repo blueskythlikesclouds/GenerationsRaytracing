@@ -16,10 +16,10 @@ void CreateTransThinGBufferData(Vertex vertex, Material material, inout GBufferD
         gBufferData.SpecularGloss *= gloss;
     }
     
+    gBufferData.SpecularFresnel = 0.4;
+    
     if (material.NormalTexture != 0)
         gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
-    
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
     
     gBufferData.TransColor = gBufferData.Diffuse * material.TransColorMask.rgb;
 }

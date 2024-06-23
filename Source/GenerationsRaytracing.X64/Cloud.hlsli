@@ -7,7 +7,7 @@ void CreateCloudGBufferData(Vertex vertex, Material material, inout GBufferData 
     gBufferData.Flags = GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT;
 
     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
+    gBufferData.SpecularFresnel = 0.3;
 
     gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
     gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb;

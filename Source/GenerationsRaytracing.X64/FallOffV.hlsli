@@ -31,7 +31,7 @@ void CreateFallOffVGBufferData(Vertex vertex, Material material, inout GBufferDa
         gBufferData.Specular = 0.0;
     }
                 
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.6 + 0.4;
+    gBufferData.SpecularFresnel = 0.4;
 
     float fresnel = 1.0 - saturate(dot(-WorldRayDirection(), vertex.Normal));
     fresnel *= fresnel;

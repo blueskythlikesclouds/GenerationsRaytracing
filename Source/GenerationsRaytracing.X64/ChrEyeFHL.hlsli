@@ -50,6 +50,6 @@ void CreateChrEyeFHLGBufferData(Vertex vertex, Material material, InstanceDesc i
     
     gBufferData.Diffuse *= diffuse * pupil * (1.0 - catchLight);
     gBufferData.Specular *= pupil * mask.b * vertex.Color.w * (1.0 - catchLight);
-    gBufferData.SpecularFresnel = ComputeFresnel(vertex.Normal) * 0.7 + 0.3;
+    gBufferData.SpecularFresnel = 0.3;
     gBufferData.Emission = (highLight * pupil * mask.w * (1.0 - catchLight) + catchLight) / GetExposure();
 }

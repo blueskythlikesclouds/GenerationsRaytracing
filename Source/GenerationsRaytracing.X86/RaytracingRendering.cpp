@@ -451,6 +451,8 @@ static void __cdecl implOfTraceRays(void* a1)
             traceRaysMessage.middleGray = *reinterpret_cast<float*>(0x1A572D0);
             traceRaysMessage.skyInRoughReflection = RaytracingParams::s_skyInRoughReflection;
             traceRaysMessage.enableExposureTexture = !Configuration::s_hdr && s_particleChildCount != 2;
+            traceRaysMessage.envBrdfTextureId = reinterpret_cast<Texture*>(Hedgehog::Mirage::CMirageDatabaseWrapper(
+                Sonic::CApplicationDocument::GetInstance()->m_pMember->m_spApplicationDatabase.get()).GetPictureData("env_brdf")->m_pD3DTexture)->getId();
 
             s_messageSender.endMessage();
         }

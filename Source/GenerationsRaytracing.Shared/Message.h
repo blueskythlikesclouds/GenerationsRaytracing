@@ -389,6 +389,7 @@ struct MsgTraceRays
     float middleGray;
     bool skyInRoughReflection;
     bool enableExposureTexture;
+    uint32_t envBrdfTextureId;
 };
 
 struct MsgCreateMaterial

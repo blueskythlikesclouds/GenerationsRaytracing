@@ -37,11 +37,13 @@ void CreateRingGBufferData(Vertex vertex, Material material, inout GBufferData g
     float4 specular = SampleMaterialTexture2D(material.SpecularTexture, vertex);
     gBufferData.SpecularTint *= specular.rgb;
     gBufferData.SpecularEnvironment *= specular.a;
-    gBufferData.SpecularFresnel = ComputeFresnel(gBufferData.Normal) * 0.7 + 0.3;
+    gBufferData.SpecularFresnel = 0.3;
     
     float4 reflection = SampleMaterialTexture2D(material.ReflectionTexture,
         ComputeEnvMapTexCoord(-WorldRayDirection(), gBufferData.Normal), 0);
     
     gBufferData.Emission = reflection.rgb * material.LuminanceRange.x * reflection.a + reflection.rgb;
-    gBufferData.Emission *= specular.rgb * gBufferData.SpecularFresnel;
+    
+    float3 specularFresnel = ComputeFresnel(gBufferData.SpecularFresnel, dot(gBufferData.Normal, -WorldRayDirection()));
+    gBufferData.Emission *= specular.rgb * specularFresnel;
 }
