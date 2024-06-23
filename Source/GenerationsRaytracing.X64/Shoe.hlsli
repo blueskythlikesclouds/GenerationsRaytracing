@@ -23,8 +23,10 @@ void CreateShoeGBufferData(Vertex vertex, Material material, inout GBufferData g
     }
     
     gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
-    gBufferData.SpecularFresnel = 0.3;
     
-    float fresnel = saturate(dot(gBufferData.Normal, -WorldRayDirection()));
-    gBufferData.Diffuse *= fresnel * 0.8 + 0.2;
+    float cosTheta = dot(gBufferData.Normal, -WorldRayDirection());
+    gBufferData.SpecularLevel *= ComputeFresnel(0.3, cosTheta).x;
+    gBufferData.SpecularFresnel = 1.0;
+    
+    gBufferData.Diffuse *= saturate(cosTheta * 0.8 + 0.2);
 }
