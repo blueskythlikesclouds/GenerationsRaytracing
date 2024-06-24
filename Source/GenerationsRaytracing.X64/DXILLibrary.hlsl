@@ -237,9 +237,6 @@ void SecondaryRayGeneration()
         {
             float3 eyeDirection = NormalizeSafe(-gBufferData.Position);
             
-            float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ?
-                gBufferData.SpecularTint : gBufferData.SpecularFresnel;
-            
             float giProbability;
             if (traceGlobalIllumination ^ traceReflection)
             {
@@ -252,7 +249,7 @@ void SecondaryRayGeneration()
                 if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
                     reflectionProbability = ComputeWaterFresnel(dot(gBufferData.Normal, eyeDirection));
                 else
-                    reflectionProbability = dot(ComputeReflection(gBufferData, specularFresnel), float3(0.299, 0.587, 0.114));
+                    reflectionProbability = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
                 
                 giProbability = saturate(1.0 - reflectionProbability);
             }
@@ -263,7 +260,10 @@ void SecondaryRayGeneration()
             args.Position = gBufferData.Position;
         
             if (shouldTraceReflection)
-            {                    
+            {    
+                float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ?
+                    gBufferData.SpecularTint : gBufferData.SpecularFresnel;
+                
                 if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
                 {
                     args.Direction = reflect(-eyeDirection, gBufferData.Normal);
