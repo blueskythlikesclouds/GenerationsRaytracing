@@ -492,15 +492,15 @@ void RaytracingDevice::createRaytracingTextures()
             { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, L"GI Texture" },
             { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture, L"Reflection Texture" },
 
-            { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoTexture, L"Diffuse Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
-            { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoTexture, L"Specular Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
+            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture, L"Diffuse Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
+            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoTexture, L"Specular Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
             { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_normalsRoughnessTexture, L"Normals Roughness Texture" },
             { 1, DXGI_FORMAT_R16_FLOAT, m_linearDepthTexture, L"Linear Depth Texture" },
             { 1, DXGI_FORMAT_R16_FLOAT, m_specularHitDistanceTexture, L"Specular Hit Distance Texture" },
 
             { 1, colorTextureFormat, m_colorBeforeTransparencyTexture, L"Color Before Transparency Texture" },
-            { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_diffuseAlbedoBeforeTransparencyTexture, L"Diffuse Albedo Before Transparency Texture" },
-            { 1, DXGI_FORMAT_R11G11B10_FLOAT, m_specularAlbedoBeforeTransparencyTexture, L"Specular Albedo Before Transparency Texture" },
+            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoBeforeTransparencyTexture, L"Diffuse Albedo Before Transparency Texture" },
+            { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_specularAlbedoBeforeTransparencyTexture, L"Specular Albedo Before Transparency Texture" },
         };
 
         static_assert(_countof(textureDescs) == s_textureCount);
