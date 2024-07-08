@@ -425,9 +425,8 @@ void RaytracingDevice::createRaytracingTextures()
         m_upscaler->init({ *this, m_width, m_height, 
             m_qualityMode == QualityMode::Auto ? getAutoQualityMode(m_height) : m_qualityMode });
         
-        shouldCreateTextures =
-            m_renderWidth != m_upscaler->getWidth() ||
-            m_renderHeight != m_upscaler->getHeight();
+        shouldCreateTextures = m_renderWidth != m_upscaler->getWidth() || m_renderHeight != m_upscaler->getHeight() ||
+            (m_colorTexture != nullptr && m_colorTexture->GetResource()->GetDesc().Format != DXGI_FORMAT_R16G16B16A16_FLOAT);
 
         m_renderWidth = m_upscaler->getWidth();
         m_renderHeight = m_upscaler->getHeight();
@@ -437,7 +436,9 @@ void RaytracingDevice::createRaytracingTextures()
     }
     else
     {
-        shouldCreateTextures = m_renderWidth != m_width || m_renderHeight != m_height;
+        shouldCreateTextures = m_renderWidth != m_width || m_renderHeight != m_height ||
+            (m_colorTexture != nullptr && m_colorTexture->GetResource()->GetDesc().Format != DXGI_FORMAT_R32G32B32A32_FLOAT);
+
         m_renderWidth = m_width;
         m_renderHeight = m_height;
     }
