@@ -1,23 +1,7 @@
 #include "FSR3.h"
+
 #include "Device.h"
-
-#define THROW_IF_FAILED(x) \
-    do \
-    { \
-        ffx::ReturnCode returnCode = x; \
-        if (returnCode != ffx::ReturnCode::Ok) \
-        { \
-            assert(0 && #x); \
-        } \
-    } while (0)
-
-template<typename T>
-static T makeFfxObject()
-{
-    alignas(alignof(T)) uint8_t bytes[sizeof(T)]{};
-    new (bytes) T();
-    return *reinterpret_cast<T*>(bytes);
-}
+#include "FFX.h"
 
 FSR3::FSR3(const Device& device)
 {
@@ -26,14 +10,14 @@ FSR3::FSR3(const Device& device)
 FSR3::~FSR3()
 {
     if (m_context != nullptr)
-        ffx::DestroyContext(m_context);
+        FFX_THROW_IF_FAILED(ffx::DestroyContext(m_context));
 }
 
 void FSR3::init(const InitArgs& args)
 {
     if (m_context != nullptr)
     {
-        ffx::DestroyContext(m_context);
+        FFX_THROW_IF_FAILED(ffx::DestroyContext(m_context));
         m_context = nullptr;
     }
 
@@ -49,7 +33,7 @@ void FSR3::init(const InitArgs& args)
     query.pOutRenderWidth = &m_width;
     query.pOutRenderHeight = &m_height;
     
-    THROW_IF_FAILED(ffx::Query(query));
+    FFX_THROW_IF_FAILED(ffx::Query(query));
 
     auto desc = makeFfxObject<ffx::CreateContextDescUpscale>();
     desc.flags = FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
@@ -64,7 +48,7 @@ void FSR3::init(const InitArgs& args)
     auto backendDesc = makeFfxObject<ffx::CreateBackendDX12Desc>();
     backendDesc.device = args.device.getUnderlyingDevice();
 
-    THROW_IF_FAILED(ffx::CreateContext(m_context, nullptr, desc, backendDesc));
+    FFX_THROW_IF_FAILED(ffx::CreateContext(m_context, nullptr, desc, backendDesc));
 }
 
 void FSR3::dispatch(const DispatchArgs& args)
@@ -87,8 +71,9 @@ void FSR3::dispatch(const DispatchArgs& args)
     desc.cameraNear = args.device.getGlobalsPS().floatConstants[25][0];
     desc.cameraFar = args.device.getGlobalsPS().floatConstants[25][1];
     desc.cameraFovAngleVertical = 1.0f / args.device.getGlobalsVS().floatConstants[0][0];
+    desc.viewSpaceToMetersFactor = 1.0f;
 
-    THROW_IF_FAILED(ffx::Dispatch(m_context, desc));
+    FFX_THROW_IF_FAILED(ffx::Dispatch(m_context, desc));
 }
 
 UpscalerType FSR3::getType()

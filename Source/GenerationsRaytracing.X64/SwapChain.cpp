@@ -3,6 +3,7 @@
 #include "Device.h"
 #include "DxgiConverter.h"
 #include "Message.h"
+#include "FFX.h"
 
 SwapChain::SwapChain()
 {
@@ -110,4 +111,25 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
 
 void SwapChain::replaceSwapChainForFrameInterpolation(const Device& device)
 {
+    if (m_context == nullptr)
+    {
+        for (auto& resource : m_resources)
+            resource = nullptr;
+
+        ffx::CreateContextDescFrameGenerationSwapChainWrapDX12 desc{};
+        desc.swapchain = m_swapChain.GetAddressOf();
+        desc.gameQueue = device.getGraphicsQueue().getUnderlyingQueue();
+
+        FFX_THROW_IF_FAILED(ffx::CreateContext(m_context, nullptr, desc));
+
+        for (uint32_t i = 0; i < m_textures.size(); i++)
+        {
+            auto& resource = m_resources[i];
+            HRESULT hr = m_swapChain->GetBuffer(i, IID_PPV_ARGS(resource.GetAddressOf()));
+            assert(SUCCEEDED(hr) && resource != nullptr);
+
+            device.getUnderlyingDevice()->CreateRenderTargetView(
+                resource.Get(), nullptr, device.getRtvDescriptorHeap().getCpuHandle(m_textures[i].rtvIndex));
+        }
+    }
 }

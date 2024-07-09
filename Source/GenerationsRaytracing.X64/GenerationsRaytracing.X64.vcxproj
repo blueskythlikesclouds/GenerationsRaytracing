@@ -214,6 +214,7 @@
     <ClCompile Include="DLSSD.cpp" />
     <ClCompile Include="EnvironmentColor.cpp" />
     <ClCompile Include="FeatureCaps.cpp" />
+    <ClCompile Include="FrameGenerator.cpp" />
     <ClCompile Include="FSR3.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MessageReceiver.cpp" />
@@ -228,6 +229,7 @@
     <ClCompile Include="RootSignature.cpp" />
     <ClCompile Include="ShaderCache.cpp" />
     <ClCompile Include="ShaderConverter.cpp" />
+    <ClCompile Include="Source.cpp" />
     <ClCompile Include="SubAllocator.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="DxgiConverter.cpp" />
@@ -245,6 +247,8 @@
     <ClInclude Include="DLSSD.h" />
     <ClInclude Include="EnvironmentColor.h" />
     <ClInclude Include="FeatureCaps.h" />
+    <ClInclude Include="FFX.h" />
+    <ClInclude Include="FrameGenerator.h" />
     <ClInclude Include="FSR3.h" />
     <ClInclude Include="GBufferData.h" />
     <ClInclude Include="GeometryDesc.h" />

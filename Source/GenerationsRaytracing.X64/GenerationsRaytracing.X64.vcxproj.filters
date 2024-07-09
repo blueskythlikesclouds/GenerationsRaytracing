@@ -69,6 +69,12 @@
     <ClCompile Include="SubAllocator.cpp">
       <Filter>Resource</Filter>
     </ClCompile>
+    <ClCompile Include="FrameGenerator.cpp">
+      <Filter>Upscaler</Filter>
+    </ClCompile>
+    <ClCompile Include="Source.cpp">
+      <Filter>Upscaler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">
@@ -260,6 +266,12 @@
     </ClInclude>
     <ClInclude Include="TopLevelAccelStruct.h">
       <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="FFX.h">
+      <Filter>Upscaler</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameGenerator.h">
+      <Filter>Upscaler</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

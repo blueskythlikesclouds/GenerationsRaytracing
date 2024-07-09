@@ -1926,7 +1926,7 @@ Device::Device(const IniFile& iniFile)
     assert(SUCCEEDED(hr) && debugInterface != nullptr);
 
     debugInterface->EnableDebugLayer();
-    debugInterface->SetEnableGPUBasedValidation(TRUE);
+    //debugInterface->SetEnableGPUBasedValidation(TRUE);
 #endif
 
     const auto factory = m_swapChain.getUnderlyingFactory();

@@ -614,6 +614,19 @@ void RaytracingDevice::createRaytracingTextures()
         m_device->CreateRenderTargetView(m_colorTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_colorRtvId));
         m_device->CreateRenderTargetView(m_diffuseAlbedoTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_diffuseAlbedoRtvId));
         m_device->CreateRenderTargetView(m_specularAlbedoTexture->GetResource(), nullptr, m_rtvDescriptorHeap.getCpuHandle(m_specularAlbedoRtvId));
+
+        if (m_frameGenerator != nullptr)
+        {
+            m_frameGenerator->init(
+                {
+                    *this,
+                    m_width,
+                    m_height,
+                    m_renderWidth,
+                    m_renderHeight,
+                    m_copyHdrTexturePipeline != nullptr
+                });
+        }
     }
 }
 
@@ -1215,6 +1228,8 @@ void RaytracingDevice::procMsgDispatchUpscaler()
     {
         return;
     }
+    
+    bool shouldSetDescriptorHeaps = false;
 
     if (m_upscaler != nullptr && message.debugView == DEBUG_VIEW_NONE)
     {
@@ -1255,8 +1270,31 @@ void RaytracingDevice::procMsgDispatchUpscaler()
 
         PIX_END_EVENT();
 
-        setDescriptorHeaps();
+        shouldSetDescriptorHeaps = true;
     }
+
+    if (m_frameGenerator != nullptr)
+    {
+        m_frameGenerator->dispatch(
+            {
+                *this,
+                m_width,
+                m_height,
+                m_globalsRT.currentFrame,
+                m_renderWidth,
+                m_renderHeight,
+                m_depthTexture->GetResource(),
+                m_motionVectorsTexture->GetResource(),
+                m_globalsRT.pixelJitterX,
+                m_globalsRT.pixelJitterY,
+                message.resetAccumulation
+            });
+
+        shouldSetDescriptorHeaps = true;
+    }
+
+    if (shouldSetDescriptorHeaps)
+        setDescriptorHeaps();
 
     m_renderTargetViews[0] = m_renderTargetView;
     copyToRenderTargetAndDepthStencil(message);
@@ -2195,6 +2233,9 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     
     if (m_upscaler == nullptr)
         m_upscaler = std::make_unique<FSR3>(*this);
+
+    if (iniFile.getBool("Mod", "FrameGeneration", false))
+        m_frameGenerator = std::make_unique<FrameGenerator>();
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC resolvePipelineDesc{};
     resolvePipelineDesc.pRootSignature = m_raytracingRootSignature.Get();

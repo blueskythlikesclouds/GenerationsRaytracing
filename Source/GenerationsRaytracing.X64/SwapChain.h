@@ -15,7 +15,7 @@ protected:
     uint8_t m_syncInterval = 0;
     std::vector<Texture> m_textures;
     std::vector<ComPtr<ID3D12Resource>> m_resources;
-    bool m_frameInterpolation = false;
+    ffx::Context m_context{};
 
 public:
     SwapChain();
