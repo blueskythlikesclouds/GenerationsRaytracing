@@ -59,7 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>USE_PIX;WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.4_DLSS_3.7.10_Plugin_2024.06.04\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-SDK\sdk\include;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\lz4\lib;$(SolutionDir)..\Dependencies\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.4_DLSS_3.7.10_Plugin_2024.06.04\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-SDK\ffx-api\include;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\lz4\lib;$(SolutionDir)..\Dependencies\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
@@ -68,8 +68,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;nvapi64.lib;ffx_backend_dx12_x64d.lib;ffx_frameinterpolation_x64d.lib;ffx_fsr3_x64d.lib;ffx_fsr3upscaler_x64d.lib;ffx_opticalflow_x64d.lib;nvsdk_ngx_d_dbg.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\Dependencies\UE_5.4_DLSS_3.7.10_Plugin_2024.06.04\Plugins\DLSS\Source\ThirdParty\NGX\Lib\x64;$(SolutionDir)..\Dependencies\FidelityFX-SDK\sdk\bin\ffx_sdk;$(SolutionDir)..\Dependencies\nvapi\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;nvapi64.lib;amd_fidelityfx_dx12.lib;nvsdk_ngx_d_dbg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\Dependencies\UE_5.4_DLSS_3.7.10_Plugin_2024.06.04\Plugins\DLSS\Source\ThirdParty\NGX\Lib\x64;$(SolutionDir)..\Dependencies\FidelityFX-SDK\PrebuiltSignedDLL;$(SolutionDir)..\Dependencies\nvapi\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <FxCompile>
       <VariableName>%(Filename)</VariableName>
@@ -88,7 +88,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_HAS_EXCEPTIONS=0;NDEBUG;_CONSOLE;HAS_PIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.4_DLSS_3.7.10_Plugin_2024.06.04\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-SDK\sdk\include;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\lz4\lib;$(SolutionDir)..\Dependencies\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies;$(SolutionDir)..\Dependencies\D3D12MemoryAllocator\include;$(SolutionDir)..\Dependencies\DDSTextureLoader;$(SolutionDir)..\Dependencies\UE_5.4_DLSS_3.7.10_Plugin_2024.06.04\Plugins\DLSS\Source\ThirdParty\NGX\Include;$(SolutionDir)..\Dependencies\FidelityFX-SDK\ffx-api\include;$(SolutionDir)..\Dependencies\unordered_dense\include;$(SolutionDir)..\Dependencies\xxHash;$(SolutionDir)..\Dependencies\lz4\lib;$(SolutionDir)..\Dependencies\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
@@ -105,8 +105,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;nvapi64.lib;ffx_backend_dx12_x64.lib;ffx_frameinterpolation_x64.lib;ffx_fsr3_x64.lib;ffx_fsr3upscaler_x64.lib;ffx_opticalflow_x64.lib;nvsdk_ngx_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\Dependencies\UE_5.4_DLSS_3.7.10_Plugin_2024.06.04\Plugins\DLSS\Source\ThirdParty\NGX\Lib\x64;$(SolutionDir)..\Dependencies\FidelityFX-SDK\sdk\bin\ffx_sdk;$(SolutionDir)..\Dependencies\nvapi\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>dxgi.lib;dxguid.lib;d3d12.lib;nvapi64.lib;amd_fidelityfx_dx12.lib;nvsdk_ngx_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\Dependencies\UE_5.4_DLSS_3.7.10_Plugin_2024.06.04\Plugins\DLSS\Source\ThirdParty\NGX\Lib\x64;$(SolutionDir)..\Dependencies\FidelityFX-SDK\PrebuiltSignedDLL;$(SolutionDir)..\Dependencies\nvapi\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <FxCompile>
       <VariableName>%(Filename)</VariableName>

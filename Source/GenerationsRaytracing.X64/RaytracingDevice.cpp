@@ -326,6 +326,36 @@ void RaytracingDevice::writeHitGroupShaderTable(size_t geometryIndex, size_t sha
     }
 }
 
+static int32_t getJitterPhaseCount(int32_t renderWidth, int32_t displayWidth)
+{
+    const float basePhaseCount = 8.0f;
+    const int32_t jitterPhaseCount = int32_t(basePhaseCount * pow((float(displayWidth) / renderWidth), 2.0f));
+    return jitterPhaseCount;
+}
+
+static float halton(int32_t index, int32_t base)
+{
+    float f = 1.0f, result = 0.0f;
+
+    for (int32_t currentIndex = index; currentIndex > 0;) {
+
+        f /= (float)base;
+        result = result + f * (float)(currentIndex % base);
+        currentIndex = (uint32_t)(floorf((float)(currentIndex) / (float)(base)));
+    }
+
+    return result;
+}
+
+static void getJitterOffset(float* outX, float* outY, int32_t index, int32_t phaseCount)
+{
+    const float x = halton((index % phaseCount) + 1, 2) - 0.5f;
+    const float y = halton((index % phaseCount) + 1, 3) - 0.5f;
+
+    *outX = x;
+    *outY = y;
+}
+
 D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& message)
 {
     if (message.resetAccumulation || message.debugView != DEBUG_VIEW_NONE || 
@@ -358,8 +388,8 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
 
     }
 
-    ffxFsr3GetJitterOffset(&m_globalsRT.pixelJitterX, &m_globalsRT.pixelJitterY, static_cast<int32_t>(m_globalsRT.currentFrame),
-        ffxFsr3GetJitterPhaseCount(static_cast<int32_t>(m_renderWidth), static_cast<int32_t>(m_width)));
+    getJitterOffset(&m_globalsRT.pixelJitterX, &m_globalsRT.pixelJitterY, static_cast<int32_t>(m_globalsRT.currentFrame),
+        getJitterPhaseCount(static_cast<int32_t>(m_renderWidth), static_cast<int32_t>(m_width)));
 
     m_globalsRT.internalResolutionWidth = m_renderWidth;
     m_globalsRT.internalResolutionHeight = m_renderHeight;
@@ -1195,6 +1225,7 @@ void RaytracingDevice::procMsgDispatchUpscaler()
         commandList.transitionBarriers(
             {
                 m_colorTexture->GetResource(),
+                m_depthTexture->GetResource(),
                 m_exposureTexture->GetResource(),
                 m_diffuseAlbedoTexture->GetResource(),
                 m_specularAlbedoTexture->GetResource(),

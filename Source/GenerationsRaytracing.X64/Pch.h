@@ -19,8 +19,10 @@ using Microsoft::WRL::ComPtr;
 
 #include <D3D12MemAlloc.h>
 #include <DDSTextureLoader12.h>
-#include <FidelityFX/host/ffx_fsr3.h>
-#include <FidelityFX/host/backends/dx12/ffx_dx12.h>
+#include <ffx_api/ffx_api.hpp>
+#include <ffx_api/ffx_upscale.hpp>
+#include <ffx_api/ffx_framegeneration.hpp>
+#include <ffx_api/dx12/ffx_api_dx12.hpp>
 #include <nvsdk_ngx_helpers_dlssd.h>
 #include <pix3.h>
 #define XXH_STATIC_LINKING_ONLY

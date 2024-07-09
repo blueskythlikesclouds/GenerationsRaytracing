@@ -110,26 +110,4 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
 
 void SwapChain::replaceSwapChainForFrameInterpolation(const Device& device)
 {
-    if (!m_frameInterpolation)
-    {
-        for (auto& resource : m_resources)
-            resource = nullptr;
-
-        FfxCommandQueue commandQueue = ffxGetCommandQueueDX12(device.getGraphicsQueue().getUnderlyingQueue());
-        FfxSwapchain swapChain = ffxGetSwapchainDX12(m_swapChain.Detach());
-        ffxReplaceSwapchainForFrameinterpolationDX12(commandQueue, swapChain);
-        m_swapChain.Attach(ffxGetDX12SwapchainPtr(swapChain));
-
-        for (uint32_t i = 0; i < m_textures.size(); i++)
-        {
-            auto& resource = m_resources[i];
-            HRESULT hr = m_swapChain->GetBuffer(i, IID_PPV_ARGS(resource.GetAddressOf()));
-            assert(SUCCEEDED(hr) && resource != nullptr);
-
-            device.getUnderlyingDevice()->CreateRenderTargetView(
-                resource.Get(), nullptr, device.getRtvDescriptorHeap().getCpuHandle(m_textures[i].rtvIndex));
-        }
-
-        m_frameInterpolation = true;
-    }
 }

@@ -2,22 +2,10 @@
 
 #include "Upscaler.h"
 
-typedef enum Fsr3BackendTypes : uint32_t
-{
-    FSR3_BACKEND_SHARED_RESOURCES,
-    FSR3_BACKEND_UPSCALING,
-    FSR3_BACKEND_FRAME_INTERPOLATION,
-    FSR3_BACKEND_COUNT
-} Fsr3BackendTypes;
-
 class FSR3 : public Upscaler
 {
 protected:
-    IDXGISwapChain4* m_swapChain;
-    std::unique_ptr<uint8_t[]> m_scratchBuffers[FSR3_BACKEND_COUNT];
-    FfxFsr3ContextDescription m_contextDesc{};
-    FfxFsr3Context m_context{};
-    bool m_valid = false;
+    ffx::Context m_context{};
 
 public:
     FSR3(const Device& device);
