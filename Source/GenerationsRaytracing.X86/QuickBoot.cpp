@@ -268,14 +268,23 @@ static void writeModsDbAndRestart(size_t modIndex, const char* stage)
     std::string filePath = quickBootMod.filePath.substr(0, index + 1);
     filePath += "GenerationsQuickBoot.ini";
 
-    const bool isClassicStage = strcmp(stage, "bms") == 0 || 
-        strcmp(stage, "bde") == 0 || (strlen(stage) > 3 && stage[3] == '1');
-
     IniFile quickBootIni;
     quickBootIni.read(filePath.c_str());
-    quickBootIni.setString("QuickBoot", "StageName", stage);
-    quickBootIni.set("QuickBoot", "g_IsQuickBoot", 3);
-    quickBootIni.set("QuickBoot", "PlayerClass", isClassicStage ? 1 : 0);
+
+    if (stage != nullptr)
+    {
+        const bool isClassicStage = strcmp(stage, "bms") == 0 ||
+            strcmp(stage, "bde") == 0 || (strlen(stage) > 3 && stage[3] == '1');
+
+        quickBootIni.setString("QuickBoot", "StageName", stage);
+        quickBootIni.set("QuickBoot", "g_IsQuickBoot", 3);
+        quickBootIni.set("QuickBoot", "PlayerClass", isClassicStage ? 1 : 0);
+    }
+    else
+    {
+        quickBootIni.set("QuickBoot", "g_IsQuickBoot", 1);
+    }
+
     quickBootIni.write(filePath.c_str());
 
     IniFile modsDbIni;
@@ -346,13 +355,16 @@ void QuickBoot::renderImgui()
                 constexpr float BUTTON_SIZE = 50.0f;
                 const float windowVisible = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 
+                if (ImGui::Button("Title"))
+                    writeModsDbAndRestart(~0, nullptr);
+
                 for (auto& stage : s_stages)
                 {
-                    if (ImGui::Button(stage, { BUTTON_SIZE, 0.0f }) && !*s_shouldExit)
-                        writeModsDbAndRestart(~0, stage);
-
                     if (ImGui::GetItemRectMax().x + BUTTON_SIZE < windowVisible)
                         ImGui::SameLine();
+
+                    if (ImGui::Button(stage, { BUTTON_SIZE, 0.0f }) && !*s_shouldExit)
+                        writeModsDbAndRestart(~0, stage);
                 }
             
                 for (size_t i = 0; i < s_mods.size(); i++)
@@ -366,19 +378,24 @@ void QuickBoot::renderImgui()
                         ImGui::TableNextColumn();
 
                         ImGui::PushID(&mod);
+
+                        if (ImGui::Button("Title"))
+                            writeModsDbAndRestart(i, nullptr);
+
                         for (size_t j = 0; j < _countof(s_stages); j++)
                         {
                             if (mod.stages[j])
                             {
                                 const char* stage = s_stages[j];
 
-                                if (ImGui::Button(stage, { BUTTON_SIZE, 0.0f }) && !*s_shouldExit)
-                                    writeModsDbAndRestart(i, stage);
-
                                 if (ImGui::GetItemRectMax().x + BUTTON_SIZE < windowVisible)
                                     ImGui::SameLine();
+
+                                if (ImGui::Button(stage, { BUTTON_SIZE, 0.0f }) && !*s_shouldExit)
+                                    writeModsDbAndRestart(i, stage);
                             }
                         }
+
                         ImGui::PopID();
                     }
                 }
