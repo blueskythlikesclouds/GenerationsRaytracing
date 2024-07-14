@@ -80,6 +80,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
         if (strstr(shaderName, "Blb") != nullptr)
             message.flags |= MATERIAL_FLAG_VIEW_Z_ALPHA_FADE;
+
+        if (strcmp(shaderName, "Blend_dpdpn") == 0)
+            message.flags |= MATERIAL_FLAG_BLEND_FLIP;
     }
 
     if (materialDataEx.m_spTexsetData != nullptr)

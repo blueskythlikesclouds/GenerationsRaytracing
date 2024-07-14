@@ -229,7 +229,6 @@
     <ClCompile Include="RootSignature.cpp" />
     <ClCompile Include="ShaderCache.cpp" />
     <ClCompile Include="ShaderConverter.cpp" />
-    <ClCompile Include="Source.cpp" />
     <ClCompile Include="SubAllocator.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="DxgiConverter.cpp" />

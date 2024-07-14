@@ -72,9 +72,6 @@
     <ClCompile Include="FrameGenerator.cpp">
       <Filter>Upscaler</Filter>
     </ClCompile>
-    <ClCompile Include="Source.cpp">
-      <Filter>Upscaler</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Message">

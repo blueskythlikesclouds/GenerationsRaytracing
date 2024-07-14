@@ -10,3 +10,4 @@
 #define MATERIAL_FLAG_VIEW_Z_ALPHA_FADE   (1 << 6)
 #define MATERIAL_FLAG_HAS_DIFFUSE_TEXTURE (1 << 7)
 #define MATERIAL_FLAG_FULBRIGHT           (1 << 8)
+#define MATERIAL_FLAG_BLEND_FLIP          (1 << 9)

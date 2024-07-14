@@ -7,6 +7,9 @@ void CreateBlendGBufferData(Vertex vertex, Material material, inout GBufferData 
     float blendFactor = material.OpacityTexture != 0 ?
         SampleMaterialTexture2D(material.OpacityTexture, vertex).x : vertex.Color.x;
     
+    if (material.Flags & MATERIAL_FLAG_BLEND_FLIP)
+        blendFactor = 1.0 - blendFactor;
+    
     float4 diffuse = SampleMaterialTexture2D(material.DiffuseTexture, vertex);
     if (material.DiffuseTexture2 != 0)
         diffuse = lerp(diffuse, SampleMaterialTexture2D(material.DiffuseTexture2, vertex), blendFactor);
