@@ -355,7 +355,7 @@ void QuickBoot::renderImgui()
                 constexpr float BUTTON_SIZE = 50.0f;
                 const float windowVisible = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 
-                if (ImGui::Button("Title"))
+                if (ImGui::Button("Title", { BUTTON_SIZE, 0.0f }))
                     writeModsDbAndRestart(~0, nullptr);
 
                 for (auto& stage : s_stages)
@@ -379,7 +379,7 @@ void QuickBoot::renderImgui()
 
                         ImGui::PushID(&mod);
 
-                        if (ImGui::Button("Title"))
+                        if (ImGui::Button("Title", { BUTTON_SIZE, 0.0f }))
                             writeModsDbAndRestart(i, nullptr);
 
                         for (size_t j = 0; j < _countof(s_stages); j++)
