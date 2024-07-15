@@ -194,6 +194,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
     float playableParam = saturate(64.0 * (ComputeNdcPosition(vertex.Position, g_MtxView, g_MtxProjection).y - instanceDesc.PlayableParam));
     playableParam *= saturate((instanceDesc.ChrPlayableMenuParam - vertex.Position.y + 0.05) * 10);
     gBufferData.Diffuse = lerp(1.0, gBufferData.Diffuse, playableParam);
+    gBufferData.SpecularTint = lerp(1.0, gBufferData.SpecularTint, playableParam);
     gBufferData.Emission *= playableParam;
 
     if (material.Flags & MATERIAL_FLAG_VIEW_Z_ALPHA_FADE)
