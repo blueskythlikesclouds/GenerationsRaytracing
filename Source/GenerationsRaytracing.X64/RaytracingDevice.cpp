@@ -668,6 +668,8 @@ void RaytracingDevice::dispatchResolver(const MsgTraceRays& message)
         1);
 
     PIX_END_EVENT();
+
+    storeForAccumulator();
 }
 
 void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscaler& message)
@@ -727,6 +729,8 @@ void RaytracingDevice::copyToRenderTargetAndDepthStencil(const MsgDispatchUpscal
         DIRTY_FLAG_PRIMITIVE_TOPOLOGY;
 
     m_dirtyFlags &= ~DIRTY_FLAG_RENDER_TARGET_AND_DEPTH_STENCIL;
+
+    restoreForAccumulator();
 }
 
 void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
@@ -1217,6 +1221,46 @@ void RaytracingDevice::prepareForDispatchUpscaler(const MsgTraceRays& message)
 
     m_samplerDescsFirst = 0;
     m_samplerDescsLast = _countof(m_samplerDescs) - 1;
+}
+
+void RaytracingDevice::storeForAccumulator()
+{
+    if (m_upscaler != nullptr)
+        return;
+
+    PIX_EVENT();
+
+    auto& commandList = getGraphicsCommandList();
+
+    commandList.transitionBarrier(m_colorTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+    commandList.transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST);
+
+    commandList.commitBarriers();
+
+    commandList.getUnderlyingCommandList()->CopyResource(m_colorBeforeTransparencyTexture->GetResource(), m_colorTexture->GetResource());
+}
+
+void RaytracingDevice::restoreForAccumulator()
+{
+    if (m_upscaler != nullptr)
+        return;
+
+    PIX_EVENT();
+
+    auto& commandList = getGraphicsCommandList();
+
+    commandList.transitionBarrier(m_colorBeforeTransparencyTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+    commandList.transitionBarrier(m_colorTexture->GetResource(),
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST);
+
+    commandList.commitBarriers();
+
+    commandList.getUnderlyingCommandList()->CopyResource(m_colorTexture->GetResource(), m_colorBeforeTransparencyTexture->GetResource());
 }
 
 void RaytracingDevice::procMsgDispatchUpscaler()

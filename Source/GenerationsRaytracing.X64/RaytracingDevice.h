@@ -234,6 +234,9 @@ protected:
     void copyToRenderTargetAndDepthStencil(const MsgDispatchUpscaler& message);
     void prepareForDispatchUpscaler(const MsgTraceRays& message);
 
+    void storeForAccumulator();
+    void restoreForAccumulator();
+
     void procMsgCreateBottomLevelAccelStruct();
     void procMsgReleaseRaytracingResource();
     void procMsgCreateInstance();
