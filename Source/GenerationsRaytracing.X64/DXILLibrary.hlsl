@@ -142,7 +142,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
         bool terminatePath = false;
         bool applyPower = bounceIndex != 0 || args.ApplyPower;
 
-        if (any(diffuse != 0))
+        if (any(diffuse != FLT_MAX))
         {
             float lightPower = 1.0;
 
@@ -326,7 +326,7 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
     }
 
     payload.Color = color;
-    payload.Diffuse = 0.0;
+    payload.Diffuse = FLT_MAX;
 }
 
 [shader("miss")]
@@ -345,7 +345,7 @@ void SecondaryEnvironmentColorMiss(inout SecondaryRayPayload payload : SV_RayPay
     }
 
     payload.Color = color;
-    payload.Diffuse = 0.0;
+    payload.Diffuse = FLT_MAX;
 }
 
 [shader("anyhit")]
