@@ -2233,7 +2233,7 @@ void Device::processMessages()
     fenceCount = 0u;
 
     auto& copyCommandList = getCopyCommandList();
-    bool shouldWaitForCopyQueue = false;
+    bool copyQueueWasExecuted = false;
 
     if (copyCommandList.isOpen())
     {
@@ -2244,15 +2244,18 @@ void Device::processMessages()
         fences[fenceCount] = m_copyQueue.getFence();
         ++fenceCount;
 
-        shouldWaitForCopyQueue = true;
+        copyQueueWasExecuted = true;
     }
 
-    if (shouldWaitForCopyQueue)
+    if (copyQueueWasExecuted)
         m_graphicsQueue.wait(m_fenceValue, m_copyQueue);
 
     graphicsCommandList.close();
     m_graphicsQueue.executeCommandList(graphicsCommandList);
     m_graphicsQueue.signal(m_fenceValue);
+
+    if (copyQueueWasExecuted)
+        m_copyQueue.wait(m_fenceValue, m_graphicsQueue);
 
     fences[fenceCount] = m_graphicsQueue.getFence();
     ++fenceCount;
@@ -2262,11 +2265,14 @@ void Device::processMessages()
     {
         computeCommandList.close();
 
-        if (shouldWaitForCopyQueue)
+        if (copyQueueWasExecuted)
             m_computeQueue.wait(m_fenceValue, m_copyQueue);
 
         m_computeQueue.executeCommandList(computeCommandList);
         m_computeQueue.signal(m_fenceValue);
+
+        if (copyQueueWasExecuted)
+            m_copyQueue.wait(m_fenceValue, m_computeQueue);
 
         fences[fenceCount] = m_computeQueue.getFence();
         ++fenceCount;
