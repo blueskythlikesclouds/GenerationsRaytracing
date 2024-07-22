@@ -7,6 +7,18 @@ static FUNCTION_PTR(void, __thiscall, shareVertexBufferSetRenderingInfrastructur
 static FUNCTION_PTR(void, __cdecl, shareVertexBufferStart, 0x725000, void*, void*);
 static FUNCTION_PTR(void, __cdecl, shareVertexBufferFinish, 0x725050, void*, void*);
 
+static void checkSampleChunkV2Header(void* data)
+{
+    if (data != nullptr)
+    {
+        ShareVertexBuffer::s_loadingSampleChunkV2 =
+            (_byteswap_ulong(reinterpret_cast<const SampleChunkHeaderV2*>(data)->fileSize) & 0x80000000) != 0;
+
+        if (ShareVertexBuffer::s_loadingSampleChunkV2)
+            reinterpret_cast<SampleChunkHeaderV1*>(data)->version = 0x05000000;
+    }
+}
+
 HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
     const Hedgehog::Base::CSharedString& name,
     void* data,
@@ -16,14 +28,7 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
 {
     ShareVertexBuffer::s_makingModelData = true;
 
-    if (data != nullptr)
-    {
-        ShareVertexBuffer::s_loadingSampleChunkV2 =
-            (_byteswap_ulong(reinterpret_cast<const SampleChunkHeaderV2*>(data)->fileSize) & 0x80000000) != 0;
-
-        if (ShareVertexBuffer::s_loadingSampleChunkV2)
-            reinterpret_cast<SampleChunkHeaderV1*>(data)->version = 0x05000000;
-    }
+    checkSampleChunkV2Header(data);
 
     if (*reinterpret_cast<uint32_t*>(0x1B244D4) == NULL)
     {
@@ -42,6 +47,18 @@ HOOK(void, __cdecl, ModelDataMake, 0x7337A0,
 
     ShareVertexBuffer::s_loadingSampleChunkV2 = false;
     ShareVertexBuffer::s_makingModelData = false;
+}
+
+HOOK(void, __cdecl, TerrainModelDataMake, 0x734960,
+    const Hedgehog::Base::CSharedString& name,
+    void* data,
+    uint32_t dataSize,
+    const boost::shared_ptr<Hedgehog::Database::CDatabase>& database,
+    Hedgehog::Mirage::CRenderingInfrastructure* renderingInfrastructure)
+{
+    checkSampleChunkV2Header(data);
+    originalTerrainModelDataMake(name, data, dataSize, database, renderingInfrastructure);
+    ShareVertexBuffer::s_loadingSampleChunkV2 = false;
 }
 
 static void __declspec(naked) meshDataDrawIndexedPrimitiveMidAsmHook()
@@ -73,6 +90,7 @@ static void __declspec(naked) meshDataDrawIndexedPrimitiveMidAsmHook()
 void ShareVertexBuffer::init()
 {
     INSTALL_HOOK(ModelDataMake);
+    INSTALL_HOOK(TerrainModelDataMake);
 
     // Fix game not using index offset when drawing models
     WRITE_JUMP(0x6FD572, meshDataDrawIndexedPrimitiveMidAsmHook);

@@ -45,6 +45,7 @@ enum DeclType
     DECLTYPE_UDEC3 = 0x2A2287,
     DECLTYPE_UDEC3N = 0x2A2087,
     DECLTYPE_DEC3N = 0x2A2187,
+    DECLTYPE_HEND3N = 0x2A2190,
     DECLTYPE_FLOAT16_2 = 0x2C235F,
     DECLTYPE_FLOAT16_4 = 0x1A2360,
     DECLTYPE_UNUSED = 0xFFFFFFFF
@@ -70,6 +71,7 @@ static size_t getDeclTypeSize(size_t declType)
     case DECLTYPE_UDEC3: return 4;
     case DECLTYPE_UDEC3N: return 4;
     case DECLTYPE_DEC3N: return 4;
+    case DECLTYPE_HEND3N: return 4;
     case DECLTYPE_FLOAT16_2: return 4;
     case DECLTYPE_FLOAT16_4: return 8;
     }
@@ -101,6 +103,13 @@ struct MeshResource
 
 static std::vector<uint8_t> s_vertexData;
 
+static uint32_t dec3nToUdec3n(uint32_t value)
+{
+    int32_t signExtend = static_cast<int32_t>((value << 22) | value);
+    signExtend += 511;
+    return static_cast<uint32_t>(signExtend) & 0x3FF;
+}
+
 static void optimizeVertexFormat(MeshResource* meshResource)
 {
     uint32_t offsets[14][4]{};
@@ -113,7 +122,7 @@ static void optimizeVertexFormat(MeshResource* meshResource)
 
         auto& valid = usages[vertexElement->usage][vertexElement->usageIndex];
 
-        if (vertexElement->usage == D3DDECLUSAGE_TEXCOORD && vertexElement->usageIndex != 0)
+        if (_byteswap_ulong(vertexElement->type) == DECLTYPE_FLOAT2 && vertexElement->usage == D3DDECLUSAGE_TEXCOORD && vertexElement->usageIndex != 0)
         {
             bool allZero = true;
             bool allSame = true;
@@ -145,6 +154,13 @@ static void optimizeVertexFormat(MeshResource* meshResource)
 
         ++vertexElement;
     }
+
+    usages[D3DDECLUSAGE_POSITION][0] = true;
+    usages[D3DDECLUSAGE_COLOR][0] = true;
+    usages[D3DDECLUSAGE_NORMAL][0] = true;
+    usages[D3DDECLUSAGE_TANGENT][0] = true;
+    usages[D3DDECLUSAGE_BINORMAL][0] = true;
+    usages[D3DDECLUSAGE_TEXCOORD][0] = true;
 
     if (!ShareVertexBuffer::s_makingModelData || _byteswap_ulong(meshResource->nodeCount) <= 1)
     {
@@ -195,13 +211,12 @@ static void optimizeVertexFormat(MeshResource* meshResource)
         }
     }
 
+    if (_byteswap_ulong(meshResource->vertexSize) < vertexSize)
+        MessageBox(nullptr, TEXT("Mesh optimizer panic!!!"), TEXT("Generations Raytracing"), MB_ICONERROR);
+
     elements[elementIndex].stream = 0xFF00;
     elements[elementIndex].type = DECLTYPE_UNUSED;
     ++elementIndex;
-
-    // Might happen if the vertex data is already optimized
-    if (vertexSize >= _byteswap_ulong(meshResource->vertexSize))
-        return;
 
     s_vertexData.resize(_byteswap_ulong(meshResource->vertexCount) * vertexSize);
 
@@ -232,24 +247,45 @@ static void optimizeVertexFormat(MeshResource* meshResource)
                 case D3DDECLUSAGE_TANGENT:
                 case D3DDECLUSAGE_BINORMAL:
                 {
-                    Sonic::CNoAlignVector vector;
-
-                    for (size_t j = 0; j < 3; j++)
+                    if (_byteswap_ulong(vertexElement->type) == DECLTYPE_FLOAT3)
                     {
-                        const uint32_t value = _byteswap_ulong(reinterpret_cast<uint32_t*>(source)[j]);
-                        vector[j] = *reinterpret_cast<const float*>(&value);
+                        Sonic::CNoAlignVector vector;
+
+                        for (size_t j = 0; j < 3; j++)
+                        {
+                            const uint32_t value = _byteswap_ulong(reinterpret_cast<uint32_t*>(source)[j]);
+                            vector[j] = *reinterpret_cast<const float*>(&value);
+                        }
+
+                        *reinterpret_cast<uint32_t*>(destination) = quantizeSnorm10(vector.normalized());
+                    }
+                    else
+                    {
+                        const uint32_t value = _byteswap_ulong(*reinterpret_cast<uint32_t*>(source));
+
+                        *reinterpret_cast<uint32_t*>(destination) = 
+                            dec3nToUdec3n(value & 0x3FF) | 
+                            (dec3nToUdec3n((value >> 10) & 0x3FF) << 10) |
+                            (dec3nToUdec3n((value >> 20) & 0x3FF) << 20);
                     }
 
-                    *reinterpret_cast<uint32_t*>(destination) = quantizeSnorm10(vector.normalized());
                     break;
                 }
 
                 case D3DDECLUSAGE_TEXCOORD:
                 {
-                    for (size_t j = 0; j < 2; j++)
+                    if (_byteswap_ulong(vertexElement->type) == DECLTYPE_FLOAT2)
                     {
-                        const uint32_t value = _byteswap_ulong(reinterpret_cast<uint32_t*>(source)[j]);
-                        reinterpret_cast<uint16_t*>(destination)[j] = quantizeHalf(*reinterpret_cast<const float*>(&value));
+                        for (size_t j = 0; j < 2; j++)
+                        {
+                            const uint32_t value = _byteswap_ulong(reinterpret_cast<uint32_t*>(source)[j]);
+                            reinterpret_cast<uint16_t*>(destination)[j] = quantizeHalf(*reinterpret_cast<const float*>(&value));
+                        }
+                    }
+                    else
+                    {
+                        reinterpret_cast<uint16_t*>(destination)[0] = _byteswap_ushort(reinterpret_cast<uint16_t*>(source)[0]);
+                        reinterpret_cast<uint16_t*>(destination)[1] = _byteswap_ushort(reinterpret_cast<uint16_t*>(source)[1]);
                     }
 
                     break;
@@ -420,7 +456,7 @@ static void generateAdjacencyData(MeshDataEx& meshData, MeshResource* meshResour
 
 HOOK(void, __fastcall, ProcessShareVertexBuffer, 0x72EBD0, Hedgehog::Mirage::CShareVertexBuffer* This)
 {
-    if (ShareVertexBuffer::s_loadingSampleChunkV2)
+    if (ShareVertexBuffer::s_loadingSampleChunkV2 && SampleChunkResource::s_triangleTopology)
     {
         originalProcessShareVertexBuffer(This);
 
