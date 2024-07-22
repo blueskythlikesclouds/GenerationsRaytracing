@@ -32,5 +32,5 @@ float4 main(in PixelShaderInput i) : SV_Target
     if (g_EmissionTextureId != 0)
         color.rgb += SampleTexture2D(g_EmissionTextureId, i.EmissionTexCoord).rgb * g_Ambient.rgb;
 
-    return min(color, 4.0);
+    return color;
 }
