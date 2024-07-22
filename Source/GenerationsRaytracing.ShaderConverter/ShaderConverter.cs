@@ -411,6 +411,11 @@ public class ShaderConverter
 
         stringBuilder.AppendLine();
 
+        bool disableSaturate = constants.Count == 3 &&
+            constants[0].Name == "g_ViewportSize" &&
+            constants[1].Name == "g_MiddleGray_Scale_LuminanceLow_LuminanceHigh" &&
+            constants[2].Name == "sampDif0";
+
         int indent = 1;
 
         foreach (var instruction in instructions)
@@ -438,6 +443,9 @@ public class ShaderConverter
                         argument.Token = $"(g_EnableBlendIndices ? {argument.Token} : uint4(0, 0, 0, 0))";
                 }
             }
+
+            if (disableSaturate)
+                instruction.Saturate = false;
 
             string instrLine = instruction.ToString();
 
