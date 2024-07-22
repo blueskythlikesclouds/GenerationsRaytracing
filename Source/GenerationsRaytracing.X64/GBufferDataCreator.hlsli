@@ -176,7 +176,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
         GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION | GBUFFER_FLAG_IGNORE_REFLECTION;
 
     gBufferData.Diffuse = 0.0;
-    gBufferData.Emission = float3(1.0, 0.0, 0.0);
+    gBufferData.Emission = float3(1.0 / GetExposure(), 0.0, 0.0);
 #endif
 
     if (material.Flags & MATERIAL_FLAG_ADDITIVE)
