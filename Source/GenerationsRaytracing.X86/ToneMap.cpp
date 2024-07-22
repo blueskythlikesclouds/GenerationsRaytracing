@@ -15,6 +15,25 @@ static void screenRenderParamCallback(void* A1, Hedgehog::FxRenderFramework::SSc
         shaderIndex = screenRenderParam->ShaderIndex;
     }
 
+    const auto appDocument = Sonic::CApplicationDocument::GetInstance();
+    auto device = appDocument->m_pMember->m_spRenderingInfrastructure->m_RenderingDevice.m_pD3DDevice;
+    char lutName[0x100];
+    sprintf_s(lutName, "%s_rgb_table0", reinterpret_cast<const char*>(0x1E774D4));
+    auto pictureData = Hedgehog::Mirage::CMirageDatabaseWrapper(appDocument->m_pMember->m_spApplicationDatabase.get()).GetPictureData(lutName);
+    if (pictureData != nullptr)
+    {
+        device->SetTexture(4, pictureData->m_pD3DTexture);
+        device->SetSamplerState(4, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+        device->SetSamplerState(4, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+        device->SetSamplerState(4, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+        device->SetSamplerState(4, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+        device->SetSamplerState(4, D3DSAMP_MIPFILTER, D3DTEXF_POINT);
+    }
+    else
+    {
+        device->SetTexture(4, nullptr);
+    }
+
     screenDefaultExec(A1, screenRenderParam, shaderIndex);
 }
 

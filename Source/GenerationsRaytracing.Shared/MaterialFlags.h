@@ -11,3 +11,4 @@
 #define MATERIAL_FLAG_HAS_DIFFUSE_TEXTURE (1 << 7)
 #define MATERIAL_FLAG_FULBRIGHT           (1 << 8)
 #define MATERIAL_FLAG_BLEND_FLIP          (1 << 9)
+#define MATERIAL_FLAG_HAS_METALNESS       (1 << 10)

@@ -1,4 +1,5 @@
 #include "SkySharedDefinitions.hlsli"
+#include "ColorSpace.hlsli"
 
 float4 SampleTexture2D(uint value, float2 texCoord)
 {
@@ -18,8 +19,6 @@ float4 main(in PixelShaderInput i) : SV_Target
     if (g_DiffuseTextureId != 0)
         color = SampleTexture2D(g_DiffuseTextureId, i.DiffuseTexCoord);
 
-    color.rgb *= g_BackGroundScale;
-
     if (g_AlphaTextureId != 0)
         color.a *= SampleTexture2D(g_AlphaTextureId, i.AlphaTexCoord).x;
 
@@ -32,5 +31,9 @@ float4 main(in PixelShaderInput i) : SV_Target
     if (g_EmissionTextureId != 0)
         color.rgb += SampleTexture2D(g_EmissionTextureId, i.EmissionTexCoord).rgb * g_Ambient.rgb;
 
+    //color.rgb = SrgbToLinear(color.rgb);
+    
+    color.rgb *= g_BackGroundScale;
+    
     return color;
 }

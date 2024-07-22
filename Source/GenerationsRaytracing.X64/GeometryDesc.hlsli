@@ -224,7 +224,7 @@ Vertex LoadVertex(
 float3 DecodeNormalMap(Vertex vertex, float3 value)
 {
     return NormalizeSafe(
-        vertex.Tangent * value.x -
+        vertex.Tangent * value.x +
         vertex.Binormal * value.y +
         vertex.Normal * value.z);
 }

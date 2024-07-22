@@ -153,7 +153,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
                 lightPower = g_LightPower;
             }
 
-            float3 directLighting = diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal));
+            float3 directLighting = diffuse * mrgGlobalLight_Diffuse.rgb / PI * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal));
             
             if (any(directLighting > 0.0001))
             {
@@ -178,8 +178,8 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
                 if (distance > 0.0)
                     lightDirection /= distance;
 
-                float3 localLighting = diffuse * localLight.Color * lightPower * g_LocalLightCount * saturate(dot(payload.Normal, lightDirection)) *
-                    ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
+                float3 localLighting = diffuse * localLight.Color / PI * lightPower * g_LocalLightCount * saturate(dot(payload.Normal, lightDirection)) *
+                    ComputeLocalLightFalloff(distance, localLight.OutRange);
 
                 if ((localLight.Flags & LOCAL_LIGHT_FLAG_CAST_SHADOW) && any(localLighting > 0.0001))
                 {
@@ -248,6 +248,8 @@ void SecondaryRayGeneration()
                 
                 if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
                     reflectionProbability = ComputeWaterFresnel(dot(gBufferData.Normal, eyeDirection));
+                else if (gBufferData.Flags & GBUFFER_FLAG_IS_PBR)
+                    reflectionProbability = all(gBufferData.Diffuse == 0.0) ? 1.0 : (gBufferData.SpecularGloss - 1.0) * 0.5 + 0.5f;
                 else
                     reflectionProbability = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
                 
@@ -277,6 +279,29 @@ void SecondaryRayGeneration()
                         args.Throughput = ComputeFresnel(specularFresnel, cosTheta);
                     
                     args.ApplyPower = false;
+                }
+                else if (gBufferData.Flags & GBUFFER_FLAG_IS_PBR)
+                {
+                    float roughness = gBufferData.SpecularGloss - 1.0;
+                    
+                    float3 sampleDirection = GetGGXMicrofacetSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), roughness);
+                    float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
+
+                    args.Direction = reflect(-eyeDirection, halfwayDirection);
+                    args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
+                    
+                    float NdotL = saturate(dot(gBufferData.Normal, args.Direction));
+                    float NdotH = saturate(dot(gBufferData.Normal, halfwayDirection));
+                    float NdotV = saturate(dot(gBufferData.Normal, eyeDirection));
+                    float HdotV = saturate(dot(halfwayDirection, eyeDirection));
+                    
+                    float3 F = FresnelSchlick(gBufferData.Specular, HdotV);
+                    float Vis = VisSchlick(roughness, NdotV, NdotL);
+                    float PDF = 4.0 * HdotV / (NdotH + 0.0001);
+                    
+                    args.Throughput = Vis * F * PDF;
+                    
+                    args.ApplyPower = true;
                 }
                 else
                 {

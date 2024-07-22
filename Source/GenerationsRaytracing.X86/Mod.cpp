@@ -32,6 +32,7 @@
 #include "SampleChunkResource.h"
 #include "MetaInstancer.h"
 #include "WallJumpBlock.h"
+#include "PBRShaders.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
 
@@ -64,7 +65,9 @@ static void setShouldExit()
 
 extern "C" void __declspec(dllexport) FilterMod(FilterModArguments_t& args)
 {
-    args.handled = strcmp(args.mod->Name, "Direct3D 9 Ex") == 0 || strcmp(args.mod->ID, "bsthlc.generationsd3d11") == 0;
+    args.handled = strcmp(args.mod->Name, "Direct3D 9 Ex") == 0 || 
+        strcmp(args.mod->ID, "bsthlc.generationsd3d11") == 0 || 
+        strcmp(args.mod->ID, "bsthlc.pbrshaders") == 0;
 }
 
 extern "C" void __declspec(dllexport) PreInit()
@@ -105,6 +108,7 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     MetaInstancer::init();
     WallJumpBlock::init();
     RaytracingParams::init();
+    PBRShaders::init();
 
 #ifdef _DEBUG
 #if 0

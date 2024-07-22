@@ -83,6 +83,9 @@ static void createMaterial(MaterialDataEx& materialDataEx)
 
         if (strcmp(shaderName, "Blend_dpdpn") == 0)
             message.flags |= MATERIAL_FLAG_BLEND_FLIP;
+
+        if (shaderName[0] == 'M')
+            message.flags |= MATERIAL_FLAG_HAS_METALNESS;
     }
 
     if (materialDataEx.m_spTexsetData != nullptr)

@@ -24,6 +24,7 @@
 #define GBUFFER_FLAG_IS_ADDITIVE                (1 << 18)
 #define GBUFFER_FLAG_FULBRIGHT                  (1 << 19)
 #define GBUFFER_FLAG_MUL_BY_REFRACTION          (1 << 20)
+#define GBUFFER_FLAG_IS_PBR                     (1 << 21)
 
 struct GBufferData
 {

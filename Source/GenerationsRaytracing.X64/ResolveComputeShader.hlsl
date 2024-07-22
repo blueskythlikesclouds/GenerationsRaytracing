@@ -19,6 +19,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     float3 specularAlbedo = 0.0;
     float4 normalsRoughness = 0.0;
     float specularHitDistance = 0.0;
+    float exposure = GetExposure();
 
     GBufferData gBufferData = LoadGBufferData(uint3(dispatchThreadId, 0));
     
@@ -90,7 +91,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             diffuseAlbedo = ComputeGI(gBufferData, 1.0);
         }
         
-        diffuseAlbedo += gBufferData.Emission;
+        diffuseAlbedo += gBufferData.Emission * exposure;
     
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
         {
@@ -101,7 +102,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         }
         
         normalsRoughness = float4(gBufferData.Normal, 0.0);
-        if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
+        if (gBufferData.Flags & GBUFFER_FLAG_IS_PBR)
+            normalsRoughness.w = gBufferData.SpecularGloss - 1.0;
+        else if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
             normalsRoughness.w = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
     
         color = ComputeGeometryShading(gBufferData, shadingParams, randSeed);
@@ -111,14 +114,14 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         if (all(and(!isnan(lightScattering), !isinf(lightScattering))))
         {
             color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
-            diffuseAlbedo = diffuseAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
-            specularAlbedo = specularAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+            diffuseAlbedo = diffuseAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y * exposure;
+            specularAlbedo = specularAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y * exposure;
         }
     }
     else
     {
         color = gBufferData.Emission;
-        diffuseAlbedo = gBufferData.Emission;
+        diffuseAlbedo = gBufferData.Emission * exposure;
     }
 
     g_ColorBeforeTransparency[dispatchThreadId] = float4(color, 1.0);
@@ -128,5 +131,5 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     g_SpecularHitDistance[dispatchThreadId] = specularHitDistance;
 
     if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0)
-        g_Exposure[dispatchThreadId] = GetExposure() * 2.0;
+        g_Exposure[dispatchThreadId] = exposure * 2.0;
 }

@@ -16,6 +16,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     float4 colorComposite = g_ColorBeforeTransparency_SRV[dispatchThreadId];
     float3 diffuseAlbedoComposite = g_DiffuseAlbedoBeforeTransparency_SRV[dispatchThreadId];
     float3 specularAlbedoComposite = g_SpecularAlbedoBeforeTransparency_SRV[dispatchThreadId];
+    float exposure = GetExposure();
 
     uint layerNum = min(GBUFFER_LAYER_NUM, g_LayerNum_SRV[dispatchThreadId]);
     if (layerNum > 1)
@@ -32,7 +33,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             ShadingParams shadingParams = (ShadingParams) 0;
             shadingParams.EyeDirection = NormalizeSafe(-gBufferData.Position);
 
-            float3 diffuseAlbedo = gBufferData.Emission;
+            float3 diffuseAlbedo = gBufferData.Emission * exposure;
             
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
             {
@@ -52,7 +53,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             }
             
             float4 normalsRoughness = float4(gBufferData.Normal, 0.0);
-            if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
+            if (gBufferData.Flags & GBUFFER_FLAG_IS_PBR)
+                normalsRoughness.w = gBufferData.SpecularGloss - 1.0;
+            else if (!(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION))
                 normalsRoughness.w = ConvertSpecularGlossToRoughness(gBufferData.SpecularGloss);
 
             float3 viewPosition = mul(float4(gBufferData.Position, 0.0), g_MtxView).xyz;
@@ -96,8 +99,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             if (all(and(!isnan(lightScattering), !isinf(lightScattering))))
             {
                 color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
-                diffuseAlbedo = diffuseAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
-                specularAlbedo = specularAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
+                diffuseAlbedo = diffuseAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y * exposure;
+                specularAlbedo = specularAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y * exposure;
             }
 
             if (!(gBufferData.Flags & GBUFFER_FLAG_IS_ADDITIVE))

@@ -45,6 +45,8 @@ inline RaytracingTexture s_texture_DisplacementTexture = { "displacement", 0, fa
 inline RaytracingTexture s_texture_DisplacementTexture2 = { "displacement", 1, false };
 inline RaytracingTexture s_texture_DisplacementTexture3 = { "displacement", 2, false };
 inline RaytracingTexture s_texture_LevelTexture = { "level", 0, false };
+inline RaytracingTexture s_texture_TransparencyTexture = { "transparency", 0, false };
+inline RaytracingTexture s_texture_EmissionTexture = { "emission", 0, false };
 
 inline RaytracingParameter s_parameter_Diffuse = { "diffuse", 0, 4, 1.0f, 1.0f, 1.0f, 1.0f };
 inline RaytracingParameter s_parameter_Ambient = { "ambient", 0, 3, 1.0f, 1.0f, 1.0f, 0.0f };
@@ -75,6 +77,8 @@ inline RaytracingParameter s_parameter_ChaosWaveParamEx = { "g_ChaosWaveParamEx"
 inline RaytracingParameter s_parameter_CloakParam = { "g_CloakParam", 0, 1, 0.0f, 0.0f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_GlassRefractionParam = { "mrgGlassRefractionParam", 0, 1, 0.0f, 0.0f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_HeightParam = { "g_HeightParam", 0, 2, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_PBRFactor = { "PBRFactor", 0, 2, 0.0f, 0.0f, 0.0f, 0.0f };
+inline RaytracingParameter s_parameter_PBRFactor2 = { "PBRFactor2", 0, 2, 0.0f, 0.0f, 0.0f, 0.0f };
 
 inline RaytracingParameter* s_parameters_SYS_ERROR[2] =
 {
@@ -164,6 +168,25 @@ inline RaytracingParameter* s_parameters_LUMINESCENCE[6] =
 };
 
 inline RaytracingShader s_shader_LUMINESCENCE = { SHADER_TYPE_LUMINESCENCE, s_textures_LUMINESCENCE, 4, s_parameters_LUMINESCENCE, 6 };
+
+inline RaytracingTexture* s_textures_BLEND_2[7] =
+{
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_NormalTexture,
+	&s_texture_OpacityTexture,
+	&s_texture_DiffuseTexture2,
+	&s_texture_SpecularTexture2,
+	&s_texture_NormalTexture2,
+};
+
+inline RaytracingParameter* s_parameters_BLEND_2[2] =
+{
+	&s_parameter_PBRFactor,
+	&s_parameter_PBRFactor2,
+};
+
+inline RaytracingShader s_shader_BLEND_2 = { SHADER_TYPE_BLEND_2, s_textures_BLEND_2, 7, s_parameters_BLEND_2, 2 };
 
 inline RaytracingTexture* s_textures_CHAOS[5] =
 {
@@ -331,6 +354,21 @@ inline RaytracingParameter* s_parameters_CLOUD[5] =
 };
 
 inline RaytracingShader s_shader_CLOUD = { SHADER_TYPE_CLOUD, s_textures_CLOUD, 3, s_parameters_CLOUD, 5 };
+
+inline RaytracingTexture* s_textures_COMMON_2[4] =
+{
+	&s_texture_DiffuseTexture,
+	&s_texture_SpecularTexture,
+	&s_texture_NormalTexture,
+	&s_texture_TransparencyTexture,
+};
+
+inline RaytracingParameter* s_parameters_COMMON_2[1] =
+{
+	&s_parameter_PBRFactor,
+};
+
+inline RaytracingShader s_shader_COMMON_2 = { SHADER_TYPE_COMMON_2, s_textures_COMMON_2, 4, s_parameters_COMMON_2, 1 };
 
 inline RaytracingTexture* s_textures_DIM[4] =
 {
@@ -853,6 +891,8 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "BlbIndirect_", &s_shader_INDIRECT },
 	{ "BlbLuminescence_", &s_shader_LUMINESCENCE },
 	{ "Blend_", &s_shader_BLEND },
+	{ "Blend2_", &s_shader_BLEND_2 },
+	{ "MBlend_", &s_shader_BLEND_2 },
 	{ "Chaos_da", &s_shader_COMMON },
 	{ "Chaos_dsae1", &s_shader_COMMON },
 	{ "Chaos_", &s_shader_CHAOS },
@@ -867,6 +907,8 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "Cloth_", &s_shader_COMMON },
 	{ "Cloud_", &s_shader_CLOUD },
 	{ "Common_", &s_shader_COMMON },
+	{ "Common2_", &s_shader_COMMON_2 },
+	{ "MCommon_", &s_shader_COMMON_2 },
 	{ "Deformation_", &s_shader_SYS_ERROR },
 	{ "DeformationParticle_", &s_shader_SYS_ERROR },
 	{ "Dim_", &s_shader_DIM },

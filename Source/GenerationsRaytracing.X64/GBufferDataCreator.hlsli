@@ -4,8 +4,12 @@
 
 #if SHADER_TYPE == SHADER_TYPE_BLEND
 #include "Blend.hlsli"
+#elif SHADER_TYPE == SHADER_TYPE_BLEND_2 
+#include "Blend2.hlsli"
 #elif SHADER_TYPE == SHADER_TYPE_COMMON
 #include "Common.hlsli"
+#elif SHADER_TYPE == SHADER_TYPE_COMMON_2
+#include "Common2.hlsli"
 #elif SHADER_TYPE == SHADER_TYPE_INDIRECT
 #include "Indirect.hlsli"
 #elif SHADER_TYPE == SHADER_TYPE_LUMINESCENCE
@@ -96,8 +100,12 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
 
 #if SHADER_TYPE == SHADER_TYPE_BLEND
     CreateBlendGBufferData(vertex, material, gBufferData);
+#elif SHADER_TYPE == SHADER_TYPE_BLEND_2
+    CreateBlend2GBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_COMMON
     CreateCommonGBufferData(vertex, material, gBufferData);
+#elif SHADER_TYPE == SHADER_TYPE_COMMON_2
+    CreateCommon2GBufferData(vertex, material, gBufferData);    
 #elif SHADER_TYPE == SHADER_TYPE_INDIRECT
     CreateIndirectGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_LUMINESCENCE
@@ -208,7 +216,7 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION;
 
     bool specularMask = (or(all(gBufferData.Specular == 0.0), all(gBufferData.SpecularTint == 0.0)) || 
-        gBufferData.SpecularLevel == 0.0) && !(gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION);
+        gBufferData.SpecularLevel == 0.0) && !(gBufferData.Flags & (GBUFFER_FLAG_IS_MIRROR_REFLECTION | GBUFFER_FLAG_IS_PBR));
 
     if (specularMask)
         gBufferData.Flags |= GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT | GBUFFER_FLAG_IGNORE_REFLECTION;

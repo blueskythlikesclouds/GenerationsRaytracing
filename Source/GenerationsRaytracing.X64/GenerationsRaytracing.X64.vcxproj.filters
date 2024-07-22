@@ -149,6 +149,9 @@
     <Filter Include="Shader\Instancer">
       <UniqueIdentifier>{063382ff-a15d-42ec-a57c-09ee248ec60e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader\Material\Shader\PBR">
+      <UniqueIdentifier>{970eefab-bbf8-46bb-805b-4ba8300e4ea4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MessageReceiver.h">
@@ -437,6 +440,12 @@
     </None>
     <None Include="Lava.hlsli">
       <Filter>Shader\Material\Shader\Terrain</Filter>
+    </None>
+    <None Include="Common2.hlsli">
+      <Filter>Shader\Material\Shader\PBR</Filter>
+    </None>
+    <None Include="Blend2.hlsli">
+      <Filter>Shader\Material\Shader\PBR</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

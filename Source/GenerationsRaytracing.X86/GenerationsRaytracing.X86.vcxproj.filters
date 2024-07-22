@@ -147,6 +147,9 @@
     <ClCompile Include="WallJumpBlock.cpp">
       <Filter>Raytracing\Renderable</Filter>
     </ClCompile>
+    <ClCompile Include="PBRShaders.cpp">
+      <Filter>Patch</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pch.h" />
@@ -308,6 +311,9 @@
     </ClInclude>
     <ClInclude Include="Frustum.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="PBRShaders.h">
+      <Filter>Patch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

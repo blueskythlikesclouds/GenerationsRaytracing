@@ -34,11 +34,11 @@ void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD,
     switch (g_DebugView)
     {
         case DEBUG_VIEW_NONE:
-            color.rgb = min(g_Output_SRV[position.xy].rgb, 4.0);
+            color.rgb = g_Output_SRV[position.xy].rgb;
             break;
         
         case DEBUG_VIEW_COLOR:
-            color.rgb = min(g_Color_SRV[index.xy].rgb, 4.0);
+            color.rgb = g_Color_SRV[index.xy].rgb;
             break;
         
         case DEBUG_VIEW_DEPTH:

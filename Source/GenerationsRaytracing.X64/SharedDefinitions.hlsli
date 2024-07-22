@@ -38,6 +38,16 @@ float4 GetPowerCosWeightedSample(float2 random, float specularGloss)
     return float4(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta, pdf);
 }
 
+float3 GetGGXMicrofacetSample(float2 random, float roughness)
+{
+    float a2 = roughness * roughness;
+    float cosTheta = sqrt(max(0.0, (1.0 - random.x) / ((a2 - 1.0) * random.x + 1)));
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+    float phi = 2.0 * PI * random.y;
+
+    return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+}
+
 float3 GetShadowSample(float2 random, float radius)
 {
     radius *= sqrt(random.x);
@@ -132,4 +142,37 @@ float ComputeFalloff(float3 normal, float3 falloffParam)
 float ConvertSpecularGlossToRoughness(float specularGloss)
 {
     return 1.0 - pow(specularGloss, 0.2) * 0.25;
+}
+
+float3 FresnelSchlick(float3 F0, float cosTheta)
+{
+    float p = (-5.55473 * cosTheta - 6.98316) * cosTheta;
+    return F0 + (1.0 - F0) * exp2(p);
+}
+
+float NdfGGX(float cosLh, float roughness)
+{
+    float alpha = roughness * roughness;
+    float alphaSq = alpha * alpha;
+
+    float denom = (cosLh * alphaSq - cosLh) * cosLh + 1;
+    return alphaSq / (PI * denom * denom);
+}
+
+float VisSchlick(float roughness, float cosLo, float cosLi)
+{
+    float r = roughness + 1;
+    float k = (r * r) / 8;
+    float schlickV = cosLo * (1 - k) + k;
+    float schlickL = cosLi * (1 - k) + k;
+    return 0.25 / (schlickV * schlickL);
+}
+
+float2 ApproxEnvBRDF(float cosLo, float roughness)
+{
+    float4 c0 = float4(-1, -0.0275, -0.572, 0.022);
+    float4 c1 = float4(1, 0.0425, 1.04, -0.04);
+    float4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * cosLo)) * r.x + r.y;
+    return float2(-1.04, 1.04) * a004 + r.zw;
 }

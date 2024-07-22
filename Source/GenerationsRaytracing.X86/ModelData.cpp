@@ -979,6 +979,7 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
     static Hedgehog::Base::CStringSymbol s_opacitySymbol("opacity");
     static Hedgehog::Base::CStringSymbol s_displacementSymbol("displacement");
     static Hedgehog::Base::CStringSymbol s_ambientSymbol("ambient");
+    static Hedgehog::Base::CStringSymbol s_transparencySymbol("transparency");
 
     DX_PATCH::IDirect3DBaseTexture9* diffuseTexture = nullptr;
 
@@ -1028,7 +1029,7 @@ void ModelData::renderSky(Hedgehog::Mirage::CModelData& modelData)
                         textureDesc = &geometryDesc->diffuseTexture;
                         diffuseTexture = texture->m_spPictureData->m_pD3DTexture;
                     }
-                    else if (texture->m_Type == s_opacitySymbol)
+                    else if (texture->m_Type == s_opacitySymbol || texture->m_Type == s_transparencySymbol)
                     {
                         if (!enableOpacity || diffuseTexture == texture->m_spPictureData->m_pD3DTexture)
                             continue;

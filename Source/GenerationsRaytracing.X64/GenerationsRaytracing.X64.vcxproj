@@ -118,6 +118,9 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="Blend2.hlsli">
+      <FileType>Document</FileType>
+    </None>
     <FxCompile Include="CopyHdrTexturePixelShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
@@ -154,6 +157,7 @@
     <None Include="Cloud.hlsli" />
     <None Include="ColorSpace.hlsli" />
     <None Include="Common.hlsli" />
+    <None Include="Common2.hlsli" />
     <None Include="Dim.hlsli" />
     <None Include="Distortion.hlsli" />
     <None Include="DistortionOverlay.hlsli" />

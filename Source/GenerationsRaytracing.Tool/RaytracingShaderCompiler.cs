@@ -29,6 +29,9 @@ public class RaytracingTexture(string name, int index, string fieldName)
 
     public static readonly RaytracingTexture Level = new("level", 0, "LevelTexture");
 
+    public static readonly RaytracingTexture Transparency = new("transparency", 0, "TransparencyTexture");
+    public static readonly RaytracingTexture Emission = new("emission", 0, "EmissionTexture");
+
     public static readonly RaytracingTexture[] AllTextures = [
         Diffuse,
         Diffuse2,
@@ -43,7 +46,9 @@ public class RaytracingTexture(string name, int index, string fieldName)
         Displacement,
         Displacement2,
         Displacement3,
-        Level];
+        Level,
+        Transparency,
+        Emission];
 }
 
 public class RaytracingParameter(string name, int index, int size, string fieldName, float x, float y, float z, float w)
@@ -86,6 +91,8 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter CloakParam = new("g_CloakParam", 0, 1, "CloakParam", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter GlassRefractionParam = new("mrgGlassRefractionParam", 0, 1, "GlassRefractionParam", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter HeightParam = new("g_HeightParam", 0, 2, "HeightParam", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter PBRFactor = new("PBRFactor", 0, 2, "PBRFactor", 0.0f, 0.0f, 0.0f, 0.0f);
+    public static readonly RaytracingParameter PBRFactor2 = new("PBRFactor2", 0, 2, "PBRFactor2", 0.0f, 0.0f, 0.0f, 0.0f);
 
     public static readonly RaytracingParameter[] AllParameters = [
         Diffuse,
@@ -116,7 +123,9 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
         ChaosWaveParamEx,
         CloakParam,
         GlassRefractionParam,
-        HeightParam];
+        HeightParam,
+        PBRFactor,
+        PBRFactor2];
 }
 
 public class RaytracingShader(string name, RaytracingTexture[] textures, RaytracingParameter[] parameters)
@@ -150,6 +159,21 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Specular, 
             RaytracingParameter.GlossLevel,
             RaytracingParameter.Opacity,
+        ]);
+
+    public static readonly RaytracingShader Blend2 = new("BLEND_2",
+        [
+            RaytracingTexture.Diffuse,
+            RaytracingTexture.Specular,
+            RaytracingTexture.Normal,
+            RaytracingTexture.Opacity,
+            RaytracingTexture.Diffuse2,
+            RaytracingTexture.Specular2,
+            RaytracingTexture.Normal2
+        ],
+        [
+            RaytracingParameter.PBRFactor,
+            RaytracingParameter.PBRFactor2
         ]);
 
     public static readonly RaytracingShader Chaos = new("CHAOS",
@@ -300,6 +324,17 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.Specular,
             RaytracingParameter.GlossLevel,
             RaytracingParameter.Opacity,
+        ]);
+
+    public static readonly RaytracingShader Common2 = new("COMMON_2",
+        [
+            RaytracingTexture.Diffuse,
+            RaytracingTexture.Specular,
+            RaytracingTexture.Normal,
+            RaytracingTexture.Transparency
+        ],
+        [
+            RaytracingParameter.PBRFactor
         ]);
 
     public static readonly RaytracingShader Dim = new("DIM",
@@ -745,6 +780,8 @@ public static class RaytracingShaderCompiler
         ("BlbIndirect_", RaytracingShader.Indirect),
         ("BlbLuminescence_", RaytracingShader.Luminescence),
         ("Blend_", RaytracingShader.Blend),
+        ("Blend2_", RaytracingShader.Blend2),
+        ("MBlend_", RaytracingShader.Blend2),
         ("Chaos_da", RaytracingShader.Common),
         ("Chaos_dsae1", RaytracingShader.Common),
         ("Chaos_", RaytracingShader.Chaos),
@@ -759,6 +796,8 @@ public static class RaytracingShaderCompiler
         ("Cloth_", RaytracingShader.Common),
         ("Cloud_", RaytracingShader.Cloud),
         ("Common_", RaytracingShader.Common),
+        ("Common2_", RaytracingShader.Common2),
+        ("MCommon_", RaytracingShader.Common2),
         ("Deformation_", RaytracingShader.SysError),
         ("DeformationParticle_", RaytracingShader.SysError),
         ("Dim_", RaytracingShader.Dim),

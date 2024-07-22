@@ -18,74 +18,96 @@ struct ShadingParams
 float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     float3 lightDirection, float3 diffuseColor, float3 specularColor)
 {
-    float3 transColor = diffuseColor;
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
+    if (gBufferData.Flags & GBUFFER_FLAG_IS_PBR)
     {
-        diffuseColor *= gBufferData.Diffuse;
+        float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
 
-        float cosTheta = dot(gBufferData.Normal, lightDirection);
-
-        transColor *= gBufferData.TransColor;
-        transColor *= saturate(-cosTheta);
-
-        if (gBufferData.Flags & GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT)
-        {
-            cosTheta = (cosTheta - 0.05) / (1.0 - 0.05);
-        }
-
-        else if (gBufferData.Flags & GBUFFER_FLAG_HALF_LAMBERT)
-        {
-            cosTheta = cosTheta * 0.5 + 0.5;
-            cosTheta *= cosTheta;
-        }
+        float NdotL = saturate(dot(gBufferData.Normal, lightDirection));
+        float NdotH = saturate(dot(gBufferData.Normal, halfwayDirection));
+        float NdotV = saturate(dot(gBufferData.Normal, eyeDirection));
+        float HdotV = saturate(dot(halfwayDirection, eyeDirection));
         
-        if (!(gBufferData.Flags & GBUFFER_FLAG_FULBRIGHT))
-            diffuseColor *= saturate(cosTheta);
-        
-        if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_REFRACTION)
-            diffuseColor *= gBufferData.Refraction;
+        float roughness = gBufferData.SpecularGloss - 1.0;
+
+        float3 F = FresnelSchlick(gBufferData.Specular, HdotV);
+        float D = NdfGGX(NdotH, roughness);
+        float Vis = VisSchlick(roughness, NdotV, NdotL);
+
+        diffuseColor *= (1.0 - F) * (gBufferData.Diffuse / PI);
+        specularColor *= F * (D * Vis);
+
+        return (diffuseColor + specularColor) * saturate(NdotL);
     }
     else
     {
-        diffuseColor = 0.0;
-        transColor = 0.0;
-    }
-
-    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT))
-    {
-        float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
+        float3 transColor = diffuseColor;
         
-        if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
         {
-            specularColor *= gBufferData.Specular;
-            
-            specularColor *= ComputeFresnel(gBufferData.SpecularTint,
-                dot(halfwayDirection, eyeDirection));
+            diffuseColor *= gBufferData.Diffuse;
+
+            float cosTheta = dot(gBufferData.Normal, lightDirection);
+
+            transColor *= gBufferData.TransColor;
+            transColor *= saturate(-cosTheta);
+
+            if (gBufferData.Flags & GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT)
+            {
+                cosTheta = (cosTheta - 0.05) / (1.0 - 0.05);
+            }
+            else if (gBufferData.Flags & GBUFFER_FLAG_HALF_LAMBERT)
+            {
+                cosTheta = cosTheta * 0.5 + 0.5;
+                cosTheta *= cosTheta;
+            }
+        
+            if (!(gBufferData.Flags & GBUFFER_FLAG_FULBRIGHT))
+                diffuseColor *= saturate(cosTheta);
+        
+            if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_REFRACTION)
+                diffuseColor *= gBufferData.Refraction;
         }
         else
         {
-            specularColor *= gBufferData.Specular * gBufferData.SpecularTint;
-
-            if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_SPEC_GLOSS)
-                specularColor *= gBufferData.SpecularGloss;
-
-            specularColor *= gBufferData.SpecularLevel;
-            
-            specularColor *= ComputeFresnel(gBufferData.SpecularFresnel,
-                dot(halfwayDirection, eyeDirection));
+            diffuseColor = 0.0;
+            transColor = 0.0;
         }
 
-        float cosTheta = dot(gBufferData.Normal, halfwayDirection);
-        cosTheta = pow(saturate(cosTheta), gBufferData.SpecularGloss);
-        specularColor *= cosTheta;
-    }
-    else
-    {
-        specularColor = 0.0;
-    }
+        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT))
+        {
+            float3 halfwayDirection = NormalizeSafe(lightDirection + eyeDirection);
+        
+            if (gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC)
+            {
+                specularColor *= gBufferData.Specular;
+            
+                specularColor *= ComputeFresnel(gBufferData.SpecularTint,
+                dot(halfwayDirection, eyeDirection));
+            }
+            else
+            {
+                specularColor *= gBufferData.Specular * gBufferData.SpecularTint;
 
-    return diffuseColor + specularColor + transColor;
+                if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_SPEC_GLOSS)
+                    specularColor *= gBufferData.SpecularGloss;
+
+                specularColor *= gBufferData.SpecularLevel;
+            
+                specularColor *= ComputeFresnel(gBufferData.SpecularFresnel,
+                dot(halfwayDirection, eyeDirection));
+            }
+
+            float cosTheta = dot(gBufferData.Normal, halfwayDirection);
+            cosTheta = pow(saturate(cosTheta), gBufferData.SpecularGloss);
+            specularColor *= cosTheta;
+        }
+        else
+        {
+            specularColor = 0.0;
+        }
+        
+        return diffuseColor + specularColor + transColor;
+    }    
 }
 
 float TraceShadow(float3 position, float3 direction, float2 random, uint level)
@@ -175,6 +197,19 @@ float ComputeLocalLightFalloff(float distance, float inRange, float outRange)
     return 1.0 - saturate((distance - inRange) / (outRange - inRange));
 }
 
+float ComputeLocalLightFalloff(float distance, float range)
+{
+    float distanceSqr = distance * distance;
+    
+    float lightMask = distanceSqr * range;
+    lightMask = saturate(1.0 - lightMask * lightMask);
+    lightMask *= lightMask;
+
+    float lightAttenuation = 1.0 / max(1.0, distanceSqr);
+    
+    return lightMask * lightAttenuation / (4.0 * PI);
+}
+
 float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalLight localLight)
 {
     float3 direction = localLight.Position - gBufferData.Position;
@@ -186,7 +221,8 @@ float3 ComputeLocalLighting(GBufferData gBufferData, float3 eyeDirection, LocalL
     float3 localLighting = ComputeDirectLighting(gBufferData, eyeDirection,
         direction, localLight.Color, localLight.Color);
 
-    localLighting *= ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
+    localLighting *= ComputeLocalLightFalloff(distance, localLight.OutRange);
+    
     return localLighting;
 }
 
@@ -238,6 +274,10 @@ float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
     {
         reflection *= gBufferData.Specular;
     }
+    else if (gBufferData.Flags & GBUFFER_FLAG_IS_PBR)
+    {
+        // Do nothing
+    }
     else
     {
         float specularIntensity = 1.0 - exp2(-gBufferData.SpecularLevel);
@@ -260,6 +300,13 @@ float3 ComputeSpecularAlbedo(GBufferData gBufferData, float3 eyeDirection)
             specularFresnel *= ComputeWaterFresnel(cosTheta);
         else
             specularFresnel *= ComputeFresnel(specularFresnel, cosTheta);
+    }
+    else if (gBufferData.Flags & GBUFFER_FLAG_IS_PBR)
+    {
+        float cosTheta = dot(gBufferData.Normal, eyeDirection);
+        
+        float2 envBRDF = ApproxEnvBRDF(saturate(cosTheta), gBufferData.SpecularGloss - 1.0);
+        return gBufferData.Specular * envBRDF.x + envBRDF.y;
     }
     else
     {
