@@ -129,7 +129,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     if (g_EnableAccumulation)
         colorComposite = lerp(g_Color[dispatchThreadId], colorComposite, 1.0 / float(g_CurrentFrame + 1));
 
-    g_Color[dispatchThreadId] = colorComposite;
+    g_Color[dispatchThreadId] = max(colorComposite, 0.0);
     g_DiffuseAlbedo[dispatchThreadId] = diffuseAlbedoComposite;
     g_SpecularAlbedo[dispatchThreadId] = specularAlbedoComposite;
 }
