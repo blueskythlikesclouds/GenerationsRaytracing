@@ -466,6 +466,8 @@ public class ShaderConverter
 
         if (isPixelShader)
         {
+            stringBuilder.AppendLine("\n\toC0.w = saturate(oC0.w);");
+
             stringBuilder.AppendLine("\n\tif (g_EnableAlphaTest) {");
             stringBuilder.AppendLine("\t\tclip(oC0.w - g_AlphaThreshold);");
             stringBuilder.AppendLine("\t}");
