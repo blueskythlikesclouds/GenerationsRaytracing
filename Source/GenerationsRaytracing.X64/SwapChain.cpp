@@ -84,6 +84,12 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
 
     assert(SUCCEEDED(hr) && m_swapChain != nullptr);
 
+    if (message.hdr)
+    {
+        hr = m_swapChain->SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020);
+        assert(SUCCEEDED(hr));
+    }
+
     m_syncInterval = message.syncInterval;
 
     for (uint32_t i = 0; i < message.bufferCount; i++)

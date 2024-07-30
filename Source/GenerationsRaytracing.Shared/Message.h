@@ -29,6 +29,7 @@ struct MsgCreateSwapChain
     uint16_t renderHeight;
     uint8_t format;
     uint8_t bufferCount;
+    bool hdr;
     uint8_t syncInterval;
     uint32_t textureId;
 };

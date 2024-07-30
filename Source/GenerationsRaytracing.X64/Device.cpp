@@ -1901,6 +1901,8 @@ void Device::procMsgCopyHdrTexture()
     auto& commandList = getGraphicsCommandList();
     const auto underlyingCommandList = commandList.getUnderlyingCommandList();
 
+    commandList.commitBarriers();
+
     const D3D12_RECT scissorRect = { 0, 0, static_cast<LONG>(m_viewport.Width), static_cast<LONG>(m_viewport.Height) };
 
     underlyingCommandList->OMSetRenderTargets(1, m_renderTargetViews, FALSE, nullptr);
@@ -1909,8 +1911,6 @@ void Device::procMsgCopyHdrTexture()
     underlyingCommandList->SetPipelineState(m_copyHdrTexturePipeline.Get());
     underlyingCommandList->RSSetScissorRects(1, &scissorRect);
     underlyingCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    commandList.commitBarriers();
 
     underlyingCommandList->DrawInstanced(6, 1, 0, 0);
 }
@@ -2117,7 +2117,7 @@ Device::Device(const IniFile& iniFile)
         copyHdrPipelineDesc.DepthStencilState.DepthEnable = FALSE;
         copyHdrPipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         copyHdrPipelineDesc.NumRenderTargets = 1;
-        copyHdrPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        copyHdrPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
         copyHdrPipelineDesc.SampleDesc.Count = 1;
 
         m_pipelineLibrary.createGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
