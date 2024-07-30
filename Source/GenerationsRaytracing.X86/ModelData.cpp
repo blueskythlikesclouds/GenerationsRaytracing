@@ -876,7 +876,7 @@ void ModelData::createBottomLevelAccelStructs(ModelDataEx& modelDataEx, Instance
             });
         }
 
-        if (instanceInfoEx.m_spPose != nullptr)
+        if (instanceInfoEx.m_spPose != nullptr && instanceInfoEx.m_spPose->GetMatrixNum() != 0)
             transform = transform * (*instanceInfoEx.m_spPose->GetMatrixList());
 
         bottomLevelAccelStructIds = modelDataEx.m_bottomLevelAccelStructIds;
