@@ -111,6 +111,8 @@ void PrimaryTransparentAnyHit(uint vertexFlags,
                     g_GBuffer6[destIndex] = g_GBuffer6[srcIndex];
                     g_GBuffer7[destIndex] = g_GBuffer7[srcIndex];
                     g_GBuffer8[destIndex] = g_GBuffer8[srcIndex];
+                    g_GBuffer9[destIndex] = g_GBuffer9[srcIndex];
+                    g_GBuffer10[destIndex] = g_GBuffer10[srcIndex];
                 
                     payload.T[i] = payload.T[i - 1];
                 }

@@ -180,13 +180,13 @@ DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer0, 6);
 DEFINE_TEXTURE(Texture2DArray<uint>, g_GBuffer1, 7);
 DEFINE_TEXTURE(Texture2DArray<uint>, g_GBuffer2, 8);
 DEFINE_TEXTURE(Texture2DArray<uint>, g_GBuffer3, 9);
-DEFINE_TEXTURE(Texture2DArray<float2>, g_GBuffer4, 10);
-DEFINE_TEXTURE(Texture2DArray<float2>, g_GBuffer5, 11);
+DEFINE_TEXTURE(Texture2DArray<unorm float2>, g_GBuffer4, 10);
+DEFINE_TEXTURE(Texture2DArray<unorm float2>, g_GBuffer5, 11);
 DEFINE_TEXTURE(Texture2DArray<uint>, g_GBuffer6, 12);
 DEFINE_TEXTURE(Texture2DArray<uint>, g_GBuffer7, 13);
 DEFINE_TEXTURE(Texture2DArray<float4>, g_GBuffer8, 14);
-DEFINE_TEXTURE(Texture2DArray<float2>, g_GBuffer9, 15);
-DEFINE_TEXTURE(Texture2DArray<float2>, g_GBuffer10, 16);
+DEFINE_TEXTURE(Texture2DArray<unorm float2>, g_GBuffer9, 15);
+DEFINE_TEXTURE(Texture2DArray<unorm float2>, g_GBuffer10, 16);
 
 DEFINE_TEXTURE(Texture2D<uint4>, g_Reservoir, 17);
 
