@@ -18,16 +18,11 @@ struct ShadingParams
 float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     float3 lightDirection, float3 diffuseColor, float3 specularColor)
 {
-    float3 transColor = diffuseColor;
-
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT))
     {
         diffuseColor *= gBufferData.Diffuse;
 
         float cosTheta = dot(gBufferData.Normal, lightDirection);
-
-        transColor *= gBufferData.TransColor;
-        transColor *= saturate(-cosTheta);
 
         if (gBufferData.Flags & GBUFFER_FLAG_HAS_LAMBERT_ADJUSTMENT)
         {
@@ -49,7 +44,6 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
     else
     {
         diffuseColor = 0.0;
-        transColor = 0.0;
     }
 
     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SPECULAR_LIGHT))
@@ -85,7 +79,7 @@ float3 ComputeDirectLighting(GBufferData gBufferData, float3 eyeDirection,
         specularColor = 0.0;
     }
 
-    return diffuseColor + specularColor + transColor;
+    return diffuseColor + specularColor;
 }
 
 float TraceShadow(float3 position, float3 direction, float2 random, uint level)

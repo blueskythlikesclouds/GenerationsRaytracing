@@ -202,7 +202,6 @@
     <None Include="Shoe.hlsli" />
     <None Include="SkySharedDefinitions.hlsli" />
     <None Include="TimeEater.hlsli" />
-    <None Include="TransThin.hlsli" />
     <None Include="Water.hlsli" />
   </ItemGroup>
   <ItemGroup>

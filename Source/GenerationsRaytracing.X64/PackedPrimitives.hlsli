@@ -49,6 +49,11 @@ float3 DecodeSnorm10(uint value)
     return DecodeUnorm10(value) * 2.0 - 1.0;
 }
 
+float3 DecodeUnorm11(uint value)
+{
+    return float3((value & 0x7FF) / 2047.0, ((value >> 11) & 0x7FF) / 2047.0, ((value >> 22) & 0x3FF) / 1023.0);
+}
+
 uint EncodeUnorm(float v, uint N)
 {
     const float scale = float((1u << N) - 1);
@@ -67,4 +72,9 @@ uint EncodeUnorm10(float3 value)
 uint EncodeSnorm10(float3 value)
 {
     return EncodeUnorm10(value * 0.5 + 0.5);
+}
+
+uint EncodeUnorm11(float3 value)
+{
+    return (EncodeUnorm(value.x, 11) & 0x7FF) | ((EncodeUnorm(value.y, 11) & 0x7FF) << 11) | ((EncodeUnorm(value.z, 10) & 0x3FF) << 22);
 }

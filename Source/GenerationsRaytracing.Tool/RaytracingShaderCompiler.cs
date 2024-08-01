@@ -69,7 +69,6 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
     public static readonly RaytracingParameter SonicEyeHighLightColor = new("g_SonicEyeHighLightColor", 0, 3, "SonicEyeHighLightColor", 1.0f, 1.0f, 1.0f, 0.0f);
     public static readonly RaytracingParameter SonicSkinFalloffParam = new("g_SonicSkinFalloffParam", 0, 3, "SonicSkinFalloffParam", 0.15f, 2.0f, 3.0f, 0.0f);
     public static readonly RaytracingParameter ChrEmissionParam = new("mrgChrEmissionParam", 0, 4, "ChrEmissionParam", 0.0f, 0.0f, 0.0f, 0.0f);
-    public static readonly RaytracingParameter TransColorMask = new("g_TransColorMask", 0, 3, "TransColorMask", 0.0f, 0.0f, 0.0f, 0.0f);
     public static readonly RaytracingParameter EmissionParam = new("g_EmissionParam", 0, 4, "EmissionParam", 0.0f, 0.0f, 0.0f, 1.0f);
     public static readonly RaytracingParameter OffsetParam = new("g_OffsetParam", 0, 4, "OffsetParam", 0.1f, 0.1f, 0.0f, 0.0f);
     public static readonly RaytracingParameter WaterParam = new("g_WaterParam", 0, 4, "WaterParam", 1.0f, 0.5f, 0.0f, 8.0f);
@@ -100,7 +99,6 @@ public class RaytracingParameter(string name, int index, int size, string fieldN
         SonicEyeHighLightColor,
         SonicSkinFalloffParam,
         ChrEmissionParam,
-        TransColorMask,
         EmissionParam,
         OffsetParam,
         WaterParam,
@@ -677,20 +675,6 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingParameter.ChaosWaveParamEx
         ]);
 
-    public static readonly RaytracingShader TransThin = new("TRANS_THIN",
-        [
-            RaytracingTexture.Diffuse,
-            RaytracingTexture.Gloss,
-            RaytracingTexture.Normal,
-        ],
-        [
-            RaytracingParameter.Diffuse,
-            RaytracingParameter.Specular,
-            RaytracingParameter.GlossLevel,
-            RaytracingParameter.Opacity,
-            RaytracingParameter.TransColorMask,
-        ]);
-
     public static readonly RaytracingShader WaterAdd = new("WATER_ADD",
         [
             RaytracingTexture.Diffuse,
@@ -805,7 +789,7 @@ public static class RaytracingShaderCompiler
         ("TimeEaterGlass_", RaytracingShader.EnmGlass),
         ("TimeEaterIndirect_", RaytracingShader.IndirectNoLight),
         ("TimeEaterMetal_", RaytracingShader.ChrSkin),
-        ("TransThin_", RaytracingShader.TransThin),
+        ("TransThin_", RaytracingShader.Common),
         ("Water_Add", RaytracingShader.WaterAdd),
         ("Water_Mul", RaytracingShader.WaterMul),
         ("Water_Opacity", RaytracingShader.WaterOpacity)

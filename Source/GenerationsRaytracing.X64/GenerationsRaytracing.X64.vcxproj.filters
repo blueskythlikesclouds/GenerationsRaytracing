@@ -420,9 +420,6 @@
     <None Include="TimeEater.hlsli">
       <Filter>Shader\Material\Shader\Character</Filter>
     </None>
-    <None Include="TransThin.hlsli">
-      <Filter>Shader\Material\Shader\Terrain</Filter>
-    </None>
     <None Include="Water.hlsli">
       <Filter>Shader\Material\Shader\Terrain</Filter>
     </None>

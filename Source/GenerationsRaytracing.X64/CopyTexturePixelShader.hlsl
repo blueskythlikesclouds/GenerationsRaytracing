@@ -87,11 +87,7 @@ void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD,
         case DEBUG_VIEW_EMISSION:
             MAKE_DEBUG_VIEW(LoadGBufferData(index).Emission);
             break;
-        
-        case DEBUG_VIEW_TRANS_COLOR:
-            MAKE_DEBUG_VIEW(LoadGBufferData(index).TransColor);
-            break;
-        
+
         case DEBUG_VIEW_REFRACTION:
             MAKE_DEBUG_VIEW(LoadGBufferData(index).Refraction.xxx);
             break;

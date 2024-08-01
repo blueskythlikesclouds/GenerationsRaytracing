@@ -34,7 +34,6 @@ struct Material
     float3 SonicEyeHighLightColor;
     float3 SonicSkinFalloffParam;
     float4 ChrEmissionParam;
-    float3 TransColorMask;
     float4 EmissionParam;
     float4 OffsetParam;
     float4 WaterParam;

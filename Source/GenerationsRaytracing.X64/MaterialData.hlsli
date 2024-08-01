@@ -686,23 +686,6 @@ Material GetMaterial(MaterialData materialData)
     material.SonicSkinFalloffParam[1] = asfloat(materialData.PackedData[17]);
     material.SonicSkinFalloffParam[2] = asfloat(materialData.PackedData[18]);
     material.ChaosWaveParamEx = asfloat(materialData.PackedData[19]);
-#elif SHADER_TYPE == SHADER_TYPE_TRANS_THIN
-    material.DiffuseTexture = materialData.PackedData[0];
-    material.GlossTexture = materialData.PackedData[1];
-    material.NormalTexture = materialData.PackedData[2];
-    material.Diffuse[0] = asfloat(materialData.PackedData[3]);
-    material.Diffuse[1] = asfloat(materialData.PackedData[4]);
-    material.Diffuse[2] = asfloat(materialData.PackedData[5]);
-    material.Diffuse[3] = asfloat(materialData.PackedData[6]);
-    material.Specular[0] = asfloat(materialData.PackedData[7]);
-    material.Specular[1] = asfloat(materialData.PackedData[8]);
-    material.Specular[2] = asfloat(materialData.PackedData[9]);
-    material.GlossLevel[0] = asfloat(materialData.PackedData[10]);
-    material.GlossLevel[1] = asfloat(materialData.PackedData[11]);
-    material.Opacity = asfloat(materialData.PackedData[12]);
-    material.TransColorMask[0] = asfloat(materialData.PackedData[13]);
-    material.TransColorMask[1] = asfloat(materialData.PackedData[14]);
-    material.TransColorMask[2] = asfloat(materialData.PackedData[15]);
 #elif SHADER_TYPE == SHADER_TYPE_WATER_ADD
     material.DiffuseTexture = materialData.PackedData[0];
     material.NormalTexture = materialData.PackedData[1];

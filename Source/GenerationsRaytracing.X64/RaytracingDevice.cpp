@@ -444,7 +444,7 @@ void RaytracingDevice::createTopLevelAccelStructs()
     }
 }
 
-static constexpr size_t s_textureCount = 26;
+static constexpr size_t s_textureCount = 28;
 
 void RaytracingDevice::createRaytracingTextures()
 {
@@ -510,14 +510,16 @@ void RaytracingDevice::createRaytracingTextures()
             { 1, DXGI_FORMAT_R8_UINT, m_layerNumTexture, L"Layer Num Texture" },
 
             { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32G32B32A32_FLOAT, m_gBufferTexture0, L"Geometry Buffer Texture 0" },
-            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture1, L"Geometry Buffer Texture 1" },
-            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture2, L"Geometry Buffer Texture 2" },
-            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture3, L"Geometry Buffer Texture 3" },
-            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
-            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture5, L"Geometry Buffer Texture 5" },
-            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture6, L"Geometry Buffer Texture 6" },
-            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture7, L"Geometry Buffer Texture 7" },
-            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16_FLOAT, m_gBufferTexture8, L"Geometry Buffer Texture 8" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32_UINT, m_gBufferTexture1, L"Geometry Buffer Texture 1" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32_UINT, m_gBufferTexture2, L"Geometry Buffer Texture 2" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32_UINT, m_gBufferTexture3, L"Geometry Buffer Texture 3" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R8G8_UNORM, m_gBufferTexture4, L"Geometry Buffer Texture 4" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16_UNORM, m_gBufferTexture5, L"Geometry Buffer Texture 5" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32_UINT, m_gBufferTexture6, L"Geometry Buffer Texture 6" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R32_UINT, m_gBufferTexture7, L"Geometry Buffer Texture 7" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_gBufferTexture8, L"Geometry Buffer Texture 8" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R8G8_UNORM, m_gBufferTexture9, L"Geometry Buffer Texture 9" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16_UNORM, m_gBufferTexture10, L"Geometry Buffer Texture 10" },
 
             { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture, L"Reservoir Texture" },
             { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, L"GI Texture" },
@@ -1101,6 +1103,8 @@ void RaytracingDevice::procMsgTraceRays()
             m_gBufferTexture6->GetResource(),
             m_gBufferTexture7->GetResource(),
             m_gBufferTexture8->GetResource(),
+            m_gBufferTexture9->GetResource(),
+            m_gBufferTexture10->GetResource(),
         }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     commandList.commitBarriers();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RootSignature.hlsli"
+#include "PackedPrimitives.hlsli"
 
 #define GBUFFER_FLAG_IS_SKY                     (1 << 0)
 #define GBUFFER_FLAG_IGNORE_DIFFUSE_LIGHT       (1 << 1)
@@ -43,7 +44,6 @@ struct GBufferData
     float3 Normal;
     float3 Falloff;
     float3 Emission;
-    float3 TransColor;
     
     float Refraction;
     float RefractionOverlay;
@@ -53,39 +53,39 @@ struct GBufferData
 GBufferData LoadGBufferData(uint3 index)
 {
     float4 gBuffer0 = g_GBuffer0_SRV[index];
-    float4 gBuffer1 = g_GBuffer1_SRV[index];
-    float4 gBuffer2 = g_GBuffer2_SRV[index];
-    float4 gBuffer3 = g_GBuffer3_SRV[index];
-    float4 gBuffer4 = g_GBuffer4_SRV[index];
-    float4 gBuffer5 = g_GBuffer5_SRV[index];
-    float4 gBuffer6 = g_GBuffer6_SRV[index];
-    float4 gBuffer7 = g_GBuffer7_SRV[index];
+    uint gBuffer1 = g_GBuffer1_SRV[index];
+    uint gBuffer2 = g_GBuffer2_SRV[index];
+    uint gBuffer3 = g_GBuffer3_SRV[index];
+    float2 gBuffer4 = g_GBuffer4_SRV[index];
+    float2 gBuffer5 = g_GBuffer5_SRV[index];
+    uint gBuffer6 = g_GBuffer6_SRV[index];
+    uint gBuffer7 = g_GBuffer7_SRV[index];
     float4 gBuffer8 = g_GBuffer8_SRV[index];
+    float2 gBuffer9 = g_GBuffer9_SRV[index];
+    float2 gBuffer10 = g_GBuffer10_SRV[index];
 
     GBufferData gBufferData = (GBufferData) 0;
 
     gBufferData.Position = gBuffer0.xyz;
     gBufferData.Flags = asuint(gBuffer0.w);
 
-    gBufferData.Diffuse = gBuffer1.rgb;
-    gBufferData.Alpha = gBuffer1.a;
+    gBufferData.Diffuse = DecodeUnorm11(gBuffer1) * 2.0;
+    gBufferData.Alpha = gBuffer8.a;
 
-    gBufferData.Specular = gBuffer2.rgb;
-    gBufferData.SpecularTint = gBuffer3.rgb;
-    gBufferData.SpecularEnvironment = gBuffer2.w;
-    gBufferData.SpecularGloss = gBuffer3.w;
-    gBufferData.SpecularLevel = gBuffer4.x;
+    gBufferData.Specular = DecodeUnorm11(gBuffer2) * 2.0;
+    gBufferData.SpecularTint = DecodeUnorm11(gBuffer3);
+    gBufferData.SpecularEnvironment = gBuffer4.x;
+    gBufferData.SpecularGloss = gBuffer5.x * 1024.0;
+    gBufferData.SpecularLevel = gBuffer5.y * 1024.0;
     gBufferData.SpecularFresnel = gBuffer4.y;
 
-    gBufferData.Normal = gBuffer5.xyz;
-    gBufferData.Falloff = gBuffer6.xyz;
-    gBufferData.Emission = gBuffer7.xyz;
+    gBufferData.Normal = DecodeUnorm11(gBuffer6) * 2.0 - 1.0;
+    gBufferData.Falloff = DecodeUnorm11(gBuffer7) * 2.0;
+    gBufferData.Emission = gBuffer8.rgb;
     
-    gBufferData.TransColor = float3(gBuffer5.w, gBuffer6.w, gBuffer7.w);
-    
-    gBufferData.Refraction = gBuffer4.z;
-    gBufferData.RefractionOverlay = gBuffer4.w;
-    gBufferData.RefractionOffset = gBuffer8.xy;
+    gBufferData.Refraction = gBuffer9.x;
+    gBufferData.RefractionOverlay = gBuffer9.y;
+    gBufferData.RefractionOffset = gBuffer10 * 2.0 - 1.0;
     
     float lengthSquared = dot(gBufferData.Normal, gBufferData.Normal);
     gBufferData.Normal = select(lengthSquared > 0.0, gBufferData.Normal * rsqrt(lengthSquared), 0.0);
@@ -96,12 +96,14 @@ GBufferData LoadGBufferData(uint3 index)
 void StoreGBufferData(uint3 index, GBufferData gBufferData)
 {
     g_GBuffer0[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
-    g_GBuffer1[index] = float4(gBufferData.Diffuse, gBufferData.Alpha);
-    g_GBuffer2[index] = float4(gBufferData.Specular, gBufferData.SpecularEnvironment);
-    g_GBuffer3[index] = float4(gBufferData.SpecularTint, gBufferData.SpecularGloss);
-    g_GBuffer4[index] = float4(gBufferData.SpecularLevel, gBufferData.SpecularFresnel, gBufferData.Refraction, gBufferData.RefractionOverlay);
-    g_GBuffer5[index] = float4(gBufferData.Normal, gBufferData.TransColor.r);
-    g_GBuffer6[index] = float4(gBufferData.Falloff, gBufferData.TransColor.g);
-    g_GBuffer7[index] = float4(gBufferData.Emission, gBufferData.TransColor.b);
-    g_GBuffer8[index] = float4(gBufferData.RefractionOffset, 0.0, 0.0);
+    g_GBuffer1[index] = EncodeUnorm11(gBufferData.Diffuse / 2.0);
+    g_GBuffer2[index] = EncodeUnorm11(gBufferData.Specular / 2.0);
+    g_GBuffer3[index] = EncodeUnorm11(gBufferData.SpecularTint);
+    g_GBuffer4[index] = float2(gBufferData.SpecularEnvironment, gBufferData.SpecularFresnel);
+    g_GBuffer5[index] = float2(gBufferData.SpecularGloss, gBufferData.SpecularLevel) / 1024.0;
+    g_GBuffer6[index] = EncodeUnorm11(gBufferData.Normal * 0.5 + 0.5);
+    g_GBuffer7[index] = EncodeUnorm11(gBufferData.Falloff / 2.0);
+    g_GBuffer8[index] = float4(gBufferData.Emission, gBufferData.Alpha);
+    g_GBuffer9[index] = float2(gBufferData.Refraction, gBufferData.RefractionOverlay);
+    g_GBuffer10[index] = gBufferData.RefractionOffset * 0.5 + 0.5;
 }

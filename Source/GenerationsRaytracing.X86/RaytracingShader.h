@@ -58,7 +58,6 @@ inline RaytracingParameter s_parameter_SonicEyeHighLightPosition = { "g_SonicEye
 inline RaytracingParameter s_parameter_SonicEyeHighLightColor = { "g_SonicEyeHighLightColor", 0, 3, 1.0f, 1.0f, 1.0f, 0.0f };
 inline RaytracingParameter s_parameter_SonicSkinFalloffParam = { "g_SonicSkinFalloffParam", 0, 3, 0.15f, 2.0f, 3.0f, 0.0f };
 inline RaytracingParameter s_parameter_ChrEmissionParam = { "mrgChrEmissionParam", 0, 4, 0.0f, 0.0f, 0.0f, 0.0f };
-inline RaytracingParameter s_parameter_TransColorMask = { "g_TransColorMask", 0, 3, 0.0f, 0.0f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_EmissionParam = { "g_EmissionParam", 0, 4, 0.0f, 0.0f, 0.0f, 1.0f };
 inline RaytracingParameter s_parameter_OffsetParam = { "g_OffsetParam", 0, 4, 0.1f, 0.1f, 0.0f, 0.0f };
 inline RaytracingParameter s_parameter_WaterParam = { "g_WaterParam", 0, 4, 1.0f, 0.5f, 0.0f, 8.0f };
@@ -772,24 +771,6 @@ inline RaytracingParameter* s_parameters_TIME_EATER[7] =
 
 inline RaytracingShader s_shader_TIME_EATER = { SHADER_TYPE_TIME_EATER, s_textures_TIME_EATER, 5, s_parameters_TIME_EATER, 7 };
 
-inline RaytracingTexture* s_textures_TRANS_THIN[3] =
-{
-	&s_texture_DiffuseTexture,
-	&s_texture_GlossTexture,
-	&s_texture_NormalTexture,
-};
-
-inline RaytracingParameter* s_parameters_TRANS_THIN[5] =
-{
-	&s_parameter_Diffuse,
-	&s_parameter_Specular,
-	&s_parameter_GlossLevel,
-	&s_parameter_Opacity,
-	&s_parameter_TransColorMask,
-};
-
-inline RaytracingShader s_shader_TRANS_THIN = { SHADER_TYPE_TRANS_THIN, s_textures_TRANS_THIN, 3, s_parameters_TRANS_THIN, 5 };
-
 inline RaytracingTexture* s_textures_WATER_ADD[3] =
 {
 	&s_texture_DiffuseTexture,
@@ -913,7 +894,7 @@ inline std::pair<std::string_view, RaytracingShader*> s_shaders[] =
 	{ "TimeEaterGlass_", &s_shader_ENM_GLASS },
 	{ "TimeEaterIndirect_", &s_shader_INDIRECT_NO_LIGHT },
 	{ "TimeEaterMetal_", &s_shader_CHR_SKIN },
-	{ "TransThin_", &s_shader_TRANS_THIN },
+	{ "TransThin_", &s_shader_COMMON },
 	{ "Water_Add", &s_shader_WATER_ADD },
 	{ "Water_Mul", &s_shader_WATER_MUL },
 	{ "Water_Opacity", &s_shader_WATER_OPACITY },

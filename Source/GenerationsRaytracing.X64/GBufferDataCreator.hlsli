@@ -66,8 +66,6 @@
 #include "Shoe.hlsli"
 #elif SHADER_TYPE == SHADER_TYPE_TIME_EATER
 #include "TimeEater.hlsli"
-#elif SHADER_TYPE == SHADER_TYPE_TRANS_THIN
-#include "TransThin.hlsli"
 #elif SHADER_TYPE == SHADER_TYPE_WATER_ADD || SHADER_TYPE == SHADER_TYPE_WATER_MUL || SHADER_TYPE == SHADER_TYPE_WATER_OPACITY
 #include "Water.hlsli"
 #elif SHADER_TYPE == SHADER_TYPE_CHAOS
@@ -158,8 +156,6 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
     CreateShoeGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_TIME_EATER
     CreateTimeEaterGBufferData(vertex, material, gBufferData);
-#elif SHADER_TYPE == SHADER_TYPE_TRANS_THIN
-    CreateTransThinGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_WATER_ADD || SHADER_TYPE == SHADER_TYPE_WATER_MUL || SHADER_TYPE == SHADER_TYPE_WATER_OPACITY
     CreateWaterGBufferData(vertex, material, gBufferData);
 #elif SHADER_TYPE == SHADER_TYPE_CHAOS
@@ -197,6 +193,8 @@ GBufferData CreateGBufferData(Vertex vertex, Material material, InstanceDesc ins
     gBufferData.SpecularTint = lerp(1.0, gBufferData.SpecularTint, playableParam);
     gBufferData.Emission *= playableParam;
 
+    gBufferData.Alpha = saturate(gBufferData.Alpha);
+    
     if (material.Flags & MATERIAL_FLAG_VIEW_Z_ALPHA_FADE)
         gBufferData.Alpha *= 1.0 - saturate((RayTCurrent() - g_ViewZAlphaFade.y) * g_ViewZAlphaFade.x);
 
