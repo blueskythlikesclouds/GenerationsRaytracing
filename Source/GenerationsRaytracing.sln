@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X64.D
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GenerationsRaytracing.Tool", "GenerationsRaytracing.Tool\GenerationsRaytracing.Tool.csproj", "{8C622AE6-B697-4F49-99BE-16E26323EBCA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Amicitia.IO", "..\Dependencies\Amicitia.IO\src\Amicitia.IO\Amicitia.IO.csproj", "{E94D086C-2227-4CBC-8297-6E66337A6A9D}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GenerationsRaytracing.ShaderConverter", "GenerationsRaytracing.ShaderConverter\GenerationsRaytracing.ShaderConverter.csproj", "{EFC1A463-CAFF-4373-AB9C-D8A166910173}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerationsRaytracing.X86.Dependencies", "GenerationsRaytracing.X86.Dependencies\GenerationsRaytracing.X86.Dependencies.vcxproj", "{305B334C-12A4-43FB-824C-2B4420D9BD75}"
@@ -43,8 +41,6 @@ Global
 		{8C622AE6-B697-4F49-99BE-16E26323EBCA}.Debug|x64.Build.0 = Debug|Any CPU
 		{8C622AE6-B697-4F49-99BE-16E26323EBCA}.Release|x64.ActiveCfg = Release|Any CPU
 		{8C622AE6-B697-4F49-99BE-16E26323EBCA}.Release|x64.Build.0 = Release|Any CPU
-		{E94D086C-2227-4CBC-8297-6E66337A6A9D}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{E94D086C-2227-4CBC-8297-6E66337A6A9D}.Release|x64.ActiveCfg = Release|Any CPU
 		{EFC1A463-CAFF-4373-AB9C-D8A166910173}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{EFC1A463-CAFF-4373-AB9C-D8A166910173}.Debug|x64.Build.0 = Debug|Any CPU
 		{EFC1A463-CAFF-4373-AB9C-D8A166910173}.Release|x64.ActiveCfg = Release|Any CPU
