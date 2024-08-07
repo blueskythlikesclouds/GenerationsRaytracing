@@ -933,7 +933,7 @@ public static class RaytracingShaderCompiler
 
     private static void WriteMaterialHeaderFile(string solutionDirectoryPath)
     {
-        int packedDataSize = (1 + Shaders.Select(x => x.Textures.Length + x.Parameters.Sum(y => y.Size)).Max() + 3) & ~3 - 1;
+        int packedDataSize = ((Shaders.Select(x => x.Textures.Length + x.Parameters.Sum(y => y.Size)).Max() + 4) & ~3) - 1;
 
         using (var writer = new StreamWriter(
                    Path.Combine(solutionDirectoryPath, "GenerationsRaytracing.X64", "Material.h")))
