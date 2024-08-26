@@ -26,8 +26,13 @@ void CreateChrSkinGBufferData(Vertex vertex, Material material, inout GBufferDat
     gBufferData.SpecularFresnel = 0.3;
 
     if (material.NormalTexture != 0)
-        gBufferData.Normal = DecodeNormalMap(vertex, SampleMaterialTexture2D(material.NormalTexture, vertex));
-
+    {
+        float3 normalMap = DecodeNormalMap(SampleMaterialTexture2D(material.NormalTexture, vertex));
+        if (material.NormalTexture2 != 0)
+            normalMap = BlendNormalMap(normalMap, DecodeNormalMap(SampleMaterialTexture2D(material.NormalTexture2, vertex)));
+        
+        gBufferData.Normal = DecodeNormalMap(vertex, normalMap);
+    }
 
     gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
     if (material.DisplacementTexture != 0)

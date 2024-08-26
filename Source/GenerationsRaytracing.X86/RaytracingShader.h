@@ -240,12 +240,13 @@ inline RaytracingParameter* s_parameters_CHR_EYE_FHL[7] =
 
 inline RaytracingShader s_shader_CHR_EYE_FHL = { SHADER_TYPE_CHR_EYE_FHL, s_textures_CHR_EYE_FHL, 3, s_parameters_CHR_EYE_FHL, 7 };
 
-inline RaytracingTexture* s_textures_CHR_SKIN[5] =
+inline RaytracingTexture* s_textures_CHR_SKIN[6] =
 {
 	&s_texture_DiffuseTexture,
 	&s_texture_SpecularTexture,
 	&s_texture_GlossTexture,
 	&s_texture_NormalTexture,
+	&s_texture_NormalTexture2,
 	&s_texture_DisplacementTexture,
 };
 
@@ -258,7 +259,7 @@ inline RaytracingParameter* s_parameters_CHR_SKIN[5] =
 	&s_parameter_SonicSkinFalloffParam,
 };
 
-inline RaytracingShader s_shader_CHR_SKIN = { SHADER_TYPE_CHR_SKIN, s_textures_CHR_SKIN, 5, s_parameters_CHR_SKIN, 5 };
+inline RaytracingShader s_shader_CHR_SKIN = { SHADER_TYPE_CHR_SKIN, s_textures_CHR_SKIN, 6, s_parameters_CHR_SKIN, 5 };
 
 inline RaytracingTexture* s_textures_CHR_SKIN_HALF[3] =
 {

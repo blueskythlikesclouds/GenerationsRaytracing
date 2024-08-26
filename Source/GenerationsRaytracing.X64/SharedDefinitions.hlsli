@@ -124,6 +124,14 @@ float3 DecodeNormalMap(float4 value)
     return normalMap;
 }
 
+float3 BlendNormalMap(float3 left, float3 right)
+{
+    left += float3(0, 0, 1);
+    right *= float3(-1, -1, 1);
+
+    return left * dot(left, right) / left.z - right;
+}
+
 float ComputeFalloff(float3 normal, float3 falloffParam)
 {
     return pow(1.0 - saturate(dot(normal, -WorldRayDirection())), falloffParam.z) * falloffParam.y + falloffParam.x;

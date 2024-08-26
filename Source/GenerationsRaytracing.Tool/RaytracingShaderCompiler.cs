@@ -220,6 +220,7 @@ public class RaytracingShader(string name, RaytracingTexture[] textures, Raytrac
             RaytracingTexture.Specular,
             RaytracingTexture.Gloss,
             RaytracingTexture.Normal,
+            RaytracingTexture.Normal2,
             RaytracingTexture.Displacement
         ],
         [
