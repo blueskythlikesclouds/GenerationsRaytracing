@@ -44,6 +44,7 @@ struct alignas(0x10) GlobalsRT
     uint32_t skyInRoughReflection;
     uint32_t enableAccumulation;
     uint32_t envBrdfTextureId;
+    NrcConstants nrcConstants;
 };
 
 struct GlobalsSB
@@ -80,7 +81,8 @@ protected:
     ComPtr<ID3D12StateObject> m_stateObject;
     ComPtr<ID3D12StateObjectProperties> m_properties;
     size_t m_primaryStackSize = 0;
-    size_t m_secondaryStackSize = 0;
+    size_t m_queryStackSize = 0;
+    size_t m_updateStackSize = 0;
     void* m_hitGroups[_countof(s_shaderHitGroups)]{};
     std::vector<uint8_t> m_rayGenShaderTable;
     std::vector<uint8_t> m_missShaderTable;
@@ -214,6 +216,12 @@ protected:
     ComPtr<ID3D12RootSignature> m_grassInstancerRootSignature;
     ComPtr<ID3D12PipelineState> m_grassInstancerPipeline;
 
+    // NRC
+    nrc::d3d12::Context* m_nrc{};
+    nrc::ContextSettings m_contextSettings{};
+    uint32_t m_nrcUavId{};
+    nrc::d3d12::Buffers m_nrcBuffers{};
+
     uint32_t allocateGeometryDescs(uint32_t count);
     void freeGeometryDescs(uint32_t id, uint32_t count);
 
@@ -254,6 +262,8 @@ protected:
     void procMsgComputeGrassInstancer();
 
     bool processRaytracingMessage() override;
+    void beginRaytracingFrame() override;
+    void endRaytracingFrame() override;
     void releaseRaytracingResources() override;
 
 public:

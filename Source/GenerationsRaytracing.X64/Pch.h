@@ -32,3 +32,5 @@ using Microsoft::WRL::ComPtr;
 #include <lz4.h>
 #include <nvapi.h>
 #include <nvShaderExtnEnums.h>
+#include <NrcD3d12.h>
+#include <NrcStructures.h>

@@ -37,3 +37,6 @@
 [submodule "Dependencies/im3d"]
 	path = Dependencies/im3d
 	url = https://github.com/john-chapman/im3d.git
+[submodule "Dependencies/NRC"]
+	path = Dependencies/NRC
+	url = https://github.com/NVIDIA-RTX/NRC

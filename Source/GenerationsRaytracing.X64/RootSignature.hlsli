@@ -2,6 +2,13 @@
 
 #ifndef EXCLUDE_RAYTRACING_DEFINITIONS
 
+#ifndef ENABLE_NRC
+#define ENABLE_NRC 1
+#endif
+
+#include "Nrc.hlsli"
+#include "NrcStructures.h"
+
 #include "GeometryDesc.hlsli"
 #include "MaterialData.hlsli"
 
@@ -125,6 +132,7 @@ cbuffer GlobalsRT : register(b2)
     bool g_SkyInRoughReflection;
     bool g_EnableAccumulation;
     uint g_EnvBrdfTextureId;
+    NrcConstants g_NrcConstants;
 }
 
 struct LocalLight
@@ -159,6 +167,13 @@ float GetExposure()
     Texture2D texture = ResourceDescriptorHeap[g_AdaptionLuminanceTextureId];
     return g_MiddleGray / (texture.Load(0).x + 0.001);
 }
+
+RWStructuredBuffer<uint> g_Counter : register(u0, space0); // +
+RWStructuredBuffer<NrcPackedQueryPathInfo> g_QueryPathInfo : register(u1, space0); // +
+RWStructuredBuffer<NrcPackedTrainingPathInfo> g_TrainingPathInfo : register(u2, space0); // +
+RWStructuredBuffer<NrcPackedPathVertex> g_TrainingPathVertices : register(u3, space0); // +
+RWStructuredBuffer<float3> g_QueryRadiance : register(u4, space0); // +
+RWStructuredBuffer<NrcRadianceParams> g_QueryRadianceParams : register(u5, space0); // +
 
 #endif
 

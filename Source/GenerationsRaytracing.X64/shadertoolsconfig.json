@@ -3,6 +3,7 @@
         "..\\GenerationsRaytracing.Shared",
         "..\\..\\Dependencies\\self-intersection-avoidance",
         "..\\..\\Dependencies\\ThreadGroupIDSwizzling",
-        "..\\..\\Dependencies\\nvapi"
+        "..\\..\\Dependencies\\nvapi",
+        "..\\..\\Dependencies\\NRC\\Include"
     ]
 }

@@ -410,6 +410,9 @@ D3D12_GPU_VIRTUAL_ADDRESS RaytracingDevice::createGlobalsRT(const MsgTraceRays& 
     getGraphicsCommandList().transitionBarrier(m_textures[message.adaptionLuminanceTextureId].allocation->GetResource(),
         D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+    auto status = m_nrc->PopulateShaderConstants(m_globalsRT.nrcConstants);
+    assert(status == nrc::Status::OK);
+
     const auto globalsRT = createBuffer(&m_globalsRT, sizeof(GlobalsRT), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
     memcpy(m_globalsRT.prevProj, m_globalsVS.floatConstants, 0x80);
@@ -1039,28 +1042,32 @@ void RaytracingDevice::procMsgTraceRays()
     auto& commandList = getGraphicsCommandList();
     const auto underlyingCommandList = commandList.getUnderlyingCommandList();
 
-    if (m_curRootSignature != m_raytracingRootSignature.Get())
-    {
-        underlyingCommandList->SetComputeRootSignature(m_raytracingRootSignature.Get());
-        m_curRootSignature = m_raytracingRootSignature.Get();
-    }
+    m_curRootSignature = m_raytracingRootSignature.Get();
+
+    auto setRootSignature = [&]()
+        {
+            underlyingCommandList->SetComputeRootSignature(m_raytracingRootSignature.Get());
+            underlyingCommandList->SetComputeRootConstantBufferView(0, globalsVS);
+            underlyingCommandList->SetComputeRootConstantBufferView(1, globalsPS);
+            underlyingCommandList->SetComputeRootConstantBufferView(2, globalsRT);
+            underlyingCommandList->SetComputeRootShaderResourceView(3, topLevelAccelStruct);
+            underlyingCommandList->SetComputeRootShaderResourceView(4, topLevelAccelStructTransparent);
+            underlyingCommandList->SetComputeRootShaderResourceView(5, geometryDescs);
+            underlyingCommandList->SetComputeRootShaderResourceView(6, materials);
+            underlyingCommandList->SetComputeRootShaderResourceView(7, instanceDescs);
+            underlyingCommandList->SetComputeRootShaderResourceView(8, instanceDescsTransparent);
+            underlyingCommandList->SetComputeRootShaderResourceView(9, localLights);
+            underlyingCommandList->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_uavId));
+            underlyingCommandList->SetComputeRootDescriptorTable(11, m_descriptorHeap.getGpuHandle(m_srvId));
+
+            if (m_serSupported)
+                underlyingCommandList->SetComputeRootDescriptorTable(12, m_descriptorHeap.getGpuHandle(m_serUavId));
+
+            underlyingCommandList->SetComputeRootDescriptorTable(13, m_descriptorHeap.getGpuHandle(m_nrcUavId));
+        };
+
+    setRootSignature();
     underlyingCommandList->SetPipelineState1(m_stateObject.Get());
-
-    underlyingCommandList->SetComputeRootConstantBufferView(0, globalsVS);
-    underlyingCommandList->SetComputeRootConstantBufferView(1, globalsPS);
-    underlyingCommandList->SetComputeRootConstantBufferView(2, globalsRT);
-    underlyingCommandList->SetComputeRootShaderResourceView(3, topLevelAccelStruct);
-    underlyingCommandList->SetComputeRootShaderResourceView(4, topLevelAccelStructTransparent);
-    underlyingCommandList->SetComputeRootShaderResourceView(5, geometryDescs);
-    underlyingCommandList->SetComputeRootShaderResourceView(6, materials);
-    underlyingCommandList->SetComputeRootShaderResourceView(7, instanceDescs);
-    underlyingCommandList->SetComputeRootShaderResourceView(8, instanceDescsTransparent);
-    underlyingCommandList->SetComputeRootShaderResourceView(9, localLights);
-    underlyingCommandList->SetComputeRootDescriptorTable(10, m_descriptorHeap.getGpuHandle(m_uavId));
-    underlyingCommandList->SetComputeRootDescriptorTable(11, m_descriptorHeap.getGpuHandle(m_srvId));
-
-    if (m_serSupported)
-        underlyingCommandList->SetComputeRootDescriptorTable(12, m_descriptorHeap.getGpuHandle(m_serUavId));
 
     const auto rayGenShaderTable = createBuffer(
         m_rayGenShaderTable.data(), static_cast<uint32_t>(m_rayGenShaderTable.size()), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -1111,8 +1118,16 @@ void RaytracingDevice::procMsgTraceRays()
 
     PIX_END_EVENT();
 
-    PIX_BEGIN_EVENT("SecondaryRayGeneration");
-    m_properties->SetPipelineStackSize(m_secondaryStackSize);
+    PIX_BEGIN_EVENT("QueryRayGeneration");
+    m_properties->SetPipelineStackSize(m_queryStackSize);
+    dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+    underlyingCommandList->DispatchRays(&dispatchRaysDesc);
+    PIX_END_EVENT();
+
+    PIX_BEGIN_EVENT("UpdateRayGeneration");
+    m_properties->SetPipelineStackSize(m_updateStackSize);
+    dispatchRaysDesc.Width = m_contextSettings.trainingDimensions.x;
+    dispatchRaysDesc.Height = m_contextSettings.trainingDimensions.y;
     dispatchRaysDesc.RayGenerationShaderRecord.StartAddress += D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
     underlyingCommandList->DispatchRays(&dispatchRaysDesc);
     PIX_END_EVENT();
@@ -1131,6 +1146,16 @@ void RaytracingDevice::procMsgTraceRays()
         PIX_END_EVENT();
     }
 
+    m_nrc->QueryAndTrain(underlyingCommandList, nullptr);
+
+    if (message.debugView != DEBUG_VIEW_NONE)
+    {
+        commandList.uavBarrier(m_giTexture->GetResource());
+        commandList.commitBarriers();
+    }
+
+    m_nrc->Resolve(underlyingCommandList, m_giTexture->GetResource());
+
     commandList.transitionBarriers(
         {
             m_depthTexture->GetResource(),
@@ -1142,7 +1167,11 @@ void RaytracingDevice::procMsgTraceRays()
 
     commandList.commitBarriers();
 
+    setDescriptorHeaps();
+    setRootSignature();
+
     dispatchResolver(message);
+
     prepareForDispatchUpscaler(message);
 }
 
@@ -1924,6 +1953,69 @@ bool RaytracingDevice::processRaytracingMessage()
     return true;
 }
 
+void RaytracingDevice::beginRaytracingFrame()
+{
+    nrc::ContextSettings contextSettings{};
+    contextSettings.learnIrradiance = true;
+    contextSettings.includeDirectLighting = true;
+    contextSettings.sceneBoundsMin = { -2500.0f, -1000.0f, -2500.0f };
+    contextSettings.sceneBoundsMax = { 2500.0f, 1000.0f, 2500.0f };
+    contextSettings.frameDimensions = { m_renderWidth != 0 ? m_renderWidth : 1280, m_renderHeight != 0 ? m_renderHeight : 720 };
+    contextSettings.trainingDimensions = nrc::ComputeIdealTrainingDimensions(contextSettings.frameDimensions, 0, 0.0f);
+
+    if (m_contextSettings != contextSettings)
+    {
+        m_graphicsQueue.getFence()->SetEventOnCompletion(m_fenceValues[(m_frame - 1) % NUM_FRAMES], nullptr);
+
+        m_contextSettings = contextSettings;
+        auto status = m_nrc->Configure(m_contextSettings);
+        assert(status == nrc::Status::OK);
+
+        auto& buffers = *m_nrc->GetBuffers();
+        const nrc::d3d12::BufferInfo* bufferInfos[] =
+        {
+            &buffers[nrc::BufferIdx::Counter],
+            &buffers[nrc::BufferIdx::QueryPathInfo],
+            &buffers[nrc::BufferIdx::TrainingPathInfo],
+            &buffers[nrc::BufferIdx::TrainingPathVertices],
+            &buffers[nrc::BufferIdx::QueryRadiance],
+            &buffers[nrc::BufferIdx::QueryRadianceParams],
+        };
+
+        const uint32_t bufferStrides[] =
+        {
+            sizeof(uint32_t),
+            sizeof(NrcPackedQueryPathInfo),
+            sizeof(NrcPackedTrainingPathInfo),
+            sizeof(NrcPackedPathVertex),
+            sizeof(float) * 3,
+            sizeof(NrcRadianceParams),
+        };
+
+        if (m_nrcUavId == NULL)
+            m_nrcUavId = m_descriptorHeap.allocateMany(_countof(bufferInfos));
+
+        for (uint32_t i = 0; i < _countof(bufferInfos); i++)
+        {
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+            uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+            uavDesc.Buffer.StructureByteStride = bufferStrides[i];
+            uavDesc.Buffer.NumElements = uint32_t(bufferInfos[i]->allocatedSize / bufferStrides[i]);
+            m_device->CreateUnorderedAccessView(bufferInfos[i]->resource, nullptr, &uavDesc, m_descriptorHeap.getCpuHandle(m_nrcUavId + i));
+        }
+    }
+
+    nrc::FrameSettings frameSettings{};
+    auto status = m_nrc->BeginFrame(getUnderlyingGraphicsCommandList(), frameSettings);
+    assert(status == nrc::Status::OK);
+}
+
+void RaytracingDevice::endRaytracingFrame()
+{
+    m_nrc->EndFrame(getGraphicsQueue().getUnderlyingQueue());
+}
+
 void RaytracingDevice::releaseRaytracingResources()
 {
     m_curRootSignature = nullptr;
@@ -1984,9 +2076,12 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     srvDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, s_textureCount, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
 
     CD3DX12_DESCRIPTOR_RANGE1 serDescriptorRanges[1];
-    serDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, s_serUavRegister, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+    serDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, s_serUavRegister, 2, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
 
-    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[13];
+    CD3DX12_DESCRIPTOR_RANGE1 nrcDescriptorRanges[1];
+    nrcDescriptorRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 6, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
+
+    CD3DX12_ROOT_PARAMETER1 raytracingRootParams[14];
     raytracingRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[1].InitAsConstantBufferView(1, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
     raytracingRootParams[2].InitAsConstantBufferView(2, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -2000,6 +2095,7 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     raytracingRootParams[10].InitAsDescriptorTable(_countof(uavDescriptorRanges), uavDescriptorRanges);
     raytracingRootParams[11].InitAsDescriptorTable(_countof(srvDescriptorRanges), srvDescriptorRanges);
     raytracingRootParams[12].InitAsDescriptorTable(_countof(serDescriptorRanges), serDescriptorRanges);
+    raytracingRootParams[13].InitAsDescriptorTable(_countof(nrcDescriptorRanges), nrcDescriptorRanges);
 
     D3D12_STATIC_SAMPLER_DESC raytracingStaticSamplers[1]{};
     raytracingStaticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
@@ -2011,7 +2107,7 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     RootSignature::create(
         m_device.Get(),
         raytracingRootParams,
-        m_serSupported ? _countof(raytracingRootParams) : (_countof(raytracingRootParams) - 1),
+        _countof(raytracingRootParams),
         raytracingStaticSamplers,
         _countof(raytracingStaticSamplers),
         D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
@@ -2086,7 +2182,8 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     assert(SUCCEEDED(hr) && m_properties != nullptr);
 
     const size_t primaryStackSize = m_properties->GetShaderStackSize(L"PrimaryRayGeneration");
-    const size_t secondaryStackSize = m_properties->GetShaderStackSize(L"SecondaryRayGeneration");
+    const size_t queryStackSize = m_properties->GetShaderStackSize(L"QueryRayGeneration");
+    const size_t updateStackSize = m_properties->GetShaderStackSize(L"UpdateRayGeneration");
     constexpr size_t s_hitGroupStride = _countof(m_hitGroups) / SHADER_TYPE_MAX;
     constexpr const wchar_t* s_shaderTypes[] = { L"::anyhit", L"::closesthit" };
 
@@ -2111,8 +2208,11 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
             wcscat_s(exportName, s_shaderHitGroups[j * s_hitGroupStride + 4]);
             wcscat_s(exportName, shaderTypes);
 
-            m_secondaryStackSize = std::max(m_secondaryStackSize, 
-                secondaryStackSize + m_properties->GetShaderStackSize(exportName));
+            m_queryStackSize = std::max(m_queryStackSize, 
+                queryStackSize + m_properties->GetShaderStackSize(exportName));
+
+            m_updateStackSize = std::max(m_updateStackSize,
+                updateStackSize + m_properties->GetShaderStackSize(exportName));
         }
     }
 
@@ -2122,16 +2222,23 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     m_primaryStackSize = std::max(m_primaryStackSize, 
         primaryStackSize + m_properties->GetShaderStackSize(L"PrimaryTransparentMiss"));
 
-    m_secondaryStackSize = std::max(m_secondaryStackSize, 
-        secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryMiss"));
+    m_queryStackSize = std::max(m_queryStackSize, 
+        queryStackSize + m_properties->GetShaderStackSize(L"SecondaryMiss"));
 
-    m_secondaryStackSize = std::max(m_secondaryStackSize, 
-        secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryEnvironmentColorMiss"));
+    m_queryStackSize = std::max(m_queryStackSize, 
+        queryStackSize + m_properties->GetShaderStackSize(L"SecondaryEnvironmentColorMiss"));
+
+    m_updateStackSize = std::max(m_updateStackSize,
+        queryStackSize + m_properties->GetShaderStackSize(L"SecondaryMiss"));
+
+    m_updateStackSize = std::max(m_updateStackSize,
+        queryStackSize + m_properties->GetShaderStackSize(L"SecondaryEnvironmentColorMiss"));
 
     const wchar_t* rayGenShaderTable[] =
     {
         L"PrimaryRayGeneration",
-        L"SecondaryRayGeneration"
+        L"QueryRayGeneration",
+        L"UpdateRayGeneration"
     };
 
     static_assert(_countof(rayGenShaderTable) == RAY_GENERATION_NUM);
@@ -2457,6 +2564,14 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     grassInstancerPipelineDesc.CS.BytecodeLength = sizeof(GrassInstancerComputeShader);
 
     m_pipelineLibrary.createComputePipelineState(&grassInstancerPipelineDesc, IID_PPV_ARGS(m_grassInstancerPipeline.GetAddressOf()));
+
+    nrc::GlobalSettings globalSettings;
+    globalSettings.maxNumFramesInFlight = NUM_FRAMES;
+    auto status = nrc::d3d12::Initialize(globalSettings);
+    assert(status == nrc::Status::OK);
+
+    status = nrc::d3d12::Context::Create(m_device.Get(), m_nrc);
+    assert(status == nrc::Status::OK);
 }
 
 RaytracingDevice::~RaytracingDevice()

@@ -83,11 +83,19 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     
             shadingParams.Reservoir = reservoir;
         }
+        
+        const uint pathIndex = NrcCalculateQueryPathIndex(g_NrcConstants.frameDimensions, dispatchThreadId.xy, 0, 1);
+        const NrcQueryPathInfo queryPathInfo = NrcUnpackQueryPathInfo(g_QueryPathInfo[pathIndex]);
+        float3 nrcRadiance = queryPathInfo.prefixThroughput * NrcUnpackQueryRadiance(g_NrcConstants, g_QueryRadiance[queryPathInfo.queryBufferIndex]);
     
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
         {
-            shadingParams.GlobalIllumination = g_GlobalIllumination_SRV[uint3(dispatchThreadId, 0)].rgb;
+            float4 globalIlluminationAndHitDistance = g_GlobalIllumination_SRV[uint3(dispatchThreadId, 0)];
+            shadingParams.GlobalIllumination = globalIlluminationAndHitDistance.rgb;
             diffuseAlbedo = ComputeGI(gBufferData, 1.0);
+            
+            if (any(globalIlluminationAndHitDistance != 0.0))
+                shadingParams.GlobalIllumination += nrcRadiance;
         }
         
         diffuseAlbedo += gBufferData.Emission;
@@ -98,6 +106,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             shadingParams.Reflection = reflectionAndHitDistance.rgb;
             specularAlbedo = ComputeSpecularAlbedo(gBufferData, shadingParams.EyeDirection);
             specularHitDistance = reflectionAndHitDistance.w;
+            
+            if (any(reflectionAndHitDistance != 0.0))
+                shadingParams.Reflection += nrcRadiance;
         }
         
         normalsRoughness = float4(gBufferData.Normal, 0.0);
@@ -113,7 +124,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             color = color * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
             diffuseAlbedo = diffuseAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
             specularAlbedo = specularAlbedo * lightScattering.x + g_LightScatteringColor.rgb * lightScattering.y;
-        }
+        }        
     }
     else
     {

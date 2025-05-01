@@ -219,6 +219,8 @@ protected:
 
     void processMessages();
     virtual bool processRaytracingMessage() { return false; }
+    virtual void beginRaytracingFrame() {}
+    virtual void endRaytracingFrame() {}
     virtual void releaseRaytracingResources() {}
 
 public:

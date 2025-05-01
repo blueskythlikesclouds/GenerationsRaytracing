@@ -2147,6 +2147,8 @@ void Device::processMessages()
     if (m_swapChainTextureId != 0)
         m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
 
+    beginRaytracingFrame();
+
     setDescriptorHeaps();
 
     while (m_messageReceiver.hasNext() && !m_swapChain.getWindow().m_shouldExit)
@@ -2252,6 +2254,7 @@ void Device::processMessages()
 
     graphicsCommandList.close();
     m_graphicsQueue.executeCommandList(graphicsCommandList);
+    endRaytracingFrame();
     m_graphicsQueue.signal(m_fenceValue);
 
     if (copyQueueWasExecuted)
