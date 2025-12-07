@@ -316,7 +316,7 @@ void Device::flushGraphicsState()
         const XXH64_hash_t pipelineHash = XXH3_64bits(&m_pipelineDesc, sizeof(m_pipelineDesc));
         auto& pipeline = m_pipelines[pipelineHash];
         if (!pipeline)
-            m_pipelineLibrary.createGraphicsPipelineState(&m_pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
+            m_device->CreateGraphicsPipelineState(&m_pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
 
         underlyingCommandList->SetPipelineState(pipeline.Get());
         m_curPipeline = pipeline.Get();
@@ -2201,8 +2201,6 @@ Device::Device(const IniFile& iniFile)
     m_pipelineDesc.NumRenderTargets = 1;
     m_pipelineDesc.SampleDesc.Count = 1;
 
-    m_pipelineLibrary.init(m_device.Get());
-
     for (auto& samplerDesc : m_samplerDescs)
     {
         samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -2262,7 +2260,7 @@ Device::Device(const IniFile& iniFile)
         copyHdrPipelineDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
         copyHdrPipelineDesc.SampleDesc.Count = 1;
 
-        m_pipelineLibrary.createGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
+        m_device->CreateGraphicsPipelineState(&copyHdrPipelineDesc, IID_PPV_ARGS(m_copyHdrTexturePipeline.GetAddressOf()));
     }
 
     m_anisotropicFiltering = iniFile.get<uint32_t>("Mod", "AnisotropicFiltering", 0);
@@ -2270,7 +2268,6 @@ Device::Device(const IniFile& iniFile)
 
 Device::~Device()
 {
-    m_pipelineLibrary.save();
     NvAPI_Unload();
 }
 

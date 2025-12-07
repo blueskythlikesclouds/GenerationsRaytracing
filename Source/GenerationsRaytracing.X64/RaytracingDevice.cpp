@@ -1665,7 +1665,7 @@ void RaytracingDevice::procMsgRenderSky()
 
             auto& pipeline = m_pipelines[XXH3_64bits(&pipelineDesc, sizeof(pipelineDesc))];
             if (!pipeline)
-                m_pipelineLibrary.createGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
+                m_device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(pipeline.GetAddressOf()));
 
             underlyingCommandList->SetPipelineState(pipeline.Get());
             m_curPipeline = pipeline.Get();
@@ -2215,7 +2215,7 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     copyPipelineDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     copyPipelineDesc.SampleDesc.Count = 1;
 
-    m_pipelineLibrary.createGraphicsPipelineState(&copyPipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
+    m_device->CreateGraphicsPipelineState(&copyPipelineDesc, IID_PPV_ARGS(m_copyTexturePipeline.GetAddressOf()));
 
     CD3DX12_ROOT_PARAMETER1 poseRootParams[5];
     poseRootParams[0].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -2239,7 +2239,7 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     posePipelineDesc.CS.pShaderBytecode = PoseComputeShader;
     posePipelineDesc.CS.BytecodeLength = sizeof(PoseComputeShader);
 
-    m_pipelineLibrary.createComputePipelineState(&posePipelineDesc, IID_PPV_ARGS(m_posePipeline.GetAddressOf()));
+    m_device->CreateComputePipelineState(&posePipelineDesc, IID_PPV_ARGS(m_posePipeline.GetAddressOf()));
 
     for (size_t i = 0; i < _countof(m_upscalerOverride); i++)
         m_upscalerOverride[i] = static_cast<UpscalerType>(i);
@@ -2290,14 +2290,14 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     resolvePipelineDesc.CS.pShaderBytecode = ResolveComputeShader;
     resolvePipelineDesc.CS.BytecodeLength = sizeof(ResolveComputeShader);
 
-    m_pipelineLibrary.createComputePipelineState(&resolvePipelineDesc, IID_PPV_ARGS(m_resolvePipeline.GetAddressOf()));
+    m_device->CreateComputePipelineState(&resolvePipelineDesc, IID_PPV_ARGS(m_resolvePipeline.GetAddressOf()));
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC resolveTransparencyPipelineDesc{};
     resolveTransparencyPipelineDesc.pRootSignature = m_raytracingRootSignature.Get();
     resolveTransparencyPipelineDesc.CS.pShaderBytecode = ResolveTransparencyComputeShader;
     resolveTransparencyPipelineDesc.CS.BytecodeLength = sizeof(ResolveTransparencyComputeShader);
 
-    m_pipelineLibrary.createComputePipelineState(&resolveTransparencyPipelineDesc, IID_PPV_ARGS(m_resolveTransparencyPipeline.GetAddressOf()));
+    m_device->CreateComputePipelineState(&resolveTransparencyPipelineDesc, IID_PPV_ARGS(m_resolveTransparencyPipeline.GetAddressOf()));
 
     CD3DX12_ROOT_PARAMETER1 skyRootParams[1];
     skyRootParams[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
@@ -2375,7 +2375,7 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     smoothNormalPipelineDesc.CS.pShaderBytecode = SmoothNormalComputeShader;
     smoothNormalPipelineDesc.CS.BytecodeLength = sizeof(SmoothNormalComputeShader);
 
-    m_pipelineLibrary.createComputePipelineState(&smoothNormalPipelineDesc, 
+    m_device->CreateComputePipelineState(&smoothNormalPipelineDesc, 
         IID_PPV_ARGS(m_smoothNormalPipeline.GetAddressOf()));
 
     CD3DX12_ROOT_PARAMETER1 im3dRootParams[2];
@@ -2413,25 +2413,25 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     im3dPipelineDesc.VS.BytecodeLength = sizeof(Im3dTrianglesVertexShader);
     im3dPipelineDesc.PS.pShaderBytecode = Im3dTrianglesPixelShader;
     im3dPipelineDesc.PS.BytecodeLength = sizeof(Im3dTrianglesPixelShader);
-    m_pipelineLibrary.createGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dTrianglesPipeline.GetAddressOf()));
+    m_device->CreateGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dTrianglesPipeline.GetAddressOf()));
 
     im3dPipelineDesc.VS.pShaderBytecode = Im3dLinesVertexShader;
     im3dPipelineDesc.VS.BytecodeLength = sizeof(Im3dLinesVertexShader);
     im3dPipelineDesc.PS.pShaderBytecode = Im3dLinesPixelShader;
     im3dPipelineDesc.PS.BytecodeLength = sizeof(Im3dLinesPixelShader);
-    m_pipelineLibrary.createGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dLinesPipeline.GetAddressOf()));
+    m_device->CreateGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dLinesPipeline.GetAddressOf()));
 
     im3dPipelineDesc.VS.pShaderBytecode = Im3dPointsVertexShader;
     im3dPipelineDesc.VS.BytecodeLength = sizeof(Im3dPointsVertexShader);
     im3dPipelineDesc.PS.pShaderBytecode = Im3dPointsPixelShader;
     im3dPipelineDesc.PS.BytecodeLength = sizeof(Im3dPointsPixelShader);
-    m_pipelineLibrary.createGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dPointsPipeline.GetAddressOf()));
+    m_device->CreateGraphicsPipelineState(&im3dPipelineDesc, IID_PPV_ARGS(m_im3dPointsPipeline.GetAddressOf()));
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC reservoirPipelineDesc{};
     reservoirPipelineDesc.pRootSignature = m_raytracingRootSignature.Get();
     reservoirPipelineDesc.CS.pShaderBytecode = ReservoirComputeShader;
     reservoirPipelineDesc.CS.BytecodeLength = sizeof(ReservoirComputeShader);
-    m_pipelineLibrary.createComputePipelineState(&reservoirPipelineDesc, IID_PPV_ARGS(m_reservoirPipeline.GetAddressOf()));
+    m_device->CreateComputePipelineState(&reservoirPipelineDesc, IID_PPV_ARGS(m_reservoirPipeline.GetAddressOf()));
 
     CD3DX12_ROOT_PARAMETER1 grassInstancerRootParams[5];
     grassInstancerRootParams[0].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC);
@@ -2456,7 +2456,7 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     grassInstancerPipelineDesc.CS.pShaderBytecode = GrassInstancerComputeShader;
     grassInstancerPipelineDesc.CS.BytecodeLength = sizeof(GrassInstancerComputeShader);
 
-    m_pipelineLibrary.createComputePipelineState(&grassInstancerPipelineDesc, IID_PPV_ARGS(m_grassInstancerPipeline.GetAddressOf()));
+    m_device->CreateComputePipelineState(&grassInstancerPipelineDesc, IID_PPV_ARGS(m_grassInstancerPipeline.GetAddressOf()));
 }
 
 RaytracingDevice::~RaytracingDevice()

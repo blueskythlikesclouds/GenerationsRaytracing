@@ -222,7 +222,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="PipelineLibrary.cpp" />
     <ClCompile Include="PIXEvent.cpp" />
     <ClCompile Include="RaytracingDevice.cpp" />
     <ClCompile Include="RootSignature.cpp" />
@@ -257,7 +256,6 @@
     <ClInclude Include="MessageReceiver.h" />
     <ClInclude Include="NGX.h" />
     <ClInclude Include="Pch.h" />
-    <ClInclude Include="PipelineLibrary.h" />
     <ClInclude Include="PixelShader.h" />
     <ClInclude Include="PIXEvent.h" />
     <ClInclude Include="RaytracingDevice.h" />

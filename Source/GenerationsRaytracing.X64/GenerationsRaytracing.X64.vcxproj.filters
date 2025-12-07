@@ -57,9 +57,6 @@
     <ClCompile Include="ShaderConverter.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
-    <ClCompile Include="PipelineLibrary.cpp">
-      <Filter>Device</Filter>
-    </ClCompile>
     <ClCompile Include="DLSSD.cpp">
       <Filter>Upscaler</Filter>
     </ClCompile>
@@ -239,9 +236,6 @@
     </ClInclude>
     <ClInclude Include="ShaderConverter.h">
       <Filter>Cache</Filter>
-    </ClInclude>
-    <ClInclude Include="PipelineLibrary.h">
-      <Filter>Device</Filter>
     </ClInclude>
     <ClInclude Include="DLSSD.h">
       <Filter>Upscaler</Filter>
