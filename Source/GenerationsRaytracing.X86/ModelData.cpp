@@ -114,7 +114,7 @@ static void createBottomLevelAccelStruct(
     message.allowUpdate = allowUpdate;
     message.allowCompaction = false;
     message.preferFastBuild = preferFastBuild;
-    message.asyncBuild = asyncBuild;
+    message.asyncBuild = false;
     memset(message.data, 0, geometryCount * sizeof(MsgCreateBottomLevelAccelStruct::GeometryDesc));
 
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(message.data);
