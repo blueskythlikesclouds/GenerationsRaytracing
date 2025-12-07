@@ -32,6 +32,7 @@
 #include "SampleChunkResource.h"
 #include "MetaInstancer.h"
 #include "WallJumpBlock.h"
+#include "Message.h"
 
 static constexpr LPCTSTR s_bridgeProcessName = TEXT("GenerationsRaytracing.X64.exe");
 
@@ -55,12 +56,6 @@ static struct ThreadHolder
         CloseHandle(event);
     }
 } s_threadHolder;
-
-static void setShouldExit()
-{
-    *s_shouldExit = true;
-    s_messageSender.notifyShouldExit();
-}
 
 extern "C" void __declspec(dllexport) FilterMod(FilterModArguments_t& args)
 {
@@ -159,10 +154,14 @@ extern "C" void __declspec(dllexport) Init(ModInfo_t* modInfo)
     s_threadHolder.processThread = std::thread([processHandle]
     {
         const HANDLE handles[] = { s_threadHolder.event, processHandle };
-        WaitForMultipleObjects(_countof(handles), handles, FALSE, INFINITE);
+        DWORD waitResult = WaitForMultipleObjects(_countof(handles), handles, FALSE, INFINITE);
         CloseHandle(processHandle);
 
-        setShouldExit();
+        if (waitResult == (WAIT_OBJECT_0 + 1))
+        {
+            s_messageSender.notifyShouldExit();
+            Window::notifyShouldExit();
+        }
     });
 }
 

@@ -205,9 +205,19 @@ struct MsgPresent
     MSG_DEFINE_MESSAGE(MsgSetIndices);
 };
 
-struct MsgCreateVertexBuffer
+struct MsgProcessWindowMessages
 {
     MSG_DEFINE_MESSAGE(MsgPresent);
+};
+
+struct MsgWaitOnSwapChain
+{
+    MSG_DEFINE_MESSAGE(MsgProcessWindowMessages);
+};
+
+struct MsgCreateVertexBuffer
+{
+    MSG_DEFINE_MESSAGE(MsgWaitOnSwapChain);
     uint32_t length;
     uint32_t vertexBufferId;
     bool allowUnorderedAccess;

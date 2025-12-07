@@ -112,15 +112,14 @@ int main()
         s_threadHolder.processThread = std::thread([processHandle]
         {
             const HANDLE handles[] = { s_threadHolder.event, processHandle };
-            WaitForMultipleObjects(_countof(handles), handles, FALSE, INFINITE);
+            DWORD waitResult = WaitForMultipleObjects(_countof(handles), handles, FALSE, INFINITE);
             CloseHandle(processHandle);
 
-            if (s_device != nullptr)
-                s_device->setShouldExit();
+            if (waitResult == (WAIT_OBJECT_0 + 1))
+                std::_Exit(0);
         });
 
         s_device->runLoop();
-        s_device->setEvents();
     }
     s_device.reset();
 

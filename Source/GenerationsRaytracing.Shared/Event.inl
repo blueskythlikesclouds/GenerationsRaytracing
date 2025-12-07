@@ -1,10 +1,10 @@
 #include <cassert>
 
-inline Event::Event(LPCTSTR name, BOOL initialState)
+inline Event::Event(LPCTSTR name, BOOL manualReset, BOOL initialState)
 {
     m_handle = CreateEvent(
         nullptr,
-        TRUE,
+        manualReset,
         initialState,
         name);
 

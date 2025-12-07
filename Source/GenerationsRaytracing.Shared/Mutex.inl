@@ -1,3 +1,4 @@
+#include "Mutex.h"
 inline Mutex::Mutex()
 {
     InitializeCriticalSection(this);
@@ -16,6 +17,11 @@ inline void Mutex::lock()
 inline void Mutex::unlock()
 {
     LeaveCriticalSection(this);
+}
+
+inline bool Mutex::tryLock()
+{
+    return TryEnterCriticalSection(this) != FALSE;
 }
 
 

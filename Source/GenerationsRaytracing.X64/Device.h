@@ -59,8 +59,7 @@ class Device
 {
 protected:
     MessageReceiver m_messageReceiver;
-    Event m_cpuEvent{ Event::s_cpuEventName };
-    Event m_gpuEvent{ Event::s_gpuEventName };
+    Event m_swapChainEvent{ Event::s_swapChainEventName };
 
     uint32_t m_frame = 0;
     uint32_t m_nextFrame = 1;
@@ -79,7 +78,7 @@ protected:
     CommandList m_computeCommandLists[NUM_FRAMES];
     CommandList m_copyCommandLists[NUM_FRAMES];
 
-    uint64_t m_fenceValue = 0;
+    uint64_t m_fenceValue = 1;
     ID3D12Fence* m_fences[NUM_FRAMES][3]{};
     uint64_t m_fenceValues[NUM_FRAMES]{};
     uint32_t m_fenceCounts[NUM_FRAMES]{};
@@ -200,6 +199,8 @@ protected:
     void procMsgSetStreamSource();
     void procMsgSetIndices();
     void procMsgPresent();
+    void procMsgProcessWindowMessages();
+    void procMsgWaitOnSwapChain();
     void procMsgCreateVertexBuffer();
     void procMsgWriteVertexBuffer();
     void procMsgCreateIndexBuffer();
@@ -217,7 +218,8 @@ protected:
     void procMsgShowCursor();
     void procMsgCopyHdrTexture();
 
-    void processMessages();
+    void beginCommandList();
+
     virtual bool processRaytracingMessage() { return false; }
     virtual void releaseRaytracingResources() {}
 
@@ -226,9 +228,6 @@ public:
     virtual ~Device();
 
     void runLoop();
-
-    void setEvents() const;
-    void setShouldExit();
 
     ID3D12Device* getUnderlyingDevice() const;
     D3D12MA::Allocator* getAllocator() const;

@@ -2,6 +2,7 @@
 
 #include "Event.h"
 #include "MemoryMappedFile.h"
+#include "MessageQueue.h"
 #include "Mutex.h"
 
 static size_t* s_shouldExit = reinterpret_cast<size_t*>(0x1E5E2E8);
@@ -9,19 +10,14 @@ static size_t* s_shouldExit = reinterpret_cast<size_t*>(0x1E5E2E8);
 class MessageSender
 {
 protected:
-    Event m_cpuEvent{ Event::s_cpuEventName, FALSE };
-    Event m_gpuEvent{ Event::s_gpuEventName, TRUE };
+    Event m_x86Event{ Event::s_x86EventName, FALSE, FALSE };
+    Event m_x64Event{ Event::s_x64EventName, FALSE, FALSE };
+
     Mutex m_mutex;
-    uint8_t* m_messages = nullptr;
-    uint32_t m_offset = sizeof(uint32_t);
-    std::atomic<uint32_t> m_pendingMessages;
+
     MemoryMappedFile m_memoryMappedFile;
     uint8_t* m_memoryMap;
-
-    std::chrono::high_resolution_clock::time_point m_time;
-    double m_x86Duration{};
-    double m_x64Duration{};
-    uint32_t m_lastCommittedSize{};
+    uint32_t m_offset = sizeof(MessageQueue);
 
 public:
     static bool canMakeMessage(uint32_t byteSize, uint32_t alignment);
@@ -41,13 +37,12 @@ public:
     template<typename T>
     T& makeMessage(uint32_t dataSize);
 
-    void commitMessages();
+    template<typename T>
+    void oneShotMessage();
 
-    void notifyShouldExit() const;
+    void sync();
 
-    double getX86Duration() const;
-    double getX64Duration() const;
-    uint32_t getLastCommittedSize() const;
+    void notifyShouldExit();
 };
 
 inline MessageSender s_messageSender;

@@ -1,7 +1,10 @@
 ﻿#include "Window.h"
 
 #include "Configuration.h"
+#include "Event.h"
 #include "RaytracingParams.h"
+#include "Message.h"
+#include "MessageSender.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -98,6 +101,27 @@ static void __declspec(naked) createWindowTrampoline()
     }
 }
 
+HOOK(void*, __fastcall, ProcessWindowMessages, 0xE7BED0, void* This, void* _, void* a2, void* a3) 
+{
+    s_messageSender.oneShotMessage<MsgProcessWindowMessages>();
+    s_messageSender.sync();
+
+    return originalProcessWindowMessages(This, _, a2, a3);
+}
+
+static Event s_swapChainEvent{ Event::s_swapChainEventName, FALSE, FALSE };
+
+HOOK(void*, __stdcall, SampleInput, 0xD683C0, float a1)
+{
+    if (!(*s_shouldExit))
+    {
+        s_messageSender.oneShotMessage<MsgWaitOnSwapChain>();
+        s_swapChainEvent.wait();
+    }
+
+    return originalSampleInput(a1);
+}
+
 void Window::init()
 {
     WRITE_JUMP(0xE7B810, createWindowTrampoline);
@@ -105,4 +129,12 @@ void Window::init()
     // SetCooperativeLevel flags
     WRITE_MEMORY(0x9C922D, uint8_t, 0xC);
     WRITE_MEMORY(0x9C96DD, uint8_t, 0xC);
+
+    INSTALL_HOOK(ProcessWindowMessages);
+    INSTALL_HOOK(SampleInput);
+}
+
+void Window::notifyShouldExit()
+{
+    s_swapChainEvent.set();
 }

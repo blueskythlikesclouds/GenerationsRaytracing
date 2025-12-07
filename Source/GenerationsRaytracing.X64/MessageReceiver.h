@@ -1,18 +1,19 @@
 #pragma once
 
+#include "Event.h"
 #include "MemoryMappedFile.h"
+#include "MessageQueue.h"
 
 class MessageReceiver
 {
 protected:
+    Event m_x86Event{ Event::s_x86EventName };
+    Event m_x64Event{ Event::s_x64EventName };
+
     MemoryMappedFile m_memoryMappedFile;
     uint8_t* m_memoryMap;
-    std::unique_ptr<uint8_t[]> m_messages;
-    uint32_t m_offset = 0;
-    uint32_t m_length = 0;
-#ifdef _DEBUG
-    std::vector<const char*> m_types;
-#endif
+
+    uint32_t m_offset = sizeof(MessageQueue);
 
 public:
     MessageReceiver();
@@ -24,7 +25,7 @@ public:
     template <typename T>
     const T& getMessage();
 
-    void receiveMessages();
+    void sync();
 };
 
 #include "MessageReceiver.inl"

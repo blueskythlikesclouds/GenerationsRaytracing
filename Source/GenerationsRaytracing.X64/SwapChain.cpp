@@ -19,7 +19,7 @@ SwapChain::SwapChain()
         MessageBox(nullptr, TEXT("Failed to create DXGI factory."), TEXT("Generations Raytracing"), MB_ICONERROR);
 }
 
-IDXGIFactory4* SwapChain::getUnderlyingFactory() const
+IDXGIFactory6* SwapChain::getUnderlyingFactory() const
 {
     return m_factory.Get();
 }
@@ -44,10 +44,23 @@ ID3D12Resource* SwapChain::getResource() const
     return m_resources[m_swapChain->GetCurrentBackBufferIndex()].Get();
 }
 
-void SwapChain::present() const
+void SwapChain::wait()
 {
-    const HRESULT hr = m_swapChain->Present(m_syncInterval, 0);
+    if (m_pendingWait)
+    {
+        WaitForSingleObject(m_waitableObject, INFINITE);
+        m_pendingWait = false;
+    }
+}
+
+void SwapChain::present()
+{
+    wait();
+
+    const HRESULT hr = m_swapChain->Present(m_syncInterval, m_syncInterval == 0 ? DXGI_PRESENT_ALLOW_TEARING : 0);
     assert(SUCCEEDED(hr));
+
+    m_pendingWait = true;
 }
 
 void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain& message)
@@ -66,7 +79,7 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
     desc.Scaling = DXGI_SCALING_STRETCH;
     desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     desc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-    desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    desc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
     ComPtr<IDXGISwapChain1> swapChain;
 
@@ -83,6 +96,9 @@ void SwapChain::procMsgCreateSwapChain(Device& device, const MsgCreateSwapChain&
     hr = swapChain.As(&m_swapChain);
 
     assert(SUCCEEDED(hr) && m_swapChain != nullptr);
+
+    m_swapChain->SetMaximumFrameLatency(2);
+    m_waitableObject = m_swapChain->GetFrameLatencyWaitableObject();
 
     if (message.hdr)
     {

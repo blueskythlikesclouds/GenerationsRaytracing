@@ -1,9 +1,9 @@
 #include "MessageReceiver.h"
+#include "MessageQueue.h"
 
 MessageReceiver::MessageReceiver()
 {
     m_memoryMap = static_cast<uint8_t*>(m_memoryMappedFile.map());
-    m_messages = std::make_unique<uint8_t[]>(MemoryMappedFile::s_size);
 }
 
 MessageReceiver::~MessageReceiver()
@@ -13,21 +13,20 @@ MessageReceiver::~MessageReceiver()
 
 bool MessageReceiver::hasNext() const
 {
-    return m_offset < m_length;
+    return m_offset < MESSAGE_QUEUE->offset;
 }
 
 uint8_t MessageReceiver::getId() const
 {
-    return m_messages[m_offset];
+    return m_memoryMap[m_offset];
 }
 
-void MessageReceiver::receiveMessages()
+void MessageReceiver::sync()
 {
-    m_offset = sizeof(uint32_t);
-    m_length = *reinterpret_cast<uint32_t*>(m_memoryMap);
-    memcpy(m_messages.get(), m_memoryMap, m_length);
-
-#ifdef _DEBUG
-    m_types.clear();
-#endif
+    if (m_offset <= MESSAGE_QUEUE->offset && MESSAGE_QUEUE->sync)
+    {
+        m_x64Event.set();
+        m_offset = sizeof(MessageQueue);
+        m_x86Event.wait();
+    }
 }

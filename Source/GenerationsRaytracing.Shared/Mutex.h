@@ -13,6 +13,8 @@ public:
 
     void lock();
     void unlock();
+
+    bool tryLock();
 };
 
 #include "Mutex.inl"

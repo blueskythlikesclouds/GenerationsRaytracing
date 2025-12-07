@@ -446,14 +446,11 @@ HRESULT Device::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDe
         SetRenderTarget(0, m_backBuffer->getSurface(0));
         SetTexture(0, m_hdrTexture.Get());
 
-        s_messageSender.makeMessage<MsgCopyHdrTexture>();
-        s_messageSender.endMessage();
+        s_messageSender.oneShotMessage<MsgCopyHdrTexture>();
     }
 
-    s_messageSender.makeMessage<MsgPresent>();
-    s_messageSender.endMessage();
-
-    s_messageSender.commitMessages();
+    s_messageSender.oneShotMessage<MsgPresent>();
+    s_messageSender.sync();
 
     return S_OK;
 }

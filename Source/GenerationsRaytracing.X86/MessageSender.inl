@@ -1,3 +1,4 @@
+#include "MessageSender.h"
 template <typename T>
 bool MessageSender::canMakeMessage(uint32_t dataSize)
 {
@@ -19,4 +20,11 @@ T& MessageSender::makeMessage(uint32_t dataSize)
     message->id = T::s_id;
     message->dataSize = static_cast<decltype(T::dataSize)>(dataSize);
     return *message;
+}
+
+template<typename T>
+inline void MessageSender::oneShotMessage()
+{
+    makeMessage<T>();
+    endMessage();
 }

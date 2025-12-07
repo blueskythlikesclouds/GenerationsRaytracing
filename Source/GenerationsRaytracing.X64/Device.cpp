@@ -1337,7 +1337,146 @@ void Device::procMsgSetIndices()
 void Device::procMsgPresent()
 {
     const auto& message = m_messageReceiver.getMessage<MsgPresent>();
-    m_shouldPresent = true;
+
+    if (m_uploadBufferOffset > 0)
+        m_uploadBuffers[m_frame].resize(m_uploadBufferIndex + 1);
+    else if (m_uploadBufferIndex > 0)
+        m_uploadBuffers[m_frame].resize(m_uploadBufferIndex - 1);
+    else
+        m_uploadBuffers[m_frame].clear();
+
+    m_uploadBufferIndex = 0;
+    m_uploadBufferOffset = 0;
+
+    m_instancing = false;
+    m_instanceCount = 1;
+
+    m_vertexBufferViewsFirst = 0;
+    m_vertexBufferViewsLast = _countof(m_vertexBufferViews) - 1;
+
+    m_dirtyFlags = ~0;
+
+    m_samplerDescsFirst = 0;
+    m_samplerDescsLast = _countof(m_samplerDescs) - 1;
+
+    m_fenceValues[m_frame] = ++m_fenceValue;
+
+    auto& fences = m_fences[m_frame];
+    auto& fenceCount = m_fenceCounts[m_frame];
+    fenceCount = 0u;
+
+    auto& copyCommandList = getCopyCommandList();
+    bool copyQueueWasExecuted = false;
+
+    if (copyCommandList.isOpen())
+    {
+        copyCommandList.close();
+        m_copyQueue.executeCommandList(copyCommandList);
+        m_copyQueue.signal(m_fenceValue);
+
+        fences[fenceCount] = m_copyQueue.getFence();
+        ++fenceCount;
+
+        copyQueueWasExecuted = true;
+    }
+
+    if (copyQueueWasExecuted)
+        m_graphicsQueue.wait(m_fenceValue, m_copyQueue);
+
+    auto& graphicsCommandList = getGraphicsCommandList();
+    graphicsCommandList.close();
+
+    m_graphicsQueue.executeCommandList(graphicsCommandList);
+    m_graphicsQueue.signal(m_fenceValue);
+
+    if (copyQueueWasExecuted)
+        m_copyQueue.wait(m_fenceValue, m_graphicsQueue);
+
+    fences[fenceCount] = m_graphicsQueue.getFence();
+    ++fenceCount;
+
+    auto& computeCommandList = getComputeCommandList();
+    if (computeCommandList.isOpen())
+    {
+        computeCommandList.close();
+
+        if (copyQueueWasExecuted)
+            m_computeQueue.wait(m_fenceValue, m_copyQueue);
+
+        m_computeQueue.executeCommandList(computeCommandList);
+        m_computeQueue.signal(m_fenceValue);
+
+        if (copyQueueWasExecuted)
+            m_copyQueue.wait(m_fenceValue, m_computeQueue);
+
+        fences[fenceCount] = m_computeQueue.getFence();
+        ++fenceCount;
+    }
+
+    m_swapChain.present();
+
+    m_frame = m_nextFrame;
+    m_nextFrame = (m_frame + 1) % NUM_FRAMES;
+
+    uint64_t fenceValues[_countof(fences)];
+    for (auto& fenceValue : fenceValues)
+        fenceValue = m_fenceValues[m_frame];
+
+    if (m_fenceCounts[m_frame] > 1)
+    {
+        HRESULT hr = m_device->SetEventOnMultipleFenceCompletion(
+            m_fences[m_frame],
+            fenceValues,
+            m_fenceCounts[m_frame],
+            D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL,
+            nullptr);
+
+        assert(SUCCEEDED(hr));
+    }
+    else
+    {
+        HRESULT hr = m_graphicsQueue.getFence()->SetEventOnCompletion(m_fenceValues[m_frame], nullptr);
+        assert(SUCCEEDED(hr));
+    }
+
+    // Cleanup
+    for (const auto& texture : m_tempTextures[m_frame])
+    {
+        if (texture.srvIndex != NULL)
+            m_descriptorHeap.free(texture.srvIndex);
+
+        if (texture.rtvIndex != NULL)
+            m_rtvDescriptorHeap.free(texture.rtvIndex);
+
+        if (texture.dsvIndex != NULL)
+            m_dsvDescriptorHeap.free(texture.dsvIndex);
+    }
+
+    m_tempTextures[m_frame].clear();
+    m_tempBuffers[m_frame].clear();
+
+    for (const auto id : m_tempDescriptorIds[m_frame])
+        m_descriptorHeap.free(id);
+
+    m_tempDescriptorIds[m_frame].clear();
+
+    releaseRaytracingResources();
+    beginCommandList();
+}
+
+void Device::procMsgProcessWindowMessages()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgProcessWindowMessages>();
+
+    m_swapChain.getWindow().processMessages();
+}
+
+void Device::procMsgWaitOnSwapChain()
+{
+    const auto& message = m_messageReceiver.getMessage<MsgWaitOnSwapChain>();
+
+    m_swapChain.wait();
+    m_swapChainEvent.set();
 }
 
 void Device::procMsgCreateVertexBuffer()
@@ -1912,7 +2051,7 @@ void Device::procMsgCopyHdrTexture()
     underlyingCommandList->RSSetScissorRects(1, &scissorRect);
     underlyingCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    underlyingCommandList->DrawInstanced(6, 1, 0, 0);
+    underlyingCommandList->DrawInstanced(3, 1, 0, 0);
 }
 
 Device::Device(const IniFile& iniFile)
@@ -1937,7 +2076,7 @@ Device::Device(const IniFile& iniFile)
 
     ComPtr<IDXGIAdapter1> adapter;
 
-    for (uint32_t i = 0; SUCCEEDED(factory->EnumAdapters1(i, adapter.ReleaseAndGetAddressOf())); i++)
+    for (uint32_t i = 0; SUCCEEDED(factory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(adapter.ReleaseAndGetAddressOf()))); i++)
     {
         DXGI_ADAPTER_DESC1 adapterDesc;
         hr = adapter->GetDesc1(&adapterDesc);
@@ -2028,6 +2167,9 @@ Device::Device(const IniFile& iniFile)
 
     for (auto& copyCommandList : m_copyCommandLists)
         copyCommandList.init(m_device.Get(), m_copyQueue);
+
+    for (auto& fenceValue : m_fenceValues)
+        fenceValue = m_fenceValue;
 
     m_descriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     m_samplerDescriptorHeap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
@@ -2132,227 +2274,79 @@ Device::~Device()
     NvAPI_Unload();
 }
 
-void Device::processMessages()
+void Device::beginCommandList()
 {
-    if (!m_cpuEvent.waitImm())
-        return;
-
-    m_cpuEvent.reset();
-    m_messageReceiver.receiveMessages();
-    m_gpuEvent.set();
-
-    auto& graphicsCommandList = getGraphicsCommandList();
-    graphicsCommandList.open();
+    getGraphicsCommandList().open();
 
     if (m_swapChainTextureId != 0)
         m_textures[m_swapChainTextureId] = m_swapChain.getTexture();
 
     setDescriptorHeaps();
-
-    while (m_messageReceiver.hasNext() && !m_swapChain.getWindow().m_shouldExit)
-    {
-        switch (m_messageReceiver.getId())
-        {
-        default:
-            if (!processRaytracingMessage())
-                assert(!"Unknown message type");
-            break;
-
-        case MsgPadding::s_id: procMsgPadding(); break;
-        case MsgCreateSwapChain::s_id: procMsgCreateSwapChain(); break;
-        case MsgSetRenderTarget::s_id: procMsgSetRenderTarget(); break;
-        case MsgCreateVertexDeclaration::s_id: procMsgCreateVertexDeclaration(); break;
-        case MsgCreatePixelShader::s_id: procMsgCreatePixelShader(); break;
-        case MsgCreateVertexShader::s_id: procMsgCreateVertexShader(); break;
-        case MsgSetRenderState::s_id: procMsgSetRenderState(); break;
-        case MsgCreateTexture::s_id: procMsgCreateTexture(); break;
-        case MsgSetTexture::s_id: procMsgSetTexture(); break;
-        case MsgSetDepthStencilSurface::s_id: procMsgSetDepthStencilSurface(); break;
-        case MsgClear::s_id: procMsgClear(); break;
-        case MsgSetVertexShader::s_id: procMsgSetVertexShader(); break;
-        case MsgSetPixelShader::s_id: procMsgSetPixelShader(); break;
-        case MsgSetPixelShaderConstantF::s_id: procMsgSetPixelShaderConstantF(); break;
-        case MsgSetVertexShaderConstantF::s_id: procMsgSetVertexShaderConstantF(); break;
-        case MsgSetVertexShaderConstantB::s_id: procMsgSetVertexShaderConstantB(); break;
-        case MsgSetSamplerState::s_id: procMsgSetSamplerState(); break;
-        case MsgSetViewport::s_id: procMsgSetViewport(); break;
-        case MsgSetScissorRect::s_id: procMsgSetScissorRect(); break;
-        case MsgSetVertexDeclaration::s_id: procMsgSetVertexDeclaration(); break;
-        case MsgDrawPrimitiveUP::s_id: procMsgDrawPrimitiveUP(); break;
-        case MsgSetStreamSource::s_id: procMsgSetStreamSource(); break;
-        case MsgSetIndices::s_id: procMsgSetIndices(); break;
-        case MsgPresent::s_id: procMsgPresent(); break;
-        case MsgCreateVertexBuffer::s_id: procMsgCreateVertexBuffer(); break;
-        case MsgWriteVertexBuffer::s_id: procMsgWriteVertexBuffer(); break;
-        case MsgCreateIndexBuffer::s_id: procMsgCreateIndexBuffer(); break;
-        case MsgWriteIndexBuffer::s_id: procMsgWriteIndexBuffer(); break;
-        case MsgWriteTexture::s_id: procMsgWriteTexture(); break;
-        case MsgMakeTexture::s_id: procMsgMakeTexture(); break;
-        case MsgDrawIndexedPrimitive::s_id: procMsgDrawIndexedPrimitive(); break;
-        case MsgSetStreamSourceFreq::s_id: procMsgSetStreamSourceFreq(); break;
-        case MsgReleaseResource::s_id: procMsgReleaseResource(); break;
-        case MsgDrawPrimitive::s_id: procMsgDrawPrimitive(); break;
-        case MsgCopyVertexBuffer::s_id: procMsgCopyVertexBuffer(); break;
-        case MsgSetPixelShaderConstantB::s_id: procMsgSetPixelShaderConstantB(); break;
-        case MsgSaveShaderCache::s_id: procMsgSaveShaderCache(); break;
-        case MsgDrawIndexedPrimitiveUP::s_id: procMsgDrawIndexedPrimitiveUP(); break;
-        case MsgShowCursor::s_id: procMsgShowCursor(); break;
-        case MsgCopyHdrTexture::s_id: procMsgCopyHdrTexture(); break;
-
-        }
-    }
-
-    if (m_swapChain.getWindow().m_shouldExit)
-        return;
-
-    if (m_uploadBufferOffset > 0)
-        m_uploadBuffers[m_frame].resize(m_uploadBufferIndex + 1);
-    else if (m_uploadBufferIndex > 0)
-        m_uploadBuffers[m_frame].resize(m_uploadBufferIndex - 1);
-    else
-        m_uploadBuffers[m_frame].clear();
-
-    m_uploadBufferIndex = 0;
-    m_uploadBufferOffset = 0;
-
-    m_instancing = false;
-    m_instanceCount = 1;
-
-    m_vertexBufferViewsFirst = 0;
-    m_vertexBufferViewsLast = _countof(m_vertexBufferViews) - 1;
-
-    m_dirtyFlags = ~0;
-
-    m_samplerDescsFirst = 0;
-    m_samplerDescsLast = _countof(m_samplerDescs) - 1;
-
-    m_fenceValues[m_frame] = ++m_fenceValue;
-
-    auto& fences = m_fences[m_frame];
-    auto& fenceCount = m_fenceCounts[m_frame];
-    fenceCount = 0u;
-
-    auto& copyCommandList = getCopyCommandList();
-    bool copyQueueWasExecuted = false;
-
-    if (copyCommandList.isOpen())
-    {
-        copyCommandList.close();
-        m_copyQueue.executeCommandList(copyCommandList);
-        m_copyQueue.signal(m_fenceValue);
-
-        fences[fenceCount] = m_copyQueue.getFence();
-        ++fenceCount;
-
-        copyQueueWasExecuted = true;
-    }
-
-    if (copyQueueWasExecuted)
-        m_graphicsQueue.wait(m_fenceValue, m_copyQueue);
-
-    graphicsCommandList.close();
-    m_graphicsQueue.executeCommandList(graphicsCommandList);
-    m_graphicsQueue.signal(m_fenceValue);
-
-    if (copyQueueWasExecuted)
-        m_copyQueue.wait(m_fenceValue, m_graphicsQueue);
-
-    fences[fenceCount] = m_graphicsQueue.getFence();
-    ++fenceCount;
-
-    auto& computeCommandList = getComputeCommandList();
-    if (computeCommandList.isOpen())
-    {
-        computeCommandList.close();
-
-        if (copyQueueWasExecuted)
-            m_computeQueue.wait(m_fenceValue, m_copyQueue);
-
-        m_computeQueue.executeCommandList(computeCommandList);
-        m_computeQueue.signal(m_fenceValue);
-
-        if (copyQueueWasExecuted)
-            m_copyQueue.wait(m_fenceValue, m_computeQueue);
-
-        fences[fenceCount] = m_computeQueue.getFence();
-        ++fenceCount;
-    }
-
-    if (m_shouldPresent)
-    {
-        m_swapChain.present();
-        m_shouldPresent = false;
-    }
-
-    m_frame = m_nextFrame;
-    m_nextFrame = (m_frame + 1) % NUM_FRAMES;
-
-    uint64_t fenceValues[_countof(fences)];
-    for (auto& fenceValue : fenceValues)
-        fenceValue = m_fenceValues[m_frame];
-
-    if (m_fenceCounts[m_frame] > 1)
-    {
-        HRESULT hr = m_device->SetEventOnMultipleFenceCompletion(
-            m_fences[m_frame],
-            fenceValues,
-            m_fenceCounts[m_frame],
-            D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL,
-            nullptr);
-
-        assert(SUCCEEDED(hr));
-    }
-    else
-    {
-        HRESULT hr = m_graphicsQueue.getFence()->SetEventOnCompletion(m_fenceValues[m_frame], nullptr);
-        assert(SUCCEEDED(hr));
-    }
-
-    // Cleanup
-    for (const auto& texture : m_tempTextures[m_frame])
-    {
-        if (texture.srvIndex != NULL)
-            m_descriptorHeap.free(texture.srvIndex);
-
-        if (texture.rtvIndex != NULL)
-            m_rtvDescriptorHeap.free(texture.rtvIndex);
-
-        if (texture.dsvIndex != NULL)
-            m_dsvDescriptorHeap.free(texture.dsvIndex);
-    }
-
-    m_tempTextures[m_frame].clear();
-    m_tempBuffers[m_frame].clear();
-
-    for (const auto id : m_tempDescriptorIds[m_frame])
-        m_descriptorHeap.free(id);
-
-    m_tempDescriptorIds[m_frame].clear();
-
-    releaseRaytracingResources();
 }
 
 void Device::runLoop()
 {
-    const auto& window = m_swapChain.getWindow();
+    beginCommandList();
 
-    while (!window.m_shouldExit)
+    while (!m_swapChain.getWindow().m_shouldExit)
     {
-        processMessages();
-        window.processMessages();
+        while (m_messageReceiver.hasNext())
+        {
+            switch (m_messageReceiver.getId())
+            {
+            default:
+                if (!processRaytracingMessage())
+                    assert(!"Unknown message type");
+                break;
+
+            case MsgPadding::s_id: procMsgPadding(); break;
+            case MsgCreateSwapChain::s_id: procMsgCreateSwapChain(); break;
+            case MsgSetRenderTarget::s_id: procMsgSetRenderTarget(); break;
+            case MsgCreateVertexDeclaration::s_id: procMsgCreateVertexDeclaration(); break;
+            case MsgCreatePixelShader::s_id: procMsgCreatePixelShader(); break;
+            case MsgCreateVertexShader::s_id: procMsgCreateVertexShader(); break;
+            case MsgSetRenderState::s_id: procMsgSetRenderState(); break;
+            case MsgCreateTexture::s_id: procMsgCreateTexture(); break;
+            case MsgSetTexture::s_id: procMsgSetTexture(); break;
+            case MsgSetDepthStencilSurface::s_id: procMsgSetDepthStencilSurface(); break;
+            case MsgClear::s_id: procMsgClear(); break;
+            case MsgSetVertexShader::s_id: procMsgSetVertexShader(); break;
+            case MsgSetPixelShader::s_id: procMsgSetPixelShader(); break;
+            case MsgSetPixelShaderConstantF::s_id: procMsgSetPixelShaderConstantF(); break;
+            case MsgSetVertexShaderConstantF::s_id: procMsgSetVertexShaderConstantF(); break;
+            case MsgSetVertexShaderConstantB::s_id: procMsgSetVertexShaderConstantB(); break;
+            case MsgSetSamplerState::s_id: procMsgSetSamplerState(); break;
+            case MsgSetViewport::s_id: procMsgSetViewport(); break;
+            case MsgSetScissorRect::s_id: procMsgSetScissorRect(); break;
+            case MsgSetVertexDeclaration::s_id: procMsgSetVertexDeclaration(); break;
+            case MsgDrawPrimitiveUP::s_id: procMsgDrawPrimitiveUP(); break;
+            case MsgSetStreamSource::s_id: procMsgSetStreamSource(); break;
+            case MsgSetIndices::s_id: procMsgSetIndices(); break;
+            case MsgPresent::s_id: procMsgPresent(); break;
+            case MsgProcessWindowMessages::s_id: procMsgProcessWindowMessages(); break;
+            case MsgWaitOnSwapChain::s_id: procMsgWaitOnSwapChain(); break;
+            case MsgCreateVertexBuffer::s_id: procMsgCreateVertexBuffer(); break;
+            case MsgWriteVertexBuffer::s_id: procMsgWriteVertexBuffer(); break;
+            case MsgCreateIndexBuffer::s_id: procMsgCreateIndexBuffer(); break;
+            case MsgWriteIndexBuffer::s_id: procMsgWriteIndexBuffer(); break;
+            case MsgWriteTexture::s_id: procMsgWriteTexture(); break;
+            case MsgMakeTexture::s_id: procMsgMakeTexture(); break;
+            case MsgDrawIndexedPrimitive::s_id: procMsgDrawIndexedPrimitive(); break;
+            case MsgSetStreamSourceFreq::s_id: procMsgSetStreamSourceFreq(); break;
+            case MsgReleaseResource::s_id: procMsgReleaseResource(); break;
+            case MsgDrawPrimitive::s_id: procMsgDrawPrimitive(); break;
+            case MsgCopyVertexBuffer::s_id: procMsgCopyVertexBuffer(); break;
+            case MsgSetPixelShaderConstantB::s_id: procMsgSetPixelShaderConstantB(); break;
+            case MsgSaveShaderCache::s_id: procMsgSaveShaderCache(); break;
+            case MsgDrawIndexedPrimitiveUP::s_id: procMsgDrawIndexedPrimitiveUP(); break;
+            case MsgShowCursor::s_id: procMsgShowCursor(); break;
+            case MsgCopyHdrTexture::s_id: procMsgCopyHdrTexture(); break;
+
+            }
+        }
+
+        m_messageReceiver.sync();
     }
-}
-
-void Device::setEvents() const
-{
-    m_cpuEvent.reset();
-    m_gpuEvent.set();
-}
-
-void Device::setShouldExit()
-{
-    m_swapChain.getWindow().m_shouldExit = true;
-    setEvents();
 }
 
 ID3D12Device* Device::getUnderlyingDevice() const

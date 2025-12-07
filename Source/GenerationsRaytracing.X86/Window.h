@@ -3,4 +3,5 @@
 struct Window
 {
     static void init();
+    static void notifyShouldExit();
 };

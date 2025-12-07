@@ -14,7 +14,7 @@ void CommandQueue::init(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE type)
 
     assert(SUCCEEDED(hr) && m_queue != nullptr);
 
-    hr = device->CreateFence(0, 
+    hr = device->CreateFence(1, 
         D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_fence.GetAddressOf()));
 
     assert(SUCCEEDED(hr) && m_fence != nullptr);
