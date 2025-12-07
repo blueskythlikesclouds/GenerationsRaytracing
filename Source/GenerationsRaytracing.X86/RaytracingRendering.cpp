@@ -315,7 +315,6 @@ static void __cdecl implOfTraceRays(void* a1)
             }
 
             const auto camera = world->GetCamera();
-            RaytracingRendering::s_worldShift = -camera->m_MyCamera.m_Position;
 
             ModelReplacer::createPendingModels();
             MaterialData::createPendingMaterials();
@@ -483,6 +482,14 @@ static void implOfDispatchUpscaler(void* A1)
     }
 }
 
+HOOK(void, __fastcall, RenderingDeviceSetViewMatrix, Hedgehog::Mirage::fpCRenderingDeviceSetViewMatrix,
+    Hedgehog::Mirage::CRenderingDevice* This, void* Edx, const Hedgehog::Math::CMatrix& viewMatrix)
+{
+    RaytracingRendering::s_worldShift = -viewMatrix.inverse().translation();
+
+    originalRenderingDeviceSetViewMatrix(This, Edx, viewMatrix);
+}
+
 void RaytracingRendering::init()
 {
     s_mainThreadId = GetCurrentThreadId();
@@ -544,4 +551,6 @@ void RaytracingRendering::postInit()
     memcpy(s_drawInstanceParams + s_drawInstanceParamCount, reinterpret_cast<void*>(0x13DC2C8), sizeof(Hedgehog::FxRenderFramework::SDrawInstanceParam));
     s_drawInstanceParams[s_drawInstanceParamCount].pCallback = implOfDispatchUpscaler;
     ++s_drawInstanceParamCount;
+
+    INSTALL_HOOK(RenderingDeviceSetViewMatrix);
 }
