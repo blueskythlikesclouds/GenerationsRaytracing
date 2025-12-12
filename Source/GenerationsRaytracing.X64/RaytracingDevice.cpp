@@ -1961,7 +1961,7 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     if (m_device == nullptr)
         return;
 
-#if 0
+#if 1
     NvAPI_Status status = NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(m_device.Get(), NV_EXTN_OP_HIT_OBJECT_REORDER_THREAD, &m_serSupported);
     if (status == NVAPI_OK && m_serSupported)
     {
