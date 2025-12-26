@@ -12,6 +12,8 @@ static void resourceAllocCallback(D3D12_RESOURCE_DESC* desc, int state, CD3DX12_
     if (desc->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER)
         allocDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
 
+    desc->Alignment = 0;
+
     ComPtr<D3D12MA::Allocation> allocation;
 
     HRESULT hr = s_ngx->getDevice().getAllocator()->CreateResource(
