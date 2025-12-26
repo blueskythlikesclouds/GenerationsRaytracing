@@ -22,7 +22,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     uint2 adjacency = g_Adjacency.Load2(dispatchThreadId.x * sizeof(uint) * 2);
     adjacency.x += g_VertexCount * 2;
 
-    Buffer<uint> indices = ResourceDescriptorHeap[g_IndexBufferId];
+    StructuredBuffer<uint16_t> indices = ResourceDescriptorHeap[g_IndexBufferId];
     float3 normal = 0.0;
 
     for (uint i = 0; i < adjacency.y; i++)

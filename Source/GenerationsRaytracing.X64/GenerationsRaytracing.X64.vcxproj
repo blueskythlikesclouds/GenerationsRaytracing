@@ -75,7 +75,7 @@
       <VariableName>%(Filename)</VariableName>
       <HeaderFileOutput>$(ProjectDir)%(Filename).h</HeaderFileOutput>
       <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-      <AdditionalOptions>-HV 2021 -all-resources-bound -Zi -Fd "$(IntDir)%(Filename).pdb" </AdditionalOptions>
+      <AdditionalOptions>-HV 2021 -all-resources-bound -enable-16bit-types -Zi -Fd "$(IntDir)%(Filename).pdb" </AdditionalOptions>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance;$(SolutionDir)..\Dependencies\ThreadGroupIDSwizzling;$(SolutionDir)..\Dependencies\nvapi</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
     </FxCompile>
@@ -114,7 +114,7 @@
       <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
       <AdditionalIncludeDirectories>$(SolutionDir)GenerationsRaytracing.Shared;$(SolutionDir)..\Dependencies\self-intersection-avoidance;$(SolutionDir)..\Dependencies\ThreadGroupIDSwizzling;$(SolutionDir)..\Dependencies\nvapi</AdditionalIncludeDirectories>
       <ShaderModel>6.6</ShaderModel>
-      <AdditionalOptions>-HV 2021 -all-resources-bound -Zi -Fd "$(IntDir)%(Filename).pdb" </AdditionalOptions>
+      <AdditionalOptions>-HV 2021 -all-resources-bound -enable-16bit-types -Zi -Fd "$(IntDir)%(Filename).pdb" </AdditionalOptions>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

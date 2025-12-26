@@ -113,7 +113,7 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
                 uint3 indices = query.CandidatePrimitiveIndex() * 3 + uint3(0, 1, 2);
                 if (geometryDesc.IndexBufferId != 0)
                 {
-                    Buffer<uint> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
+                    StructuredBuffer<uint16_t> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
                     indices.x = indexBuffer[geometryDesc.IndexOffset + indices.x];
                     indices.y = indexBuffer[geometryDesc.IndexOffset + indices.y];
                     indices.z = indexBuffer[geometryDesc.IndexOffset + indices.z];

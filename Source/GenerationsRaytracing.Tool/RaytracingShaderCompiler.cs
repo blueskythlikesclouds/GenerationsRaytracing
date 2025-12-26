@@ -1117,6 +1117,7 @@ public static class RaytracingShaderCompiler
             "-T lib_6_6",
             "-HV 2021",
             "-all-resources-bound",
+            "-enable-16bit-types",
             "-Zi",
             "-enable-payload-qualifiers",
             null,

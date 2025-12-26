@@ -1516,13 +1516,14 @@ void Device::procMsgCreateIndexBuffer()
     indexBuffer.allocation->GetResource()->SetName(name);
 #endif
 
-    if (message.format == D3DFMT_INDEX16 || message.format == D3DFMT_INDEX32)
+    if (message.format == D3DFMT_INDEX16)
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = indexBuffer.format;
+        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Buffer.NumElements = indexBuffer.byteSize / (message.format == D3DFMT_INDEX32 ? sizeof(uint32_t) : sizeof(uint16_t));
+        srvDesc.Buffer.NumElements = indexBuffer.byteSize / sizeof(uint16_t);
+        srvDesc.Buffer.StructureByteStride = sizeof(uint16_t);
 
         indexBuffer.srvIndex = m_descriptorHeap.allocate();
 
@@ -1533,7 +1534,7 @@ void Device::procMsgCreateIndexBuffer()
     }
     else
     {
-        assert(message.format == D3DFMT_UNKNOWN);
+        assert(message.format == D3DFMT_UNKNOWN || message.format == D3DFMT_INDEX32);
     }
 }
 
