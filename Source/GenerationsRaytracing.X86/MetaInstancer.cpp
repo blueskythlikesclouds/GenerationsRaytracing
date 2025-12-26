@@ -107,9 +107,7 @@ void MetaInstancer::createInstanceAndBottomLevelAccelStruct(Sonic::CInstanceRend
 
     blasMsg.bottomLevelAccelStructId = objGrassInstancerEx->m_bottomLevelAccelStructId;
     blasMsg.allowUpdate = false;
-    blasMsg.allowCompaction = false;
     blasMsg.preferFastBuild = true;
-    blasMsg.asyncBuild = false;
 
     auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(blasMsg.data);
 

@@ -429,6 +429,9 @@
     <None Include="Lava.hlsli">
       <Filter>Shader\Material\Shader\Terrain</Filter>
     </None>
+    <None Include="Device.inl">
+      <Filter>Device</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />

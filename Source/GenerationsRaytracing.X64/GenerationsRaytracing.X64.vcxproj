@@ -154,6 +154,7 @@
     <None Include="Cloud.hlsli" />
     <None Include="ColorSpace.hlsli" />
     <None Include="Common.hlsli" />
+    <None Include="Device.inl" />
     <None Include="Dim.hlsli" />
     <None Include="Distortion.hlsli" />
     <None Include="DistortionOverlay.hlsli" />

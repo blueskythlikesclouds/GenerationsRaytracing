@@ -153,9 +153,7 @@ void WallJumpBlock::createInstanceAndBottomLevelAccelStruct(Sonic::CObjWallJumpB
 
         blasMessage.bottomLevelAccelStructId = wallJumpBlockRenderEx->m_bottomLevelAccelStructId;
         blasMessage.allowUpdate = false;
-        blasMessage.allowCompaction = false;
         blasMessage.preferFastBuild = false;
-        blasMessage.asyncBuild = false;
 
         auto geometryDesc = reinterpret_cast<MsgCreateBottomLevelAccelStruct::GeometryDesc*>(blasMessage.data);
 

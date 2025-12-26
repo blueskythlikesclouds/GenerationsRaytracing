@@ -59,7 +59,6 @@ void Device::writeBuffer(
     }
     else
     {
-        auto& commandList = getCopyCommandList();
         const auto& uploadBuffers = m_uploadBuffers[m_frame];
 
         if (m_uploadBufferOffset + dataSize <= UPLOAD_BUFFER_SIZE && uploadBuffers.size() > m_uploadBufferIndex &&
@@ -69,15 +68,15 @@ void Device::writeBuffer(
 
             memcpy(uploadBuffer.memory + m_uploadBufferOffset, memory, dataSize);
 
-            commandList.open();
-            commandList.getUnderlyingCommandList()->CopyBufferRegion(
-                dstResource,
-                offset,
-                uploadBuffer.allocation->GetResource(),
-                m_uploadBufferOffset,
-                dataSize);
-
-            m_uploadBufferOffset += dataSize;
+            executeCopyCommandList([&](ID3D12GraphicsCommandList4* underlyingCommandList)
+                {
+                    underlyingCommandList->CopyBufferRegion(
+                        dstResource,
+                        offset,
+                        uploadBuffer.allocation->GetResource(),
+                        m_uploadBufferOffset,
+                        dataSize);
+                });
         }
         else
         {
@@ -95,13 +94,15 @@ void Device::writeBuffer(
             const D3D12_RANGE writtenRange{ 0, dataSize };
             uploadBuffer->GetResource()->Unmap(0, &writtenRange);
 
-            commandList.open();
-            commandList.getUnderlyingCommandList()->CopyBufferRegion(
-                dstResource,
-                offset,
-                uploadBuffer->GetResource(),
-                0,
-                dataSize);
+            executeCopyCommandList([&](ID3D12GraphicsCommandList4* underlyingCommandList)
+                {
+                    underlyingCommandList->CopyBufferRegion(
+                        dstResource,
+                        offset,
+                        uploadBuffer->GetResource(),
+                        0,
+                        dataSize);
+                });
         }
     }
 }
@@ -1361,79 +1362,17 @@ void Device::procMsgPresent()
 
     m_fenceValues[m_frame] = ++m_fenceValue;
 
-    auto& fences = m_fences[m_frame];
-    auto& fenceCount = m_fenceCounts[m_frame];
-    fenceCount = 0u;
-
-    auto& copyCommandList = getCopyCommandList();
-    bool copyQueueWasExecuted = false;
-
-    if (copyCommandList.isOpen())
-    {
-        copyCommandList.close();
-        m_copyQueue.executeCommandList(copyCommandList);
-        m_copyQueue.signal(m_fenceValue);
-
-        fences[fenceCount] = m_copyQueue.getFence();
-        ++fenceCount;
-
-        copyQueueWasExecuted = true;
-    }
-
-    if (copyQueueWasExecuted)
-        m_graphicsQueue.wait(m_fenceValue, m_copyQueue);
-
     auto& graphicsCommandList = getGraphicsCommandList();
     graphicsCommandList.close();
 
     m_graphicsQueue.executeCommandList(graphicsCommandList);
     m_graphicsQueue.signal(m_fenceValue);
-
-    if (copyQueueWasExecuted)
-        m_copyQueue.wait(m_fenceValue, m_graphicsQueue);
-
-    fences[fenceCount] = m_graphicsQueue.getFence();
-    ++fenceCount;
-
-    auto& computeCommandList = getComputeCommandList();
-    if (computeCommandList.isOpen())
-    {
-        computeCommandList.close();
-
-        if (copyQueueWasExecuted)
-            m_computeQueue.wait(m_fenceValue, m_copyQueue);
-
-        m_computeQueue.executeCommandList(computeCommandList);
-        m_computeQueue.signal(m_fenceValue);
-
-        if (copyQueueWasExecuted)
-            m_copyQueue.wait(m_fenceValue, m_computeQueue);
-
-        fences[fenceCount] = m_computeQueue.getFence();
-        ++fenceCount;
-    }
-
     m_swapChain.present();
 
     m_frame = m_nextFrame;
     m_nextFrame = (m_frame + 1) % NUM_FRAMES;
 
-    uint64_t fenceValues[_countof(fences)];
-    for (auto& fenceValue : fenceValues)
-        fenceValue = m_fenceValues[m_frame];
-
-    if (m_fenceCounts[m_frame] > 1)
-    {
-        HRESULT hr = m_device->SetEventOnMultipleFenceCompletion(
-            m_fences[m_frame],
-            fenceValues,
-            m_fenceCounts[m_frame],
-            D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL,
-            nullptr);
-
-        assert(SUCCEEDED(hr));
-    }
-    else
+    if (m_fenceValues[m_frame] > 1)
     {
         HRESULT hr = m_graphicsQueue.getFence()->SetEventOnCompletion(m_fenceValues[m_frame], nullptr);
         assert(SUCCEEDED(hr));
@@ -1524,7 +1463,7 @@ void Device::procMsgWriteVertexBuffer()
 
     auto& vertexBuffer = m_vertexBuffers[message.vertexBufferId];
 
-    if (m_gpuUploadHeapSupported && !message.initialWrite)
+    if (!message.initialWrite)
     {
         std::swap(vertexBuffer.allocation, vertexBuffer.nextAllocation);
         if (vertexBuffer.allocation == nullptr)
@@ -1604,7 +1543,7 @@ void Device::procMsgWriteIndexBuffer()
 
     auto& indexBuffer = m_indexBuffers[message.indexBufferId];
 
-    if (m_gpuUploadHeapSupported && !message.initialWrite)
+    if (!message.initialWrite)
     {
         std::swap(indexBuffer.allocation, indexBuffer.nextAllocation);
         if (indexBuffer.allocation == nullptr)
@@ -1642,8 +1581,6 @@ void Device::procMsgWriteTexture()
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
     footprint.Footprint = CD3DX12_SUBRESOURCE_FOOTPRINT(texture.format, message.width, message.height, 1, message.pitch);
 
-    auto& commandList = getCopyCommandList();
-    const auto underlyingCommandList = commandList.getUnderlyingCommandList();
     const auto& uploadBuffers = m_uploadBuffers[m_frame];
 
     if (m_uploadBufferOffset + message.dataSize <= UPLOAD_BUFFER_SIZE && uploadBuffers.size() > m_uploadBufferIndex &&
@@ -1656,16 +1593,16 @@ void Device::procMsgWriteTexture()
 
         const CD3DX12_TEXTURE_COPY_LOCATION srcLocation(uploadBuffer.allocation->GetResource(), footprint);
 
-        commandList.open();
-        underlyingCommandList->CopyTextureRegion(
-            &dstLocation,
-            0,
-            0,
-            0,
-            &srcLocation,
-            nullptr);
-
-        m_uploadBufferOffset += message.dataSize;
+        executeCopyCommandList([&](ID3D12GraphicsCommandList4* underlyingCommandList)
+            {
+                underlyingCommandList->CopyTextureRegion(
+                    &dstLocation,
+                    0,
+                    0,
+                    0,
+                    &srcLocation,
+                    nullptr);
+            });
     }
     else
     {
@@ -1684,14 +1621,16 @@ void Device::procMsgWriteTexture()
 
         const CD3DX12_TEXTURE_COPY_LOCATION srcLocation(uploadBuffer->GetResource(), footprint);
 
-        commandList.open();
-        underlyingCommandList->CopyTextureRegion(
-            &dstLocation,
-            0,
-            0,
-            0,
-            &srcLocation,
-            nullptr);
+        executeCopyCommandList([&](ID3D12GraphicsCommandList4* underlyingCommandList)
+            {
+                underlyingCommandList->CopyTextureRegion(
+                    &dstLocation,
+                    0,
+                    0,
+                    0,
+                    &srcLocation,
+                    nullptr);
+            });
     }
 }
 
@@ -1748,26 +1687,51 @@ void Device::procMsgMakeTexture()
     }
     else
     {
-        auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
+        const auto& uploadBuffers = m_uploadBuffers[m_frame];
 
-        createBuffer(
-            D3D12_HEAP_TYPE_UPLOAD,
-            static_cast<uint32_t>(GetRequiredIntermediateSize(texture.allocation->GetResource(), 0, static_cast<UINT>(subResources.size()))),
-            D3D12_RESOURCE_FLAG_NONE,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            uploadBuffer);
+        uint32_t uploadBufferOffset = alignUp<uint32_t>(m_uploadBufferOffset, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+        uint32_t intermediateSize = static_cast<uint32_t>(GetRequiredIntermediateSize(texture.allocation->GetResource(), 0, static_cast<UINT>(subResources.size())));
 
-        auto& commandList = getCopyCommandList();
-        commandList.open();
+        if (uploadBufferOffset + intermediateSize <= UPLOAD_BUFFER_SIZE && uploadBuffers.size() > m_uploadBufferIndex &&
+            uploadBuffers[m_uploadBufferIndex].allocation != nullptr)
+        {
+            const auto& uploadBuffer = uploadBuffers[m_uploadBufferIndex];
 
-        UpdateSubresources(
-            commandList.getUnderlyingCommandList(),
-            texture.allocation->GetResource(),
-            uploadBuffer->GetResource(),
-            0,
-            0,
-            static_cast<UINT>(subResources.size()),
-            subResources.data());
+            executeCopyCommandList([&](ID3D12GraphicsCommandList4* underlyingCommandList)
+                {
+                    UpdateSubresources(
+                        underlyingCommandList,
+                        texture.allocation->GetResource(),
+                        uploadBuffers[m_uploadBufferIndex].allocation->GetResource(),
+                        uploadBufferOffset,
+                        0,
+                        static_cast<UINT>(subResources.size()),
+                        subResources.data());
+                });
+        }
+        else
+        {
+            auto& uploadBuffer = m_tempBuffers[m_frame].emplace_back();
+
+            createBuffer(
+                D3D12_HEAP_TYPE_UPLOAD,
+                intermediateSize,
+                D3D12_RESOURCE_FLAG_NONE,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                uploadBuffer);
+
+            executeCopyCommandList([&](ID3D12GraphicsCommandList4* underlyingCommandList)
+                {
+                    UpdateSubresources(
+                        underlyingCommandList,
+                        texture.allocation->GetResource(),
+                        uploadBuffer->GetResource(),
+                        0,
+                        0,
+                        static_cast<UINT>(subResources.size()),
+                        subResources.data());
+                });
+        }
     }
 
     const auto resourceDesc = texture.allocation->GetResource()->GetDesc();
@@ -1967,15 +1931,15 @@ void Device::procMsgCopyVertexBuffer()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCopyVertexBuffer>();
 
-    auto& commandList = getCopyCommandList();
-
-    commandList.open();
-    commandList.getUnderlyingCommandList()->CopyBufferRegion(
-        m_vertexBuffers[message.dstVertexBufferId].allocation->GetResource(),
-        message.dstOffset,
-        m_vertexBuffers[message.srcVertexBufferId].allocation->GetResource(),
-        message.srcOffset,
-        message.numBytes);
+    executeCopyCommandList([&](ID3D12GraphicsCommandList4* underlyingCommandList)
+        {
+            underlyingCommandList->CopyBufferRegion(
+                m_vertexBuffers[message.dstVertexBufferId].allocation->GetResource(),
+                message.dstOffset,
+                m_vertexBuffers[message.srcVertexBufferId].allocation->GetResource(),
+                message.srcOffset,
+                message.numBytes);
+        });
 }
 
 void Device::procMsgSetPixelShaderConstantB()
@@ -2156,14 +2120,10 @@ Device::Device(const IniFile& iniFile)
     assert(SUCCEEDED(hr) && m_allocator != nullptr);
 
     m_graphicsQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
-    m_computeQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE);
     m_copyQueue.init(m_device.Get(), D3D12_COMMAND_LIST_TYPE_COPY);
 
     for (auto& graphicsCommandList : m_graphicsCommandLists)
         graphicsCommandList.init(m_device.Get(), m_graphicsQueue);
-
-    for (auto& computeCommandList : m_computeCommandLists)
-        computeCommandList.init(m_device.Get(), m_computeQueue);
 
     for (auto& copyCommandList : m_copyCommandLists)
         copyCommandList.init(m_device.Get(), m_copyQueue);
@@ -2379,16 +2339,6 @@ CommandList& Device::getGraphicsCommandList()
 ID3D12GraphicsCommandList4* Device::getUnderlyingGraphicsCommandList() const
 {
     return m_graphicsCommandLists[m_frame].getUnderlyingCommandList();
-}
-
-CommandList& Device::getComputeCommandList()
-{
-    return m_computeCommandLists[m_frame];
-}
-
-ID3D12GraphicsCommandList4* Device::getUnderlyingComputeCommandList() const
-{
-    return m_computeCommandLists[m_frame].getUnderlyingCommandList();
 }
 
 CommandList& Device::getCopyCommandList()

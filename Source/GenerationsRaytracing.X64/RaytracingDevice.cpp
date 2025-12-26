@@ -199,17 +199,10 @@ void RaytracingDevice::buildBottomLevelAccelStruct(BottomLevelAccelStruct& botto
             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
     }
 
-    auto& commandList = bottomLevelAccelStruct.asyncBuild ? getComputeCommandList() : getGraphicsCommandList();
-
-    if (bottomLevelAccelStruct.asyncBuild)
-        commandList.open();
+    auto& commandList = getGraphicsCommandList();
 
     commandList.getUnderlyingCommandList()->BuildRaytracingAccelerationStructure(&bottomLevelAccelStruct.desc, 0, nullptr);
-
-    if (!bottomLevelAccelStruct.asyncBuild)
-        commandList.uavBarrier(bottomLevelAccelStruct.allocation.blockAllocation->GetResource());
-
-    bottomLevelAccelStruct.asyncBuild = false;
+    commandList.uavBarrier(bottomLevelAccelStruct.allocation.blockAllocation->GetResource());
 }
 
 void RaytracingDevice::handlePendingBottomLevelAccelStructBuilds()
@@ -824,9 +817,6 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     if (message.allowUpdate)
         bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
-    if (message.allowCompaction)
-        bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
-
     if (message.preferFastBuild)
         bottomLevelAccelStruct.desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
     else
@@ -839,7 +829,6 @@ void RaytracingDevice::procMsgCreateBottomLevelAccelStruct()
     auto preBuildInfo = buildAccelStruct(bottomLevelAccelStruct.allocation, bottomLevelAccelStruct.desc, false);
     bottomLevelAccelStruct.scratchBufferSize = static_cast<uint32_t>(preBuildInfo.ScratchDataSizeInBytes);
     bottomLevelAccelStruct.updateScratchBufferSize = static_cast<uint32_t>(preBuildInfo.UpdateScratchDataSizeInBytes);
-    bottomLevelAccelStruct.asyncBuild = message.asyncBuild;
 
     m_pendingBuilds.emplace_back(message.bottomLevelAccelStructId);
 }
@@ -880,65 +869,63 @@ void RaytracingDevice::procMsgCreateInstance()
 {
     const auto& message = m_messageReceiver.getMessage<MsgCreateInstance>();
 
+    auto& instanceDesc = m_topLevelAccelStructs[message.instanceType].instanceDescs.emplace_back();
+    auto& alsoInstanceDesc = m_topLevelAccelStructs[message.instanceType].alsoInstanceDescs.emplace_back();
+
+    memcpy(instanceDesc.Transform, message.transform, sizeof(instanceDesc.Transform));
+    memcpy(alsoInstanceDesc.prevTransform, message.prevTransform, sizeof(alsoInstanceDesc.prevTransform));
+    memcpy(alsoInstanceDesc.headTransform, message.headTransform, sizeof(alsoInstanceDesc.headTransform));
+    alsoInstanceDesc.playableParam = message.playableParam;
+    alsoInstanceDesc.chrPlayableMenuParam = message.chrPlayableMenuParam;
+    alsoInstanceDesc.forceAlphaColor = message.forceAlphaColor;
+    alsoInstanceDesc.edgeEmissionParam = message.edgeEmissionParam;
+
     auto& bottomLevelAccelStruct = m_bottomLevelAccelStructs[message.bottomLevelAccelStructId];
-    if (!bottomLevelAccelStruct.asyncBuild)
+
+    if (message.dataSize > 0)
     {
-        auto& instanceDesc = m_topLevelAccelStructs[message.instanceType].instanceDescs.emplace_back();
-        auto& alsoInstanceDesc = m_topLevelAccelStructs[message.instanceType].alsoInstanceDescs.emplace_back();
+        auto& [geometryId, geometryCount] = m_tempGeometryRanges[m_frame].emplace_back();
 
-        memcpy(instanceDesc.Transform, message.transform, sizeof(instanceDesc.Transform));
-        memcpy(alsoInstanceDesc.prevTransform, message.prevTransform, sizeof(alsoInstanceDesc.prevTransform));
-        memcpy(alsoInstanceDesc.headTransform, message.headTransform, sizeof(alsoInstanceDesc.headTransform));
-        alsoInstanceDesc.playableParam = message.playableParam;
-        alsoInstanceDesc.chrPlayableMenuParam = message.chrPlayableMenuParam;
-        alsoInstanceDesc.forceAlphaColor = message.forceAlphaColor;
-        alsoInstanceDesc.edgeEmissionParam = message.edgeEmissionParam;
+        geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
+        geometryCount = bottomLevelAccelStruct.geometryCount;
 
-        if (message.dataSize > 0)
+        auto& geometryDesc = m_geometryDescs[geometryId];
+
+        for (size_t i = 0; i < geometryCount; i++)
         {
-            auto& [geometryId, geometryCount] = m_tempGeometryRanges[m_frame].emplace_back();
+            auto& geometry = m_geometryDescs[geometryId + i];
+            geometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
 
-            geometryId = allocateGeometryDescs(bottomLevelAccelStruct.geometryCount);
-            geometryCount = bottomLevelAccelStruct.geometryCount;
+            auto curId = reinterpret_cast<const uint32_t*>(message.data);
+            const auto lastId = reinterpret_cast<const uint32_t*>(message.data + message.dataSize);
 
-            auto& geometryDesc = m_geometryDescs[geometryId];
-
-            for (size_t i = 0; i < geometryCount; i++)
+            while (curId < lastId)
             {
-                auto& geometry = m_geometryDescs[geometryId + i];
-                geometry = m_geometryDescs[bottomLevelAccelStruct.geometryId + i];
+                if ((*curId) == geometry.materialId)
+                    geometry.materialId = *(curId + 1);
 
-                auto curId = reinterpret_cast<const uint32_t*>(message.data);
-                const auto lastId = reinterpret_cast<const uint32_t*>(message.data + message.dataSize);
-
-                while (curId < lastId)
-                {
-                    if ((*curId) == geometry.materialId)
-                        geometry.materialId = *(curId + 1);
-
-                    curId += 2;
-                }
-
-                const auto& material = m_materials[geometry.materialId];
-                writeHitGroupShaderTable(geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
+                curId += 2;
             }
 
-            instanceDesc.InstanceID = geometryId;
-        }
-        else
-        {
-            instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
+            const auto& material = m_materials[geometry.materialId];
+            writeHitGroupShaderTable(geometryId + i, material.shaderType - 1, (material.flags & MATERIAL_FLAG_CONST_TEX_COORD) != 0);
         }
 
-        instanceDesc.InstanceMask = message.instanceMask;
-        instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
-        instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
-
-        if (message.isMirrored && !(instanceDesc.Flags & D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE))
-            instanceDesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
-
-        instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation.getGpuVA();
+        instanceDesc.InstanceID = geometryId;
     }
+    else
+    {
+        instanceDesc.InstanceID = bottomLevelAccelStruct.geometryId;
+    }
+
+    instanceDesc.InstanceMask = message.instanceMask;
+    instanceDesc.InstanceContributionToHitGroupIndex = instanceDesc.InstanceID * HIT_GROUP_NUM;
+    instanceDesc.Flags = bottomLevelAccelStruct.instanceFlags;
+
+    if (message.isMirrored && !(instanceDesc.Flags & D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE))
+        instanceDesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+
+    instanceDesc.AccelerationStructure = bottomLevelAccelStruct.allocation.getGpuVA();
 }
 
 void RaytracingDevice::procMsgTraceRays()
@@ -2466,19 +2453,16 @@ RaytracingDevice::~RaytracingDevice()
         ++m_fenceValue;
 
         m_graphicsQueue.signal(m_fenceValue);
-        m_computeQueue.signal(m_fenceValue);
         m_copyQueue.signal(m_fenceValue);
 
         ID3D12Fence* fences[] =
         {
             m_graphicsQueue.getFence(),
-            m_computeQueue.getFence(),
             m_copyQueue.getFence()
         };
 
         uint64_t fenceValues[] =
         {
-            m_fenceValue,
             m_fenceValue,
             m_fenceValue
         };
