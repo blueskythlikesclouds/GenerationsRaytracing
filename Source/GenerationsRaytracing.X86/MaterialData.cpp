@@ -90,7 +90,8 @@ static void createMaterial(MaterialDataEx& materialDataEx)
         static Hedgehog::Base::CStringSymbol s_reflectionSymbol("reflection");
         for (const auto& texture : materialDataEx.m_spTexsetData->m_TextureList)
         {
-            if (texture->m_Type == s_reflectionSymbol && (
+            if (texture->m_Type == s_reflectionSymbol &&
+                texture->m_spPictureData != nullptr && (
                 texture->m_spPictureData->m_TypeAndName == "Mirage.picture sph_st1_envmap_cube" ||
                 texture->m_spPictureData->m_TypeAndName == "Mirage.picture ghz_water_km1_puddle_cubemap" ||
                 texture->m_spPictureData->m_TypeAndName == "Mirage.picture cpz_uni_tn1_cubemap" ||

@@ -57,7 +57,7 @@ public class ShaderConverter
 
     public static unsafe string Convert(void* data, int dataSize, out bool isPixelShader)
     {
-	    string disassembly = Compiler.Disassemble(new IntPtr(data), new PointerSize(dataSize),
+	    string disassembly = Compiler.Disassemble(new IntPtr(data), new PointerUSize((uint)dataSize),
 		    DisasmFlags.DisableDebugInfo | DisasmFlags.InstructionOnly, null).AsString();
 
         int i;
