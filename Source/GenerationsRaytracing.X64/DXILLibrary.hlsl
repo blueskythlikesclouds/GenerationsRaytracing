@@ -156,14 +156,7 @@ float4 TracePath(TracePathArgs args, inout uint randSeed)
             float3 directLighting = diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal));
             
             if (any(directLighting > 0.0001))
-            {
-                float2 random = float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed));
-                
-                if (bounceIndex != 0)
-                    directLighting *= TraceShadowCullNonOpaque(payload.Position, -mrgGlobalLight_Direction.xyz, random);
-                else
-                    directLighting *= TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, random, 2);
-            }
+                directLighting *= TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 2);
             
             color += directLighting;
 

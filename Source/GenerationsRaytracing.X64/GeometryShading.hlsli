@@ -142,28 +142,6 @@ float TraceShadow(float3 position, float3 direction, float2 random, uint level)
     return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
 }
 
-float TraceShadowCullNonOpaque(float3 position, float3 direction, float2 random)
-{
-    RayDesc ray;
-
-    ray.Origin = position;
-    ray.Direction = TangentToWorld(direction, GetShadowSample(random, 0.01));
-    ray.TMin = 0.0;
-    ray.TMax = INF;
-
-    RayQuery<RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
-
-    query.TraceRayInline(
-        g_BVH,
-        RAY_FLAG_NONE,
-        INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN,
-        ray);
-    
-    query.Proceed();
-    
-    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0 : 0.0;
-}
-
 float ComputeLocalLightFalloff(float distance, float inRange, float outRange)
 {
     return 1.0 - saturate((distance - inRange) / (outRange - inRange));
