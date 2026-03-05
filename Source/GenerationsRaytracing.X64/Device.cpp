@@ -2113,6 +2113,10 @@ Device::Device(const IniFile& iniFile)
     desc.Flags = D3D12MA::ALLOCATOR_FLAG_SINGLETHREADED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED | 
         D3D12MA::ALLOCATOR_FLAG_DONT_PREFER_SMALL_BUFFERS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED;
 
+    // Disable tight alignment if GPU upload heap is not supported. This is a temporary workaround for several D3D12 functions not supporting explicit alignment.
+    if (!m_gpuUploadHeapSupported)
+        desc.Flags |= D3D12MA::ALLOCATOR_FLAG_DONT_USE_TIGHT_ALIGNMENT;
+
     desc.pDevice = m_device.Get();
     desc.pAdapter = adapter.Get();
 
