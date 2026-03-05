@@ -119,7 +119,21 @@ int main()
                 std::_Exit(0);
         });
 
+#ifdef _DEBUG
         s_device->runLoop();
+#else
+        __try
+        {
+            s_device->runLoop();
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            if (FAILED(s_device->getUnderlyingDevice()->GetDeviceRemovedReason())) 
+                MessageBox(nullptr, TEXT("Device was removed."), TEXT("Generations Raytracing"), MB_ICONERROR);
+            else
+                MessageBox(nullptr, TEXT("An unknown error has occurred."), TEXT("Generations Raytracing"), MB_ICONERROR);
+        }
+#endif
     }
     s_device.reset();
 
