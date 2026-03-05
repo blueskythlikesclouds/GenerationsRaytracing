@@ -831,6 +831,8 @@ public static class RaytracingShaderCompiler
             writer.WriteLine("\tL\"{0}_PrimaryTransparentHitGroup\",", shader.Name);
             writer.WriteLine("\tL\"{0}_PrimaryTransparentHitGroup_ConstTexCoord\",", shader.Name);
             writer.WriteLine("\tL\"{0}_SecondaryHitGroup\",", shader.Name);
+            writer.WriteLine("\tL\"{0}_SecondaryGBufferHitGroup\",", shader.Name);
+            writer.WriteLine("\tL\"{0}_SecondaryGBufferHitGroup_ConstTexCoord\",", shader.Name);
         }
 
         writer.WriteLine("};");
@@ -1076,6 +1078,16 @@ public static class RaytracingShaderCompiler
                 {{
                 	SecondaryClosestHit(VERTEX_FLAG_MIPMAP_LOD, payload, attributes);
                 }}
+                [shader("closesthit")]
+                void {0}_SecondaryGBufferClosestHit(inout SecondaryGBufferRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	SecondaryGBufferClosestHit(VERTEX_FLAG_MULTI_UV | VERTEX_FLAG_SAFE_POSITION, payload, attributes);
+                }}
+                [shader("closesthit")]
+                void {0}_SecondaryGBufferClosestHit_ConstTexCoord(inout SecondaryGBufferRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+                {{
+                	SecondaryGBufferClosestHit(VERTEX_FLAG_SAFE_POSITION, payload, attributes);
+                }}
                 TriangleHitGroup {0}_PrimaryHitGroup =
                 {{
                 	"{0}_PrimaryAnyHit",
@@ -1100,6 +1112,16 @@ public static class RaytracingShaderCompiler
                 {{
                 	"SecondaryAnyHit",
                 	"{0}_SecondaryClosestHit"
+                }};
+                TriangleHitGroup {0}_SecondaryGBufferHitGroup =
+                {{
+                	"SecondaryGBufferAnyHit",
+                	"{0}_SecondaryGBufferClosestHit"
+                }};
+                TriangleHitGroup {0}_SecondaryGBufferHitGroup_ConstTexCoord =
+                {{
+                	"SecondaryGBufferAnyHit",
+                	"{0}_SecondaryGBufferClosestHit_ConstTexCoord"
                 }};
                 """, shader.Name));
         }

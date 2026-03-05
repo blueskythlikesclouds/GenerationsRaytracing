@@ -91,8 +91,11 @@ void PrimaryTransparentMiss(inout PrimaryTransparentRayPayload payload : SV_RayP
     
 }
 
-struct TracePathArgs
+struct PathTraceParams
 {
+    bool TraceGlobalIllumination;
+    bool TraceReflection;
+    bool ShouldTraceReflection;
     float3 Position;
     float3 Direction;
     uint InstanceMask;
@@ -101,115 +104,82 @@ struct TracePathArgs
     bool ApplyPower;
 };
 
-float4 TracePath(TracePathArgs args, inout uint randSeed)
+template<bool TCanBeWater>
+PathTraceParams GetPathTraceParams(GBufferData gBufferData, float3 eyeDirection, inout uint randSeed)
 {
-    float3 radiance = 0.0;
-    float hitDistance = 0.0;
-
-    [unroll]
-    for (uint bounceIndex = 0; bounceIndex < 2; bounceIndex++)
-    {
-        RayDesc ray;
-        ray.Origin = args.Position;
-        ray.Direction = args.Direction;
-        ray.TMin = 0.0;
-        ray.TMax = INF;
-
-        SecondaryRayPayload payload;
-
-#ifdef NV_SHADER_EXTN_SLOT
-        NvHitObject hitObject = NvTraceRayHitObject(
-#else
-        TraceRay(
-#endif
-            g_BVH,
-            bounceIndex != 0 ? RAY_FLAG_CULL_NON_OPAQUE : RAY_FLAG_NONE,
-            bounceIndex != 0 ? INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN : args.InstanceMask,
-            HIT_GROUP_SECONDARY,
-            HIT_GROUP_NUM,
-            bounceIndex != 0 ? MISS_SECONDARY_ENVIRONMENT_COLOR : args.MissShaderIndex,
-            ray,
-            payload);
-
-#ifdef NV_SHADER_EXTN_SLOT
-        NvReorderThread(hitObject, 0, 0);
-        NvInvokeHitObject(g_BVH, hitObject, payload);
-#endif
-
-        float3 color = payload.Color;
-        float3 diffuse = payload.Diffuse;
-
-        bool terminatePath = false;
-        bool applyPower = bounceIndex != 0 || args.ApplyPower;
-
-        if (any(diffuse != FLT_MAX))
+    PathTraceParams params = (PathTraceParams) 0;
+    
+    params.TraceGlobalIllumination = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION));
+    params.TraceReflection = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION));
+        
+    if (params.TraceGlobalIllumination || params.TraceReflection)
+    {            
+        float giProbability;
+        if (params.TraceGlobalIllumination ^ params.TraceReflection)
         {
-            float lightPower = 1.0;
-
-            if (applyPower)
-            {
-                color *= g_EmissivePower;
-                diffuse *= g_DiffusePower;
-                lightPower = g_LightPower;
-            }
-
-            float3 directLighting = diffuse * mrgGlobalLight_Diffuse.rgb * lightPower * saturate(dot(-mrgGlobalLight_Direction.xyz, payload.Normal));
-            
-            if (any(directLighting > 0.0001))
-                directLighting *= TraceShadow(payload.Position, -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 2);
-            
-            color += directLighting;
-
-            if (g_LocalLightCount > 0)
-            {
-                uint sample = min(uint(NextRandomFloat(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
-                LocalLight localLight = g_LocalLights[sample];
-
-                float3 lightDirection = localLight.Position - payload.Position;
-                float distance = length(lightDirection);
-
-                if (distance > 0.0)
-                    lightDirection /= distance;
-
-                float3 localLighting = diffuse * localLight.Color * lightPower * g_LocalLightCount * saturate(dot(payload.Normal, lightDirection)) *
-                    ComputeLocalLightFalloff(distance, localLight.InRange, localLight.OutRange);
-
-                if ((localLight.Flags & LOCAL_LIGHT_FLAG_CAST_SHADOW) && any(localLighting > 0.0001))
-                {
-                    localLighting *= TraceLocalLightShadow(
-                        payload.Position, 
-                        lightDirection, 
-                        float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 
-                        localLight.ShadowRange, 
-                        distance,
-                        (localLight.Flags & LOCAL_LIGHT_FLAG_ENABLE_BACKFACE_CULLING) != 0);
-                }
-
-                color += localLighting;
-            }
+            giProbability = params.TraceGlobalIllumination ? 1.0 : 0.0;
         }
         else
         {
-            terminatePath = true;
-            
-            if (applyPower && !g_UseEnvironmentColor)
-                color *= g_SkyPower;
+            float reflectionProbability;
+                
+            if (TCanBeWater && (gBufferData.Flags & GBUFFER_FLAG_IS_WATER))
+                reflectionProbability = ComputeWaterFresnel(dot(gBufferData.Normal, eyeDirection));
+            else
+                reflectionProbability = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
+                
+            giProbability = saturate(1.0 - reflectionProbability);
         }
+        
+        params.ShouldTraceReflection = NextRandomFloat(randSeed) > giProbability;
+        params.Position = gBufferData.Position;
 
-        if (bounceIndex == 0 && !terminatePath)
-            hitDistance = distance(args.Position, payload.Position);
-
-        radiance += args.Throughput * color;
-
-        if (terminatePath)
-            break;
-
-        args.Position = payload.Position;
-        args.Direction = TangentToWorld(payload.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
-        args.Throughput *= diffuse;
+        if (params.ShouldTraceReflection)
+        {
+            float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ?
+                gBufferData.SpecularTint : gBufferData.SpecularFresnel;
+                
+            if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
+            {
+                params.Direction = reflect(-eyeDirection, gBufferData.Normal);
+                params.MissShaderIndex = MISS_SECONDARY_GBUFFER;
+                    
+                float cosTheta = dot(gBufferData.Normal, eyeDirection);
+                    
+                if (TCanBeWater && (gBufferData.Flags & GBUFFER_FLAG_IS_WATER))
+                    params.Throughput = ComputeWaterFresnel(cosTheta);
+                else
+                    params.Throughput = ComputeFresnel(specularFresnel, cosTheta);
+                
+                params.ApplyPower = false;
+            }
+            else
+            {
+                float4 sampleDirection = GetPowerCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), gBufferData.SpecularGloss);
+                float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
+                    
+                params.Direction = reflect(-eyeDirection, halfwayDirection);
+                params.MissShaderIndex = MISS_SECONDARY_GBUFFER_ENVIRONMENT_COLOR;
+                params.Throughput = ComputeFresnel(specularFresnel, dot(halfwayDirection, eyeDirection)) *
+                    pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                
+                params.ApplyPower = true;
+            }
+            
+            params.InstanceMask = INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN | INSTANCE_MASK_INSTANCER;
+            params.Throughput /= 1.0 - giProbability;
+        }
+        else
+        {
+            params.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
+            params.InstanceMask = INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN;
+            params.MissShaderIndex = MISS_SECONDARY_GBUFFER_ENVIRONMENT_COLOR;
+            params.Throughput = 1.0 / giProbability;
+            params.ApplyPower = true;
+        }
     }
-
-    return float4(radiance, hitDistance);
+    
+    return params;
 }
 
 [shader("raygeneration")]
@@ -223,92 +193,137 @@ void SecondaryRayGeneration()
         uint3 dispatchRaysIndex = uint3(DispatchRaysIndex().xy, i);
         GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
         
-        bool traceGlobalIllumination = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION));
-        bool traceReflection = !(gBufferData.Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION));
-        
-        if (traceGlobalIllumination || traceReflection)
+        PathTraceParams primaryParams = GetPathTraceParams<true>(gBufferData, normalize(-gBufferData.Position), randSeed);
+        if (primaryParams.TraceGlobalIllumination || primaryParams.TraceReflection)
         {
-            float3 eyeDirection = NormalizeSafe(-gBufferData.Position);
+            PathTraceParams secondaryParams = primaryParams;
+            float3 radiance = 0.0;
+            float hitDistance = 0.0;
+        
+            for (uint j = 0; j < 16; j++)
+            {
+                RayDesc ray;
+                ray.Origin = secondaryParams.Position;
+                ray.Direction = secondaryParams.Direction;
+                ray.TMin = 0.0;
+                ray.TMax = INF;
+
+                SecondaryGBufferRayPayload payload;
+
+#ifdef NV_SHADER_EXTN_SLOT
+                NvHitObject hitObject = NvTraceRayHitObject(
+#else
+                TraceRay(
+#endif
+                    g_BVH,
+                    RAY_FLAG_NONE,
+                    secondaryParams.InstanceMask,
+                    HIT_GROUP_SECONDARY_GBUFFER,
+                    HIT_GROUP_NUM,
+                    secondaryParams.MissShaderIndex,
+                    ray,
+                    payload);
+
+#ifdef NV_SHADER_EXTN_SLOT
+                NvReorderThread(hitObject, 0, 0);
+                NvInvokeHitObject(g_BVH, hitObject, payload);
+#endif
             
-            float giProbability;
-            if (traceGlobalIllumination ^ traceReflection)
-            {
-                giProbability = traceGlobalIllumination ? 1.0 : 0.0;
-            }
-            else
-            {
-                float reflectionProbability;
-                
-                if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
-                    reflectionProbability = ComputeWaterFresnel(dot(gBufferData.Normal, eyeDirection));
-                else
-                    reflectionProbability = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
-                
-                giProbability = saturate(1.0 - reflectionProbability);
-            }
-        
-            bool shouldTraceReflection = NextRandomFloat(randSeed) > giProbability;
-        
-            TracePathArgs args;
-            args.Position = gBufferData.Position;
-        
-            if (shouldTraceReflection)
-            {    
-                float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ?
-                    gBufferData.SpecularTint : gBufferData.SpecularFresnel;
-                
-                if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
-                {
-                    args.Direction = reflect(-eyeDirection, gBufferData.Normal);
-                    args.MissShaderIndex = MISS_SECONDARY;
-                    
-                    float cosTheta = dot(gBufferData.Normal, eyeDirection);
-                    
-                    if (gBufferData.Flags & GBUFFER_FLAG_IS_WATER)
-                        args.Throughput = ComputeWaterFresnel(cosTheta);
-                    else
-                        args.Throughput = ComputeFresnel(specularFresnel, cosTheta);
-                    
-                    args.ApplyPower = false;
-                }
-                else
-                {
-                    float4 sampleDirection = GetPowerCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), gBufferData.SpecularGloss);
-                    float3 halfwayDirection = TangentToWorld(gBufferData.Normal, sampleDirection.xyz);
-                    
-                    args.Direction = reflect(-eyeDirection, halfwayDirection);
-                    args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
-                    args.Throughput = ComputeFresnel(specularFresnel, dot(halfwayDirection, eyeDirection)) *
-                        pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
-                    
-                    args.ApplyPower = true;
-                }
+                gBufferData = UnpackGBufferData(payload.PackedGBufferData);
             
-                args.InstanceMask = INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN | INSTANCE_MASK_INSTANCER;
-                args.Throughput /= 1.0 - giProbability;
+                if (j == 0)
+                    hitDistance = distance(secondaryParams.Position, gBufferData.Position);
+            
+                float3 color = 0.0;            
+                if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
+                {
+                    float lightPower = 1.0;
+                    if (secondaryParams.ApplyPower)
+                    {
+                        gBufferData.Diffuse *= g_DiffusePower;
+                        gBufferData.Emission *= g_EmissivePower;
+                        lightPower = g_LightPower;
+                    }
+                    
+                    if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
+                    {
+                        float3 directLighting = ComputeDirectLighting(gBufferData, -secondaryParams.Direction,
+                            -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
+        
+                        if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW) && any(directLighting > 0.0001))
+                        {
+                            directLighting *= TraceShadow(gBufferData.Position,
+                                -mrgGlobalLight_Direction.xyz, float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)), 0);
+                        }
+        
+                        color += directLighting * lightPower;
+                    }
+                    
+                    if (g_LocalLightCount > 0 && !(gBufferData.Flags & GBUFFER_FLAG_IGNORE_LOCAL_LIGHT))
+                    {
+                        uint sample = min(uint(NextRandomFloat(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
+                        LocalLight localLight = g_LocalLights[sample];
+                        
+                        float3 localLighting = ComputeLocalLighting(gBufferData, -secondaryParams.Direction, localLight);
+                        
+                        if ((localLight.Flags & LOCAL_LIGHT_FLAG_CAST_SHADOW) && any(localLighting > 0.0001))
+                        {
+                            float3 lightDirection = localLight.Position - gBufferData.Position;
+                            float distance = length(lightDirection);
+
+                            if (distance > 0.0)
+                                lightDirection /= distance;
+                            
+                            localLighting *= TraceLocalLightShadow(
+                                gBufferData.Position,
+                                lightDirection,
+                                float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed)),
+                                localLight.ShadowRange,
+                                distance,
+                                (localLight.Flags & LOCAL_LIGHT_FLAG_ENABLE_BACKFACE_CULLING) != 0);
+                        }
+
+                        color += localLighting * lightPower;
+                    }
+                }
+
+                color += gBufferData.Emission;
+                radiance += color * primaryParams.Throughput;
+            
+                if ((gBufferData.Flags & GBUFFER_FLAG_IS_SKY) != 0)
+                    break;
+
+                secondaryParams = GetPathTraceParams<false>(gBufferData, -secondaryParams.Direction, randSeed);
+                if (!secondaryParams.TraceGlobalIllumination && !secondaryParams.TraceReflection)
+                    break;
+                
+                float3 throughput;
+                if (secondaryParams.ShouldTraceReflection)
+                    throughput = ComputeReflection(gBufferData, secondaryParams.Throughput);
+                else
+                    throughput = ComputeGI(gBufferData, secondaryParams.Throughput);
+                
+                primaryParams.Throughput *= throughput;
+                if (j >= 2)
+                {
+                    float russianRouletteProbability = max(primaryParams.Throughput.x, max(primaryParams.Throughput.y, primaryParams.Throughput.z));
+                    if (NextRandomFloat(randSeed) > russianRouletteProbability) 
+                        break;
+                    
+                    primaryParams.Throughput /= russianRouletteProbability;
+                }
             }
-            else
-            {
-                args.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
-                args.InstanceMask = INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN;
-                args.MissShaderIndex = MISS_SECONDARY_ENVIRONMENT_COLOR;
-                args.Throughput = 1.0 / giProbability;
-                args.ApplyPower = true;
-            }
+            
+            if (primaryParams.TraceGlobalIllumination)
+                g_GlobalIllumination[dispatchRaysIndex] = primaryParams.ShouldTraceReflection ? 0.0 : float4(radiance, hitDistance);
         
-            float4 radianceAndHitDistance = TracePath(args, randSeed);
-        
-            if (traceGlobalIllumination)
-                g_GlobalIllumination[dispatchRaysIndex] = shouldTraceReflection ? 0.0 : radianceAndHitDistance;
-        
-            if (traceReflection)
-                g_Reflection[dispatchRaysIndex] = shouldTraceReflection ? radianceAndHitDistance : 0.0;
+            if (primaryParams.TraceReflection)
+                g_Reflection[dispatchRaysIndex] = primaryParams.ShouldTraceReflection ? float4(radiance, hitDistance) : 0.0;
         }
     }
 }
 
-[shader("miss")]
-void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+float3 SecondaryMiss()
 {
     float3 color = 0.0;
 
@@ -317,13 +332,27 @@ void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
         color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     }
+    
+    return color;
+}
 
-    payload.Color = color;
+[shader("miss")]
+void SecondaryMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+{
+    payload.Color = SecondaryMiss();
     payload.Diffuse = FLT_MAX;
 }
 
 [shader("miss")]
-void SecondaryEnvironmentColorMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+void SecondaryGBufferMiss(inout SecondaryGBufferRayPayload payload : SV_RayPayload)
+{
+    GBufferData gBufferData = (GBufferData) 0;
+    gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
+    gBufferData.Emission = SecondaryMiss();
+    payload.PackedGBufferData = PackGBufferData(gBufferData);
+}
+
+float3 SecondaryEnvironmentColorMiss()
 {
     float3 color = 0.0;
 
@@ -336,13 +365,27 @@ void SecondaryEnvironmentColorMiss(inout SecondaryRayPayload payload : SV_RayPay
         TextureCube skyTexture = ResourceDescriptorHeap[g_SkyTextureId];
         color = skyTexture.SampleLevel(g_SamplerState, WorldRayDirection() * float3(1, 1, -1), 0).rgb;
     }
+    
+    return color;
+}
 
-    payload.Color = color;
+[shader("miss")]
+void SecondaryEnvironmentColorMiss(inout SecondaryRayPayload payload : SV_RayPayload)
+{
+    payload.Color = SecondaryEnvironmentColorMiss();
     payload.Diffuse = FLT_MAX;
 }
 
-[shader("anyhit")]
-void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+[shader("miss")]
+void SecondaryGBufferEnvironmentColorMiss(inout SecondaryGBufferRayPayload payload : SV_RayPayload)
+{
+    GBufferData gBufferData = (GBufferData) 0;
+    gBufferData.Flags = GBUFFER_FLAG_IS_SKY;
+    gBufferData.Emission = SecondaryEnvironmentColorMiss();
+    payload.PackedGBufferData = PackGBufferData(gBufferData);
+}
+
+void SecondaryAnyHit(in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes, uint level)
 {
     GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
     MaterialData materialData = g_Materials[geometryDesc.MaterialId];
@@ -350,8 +393,20 @@ void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in Built
     Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, VERTEX_FLAG_NONE);
     
     if ((materialData.Flags & MATERIAL_FLAG_HAS_DIFFUSE_TEXTURE) &&
-        SampleMaterialTexture2D(materialData.PackedData[0], vertex.TexCoords[0], 2).a < 0.5)
+        SampleMaterialTexture2D(materialData.PackedData[0], vertex.TexCoords[0], level).a < 0.5)
     {
         IgnoreHit();
     }
+}
+
+[shader("anyhit")]
+void SecondaryAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+{
+    SecondaryAnyHit(attributes, 2);
+}
+
+[shader("anyhit")]
+void SecondaryGBufferAnyHit(inout SecondaryRayPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attributes : SV_Attributes)
+{
+    SecondaryAnyHit(attributes, 0);
 }

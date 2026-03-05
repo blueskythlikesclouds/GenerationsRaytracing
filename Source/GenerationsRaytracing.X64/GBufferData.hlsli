@@ -50,42 +50,45 @@ struct GBufferData
     float2 RefractionOffset;
 };
 
-GBufferData LoadGBufferData(uint3 index)
+struct PackedGBufferData
 {
-    float4 gBuffer0 = g_GBuffer0_SRV[index];
-    uint gBuffer1 = g_GBuffer1_SRV[index];
-    uint gBuffer2 = g_GBuffer2_SRV[index];
-    uint gBuffer3 = g_GBuffer3_SRV[index];
-    float2 gBuffer4 = g_GBuffer4_SRV[index];
-    float2 gBuffer5 = g_GBuffer5_SRV[index];
-    uint gBuffer6 = g_GBuffer6_SRV[index];
-    uint gBuffer7 = g_GBuffer7_SRV[index];
-    float4 gBuffer8 = g_GBuffer8_SRV[index];
-    float2 gBuffer9 = g_GBuffer9_SRV[index];
-    float2 gBuffer10 = g_GBuffer10_SRV[index];
+    float4 GBuffer0;
+    uint GBuffer1;
+    uint GBuffer2;
+    uint GBuffer3;
+    float2 GBuffer4;
+    float2 GBuffer5;
+    uint GBuffer6;
+    uint GBuffer7;
+    float4 GBuffer8;
+    float2 GBuffer9;
+    float2 GBuffer10;
+};
 
+GBufferData UnpackGBufferData(PackedGBufferData packedGBufferData)
+{
     GBufferData gBufferData = (GBufferData) 0;
 
-    gBufferData.Position = gBuffer0.xyz;
-    gBufferData.Flags = asuint(gBuffer0.w);
+    gBufferData.Position = packedGBufferData.GBuffer0.xyz;
+    gBufferData.Flags = asuint(packedGBufferData.GBuffer0.w);
 
-    gBufferData.Diffuse = DecodeUnorm11(gBuffer1) * 2.0;
-    gBufferData.Alpha = gBuffer8.a;
+    gBufferData.Diffuse = DecodeUnorm11(packedGBufferData.GBuffer1) * 2.0;
+    gBufferData.Alpha = packedGBufferData.GBuffer8.a;
 
-    gBufferData.Specular = DecodeUnorm11(gBuffer2) * 2.0;
-    gBufferData.SpecularTint = DecodeUnorm11(gBuffer3);
-    gBufferData.SpecularEnvironment = gBuffer4.x;
-    gBufferData.SpecularGloss = gBuffer5.x * 1024.0;
-    gBufferData.SpecularLevel = gBuffer5.y * 1024.0;
-    gBufferData.SpecularFresnel = gBuffer4.y;
+    gBufferData.Specular = DecodeUnorm11(packedGBufferData.GBuffer2) * 2.0;
+    gBufferData.SpecularTint = DecodeUnorm11(packedGBufferData.GBuffer3);
+    gBufferData.SpecularEnvironment = packedGBufferData.GBuffer4.x;
+    gBufferData.SpecularGloss = packedGBufferData.GBuffer5.x * 1024.0;
+    gBufferData.SpecularLevel = packedGBufferData.GBuffer5.y * 1024.0;
+    gBufferData.SpecularFresnel = packedGBufferData.GBuffer4.y;
 
-    gBufferData.Normal = DecodeUnorm11(gBuffer6) * 2.0 - 1.0;
-    gBufferData.Falloff = DecodeUnorm11(gBuffer7) * 2.0;
-    gBufferData.Emission = gBuffer8.rgb;
+    gBufferData.Normal = DecodeUnorm11(packedGBufferData.GBuffer6) * 2.0 - 1.0;
+    gBufferData.Falloff = DecodeUnorm11(packedGBufferData.GBuffer7) * 2.0;
+    gBufferData.Emission = packedGBufferData.GBuffer8.rgb;
     
-    gBufferData.Refraction = gBuffer9.x;
-    gBufferData.RefractionOverlay = gBuffer9.y;
-    gBufferData.RefractionOffset = gBuffer10 * 2.0 - 1.0;
+    gBufferData.Refraction = packedGBufferData.GBuffer9.x;
+    gBufferData.RefractionOverlay = packedGBufferData.GBuffer9.y;
+    gBufferData.RefractionOffset = packedGBufferData.GBuffer10 * 2.0 - 1.0;
     
     float lengthSquared = dot(gBufferData.Normal, gBufferData.Normal);
     gBufferData.Normal = select(lengthSquared > 0.0, gBufferData.Normal * rsqrt(lengthSquared), 0.0);
@@ -93,17 +96,57 @@ GBufferData LoadGBufferData(uint3 index)
     return gBufferData;
 }
 
+PackedGBufferData PackGBufferData(GBufferData gBufferData)
+{
+    PackedGBufferData packedGBufferData = (PackedGBufferData) 0;
+    
+    packedGBufferData.GBuffer0 = float4(gBufferData.Position, asfloat(gBufferData.Flags));
+    packedGBufferData.GBuffer1 = EncodeUnorm11(gBufferData.Diffuse / 2.0);
+    packedGBufferData.GBuffer2 = EncodeUnorm11(gBufferData.Specular / 2.0);
+    packedGBufferData.GBuffer3 = EncodeUnorm11(gBufferData.SpecularTint);
+    packedGBufferData.GBuffer4 = float2(gBufferData.SpecularEnvironment, gBufferData.SpecularFresnel);
+    packedGBufferData.GBuffer5 = float2(gBufferData.SpecularGloss, gBufferData.SpecularLevel) / 1024.0;
+    packedGBufferData.GBuffer6 = EncodeUnorm11(gBufferData.Normal * 0.5 + 0.5);
+    packedGBufferData.GBuffer7 = EncodeUnorm11(gBufferData.Falloff / 2.0);
+    packedGBufferData.GBuffer8 = float4(gBufferData.Emission, gBufferData.Alpha);
+    packedGBufferData.GBuffer9 = float2(gBufferData.Refraction, gBufferData.RefractionOverlay);
+    packedGBufferData.GBuffer10 = gBufferData.RefractionOffset * 0.5 + 0.5;
+    
+    return packedGBufferData;
+}
+
+GBufferData LoadGBufferData(uint3 index)
+{
+    PackedGBufferData packedGBufferData = (PackedGBufferData) 0;
+    
+    packedGBufferData.GBuffer0 = g_GBuffer0_SRV[index];
+    packedGBufferData.GBuffer1 = g_GBuffer1_SRV[index];
+    packedGBufferData.GBuffer2 = g_GBuffer2_SRV[index];
+    packedGBufferData.GBuffer3 = g_GBuffer3_SRV[index];
+    packedGBufferData.GBuffer4 = g_GBuffer4_SRV[index];
+    packedGBufferData.GBuffer5 = g_GBuffer5_SRV[index];
+    packedGBufferData.GBuffer6 = g_GBuffer6_SRV[index];
+    packedGBufferData.GBuffer7 = g_GBuffer7_SRV[index];
+    packedGBufferData.GBuffer8 = g_GBuffer8_SRV[index];
+    packedGBufferData.GBuffer9 = g_GBuffer9_SRV[index];
+    packedGBufferData.GBuffer10 = g_GBuffer10_SRV[index];
+    
+    return UnpackGBufferData(packedGBufferData);
+}
+
 void StoreGBufferData(uint3 index, GBufferData gBufferData)
 {
-    g_GBuffer0[index] = float4(gBufferData.Position, asfloat(gBufferData.Flags));
-    g_GBuffer1[index] = EncodeUnorm11(gBufferData.Diffuse / 2.0);
-    g_GBuffer2[index] = EncodeUnorm11(gBufferData.Specular / 2.0);
-    g_GBuffer3[index] = EncodeUnorm11(gBufferData.SpecularTint);
-    g_GBuffer4[index] = float2(gBufferData.SpecularEnvironment, gBufferData.SpecularFresnel);
-    g_GBuffer5[index] = float2(gBufferData.SpecularGloss, gBufferData.SpecularLevel) / 1024.0;
-    g_GBuffer6[index] = EncodeUnorm11(gBufferData.Normal * 0.5 + 0.5);
-    g_GBuffer7[index] = EncodeUnorm11(gBufferData.Falloff / 2.0);
-    g_GBuffer8[index] = float4(gBufferData.Emission, gBufferData.Alpha);
-    g_GBuffer9[index] = float2(gBufferData.Refraction, gBufferData.RefractionOverlay);
-    g_GBuffer10[index] = gBufferData.RefractionOffset * 0.5 + 0.5;
+    PackedGBufferData packedGBufferData = PackGBufferData(gBufferData);
+    
+    g_GBuffer0[index] = packedGBufferData.GBuffer0;
+    g_GBuffer1[index] = packedGBufferData.GBuffer1;
+    g_GBuffer2[index] = packedGBufferData.GBuffer2;
+    g_GBuffer3[index] = packedGBufferData.GBuffer3;
+    g_GBuffer4[index] = packedGBufferData.GBuffer4;
+    g_GBuffer5[index] = packedGBufferData.GBuffer5;
+    g_GBuffer6[index] = packedGBufferData.GBuffer6;
+    g_GBuffer7[index] = packedGBufferData.GBuffer7;
+    g_GBuffer8[index] = packedGBufferData.GBuffer8;
+    g_GBuffer9[index] = packedGBufferData.GBuffer9;
+    g_GBuffer10[index] =packedGBufferData.GBuffer10;
 }

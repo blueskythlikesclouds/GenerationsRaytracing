@@ -31,7 +31,7 @@ void CreateFurGBufferData(Vertex vertex, Material material, inout GBufferData gB
     gBufferData.Falloff = ComputeFalloff(gBufferData.Normal, material.SonicSkinFalloffParam.xyz) * vertex.Color.rgb;
     gBufferData.Falloff *= SampleMaterialTexture2D(material.DisplacementTexture, vertex).rgb; 
     
-    if (vertex.Flags & VERTEX_FLAG_MIPMAP)
+    if (!(vertex.Flags & VERTEX_FLAG_MIPMAP_LOD))
     {
         float2 flow = SampleMaterialTexture2D(material.NormalTexture, vertex).xy;
         flow += 1.0 / 510.0;

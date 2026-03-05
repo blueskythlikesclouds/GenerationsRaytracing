@@ -310,6 +310,10 @@ void RaytracingDevice::writeHitGroupShaderTable(size_t geometryIndex, size_t sha
             index = 4;
             break;
 
+        case HIT_GROUP_SECONDARY_GBUFFER:
+            index = constTexCoord ? 6 : 5;
+            break;
+
         default:
             assert(false);
             break;
@@ -2055,7 +2059,7 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     dxilLibrarySubobject.SetDXILLibrary(&dxilLibrary);
 
     CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfigSubobject(stateObject);
-    shaderConfigSubobject.Config(sizeof(float) * 15, sizeof(float) * 2);
+    shaderConfigSubobject.Config(sizeof(float) * 21, sizeof(float) * 2);
 
     CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT pipelineConfigSubobject(stateObject);
     pipelineConfigSubobject.Config(1);
@@ -2094,12 +2098,15 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
                     primaryStackSize + m_properties->GetShaderStackSize(exportName));
             }
 
-            wchar_t exportName[0x100]{};
-            wcscat_s(exportName, s_shaderHitGroups[j * s_hitGroupStride + 4]);
-            wcscat_s(exportName, shaderTypes);
+            for (size_t k = 0; k < 3; k++)
+            {
+                wchar_t exportName[0x100]{};
+                wcscat_s(exportName, s_shaderHitGroups[j * s_hitGroupStride + 4 + k]);
+                wcscat_s(exportName, shaderTypes);
 
-            m_secondaryStackSize = std::max(m_secondaryStackSize, 
-                secondaryStackSize + m_properties->GetShaderStackSize(exportName));
+                m_secondaryStackSize = std::max(m_secondaryStackSize,
+                    secondaryStackSize + m_properties->GetShaderStackSize(exportName));
+            }
         }
     }
 
@@ -2112,8 +2119,14 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
     m_secondaryStackSize = std::max(m_secondaryStackSize, 
         secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryMiss"));
 
+    m_secondaryStackSize = std::max(m_secondaryStackSize,
+        secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryGBufferMiss"));
+
     m_secondaryStackSize = std::max(m_secondaryStackSize, 
         secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryEnvironmentColorMiss"));
+
+    m_secondaryStackSize = std::max(m_secondaryStackSize,
+        secondaryStackSize + m_properties->GetShaderStackSize(L"SecondaryGBufferEnvironmentColorMiss"));
 
     const wchar_t* rayGenShaderTable[] =
     {
@@ -2132,7 +2145,9 @@ RaytracingDevice::RaytracingDevice(const IniFile& iniFile) : Device(iniFile)
         L"PrimaryMiss",
         L"PrimaryTransparentMiss",
         L"SecondaryMiss",
-        L"SecondaryEnvironmentColorMiss"
+        L"SecondaryGBufferMiss",
+        L"SecondaryEnvironmentColorMiss",
+        L"SecondaryGBufferEnvironmentColorMiss"
     };
 
     static_assert(_countof(missShaderTable) == MISS_NUM);

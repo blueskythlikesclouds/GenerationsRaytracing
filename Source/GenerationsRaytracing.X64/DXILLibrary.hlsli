@@ -180,3 +180,20 @@ void SecondaryClosestHit(uint vertexFlags,
     payload.Normal = gBufferData.Normal;
 }
 
+struct [raypayload] SecondaryGBufferRayPayload
+{
+    PackedGBufferData PackedGBufferData : read(caller) : write(closesthit, miss);
+};
+
+void SecondaryGBufferClosestHit(uint vertexFlags,
+    inout SecondaryGBufferRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
+{
+    GeometryDesc geometryDesc = g_GeometryDescs[InstanceID() + GeometryIndex()];
+    MaterialData materialData = g_Materials[geometryDesc.MaterialId];
+    InstanceDesc instanceDesc = g_InstanceDescs[InstanceIndex()];
+    Vertex vertex = LoadVertex(geometryDesc, materialData.TexCoordOffsets, instanceDesc, attributes, 0.0, 0.0, vertexFlags);
+
+    GBufferData gBufferData = CreateGBufferData(vertex, GetMaterial(materialData), instanceDesc, true);
+    
+    payload.PackedGBufferData = PackGBufferData(gBufferData);
+}
