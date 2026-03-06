@@ -202,6 +202,14 @@ void SecondaryRayGeneration()
         
             for (uint j = 0; j < 16; j++)
             {
+                float3 environmentColorBalance = 1.0;
+                if (secondaryParams.TraceGlobalIllumination && secondaryParams.TraceReflection)
+                {
+                    float3 gi = ComputeGI(gBufferData, 1.0);
+                    float3 reflection = ComputeReflection(gBufferData, 1.0);
+                    environmentColorBalance = gi / (gi + reflection + 0.0001);
+                }
+                
                 RayDesc ray;
                 ray.Origin = secondaryParams.Position;
                 ray.Direction = secondaryParams.Direction;
@@ -228,13 +236,13 @@ void SecondaryRayGeneration()
                 NvReorderThread(hitObject, 0, 0);
                 NvInvokeHitObject(g_BVH, hitObject, payload);
 #endif
-            
+
                 gBufferData = UnpackGBufferData(payload.PackedGBufferData);
-            
+
                 if (j == 0)
                     hitDistance = distance(secondaryParams.Position, gBufferData.Position);
             
-                float3 color = 0.0;            
+                float3 color = 0.0;
                 if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
                 {
                     float lightPower = 1.0;
@@ -285,6 +293,11 @@ void SecondaryRayGeneration()
 
                         color += localLighting * lightPower;
                     }
+                }
+                else
+                {
+                    if (secondaryParams.MissShaderIndex == MISS_SECONDARY_GBUFFER_ENVIRONMENT_COLOR && g_UseEnvironmentColor) 
+                        gBufferData.Emission *= environmentColorBalance;
                 }
 
                 color += gBufferData.Emission;
