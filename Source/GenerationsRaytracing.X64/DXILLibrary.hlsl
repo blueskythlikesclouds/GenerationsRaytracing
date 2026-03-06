@@ -193,17 +193,18 @@ void SecondaryRayGeneration()
         uint3 dispatchRaysIndex = uint3(DispatchRaysIndex().xy, i);
         GBufferData gBufferData = LoadGBufferData(dispatchRaysIndex);
         
-        PathTraceParams primaryParams = GetPathTraceParams<true>(gBufferData, normalize(-gBufferData.Position), randSeed);
-        if (primaryParams.TraceGlobalIllumination || primaryParams.TraceReflection)
+        PathTraceParams params = GetPathTraceParams<true>(gBufferData, normalize(-gBufferData.Position), randSeed);
+        if (params.TraceGlobalIllumination || params.TraceReflection)
         {
-            PathTraceParams secondaryParams = primaryParams;
+            PathTraceParams bounceParams = params;
             float3 radiance = 0.0;
             float hitDistance = 0.0;
-        
-            for (uint j = 0; j < 16; j++)
+            uint bounceCount = 16;
+            
+            for (uint bounceIndex = 0; bounceIndex < bounceCount; bounceIndex++)
             {
                 float3 environmentColorBalance = 1.0;
-                if (secondaryParams.TraceGlobalIllumination && secondaryParams.TraceReflection)
+                if (bounceParams.TraceGlobalIllumination && bounceParams.TraceReflection)
                 {
                     float3 gi = ComputeGI(gBufferData, 1.0);
                     float3 reflection = ComputeReflection(gBufferData, 1.0);
@@ -211,8 +212,8 @@ void SecondaryRayGeneration()
                 }
                 
                 RayDesc ray;
-                ray.Origin = secondaryParams.Position;
-                ray.Direction = secondaryParams.Direction;
+                ray.Origin = bounceParams.Position;
+                ray.Direction = bounceParams.Direction;
                 ray.TMin = 0.0;
                 ray.TMax = INF;
 
@@ -225,10 +226,10 @@ void SecondaryRayGeneration()
 #endif
                     g_BVH,
                     RAY_FLAG_NONE,
-                    secondaryParams.InstanceMask,
+                    bounceParams.InstanceMask,
                     HIT_GROUP_SECONDARY_GBUFFER,
                     HIT_GROUP_NUM,
-                    secondaryParams.MissShaderIndex,
+                    bounceParams.MissShaderIndex,
                     ray,
                     payload);
 
@@ -239,14 +240,14 @@ void SecondaryRayGeneration()
 
                 gBufferData = UnpackGBufferData(payload.PackedGBufferData);
 
-                if (j == 0)
-                    hitDistance = distance(secondaryParams.Position, gBufferData.Position);
+                if (bounceIndex == 0)
+                    hitDistance = distance(bounceParams.Position, gBufferData.Position);
             
                 float3 color = 0.0;
                 if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
                 {
                     float lightPower = 1.0;
-                    if (secondaryParams.ApplyPower)
+                    if (bounceParams.ApplyPower)
                     {
                         gBufferData.Diffuse *= g_DiffusePower;
                         gBufferData.Emission *= g_EmissivePower;
@@ -255,7 +256,7 @@ void SecondaryRayGeneration()
                     
                     if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_LIGHT))
                     {
-                        float3 directLighting = ComputeDirectLighting(gBufferData, -secondaryParams.Direction,
+                        float3 directLighting = ComputeDirectLighting(gBufferData, -bounceParams.Direction,
                             -mrgGlobalLight_Direction.xyz, mrgGlobalLight_Diffuse.rgb, mrgGlobalLight_Specular.rgb);
         
                         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_SHADOW) && any(directLighting > 0.0001))
@@ -272,7 +273,7 @@ void SecondaryRayGeneration()
                         uint sample = min(uint(NextRandomFloat(randSeed) * g_LocalLightCount), g_LocalLightCount - 1);
                         LocalLight localLight = g_LocalLights[sample];
                         
-                        float3 localLighting = ComputeLocalLighting(gBufferData, -secondaryParams.Direction, localLight);
+                        float3 localLighting = ComputeLocalLighting(gBufferData, -bounceParams.Direction, localLight);
                         
                         if ((localLight.Flags & LOCAL_LIGHT_FLAG_CAST_SHADOW) && any(localLighting > 0.0001))
                         {
@@ -296,42 +297,42 @@ void SecondaryRayGeneration()
                 }
                 else
                 {
-                    if (secondaryParams.MissShaderIndex == MISS_SECONDARY_GBUFFER_ENVIRONMENT_COLOR && g_UseEnvironmentColor) 
+                    if (bounceParams.MissShaderIndex == MISS_SECONDARY_GBUFFER_ENVIRONMENT_COLOR && g_UseEnvironmentColor) 
                         gBufferData.Emission *= environmentColorBalance;
                 }
 
                 color += gBufferData.Emission;
-                radiance += color * primaryParams.Throughput;
+                radiance += color * params.Throughput;
             
-                if ((gBufferData.Flags & GBUFFER_FLAG_IS_SKY) != 0)
+                if ((gBufferData.Flags & GBUFFER_FLAG_IS_SKY) != 0 || bounceIndex == (bounceCount - 1))
                     break;
 
-                secondaryParams = GetPathTraceParams<false>(gBufferData, -secondaryParams.Direction, randSeed);
-                if (!secondaryParams.TraceGlobalIllumination && !secondaryParams.TraceReflection)
+                bounceParams = GetPathTraceParams<false>(gBufferData, -bounceParams.Direction, randSeed);
+                if (!bounceParams.TraceGlobalIllumination && !bounceParams.TraceReflection)
                     break;
                 
                 float3 throughput;
-                if (secondaryParams.ShouldTraceReflection)
-                    throughput = ComputeReflection(gBufferData, secondaryParams.Throughput);
+                if (bounceParams.ShouldTraceReflection)
+                    throughput = ComputeReflection(gBufferData, bounceParams.Throughput);
                 else
-                    throughput = ComputeGI(gBufferData, secondaryParams.Throughput);
+                    throughput = ComputeGI(gBufferData, bounceParams.Throughput);
                 
-                primaryParams.Throughput *= throughput;
-                if (j >= 2)
+                params.Throughput *= throughput;
+                if (bounceIndex >= 2)
                 {
-                    float russianRouletteProbability = max(primaryParams.Throughput.x, max(primaryParams.Throughput.y, primaryParams.Throughput.z));
+                    float russianRouletteProbability = dot(params.Throughput, float3(0.299, 0.587, 0.114));
                     if (NextRandomFloat(randSeed) > russianRouletteProbability) 
                         break;
                     
-                    primaryParams.Throughput /= russianRouletteProbability;
+                    params.Throughput /= russianRouletteProbability;
                 }
             }
             
-            if (primaryParams.TraceGlobalIllumination)
-                g_GlobalIllumination[dispatchRaysIndex] = primaryParams.ShouldTraceReflection ? 0.0 : float4(radiance, hitDistance);
+            if (params.TraceGlobalIllumination)
+                g_GlobalIllumination[dispatchRaysIndex] = params.ShouldTraceReflection ? 0.0 : float4(radiance, hitDistance);
         
-            if (primaryParams.TraceReflection)
-                g_Reflection[dispatchRaysIndex] = primaryParams.ShouldTraceReflection ? float4(radiance, hitDistance) : 0.0;
+            if (params.TraceReflection)
+                g_Reflection[dispatchRaysIndex] = params.ShouldTraceReflection ? float4(radiance, hitDistance) : 0.0;
         }
     }
 }
