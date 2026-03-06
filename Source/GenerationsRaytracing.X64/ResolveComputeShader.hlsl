@@ -16,7 +16,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
     float3 color;
     Reservoir reservoir = (Reservoir) 0;
     float3 diffuseAlbedo = 0.0;
-    float3 specularAlbedo = 0.0;
+    float3 specularAlbedo = 0.5;
     float4 normalsRoughness = 0.0;
     float specularHitDistance = 0.0;
 
