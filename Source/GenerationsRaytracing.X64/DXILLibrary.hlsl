@@ -128,7 +128,7 @@ PathTraceParams GetPathTraceParams(GBufferData gBufferData, float3 eyeDirection,
             else
                 reflectionProbability = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
                 
-            giProbability = saturate(1.0 - reflectionProbability);
+            giProbability = 1.0 - clamp(reflectionProbability, 0.1, 0.9);
         }
         
         params.ShouldTraceReflection = NextRandomFloat(randSeed) > giProbability;
@@ -320,7 +320,7 @@ void SecondaryRayGeneration()
                 params.Throughput *= throughput;
                 if (bounceIndex >= 2)
                 {
-                    float russianRouletteProbability = dot(params.Throughput, float3(0.299, 0.587, 0.114));
+                    float russianRouletteProbability = min(0.95, dot(params.Throughput, float3(0.299, 0.587, 0.114)));
                     if (NextRandomFloat(randSeed) > russianRouletteProbability) 
                         break;
                     
