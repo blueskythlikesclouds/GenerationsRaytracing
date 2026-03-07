@@ -1028,6 +1028,8 @@ void RaytracingDevice::procMsgTraceRays()
         static_cast<uint32_t>(m_localLights.size() * sizeof(LocalLight)), 0x10);
 
     auto& commandList = getGraphicsCommandList();
+    commandList.commitBarriers();
+
     const auto underlyingCommandList = commandList.getUnderlyingCommandList();
 
     if (m_curRootSignature != m_raytracingRootSignature.Get())
@@ -1076,8 +1078,6 @@ void RaytracingDevice::procMsgTraceRays()
     dispatchRaysDesc.Depth = 1;
 
     PIX_BEGIN_EVENT("PrimaryRayGeneration");
-    commandList.commitBarriers();
-
     m_properties->SetPipelineStackSize(m_primaryStackSize);
     underlyingCommandList->DispatchRays(&dispatchRaysDesc);
 
