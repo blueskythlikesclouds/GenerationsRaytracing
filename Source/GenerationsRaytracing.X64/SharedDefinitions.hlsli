@@ -33,7 +33,7 @@ float4 GetPowerCosWeightedSample(float2 random, float specularGloss)
     float cosTheta = pow(random.x, 1.0 / (specularGloss + 1.0));
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
     float phi = 2.0 * PI * random.y;
-    float pdf = pow(cosTheta, specularGloss);
+    float pdf = (specularGloss + 1) * pow(cosTheta, specularGloss) / (2.0 * PI);
      
     return float4(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta, pdf);
 }

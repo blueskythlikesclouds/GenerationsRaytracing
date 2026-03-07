@@ -160,8 +160,12 @@ PathTraceParams GetPathTraceParams(GBufferData gBufferData, float3 eyeDirection,
                     
                 params.Direction = reflect(-eyeDirection, halfwayDirection);
                 params.MissShaderIndex = MISS_SECONDARY_GBUFFER_ENVIRONMENT_COLOR;
-                params.Throughput = ComputeFresnel(specularFresnel, dot(halfwayDirection, eyeDirection)) *
-                    pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss) / (0.0001 + sampleDirection.w);
+                
+                params.Throughput = ComputeFresnel(specularFresnel, dot(halfwayDirection, eyeDirection));
+                params.Throughput *= pow(saturate(dot(gBufferData.Normal, halfwayDirection)), gBufferData.SpecularGloss);
+                params.Throughput *= (gBufferData.SpecularGloss + 2.0) / (2.0 * PI);
+                params.Throughput *= saturate(dot(gBufferData.Normal, params.Direction));
+                params.Throughput /= sampleDirection.w + 0.0001;
                 
                 params.ApplyPower = true;
             }
@@ -207,7 +211,7 @@ void SecondaryRayGeneration()
                 if (bounceParams.TraceGlobalIllumination && bounceParams.TraceReflection)
                 {
                     float3 gi = ComputeGI(gBufferData, 1.0);
-                    float3 reflection = ComputeReflection(gBufferData, 1.0);
+                    float3 reflection = ComputeReflection(gBufferData, gBufferData.SpecularFresnel);
                     environmentColorBalance = gi / (gi + reflection + 0.0001);
                 }
                 
