@@ -207,11 +207,11 @@ void SecondaryRayGeneration()
             
             for (uint bounceIndex = 0; bounceIndex < bounceCount; bounceIndex++)
             {
-                float3 environmentColorBalance = 1.0;
+                float environmentColorBalance = 1.0;
                 if (bounceParams.TraceGlobalIllumination && bounceParams.TraceReflection)
                 {
-                    float3 gi = ComputeGI(gBufferData, 1.0);
-                    float3 reflection = ComputeReflection(gBufferData, gBufferData.SpecularFresnel);
+                    float gi = dot(ComputeGI(gBufferData, 1.0), float3(0.299, 0.587, 0.114));
+                    float reflection = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
                     environmentColorBalance = gi / (gi + reflection + 0.0001);
                 }
                 
