@@ -190,9 +190,9 @@ DEFINE_TEXTURE(Texture2DArray<unorm float2>, g_GBuffer10, 16);
 
 DEFINE_TEXTURE(Texture2D<uint4>, g_Reservoir, 17);
 
-DEFINE_TEXTURE(Texture2DArray<float4>, g_GlobalIllumination, 18);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_RimLight, 19);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_Reflection, 20);
+DEFINE_TEXTURE(Texture2DArray<float3>, g_GlobalIllumination, 18);
+DEFINE_TEXTURE(Texture2DArray<float3>, g_RimLight, 19);
+DEFINE_TEXTURE(Texture2DArray<float3>, g_Reflection, 20);
 
 DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedo, 21);
 DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedo, 22);

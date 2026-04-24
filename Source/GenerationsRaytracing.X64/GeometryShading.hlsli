@@ -230,6 +230,66 @@ float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
     return reflection;
 }
 
+float TraceSpecularHitDistance(float3 position, float3 normal, float3 eyeDirection)
+{
+    RayDesc ray;
+
+    ray.Origin = position;
+    ray.Direction = reflect(-eyeDirection, normal);
+    ray.TMin = 0.0;
+    ray.TMax = INF;
+
+    RayQuery<RAY_FLAG_NONE> query;
+
+    query.TraceRayInline(
+        g_BVH,
+        RAY_FLAG_NONE,
+        INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN | INSTANCE_MASK_INSTANCER,
+        ray);
+
+    while (query.Proceed())
+    {
+        if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+        {
+            GeometryDesc geometryDesc = g_GeometryDescs[query.CandidateInstanceID() + query.CandidateGeometryIndex()];
+            MaterialData material = g_Materials[geometryDesc.MaterialId];
+    
+            if (material.Flags & MATERIAL_FLAG_HAS_DIFFUSE_TEXTURE)
+            {
+                ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.VertexBufferId)];
+
+                uint3 indices = query.CandidatePrimitiveIndex() * 3 + uint3(0, 1, 2);
+                if (geometryDesc.IndexBufferId != 0)
+                {
+                    StructuredBuffer<uint16_t> indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(geometryDesc.IndexBufferId)];
+                    indices.x = indexBuffer[geometryDesc.IndexOffset + indices.x];
+                    indices.y = indexBuffer[geometryDesc.IndexOffset + indices.y];
+                    indices.z = indexBuffer[geometryDesc.IndexOffset + indices.z];
+                }
+            
+                uint3 offsets = geometryDesc.VertexOffset + indices * geometryDesc.VertexStride + geometryDesc.TexCoordOffset0;
+            
+                float2 texCoord0 = DecodeHalf2(vertexBuffer.Load(offsets.x));
+                float2 texCoord1 = DecodeHalf2(vertexBuffer.Load(offsets.y));
+                float2 texCoord2 = DecodeHalf2(vertexBuffer.Load(offsets.z));
+            
+                float3 uv = float3(
+                    1.0 - query.CandidateTriangleBarycentrics().x - query.CandidateTriangleBarycentrics().y,
+                    query.CandidateTriangleBarycentrics().x,
+                    query.CandidateTriangleBarycentrics().y);
+            
+                float2 texCoord = texCoord0 * uv.x + texCoord1 * uv.y + texCoord2 * uv.z;
+                texCoord += material.TexCoordOffsets[0].xy;
+            
+                if (SampleMaterialTexture2D(material.PackedData[0], texCoord, 2).a > 0.5)
+                    query.CommitNonOpaqueTriangleHit();
+            }
+        }
+    }
+
+    return query.CommittedStatus() != COMMITTED_NOTHING ? query.CommittedRayT() : 65504.0;
+}
+
 float3 ComputeSpecularAlbedo(GBufferData gBufferData, float3 eyeDirection)
 {    
     float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ? 

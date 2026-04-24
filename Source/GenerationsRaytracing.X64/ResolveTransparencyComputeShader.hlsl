@@ -46,10 +46,9 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
             {
-                float4 reflectionAndHitDistance = g_Reflection_SRV[uint3(dispatchThreadId, i)];
-                shadingParams.Reflection = reflectionAndHitDistance.rgb;
+                shadingParams.Reflection = g_Reflection_SRV[uint3(dispatchThreadId, i)];
                 specularAlbedo = ComputeSpecularAlbedo(gBufferData, shadingParams.EyeDirection);
-                specularHitDistance = reflectionAndHitDistance.w;
+                specularHitDistance = TraceSpecularHitDistance(gBufferData.Position, gBufferData.Normal, shadingParams.EyeDirection);
             }
             
             float4 normalsRoughness = float4(gBufferData.Normal, 0.0);

@@ -218,7 +218,6 @@ void SecondaryRayGeneration()
         {
             PathTraceParams bounceParams = params;
             float3 radiance = 0.0;
-            float hitDistance = 0.0;
             uint bounceCount = 16;
             
             for (uint bounceIndex = 0; bounceIndex < bounceCount; bounceIndex++)
@@ -260,9 +259,6 @@ void SecondaryRayGeneration()
 
                 gBufferData = UnpackGBufferData(payload.PackedGBufferData);
 
-                if (bounceIndex == 0)
-                    hitDistance = distance(bounceParams.Position, gBufferData.Position);
-            
                 float3 color = 0.0;
                 if (!(gBufferData.Flags & GBUFFER_FLAG_IS_SKY))
                 {
@@ -352,12 +348,12 @@ void SecondaryRayGeneration()
             
             if (params.TraceGlobalIllumination)
             {
-                g_GlobalIllumination[dispatchRaysIndex] = params.ShouldTraceGlobalIllumination ? float4(radiance, hitDistance) : 0.0;
-                g_RimLight[dispatchRaysIndex] = params.ShouldTraceRimLight ? float4(radiance, hitDistance) : 0.0;
+                g_GlobalIllumination[dispatchRaysIndex] = params.ShouldTraceGlobalIllumination ? radiance : 0.0;
+                g_RimLight[dispatchRaysIndex] = params.ShouldTraceRimLight ? radiance : 0.0;
             }
         
             if (params.TraceReflection)
-                g_Reflection[dispatchRaysIndex] = params.ShouldTraceReflection ? float4(radiance, hitDistance) : 0.0;
+                g_Reflection[dispatchRaysIndex] = params.ShouldTraceReflection ? radiance : 0.0;
         }
     }
 }
