@@ -87,7 +87,8 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
         {
             shadingParams.GlobalIllumination = g_GlobalIllumination_SRV[uint3(dispatchThreadId, 0)].rgb;
-            diffuseAlbedo = ComputeGI(gBufferData, 1.0);
+            shadingParams.RimLight = g_RimLight_SRV[uint3(dispatchThreadId, 0)].rgb;
+            diffuseAlbedo = ComputeGI(gBufferData, 1.0) + ComputeRimLight(gBufferData, 1.0);
         }
         
         diffuseAlbedo += gBufferData.Emission;

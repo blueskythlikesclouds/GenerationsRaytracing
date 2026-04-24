@@ -95,7 +95,9 @@ struct PathTraceParams
 {
     bool TraceGlobalIllumination;
     bool TraceReflection;
+    bool ShouldTraceGlobalIllumination;
     bool ShouldTraceReflection;
+    bool ShouldTraceRimLight;
     float3 Position;
     float3 Direction;
     uint InstanceMask;
@@ -128,17 +130,17 @@ PathTraceParams GetPathTraceParams(GBufferData gBufferData, float3 eyeDirection,
             else
                 reflectionProbability = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
                 
-            giProbability = 1.0 - clamp(reflectionProbability, 0.1, 0.9);
+            giProbability = 1.0 - min(reflectionProbability, 0.9);
         }
         
         params.ShouldTraceReflection = NextRandomFloat(randSeed) > giProbability;
         params.Position = gBufferData.Position;
 
-        if (params.ShouldTraceReflection)
-        {
-            float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ?
+        float3 specularFresnel = gBufferData.Flags & GBUFFER_FLAG_IS_METALLIC ?
                 gBufferData.SpecularTint : gBufferData.SpecularFresnel;
-                
+        
+        if (params.ShouldTraceReflection)
+        {                
             if (gBufferData.Flags & GBUFFER_FLAG_IS_MIRROR_REFLECTION)
             {
                 params.Direction = reflect(-eyeDirection, gBufferData.Normal);
@@ -174,12 +176,26 @@ PathTraceParams GetPathTraceParams(GBufferData gBufferData, float3 eyeDirection,
             params.Throughput /= 1.0 - giProbability;
         }
         else
-        {
+        {            
             params.Direction = TangentToWorld(gBufferData.Normal, GetCosWeightedSample(float2(NextRandomFloat(randSeed), NextRandomFloat(randSeed))));
             params.InstanceMask = INSTANCE_MASK_OBJECT | INSTANCE_MASK_TERRAIN;
             params.MissShaderIndex = MISS_SECONDARY_GBUFFER_ENVIRONMENT_COLOR;
             params.Throughput = 1.0 / giProbability;
             params.ApplyPower = true;
+            
+            float rimLightProbability = min(dot(gBufferData.Falloff, float3(0.299, 0.587, 0.114)), 0.9);
+            params.ShouldTraceRimLight = rimLightProbability > NextRandomFloat(randSeed);
+            
+            if (params.ShouldTraceRimLight)
+            {
+                params.Direction = reflect(-eyeDirection, params.Direction);
+                params.Throughput /= rimLightProbability;
+            }
+            else
+            {
+                params.Throughput /= 1.0 - rimLightProbability;
+                params.ShouldTraceGlobalIllumination = true;
+            }
         }
     }
     
@@ -210,7 +226,7 @@ void SecondaryRayGeneration()
                 float environmentColorBalance = 1.0;
                 if (bounceParams.TraceGlobalIllumination && bounceParams.TraceReflection)
                 {
-                    float gi = dot(ComputeGI(gBufferData, 1.0), float3(0.299, 0.587, 0.114));
+                    float gi = dot(ComputeGI(gBufferData, 1.0) + ComputeRimLight(gBufferData, 1.0), float3(0.299, 0.587, 0.114));
                     float reflection = dot(ComputeReflection(gBufferData, gBufferData.SpecularFresnel), float3(0.299, 0.587, 0.114));
                     environmentColorBalance = gi / (gi + reflection + 0.0001);
                 }
@@ -318,6 +334,8 @@ void SecondaryRayGeneration()
                 float3 throughput;
                 if (bounceParams.ShouldTraceReflection)
                     throughput = ComputeReflection(gBufferData, bounceParams.Throughput);
+                else if (bounceParams.ShouldTraceRimLight)
+                    throughput = ComputeRimLight(gBufferData, bounceParams.Throughput);
                 else
                     throughput = ComputeGI(gBufferData, bounceParams.Throughput);
                 
@@ -333,7 +351,10 @@ void SecondaryRayGeneration()
             }
             
             if (params.TraceGlobalIllumination)
-                g_GlobalIllumination[dispatchRaysIndex] = params.ShouldTraceReflection ? 0.0 : float4(radiance, hitDistance);
+            {
+                g_GlobalIllumination[dispatchRaysIndex] = params.ShouldTraceGlobalIllumination ? float4(radiance, hitDistance) : 0.0;
+                g_RimLight[dispatchRaysIndex] = params.ShouldTraceRimLight ? float4(radiance, hitDistance) : 0.0;
+            }
         
             if (params.TraceReflection)
                 g_Reflection[dispatchRaysIndex] = params.ShouldTraceReflection ? float4(radiance, hitDistance) : 0.0;

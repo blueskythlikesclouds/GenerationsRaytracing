@@ -441,7 +441,7 @@ void RaytracingDevice::createTopLevelAccelStructs()
     }
 }
 
-static constexpr size_t s_textureCount = 28;
+static constexpr size_t s_textureCount = 29;
 
 void RaytracingDevice::createRaytracingTextures()
 {
@@ -520,6 +520,7 @@ void RaytracingDevice::createRaytracingTextures()
 
             { 1, DXGI_FORMAT_R32G32B32A32_UINT, m_reservoirTexture, L"Reservoir Texture" },
             { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_giTexture, L"GI Texture" },
+            { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_rimLightTexture, L"Rim Light Texture" },
             { GBUFFER_LAYER_NUM, DXGI_FORMAT_R16G16B16A16_FLOAT, m_reflectionTexture, L"Reflection Texture" },
 
             { 1, DXGI_FORMAT_R16G16B16A16_FLOAT, m_diffuseAlbedoTexture, L"Diffuse Albedo Texture", 0, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET },
@@ -1127,6 +1128,7 @@ void RaytracingDevice::procMsgTraceRays()
             m_depthTexture->GetResource(),
             m_reservoirTexture->GetResource(),
             m_giTexture->GetResource(),
+            m_rimLightTexture->GetResource(),
             m_reflectionTexture->GetResource(),
             m_linearDepthTexture->GetResource()
         }, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

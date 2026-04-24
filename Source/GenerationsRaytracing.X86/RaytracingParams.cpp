@@ -509,6 +509,7 @@ void RaytracingParams::imguiWindow()
                         ImGui::RadioButton("Refraction Overlay", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION_OVERLAY);
                         ImGui::RadioButton("Refraction Offset", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFRACTION_OFFSET);
                         ImGui::RadioButton("GI", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_GI);
+                        ImGui::RadioButton("Rim Light", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_RIM_LIGHT);
                         ImGui::RadioButton("Reflection", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_REFLECTION);
                         ImGui::RadioButton("Diffuse Albedo", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_DIFFUSE_ALBEDO);
                         ImGui::RadioButton("Specular Albedo", reinterpret_cast<int*>(&s_debugView), DEBUG_VIEW_SPECULAR_ALBEDO);
@@ -658,6 +659,7 @@ HOOK(void, __stdcall, LoadSceneEffect, 0x579050, void* A1, void* A2)
         const size_t index =
             RaytracingParams::s_debugView == DEBUG_VIEW_COLOR ||
             RaytracingParams::s_debugView == DEBUG_VIEW_GI ||
+            RaytracingParams::s_debugView == DEBUG_VIEW_RIM_LIGHT ||
             RaytracingParams::s_debugView == DEBUG_VIEW_REFLECTION ? 1 : 0;
 
         for (size_t i = index; i < _countof(s_postProcessingToggles); i++)

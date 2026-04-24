@@ -159,6 +159,7 @@ protected:
     ComPtr<D3D12MA::Allocation> m_reservoirTexture;
 
     ComPtr<D3D12MA::Allocation> m_giTexture;
+    ComPtr<D3D12MA::Allocation> m_rimLightTexture;
     ComPtr<D3D12MA::Allocation> m_reflectionTexture;
 
     ComPtr<D3D12MA::Allocation> m_diffuseAlbedoTexture;

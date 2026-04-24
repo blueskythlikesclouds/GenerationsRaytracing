@@ -191,16 +191,17 @@ DEFINE_TEXTURE(Texture2DArray<unorm float2>, g_GBuffer10, 16);
 DEFINE_TEXTURE(Texture2D<uint4>, g_Reservoir, 17);
 
 DEFINE_TEXTURE(Texture2DArray<float4>, g_GlobalIllumination, 18);
-DEFINE_TEXTURE(Texture2DArray<float4>, g_Reflection, 19);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_RimLight, 19);
+DEFINE_TEXTURE(Texture2DArray<float4>, g_Reflection, 20);
 
-DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedo, 20);
-DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedo, 21);
-DEFINE_TEXTURE(Texture2D<float4>, g_NormalsRoughness, 22);
-DEFINE_TEXTURE(Texture2D<float>, g_LinearDepth, 23);
-DEFINE_TEXTURE(Texture2D<float>, g_SpecularHitDistance, 24);
+DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedo, 21);
+DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedo, 22);
+DEFINE_TEXTURE(Texture2D<float4>, g_NormalsRoughness, 23);
+DEFINE_TEXTURE(Texture2D<float>, g_LinearDepth, 24);
+DEFINE_TEXTURE(Texture2D<float>, g_SpecularHitDistance, 25);
 
-DEFINE_TEXTURE(Texture2D<float4>, g_ColorBeforeTransparency, 25);
-DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedoBeforeTransparency, 26);
-DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedoBeforeTransparency, 27);
+DEFINE_TEXTURE(Texture2D<float4>, g_ColorBeforeTransparency, 26);
+DEFINE_TEXTURE(Texture2D<float3>, g_DiffuseAlbedoBeforeTransparency, 27);
+DEFINE_TEXTURE(Texture2D<float3>, g_SpecularAlbedoBeforeTransparency, 28);
 
 #undef DEFINE_TEXTURE

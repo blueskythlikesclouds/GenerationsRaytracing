@@ -11,6 +11,7 @@ struct ShadingParams
     float3 EyeDirection;
     Reservoir Reservoir;
     float3 GlobalIllumination;
+    float3 RimLight;
     float3 Reflection;
     float3 Refraction;
 };
@@ -192,12 +193,22 @@ float ComputeReservoirWeight(GBufferData gBufferData, float3 eyeDirection, Local
 
 float3 ComputeGI(GBufferData gBufferData, float3 globalIllumination)
 {
-    globalIllumination *= gBufferData.Diffuse + gBufferData.Falloff;
+    globalIllumination *= gBufferData.Diffuse;
     
     if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_REFRACTION)
         globalIllumination *= gBufferData.Refraction;
 
     return globalIllumination;
+}
+
+float3 ComputeRimLight(GBufferData gBufferData, float3 rimLight)
+{
+    rimLight *= gBufferData.Falloff;
+    
+    if (gBufferData.Flags & GBUFFER_FLAG_MUL_BY_REFRACTION)
+        rimLight *= gBufferData.Refraction;
+
+    return rimLight;
 }
 
 float3 ComputeReflection(GBufferData gBufferData, float3 reflection)
@@ -292,6 +303,7 @@ float3 ComputeGeometryShading(GBufferData gBufferData, ShadingParams shadingPara
         resultShading += ComputeLocalLighting(gBufferData, shadingParams.EyeDirection, g_LocalLights[shadingParams.Reservoir.Y]) * shadingParams.Reservoir.W;
 
     resultShading += ComputeGI(gBufferData, shadingParams.GlobalIllumination);
+    resultShading += ComputeRimLight(gBufferData, shadingParams.RimLight);
     resultShading += ComputeReflection(gBufferData, shadingParams.Reflection);
     resultShading += ComputeRefraction(gBufferData, shadingParams.Refraction);
     resultShading += gBufferData.Emission;

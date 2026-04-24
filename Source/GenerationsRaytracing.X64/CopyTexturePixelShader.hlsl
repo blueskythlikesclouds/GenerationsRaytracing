@@ -103,7 +103,11 @@ void main(in float4 position : SV_Position, in float2 texCoord : TEXCOORD,
         case DEBUG_VIEW_GI:
             MAKE_DEBUG_VIEW(!(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)) ? g_GlobalIllumination_SRV[index].rgb : 0.0);
             break;
-        
+
+        case DEBUG_VIEW_RIM_LIGHT:
+            MAKE_DEBUG_VIEW(!(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION)) ? g_RimLight_SRV[index].rgb : 0.0);
+            break;
+
         case DEBUG_VIEW_REFLECTION:
             MAKE_DEBUG_VIEW(!(LoadGBufferData(index).Flags & (GBUFFER_FLAG_IS_SKY | GBUFFER_FLAG_IGNORE_REFLECTION)) ? g_Reflection_SRV[index].rgb : 0.0);
             break;
