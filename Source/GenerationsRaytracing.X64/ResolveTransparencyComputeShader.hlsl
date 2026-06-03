@@ -32,7 +32,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             ShadingParams shadingParams = (ShadingParams) 0;
             shadingParams.EyeDirection = NormalizeSafe(-gBufferData.Position);
 
-            float3 diffuseAlbedo = gBufferData.Emission;
+            float3 diffuseAlbedo = 0.0;
             
             if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_GLOBAL_ILLUMINATION))
             {

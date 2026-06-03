@@ -90,9 +90,7 @@ void main(uint2 groupThreadId : SV_GroupThreadID, uint2 groupId : SV_GroupID)
             shadingParams.RimLight = g_RimLight_SRV[uint3(dispatchThreadId, 0)].rgb;
             diffuseAlbedo = ComputeGI(gBufferData, 1.0) + ComputeRimLight(gBufferData, 1.0);
         }
-        
-        diffuseAlbedo += gBufferData.Emission;
-    
+            
         if (!(gBufferData.Flags & GBUFFER_FLAG_IGNORE_REFLECTION))
         {
             shadingParams.Reflection = g_Reflection_SRV[uint3(dispatchThreadId, 0)].rgb;
